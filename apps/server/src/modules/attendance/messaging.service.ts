@@ -18,7 +18,7 @@ import { digest } from '../backups/validation.js';
 export const sendSchema = z
   .object({
     requestId: z.string().min(1).max(160),
-    kind: z.enum(['text', 'audio', 'image', 'video', 'document']),
+    kind: z.enum(['text', 'audio', 'image', 'video', 'document', 'sticker']),
     text: z.string().max(20_000).optional(),
     fileId: z.string().min(1).optional(),
     caption: z.string().max(2000).optional(),
@@ -116,7 +116,9 @@ export class MessagingService {
         const mime = file!.mimeType;
         if (
           input.kind !== 'document' &&
-          !mime.startsWith(`${input.kind === 'image' ? 'image' : input.kind}/`)
+          !(input.kind === 'sticker'
+            ? mime === 'image/webp'
+            : mime.startsWith(`${input.kind === 'image' ? 'image' : input.kind}/`))
         )
           throw new AppError(422, 'O tipo do arquivo não corresponde ao envio selecionado.');
         if (
@@ -130,13 +132,15 @@ export class MessagingService {
         if (input.isPtv && !mime.startsWith('video/mp4'))
           throw new AppError(422, 'O recado circular precisa ser um vídeo MP4.');
         content =
-          input.kind === 'audio'
-            ? { audio: data, mimetype: mime, ptt: input.isPtt, viewOnce: input.asViewOnce }
-            : input.kind === 'image'
-              ? { image: data, caption, viewOnce: input.asViewOnce }
-              : input.kind === 'video'
-                ? { video: data, caption, mimetype: mime, ptv: input.isPtv, viewOnce: input.asViewOnce }
-                : { document: data, mimetype: mime, fileName: file!.filename, caption };
+          input.kind === 'sticker'
+            ? { sticker: data, mimetype: 'image/webp' }
+            : input.kind === 'audio'
+              ? { audio: data, mimetype: mime, ptt: input.isPtt, viewOnce: input.asViewOnce }
+              : input.kind === 'image'
+                ? { image: data, caption, viewOnce: input.asViewOnce }
+                : input.kind === 'video'
+                  ? { video: data, caption, mimetype: mime, ptv: input.isPtv, viewOnce: input.asViewOnce }
+                  : { document: data, mimetype: mime, fileName: file!.filename, caption };
       }
       const whatsappMessageId = generateMessageIDV2(socket.user?.id);
       await this.db.chatMessage.create({

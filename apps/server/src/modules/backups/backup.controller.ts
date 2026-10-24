@@ -12,11 +12,14 @@ export function backupController(db: PrismaClient) {
     res.status(report.duplicate ? 200 : 201).json(report);
   };
   const exportBackup: RequestHandler = async (_req, res) => {
-    res.attachment(`noctua-ZV_backup-${new Date().toISOString().slice(0, 10)}.json`).json(await service.export());
+    res
+      .attachment(`noctua-ZV_backup-${new Date().toISOString().slice(0, 10)}.json`)
+      .json(await service.export());
   };
   const listImports: RequestHandler = async (_req, res) => {
     const batches = await db.importBatch.findMany({
-      take: 100, orderBy: { createdAt: 'desc' },
+      take: 100,
+      orderBy: { createdAt: 'desc' },
       select: { id: true, format: true, sourceName: true, createdAt: true, report: true },
     });
     res.json({ items: batches });

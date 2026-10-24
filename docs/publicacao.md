@@ -28,6 +28,8 @@ Importe o repositório pela raiz. O arquivo `vercel.json` define instalação, c
 
 Publique novamente após alterar variáveis `VITE_*`, porque elas são incorporadas na compilação. No servidor, permita a origem exata do painel em `CLIENT_ORIGIN`. O navegador conecta diretamente à API e ao Socket.io desse servidor por HTTPS.
 
+O upload de backups grandes também vai diretamente para esse servidor, conforme `VITE_API_URL`. Se houver um proxy reverso na frente dele, configure o limite e os prazos de upload do proxy para os tamanhos esperados. O limite de 40 MiB dos formulários comuns não se aplica à rota de backups do Noctua. Reserve espaço para o arquivo temporário, o JSON original preservado e as mídias decodificadas.
+
 ## IA
 
 Cadastre a chave do provedor em Configurações → Integração de IA. Ela é cifrada no servidor e nunca é devolvida pela API. Não use prefixo `VITE_` para segredos. Escolha um modelo disponível em sua conta, informe regras/base de conhecimento e teste sugestões antes de habilitar respostas automáticas. O limite diário conta solicitações automáticas, não valores em reais; cobrança e limites financeiros são controlados no provedor.

@@ -1,0 +1,85 @@
+{
+  "respostasRapidas": "U2FsdGVkX1/frNHsLRSKQxPmuhMqLs/tF8D/YrDXAreNygl5GYqbgP/PbrEK4NiH9qhBjvIWqu0cWDWTrvdY5UtFPwMqxMt6u/frzKpb+yhELRNo2bx+NiTlyzvtAv3wk/COd+gZr9dlQ7QyK7Ms7gLhOi3o4peoKomlB5fss1Npn4qgmTvbSGVpdgqF2NJ1gUrH96lDwaiaTnDYg/bbZA==",
+  "respostasRapidasAcao": [
+    {
+      "id": "suto-script-a",
+      "acao": [
+        {
+          "id": "reused-action",
+          "type": "txt",
+          "propriedades": {
+            "mensagem": "Olá de teste",
+            "aguarde": 2,
+            "composing": 3
+          }
+        },
+        {
+          "id": "audio-a",
+          "type": "audio",
+          "propriedades": {
+            "base64": "data:audio/mpeg;base64,QQ=="
+          }
+        },
+        {
+          "id": "sticker-a",
+          "type": "sticker",
+          "propriedades": {
+            "base64": "data:image/webp;base64,UklGRg=="
+          }
+        },
+        {
+          "id": "pix-a",
+          "type": "pix",
+          "propriedades": {
+            "key": "00000000-0000-4000-8000-000000000000",
+            "keyType": "EVP",
+            "name": "LOJA FICTICIA"
+          }
+        },
+        {
+          "id": "label-a",
+          "type": "addLabel",
+          "propriedades": {
+            "labelID": "12"
+          }
+        }
+      ]
+    },
+    {
+      "id": "suto-script-b",
+      "acao": [
+        {
+          "id": "reused-action",
+          "type": "txt",
+          "propriedades": {
+            "mensagem": "Outra resposta"
+          }
+        }
+      ]
+    }
+  ],
+  "contatos": "U2FsdGVkX19I8hOKbIiaTfd/Nj/D+R8U3swXAy+xtfSX9gmM6dLfjqAZ5A0tI53LoQ3wH2NwuKy1NslRIA+PdzUC1d5sSU84R4rSajT10sI=",
+  "backupAutomatico": "U2FsdGVkX1+m8Pkjyo/2pLSgjh6cmq07q0nLFzxJBCiCrtXwyHVF3AeOplucW7lsQGUcwTyBa9jmbPzC6fkhq2GSCcWm/47tEM5791A/BGRoEAFVDu+5zXL45RQOQ5XkJUpDlFwOx6zn1ob3Kono3g==",
+  "whatsApi": "U2FsdGVkX18wKGadxPKamoHDcoyK5fqGqo3fetYVcEOY8x1U35K2cok2yZxkLk6HXgtwMde5LApzcyxEWE9jFQ==",
+  "replacementStorage": {
+    "isEnabled": true,
+    "items": [
+      {
+        "from": "#teste",
+        "to": "Valor fictício"
+      }
+    ]
+  },
+  "agendamentosNaoDisparados": [
+    {
+      "id": "schedule-suto",
+      "data": "2099-01-01",
+      "hora": "10:30",
+      "titulo": "Retorno fictício",
+      "mensagem": "Olá",
+      "userID": "5511988880000",
+      "tipo": "txt"
+    }
+  ],
+  "fluxo": "U2FsdGVkX1+x4gb7jZ1QdsI042B/pfkFAczOsm06oicxQrgw6Lou4o6nhf8DYSQuY7dHVeKTmcABucc9JZ+90WEEq1ztTjF7zK2N0AgysGjn8c99e/7EwAfnlVyH8O9RLN6Jv21u8CAUIPnCh7ZM0aRK/z+wVY2q0PxLrZygJvGDnw+NT/en45pc1jHsjvAy4ErgYTMNDZNCg9zi/oZ86KSGJImWF1/yGeacn27buNUTbrDKVQkfWJUubP0s4XijMsxg3kwo9zCnMr8QBQtkqcJyyoTgzsBNKGGHZOgroYJsYBhlwgMfstaUuRjGQuTJ+aGeL5HrpQg2wDo1qV//YX1oG98kJSBX6C4aJ2EeNJxZWpFdQN6dugHFStnGoU0IscnaIEPk50fMiA/HvW259S1/A6Z03AJLiLDOqLL0fdLlFcrZIASr0Ldgl1ht/K6p11POUl0LY/Z5FedFXz8W203f3g+dUq0SwWbN5mEiZbEGw95hQg3yNH3pYbW7kL9uFTkUbDwbLNMNvsQyzcq5zxRumIndMTK5db0dPieiDBss+ejSOTspvzHDYk3fMWDytOAh5PSJpbrlwIZRCxsxWYYsIvtggYXi3VyQlE6107zg5ztk1hRemV1lcw2V2GaHxYFKyvhhfgRD29mM7bg7QJmWNZ+gCuzpMzvZDZdq2cSAJcmNIIVbSXY8cuXZ9zdnGiqBpo3k7aO5Uj8SBBPgRikxUwVRgbljTpJydv+8oPM2IgdgcuworzLRtckIM+/azY9Gqud2pX98Vta5VANuIjEU4U+JHtXbQgWMlNRXQplab+AZMFv11dFpL2JYjW4bbIuoQZVIHEhdvWAx2gRH7MrIywUW/5drwaStt2mZoYyvpD1tyEd4cn1Mo3yPjnzdfKHlct+4UTx4ooexdZT8vw/2Q9YWMdMWRrpcEbt6ER29cJhjFNaGLzcJplJk/PdcAA5UyJ+nyKFafRA0yXbJNRjQUnIT17fN82KZ4DDvdPufhB59L6ZTn9fbX+xrapAHv/ykjdr7vLmwY8XfAdT81iC8kOV3kxBVadKX63JSqo2RSMeWyvq/O+Ea+ZYVO5PwOtHacQFAJldJ46WJKLVuTBMhXJP2KDj2CECll+MwLM2UsS0BhkQBQis2Rfp1J21WziGYUS2Mq69atAwzmZAOKuguaYU1WZ4bVUgZKrzbTZY="
+}

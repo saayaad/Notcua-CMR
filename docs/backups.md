@@ -1,6 +1,6 @@
 # Contrato de backups — v1
 
-O pedido descreve nomes de campos, mas não inclui arquivos reais dos sistemas de origem. O importador implementa os contratos abaixo; a compatibilidade com variantes não documentadas deve ser verificada com um backup real. Campos desconhecidos são preservados no JSON original. Campos desconhecidos no topo geram avisos. Tipos e referências inválidos interrompem toda a importação, sem gravação parcial.
+O importador reconhece o contrato Noctua/ZV e o formato Sutofly, validado com o backup real fornecido pelo proprietário (89.881.588 bytes). Campos não convertidos são preservados no JSON original. Tipos e referências inválidos interrompem a transação, sem gravação parcial.
 
 ## Formatos de entrada
 
@@ -8,6 +8,23 @@ O pedido descreve nomes de campos, mas não inclui arquivos reais dos sistemas d
 2. Envelope `{ "ZV_backup": { ...coleções } }`.
 3. Objeto `{ "respostasRapidasAcao": [ ...macros ] }` ou lista de macros diretamente.
 4. Macros podem coexistir com coleções ZV no mesmo objeto. O relatório identifica esse conjunto como `ZV_backup`.
+5. Sutofly: `respostasRapidas` e demais seções cifradas são lidas com o formato de compatibilidade da extensão oficial. As ações em `propriedades` são normalizadas, incluindo texto, áudio, imagens, vídeos, figurinha, PIX e etiquetas. Identificadores repetidos de ações em macros diferentes são preservados com referências internas distintas. Nomes dos scripts vêm de `respostasRapidas`.
+
+## Arquivos grandes e importação pelo painel
+
+O painel envia o próprio arquivo para `POST /api/backups/upload`, sem ler e reconstruir todo o JSON no navegador. O servidor recebe em disco temporário, responde 202 e processa a importação em segundo plano. `GET /api/backups/jobs/:id` fornece o estado e o relatório. O ID do trabalho fica na sessão do navegador para continuar o acompanhamento ao voltar à aba. Somente administradores podem usar esses endpoints.
+
+O limite de 40 MiB do corpo JSON comum não se aplica aos endpoints de backup. Também foi retirado o limite de 20 MiB por mídia durante a leitura do backup, inclusive pela linha de comando. Os outros formulários e envios de mídias continuam com seus próprios limites. Não existe teto de tamanho configurado para o backup; memória, espaço em disco e eventuais limites do provedor/proxy continuam sendo limites físicos de operação. O parser JSON do servidor precisa acomodar o conteúdo na memória.
+
+Os arquivos temporários são removidos ao concluir ou falhar. Ao reiniciar o servidor durante um trabalho, o painel informa a interrupção; reenvie o mesmo arquivo para verificar/concluir sem duplicar recursos. O JSON original completo continua guardado no banco para auditoria. Configure armazenamento suficiente para a cópia original e os arquivos decodificados.
+
+## Configurações do Sutofly
+
+Contatos são recuperados, chaves PIX são preservadas para revisão e substituições de texto podem ser aplicadas às preferências do navegador. O horário do backup automático é restaurado; a ativação das cópias integrais do Noctua exige conferência. Integrações e credenciais externas do Sutofly não são ativadas automaticamente.
+
+Agendamentos são recuperados como rascunhos na conexão selecionada, mantendo datas e dados originais. Datas antigas e recorrências precisam ser revistas antes de ativar. A importação não inicia envios nem ativa fluxos.
+
+O fluxo do arquivo fornecido contém 13 blocos e nove referências a mídias ausentes: o arquivo não trouxe `fluxoFiles`. O importador preserva o desenho como rascunho, inclui blocos de espera por resposta e aponta as mídias faltantes. Esses arquivos precisam ser vinculados antes de publicar. As etiquetas referenciadas são associadas às etiquetas atuais da conexão pelo identificador WhatsApp; quando não encontradas, ficam com nomes de identificação para revisão.
 
 Coleções omitidas não apagam dados existentes. Coleções devem ser arrays, exceto `objectsList`, que também aceita mapa indexado pelo ID. IDs aceitam string ou número e são normalizados para string; IDs de ativos são únicos entre todos os tipos de ativo. Nome aceita `name` e, nos ativos, também `title`. Campos booleanos exigem booleanos JSON.
 
@@ -43,7 +60,7 @@ Cada importação alterada cria novas versões de fluxo, mantendo snapshots anti
 
 O SHA-256 do JSON canônico reconhece o mesmo backup mesmo com mudanças de indentação ou ordem das chaves. A ordem dos arrays é significativa. Uma repetição retorna o relatório anterior com `duplicate: true` e não reaplica conteúdo. Isso significa que reimportar o mesmo backup não restaura alterações feitas depois da importação original.
 
-Backups alterados atualizam entidades pelo ID. Não são excluídas entidades ausentes. Funis e macros recebidos têm sua lista ordenada substituída; os ativos e etiquetas referenciados são validados. Snapshots de fluxo são acrescentados. A importação tem tempo máximo de transação de 60 segundos; exceder o limite desfaz a transação.
+Backups alterados atualizam entidades pelo ID. Não são excluídas entidades ausentes. Funis e macros recebidos têm sua lista ordenada substituída; os ativos e etiquetas referenciados são validados. Snapshots de fluxo são acrescentados. A transação de importação pode usar até 15 minutos; exceder esse prazo desfaz a transação. O hash é calculado incrementalmente para reduzir cópias grandes em memória e mantém a identidade dos backups anteriores.
 
 `GET /api/backups/export` exporta a **biblioteca** no contrato descrito aqui, com mídias Base64. Não é um backup completo operacional: não inclui chats, histórico, negócios, chaves PIX, sessões, credenciais nem execuções. `GET /api/backups/imports/:id/original` recupera o JSON original semanticamente idêntico (espaçamento e ordem de propriedades podem variar). Isso permite recuperar campos não convertidos. Para cópia integral operacional, pare o servidor e copie o banco SQLite e a configuração privada.
 

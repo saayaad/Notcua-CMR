@@ -11,6 +11,8 @@ import { BackupService } from '../src/modules/backups/backup.service.js';
 import { createApp } from '../src/app.js';
 import { env } from '../src/config/env.js';
 import { decodeBase64 } from '../src/modules/backups/validation.js';
+import { stableDigest, stableStringify, digest } from '../src/modules/backups/validation.js';
+import { setTimeout as delay } from 'node:timers/promises';
 
 const directory = await mkdtemp(join(tmpdir(), 'noctua-test-'));
 const db = new PrismaClient({ datasourceUrl: `file:${join(directory, 'test.db').replace(/\\/g, '/')}` });
@@ -177,6 +179,156 @@ test('HTTP: health, importação, exportação, original, mídia, erros e autent
   try {
     await request(app).get('/api/backups/export').expect(401);
     await request(app).get('/api/backups/export').set('Authorization', 'Bearer token-de-teste').expect(200);
+  } finally {
+    env.API_TOKEN = '';
+  }
+});
+test('hash incremental preserva a identidade dos backups existentes', () => {
+  assert.equal(stableDigest(fixture), digest(stableStringify(fixture)));
+});
+test('Sutofly recupera nomes cifrados, propriedades, áudio, figurinha, PIX, fluxo incompleto e configurações', async () => {
+  const input = JSON.parse(
+    await readFile(new URL('../../../examples/Sutofly_backup_ficticio.json', import.meta.url), 'utf8'),
+  );
+  const session = await db.whatsappSession.create({ data: { name: 'Sutofly fictício' } });
+  const result = await service.import(input, 'sutofly.json', { sessionId: session.id });
+  assert.equal(result.format, 'Sutofly');
+  assert.equal(result.counts.macros, 2);
+  assert.equal(
+    (await db.macro.findUniqueOrThrow({ where: { id: 'suto-script-a' } })).name,
+    'Roteiro fictício',
+  );
+  const actions = await db.macroAction.findMany({
+    where: { macroId: 'suto-script-a' },
+    orderBy: { position: 'asc' },
+    include: { file: true },
+  });
+  assert.equal(actions[0]!.waitMs, 2000);
+  assert.equal(actions[0]!.composingMs, 3000);
+  assert.equal((actions[1]!.payload as { send: { kind: string } }).send.kind, 'audio');
+  assert.equal((actions[2]!.payload as { send: { kind: string } }).send.kind, 'sticker');
+  assert.equal((actions[3]!.text ?? '').includes('PIX'), true);
+  assert.equal(actions[4]!.labelId, 'sutofly:label:12');
+  assert.equal((actions[1]!.payload as { base64?: string }).base64, undefined);
+  assert.equal(actions[1]!.file?.mimeType, 'audio/mpeg');
+  const flow = await db.flow.findUniqueOrThrow({ where: { id: 'suto-flow' }, include: { versions: true } });
+  assert.equal(flow.enabled, false);
+  assert.equal(flow.sessionId, session.id);
+  assert.equal(flow.versions[0]!.status, 'DRAFT');
+  const graph = flow.versions[0]!.graph as {
+    nodes: {
+      type: string;
+      data: { expirationTimeoutInMs?: number; simulationDelay?: number; triggerMode?: string };
+    }[];
+  };
+  assert.equal(graph.nodes.find((n) => n.type === 'user-input')?.data.expirationTimeoutInMs, 300000);
+  assert.equal(graph.nodes.find((n) => n.type === 'start')?.data.triggerMode, 'any');
+  assert.equal(graph.nodes.find((n) => n.type === 'text')?.data.simulationDelay, 2000);
+  assert.ok(result.warnings.some((w) => w.includes('1 mídias')));
+  assert.equal(result.configurations?.schedules, 1);
+  assert.equal(result.preferences?.replacements, '#teste=Valor fictício');
+  const schedule = await db.operationRecord.findUniqueOrThrow({
+    where: { id: 'sutofly:schedule:schedule-suto' },
+  });
+  assert.equal((schedule.data as { status: string }).status, 'DRAFT');
+  assert.equal(await db.deliveryTask.count({ where: { batchId: schedule.id } }), 1);
+  const settings = await db.operationRecord.findUniqueOrThrow({ where: { id: 'settings:backups' } });
+  assert.equal((settings.data as { time: string }).time, '10:30');
+  assert.equal((settings.data as { automatic: boolean }).automatic, false);
+  assert.equal((await service.import(input)).duplicate, true);
+  const exported = await service.export();
+  await new BackupService(copyDb).import(exported);
+  const copied = await copyDb.macroAction.findFirstOrThrow({
+    where: { macroId: 'suto-script-a', position: 1 },
+    include: { file: true },
+  });
+  assert.equal(copied.file?.mimeType, 'audio/mpeg');
+});
+test('Sutofly reutiliza etiquetas existentes da conexão em vez de criar cópias', async () => {
+  const input = JSON.parse(
+    await readFile(new URL('../../../examples/Sutofly_backup_ficticio.json', import.meta.url), 'utf8'),
+  );
+  const session = await copyDb.whatsappSession.create({ data: { name: 'Conexão de teste de etiquetas' } });
+  await copyDb.label.create({
+    data: {
+      id: 'existing-whatsapp-12',
+      name: 'Nome atual preservado',
+      sessionId: session.id,
+      whatsappId: '12',
+    },
+  });
+  const imported = await new BackupService(copyDb).import(input, 'sutofly.json', { sessionId: session.id });
+  assert.ok(imported.warnings.some((w) => w.includes('1 etiquetas dos scripts')));
+  const action = await copyDb.macroAction.findFirstOrThrow({
+    where: { macroId: 'suto-script-a', type: 'ADD_LABEL' },
+  });
+  assert.equal(action.labelId, 'existing-whatsapp-12');
+  assert.equal(
+    (await copyDb.label.findUniqueOrThrow({ where: { id: 'existing-whatsapp-12' } })).name,
+    'Nome atual preservado',
+  );
+});
+async function waitForImport(app: ReturnType<typeof createApp>, id: string) {
+  for (let i = 0; i < 1200; i++) {
+    const response = await request(app)
+      .get('/api/backups/jobs/' + encodeURIComponent(id))
+      .expect(200);
+    if (['COMPLETED', 'FAILED'].includes(response.body.status)) return response.body;
+    await delay(100);
+  }
+  throw new Error('Importação não concluiu no tempo de teste.');
+}
+test('upload de backup maior que 40 MiB aceita mídia maior que 20 MiB e processa em segundo plano', async () => {
+  const oldLimit = env.BODY_LIMIT_MB;
+  env.BODY_LIMIT_MB = 1;
+  const app = createApp(db);
+  try {
+    const payload = {
+      medias: [
+        {
+          id: 'large-backup-file',
+          name: 'Mídia grande fictícia',
+          base64: 'data:video/mp4;base64,' + Buffer.alloc(31 * 1024 * 1024, 65).toString('base64'),
+        },
+      ],
+    };
+    const body = JSON.stringify(payload);
+    assert.ok(Buffer.byteLength(body) > 40 * 1024 * 1024);
+    const response = await request(app)
+      .post('/api/backups/upload')
+      .set('Content-Type', 'application/json')
+      .set('X-Backup-Name', encodeURIComponent('backup grande.json'))
+      .send(body)
+      .expect(202);
+    const result = await waitForImport(app, response.body.id);
+    assert.equal(result.status, 'COMPLETED', result.error);
+    assert.equal(result.report.counts.files, 1);
+    const asset = await db.asset.findUniqueOrThrow({
+      where: { id: 'large-backup-file' },
+      include: { file: true },
+    });
+    assert.equal(asset.file?.byteLength, 31 * 1024 * 1024);
+  } finally {
+    env.BODY_LIMIT_MB = oldLimit;
+  }
+});
+test('upload inválido falha sem gravar importação e exige autenticação antes de receber o arquivo', async () => {
+  const app = createApp(db);
+  const before = await db.importBatch.count();
+  const response = await request(app)
+    .post('/api/backups/upload')
+    .set('Content-Type', 'application/json')
+    .send('{invalid')
+    .expect(202);
+  assert.equal((await waitForImport(app, response.body.id)).status, 'FAILED');
+  assert.equal(await db.importBatch.count(), before);
+  env.API_TOKEN = 'token-ficticio';
+  try {
+    await request(app)
+      .post('/api/backups/upload')
+      .set('Content-Type', 'application/json')
+      .send('{}')
+      .expect(401);
   } finally {
     env.API_TOKEN = '';
   }

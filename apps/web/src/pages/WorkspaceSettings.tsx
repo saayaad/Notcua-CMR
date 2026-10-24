@@ -516,7 +516,7 @@ export function WorkspaceSettings({
           {tab === 'backup' && (
             <>
               <SystemBackups />
-              <SettingsPage onImported={onImported} />
+              <SettingsPage onImported={onImported} sessionId={sessionId} />
             </>
           )}
         </section>

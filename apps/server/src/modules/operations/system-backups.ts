@@ -49,8 +49,15 @@ export class BackupWorker {
     await this.work;
   }
   async flush() {
-    const settings = await record<{ automatic?: boolean }>(this.db, 'settings:backups', {});
+    const settings = await record<{ automatic?: boolean; time?: string }>(this.db, 'settings:backups', {});
     if (!settings.automatic) return;
+    const time = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'America/Sao_Paulo',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).format(new Date());
+    if (settings.time && time < settings.time) return;
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
     const marker = `backup-day:${today}`;
     if (await this.db.operationRecord.findUnique({ where: { id: marker } })) return;

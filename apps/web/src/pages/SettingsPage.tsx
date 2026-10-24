@@ -1,32 +1,135 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { API_BASE } from '../config';
+import { usePreferences } from '../context/PreferencesContext';
 import { KeyRound, Upload, Download, ShieldCheck } from 'lucide-react';
 import { useApi, errorMessage } from '../context/ApiContext';
 import { Spinner } from '../components/ui';
 
-export function SettingsPage({ onImported }: { onImported: () => Promise<void> }) {
+interface BackupReport {
+  duplicate: boolean;
+  format: string;
+  counts: Record<string, number>;
+  warnings: string[];
+  configurations?: { schedules: number; contacts: number; pixKeys: number; fields: string[] };
+  preferences?: { replacements?: string };
+}
+export function SettingsPage({
+  onImported,
+  sessionId,
+}: {
+  onImported: () => Promise<void>;
+  sessionId?: string;
+}) {
   const { token, setToken, request, blob, notify } = useApi();
   const [draftToken, setDraftToken] = useState(token);
   const [busy, setBusy] = useState(false);
+  const [jobId, setJobId] = useState(() => sessionStorage.getItem('noctua-backup-job') ?? '');
+  const [phase, setPhase] = useState('');
+  const [progress, setProgress] = useState(0);
+  const [report, setReport] = useState<BackupReport | null>(null);
+  const { updatePreferences } = usePreferences();
+  useEffect(() => {
+    if (jobId) return;
+    const controller = new AbortController();
+    void request<{ items: { report: BackupReport }[] }>(
+      '/backups/imports',
+      'GET',
+      undefined,
+      controller.signal,
+    )
+      .then((result) => {
+        if (result.items[0]?.report) setReport(result.items[0].report);
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [jobId, request]);
+  useEffect(() => {
+    if (!jobId) return;
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const controller = new AbortController();
+    setBusy(true);
+    const poll = async () => {
+      try {
+        const job = await request<{ status: string; phase?: string; error?: string; report?: BackupReport }>(
+          `/backups/jobs/${encodeURIComponent(jobId)}`,
+          'GET',
+          undefined,
+          controller.signal,
+        );
+        if (!active) return;
+        if (job.status === 'COMPLETED' || job.status === 'FAILED') {
+          sessionStorage.removeItem('noctua-backup-job');
+          setJobId('');
+          setBusy(false);
+          setPhase('');
+          if (job.report) {
+            setReport(job.report);
+            if (job.report.preferences) updatePreferences(job.report.preferences);
+            window.dispatchEvent(new Event('noctua:backup-imported'));
+            void onImported().catch((error) => notify(errorMessage(error), true));
+            notify(
+              job.report.duplicate
+                ? 'Este backup já está importado.'
+                : 'Backup importado. Confira o relatório abaixo.',
+            );
+          } else notify(job.error || 'A importação não foi concluída.', true);
+          return;
+        }
+        setPhase(job.phase || 'Importando o backup no servidor…');
+      } catch (error) {
+        if (!active) return;
+        setPhase('Aguardando o servidor para consultar a importação. O processo continua no servidor.');
+      }
+      if (active) timer = setTimeout(() => void poll(), 1500);
+    };
+    void poll();
+    return () => {
+      active = false;
+      controller.abort();
+      if (timer) clearTimeout(timer);
+    };
+  }, [jobId, request, notify, onImported, updatePreferences]);
   const upload = async (file: File) => {
     setBusy(true);
+    setReport(null);
+    setProgress(0);
+    setPhase('Enviando o arquivo…');
     try {
-      if (file.size > 40 * 1024 * 1024) throw new Error('O backup deve ter até 40 MiB.');
-      const input: unknown = JSON.parse((await file.text()).replace(/^\uFEFF/, ''));
-      const report = await request<{ duplicate: boolean; counts: Record<string, number> }>(
-        '/backups/import',
-        'POST',
-        input,
-      );
-      await onImported();
-      notify(
-        report.duplicate
-          ? 'Este backup já havia sido importado.'
-          : `Backup importado. ${report.counts.assets ?? 0} ativos disponíveis.`,
-      );
+      const result = await new Promise<{ id: string }>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open(
+          'POST',
+          `${API_BASE}/api/backups/upload${sessionId ? '?sessionId=' + encodeURIComponent(sessionId) : ''}`,
+        );
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.setRequestHeader('X-Backup-Name', encodeURIComponent(file.name));
+        if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) setProgress(Math.round((event.loaded / event.total) * 100));
+        };
+        xhr.onerror = () =>
+          reject(new Error('Não foi possível enviar o arquivo. Confira se o servidor está ligado.'));
+        xhr.onabort = () => reject(new Error('Envio interrompido.'));
+        xhr.onload = () => {
+          let result;
+          try {
+            result = JSON.parse(xhr.responseText);
+          } catch {
+            reject(new Error('O servidor não concluiu o recebimento do arquivo.'));
+            return;
+          }
+          if (xhr.status >= 200 && xhr.status < 300) resolve(result);
+          else reject(new Error(result.error?.message || 'Não foi possível receber o backup.'));
+        };
+        xhr.send(file);
+      });
+      sessionStorage.setItem('noctua-backup-job', result.id);
+      setJobId(result.id);
     } catch (error) {
-      notify(errorMessage(error), true);
-    } finally {
       setBusy(false);
+      setPhase('');
+      notify(errorMessage(error), true);
     }
   };
   const download = async () => {
@@ -89,8 +192,8 @@ export function SettingsPage({ onImported }: { onImported: () => Promise<void> }
           </span>
           <h2>Importar backup</h2>
           <p className="muted">
-            Importe textos, áudios, mídias, documentos, funis e macros nos formatos ZV_backup e
-            respostasRapidasAcao.
+            Importe bibliotecas e configurações do Sutofly, ZV_backup e respostasRapidasAcao. Sem limite de 40
+            MB para backups: arquivos e mídias grandes são processados no servidor.
           </p>
           <label className="file-upload">
             <Upload size={23} />
@@ -106,6 +209,58 @@ export function SettingsPage({ onImported }: { onImported: () => Promise<void> }
               }}
             />
           </label>
+          {busy && (
+            <div role="status">
+              <progress max={100} value={progress} style={{ width: '100%' }} />
+              <p>
+                {phase}
+                {progress < 100 ? ` (${progress}%)` : ''}
+              </p>
+              <small>
+                Mantenha o servidor ligado. Depois de recebido, o arquivo continua sendo processado mesmo se
+                você mudar de aba.
+              </small>
+            </div>
+          )}
+          {report && (
+            <section aria-label="Relatório da importação">
+              <h3>
+                {report.duplicate ? 'Backup já importado' : 'Importação concluída'} · {report.format}
+              </h3>
+              <p>
+                {report.counts.assets} recursos · {report.counts.files} arquivos · {report.counts.macros}{' '}
+                macros · {report.counts.flows} fluxos
+              </p>
+              {report.configurations && (
+                <p>
+                  {report.configurations.schedules} agendamentos em rascunho ·{' '}
+                  {report.configurations.contacts} contatos · {report.configurations.pixKeys} chaves PIX
+                </p>
+              )}
+              {report.preferences && (
+                <button
+                  type="button"
+                  className="button small"
+                  onClick={() => {
+                    updatePreferences(report.preferences!);
+                    notify('Preferências do backup aplicadas neste navegador.');
+                  }}
+                >
+                  Aplicar substituições deste backup
+                </button>
+              )}
+              {report.warnings.length > 0 && (
+                <details open>
+                  <summary>Conferir observações da conversão</summary>
+                  <ul>
+                    {report.warnings.map((warning, index) => (
+                      <li key={index}>{warning}</li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </section>
+          )}
         </section>
         <section className="surface">
           <span className="asset-icon">

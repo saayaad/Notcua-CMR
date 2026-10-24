@@ -96,6 +96,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
         return { id: row.id, filename: data.filename, createdAt: data.createdAt };
       }),
       automatic: (await record<{ automatic?: boolean }>(db, 'settings:backups', {})).automatic ?? false,
+      time: (await record<{ time?: string }>(db, 'settings:backups', {})).time ?? '00:00',
     });
   });
   router.post('/system-backups', async (_req, res) => {
@@ -105,8 +106,19 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
   });
   router.put('/system-backups/settings', async (req, res) => {
     admin(res.locals.identity.role);
-    const data = z.object({ automatic: z.boolean() }).parse(req.body);
-    await putRecord(db, 'settings:backups', 'SETTINGS', data);
+    const data = z
+      .object({
+        automatic: z.boolean(),
+        time: z
+          .string()
+          .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+          .optional(),
+      })
+      .parse(req.body);
+    await putRecord(db, 'settings:backups', 'SETTINGS', {
+      ...(await record(db, 'settings:backups', {})),
+      ...data,
+    });
     res.json(data);
   });
   router.get('/system-backups/:id/download', async (req, res, next) => {

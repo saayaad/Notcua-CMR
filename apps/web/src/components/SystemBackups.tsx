@@ -5,13 +5,20 @@ export function SystemBackups() {
   const { request, blob, notify } = useApi();
   const [items, setItems] = useState<{ id: string; filename: string; createdAt: string }[]>([]);
   const [automatic, setAutomatic] = useState(false);
+  const [time, setTime] = useState('00:00');
   const [busy, setBusy] = useState(false);
   const [tick, setTick] = useState(0);
   useEffect(() => {
-    void request<{ items: typeof items; automatic: boolean }>('/operations/system-backups')
+    const refresh = () => setTick((value) => value + 1);
+    window.addEventListener('noctua:backup-imported', refresh);
+    return () => window.removeEventListener('noctua:backup-imported', refresh);
+  }, []);
+  useEffect(() => {
+    void request<{ items: typeof items; automatic: boolean; time: string }>('/operations/system-backups')
       .then((data) => {
         setItems(data.items);
         setAutomatic(data.automatic);
+        setTime(data.time);
       })
       .catch((error) => notify(errorMessage(error), true));
   }, [tick, request, notify]);
@@ -38,8 +45,24 @@ export function SystemBackups() {
           onChange={(event) => {
             const value = event.target.checked;
             setBusy(true);
-            void request('/operations/system-backups/settings', 'PUT', { automatic: value })
+            void request('/operations/system-backups/settings', 'PUT', { automatic: value, time })
               .then(() => setAutomatic(value))
+              .catch((error) => notify(errorMessage(error), true))
+              .finally(() => setBusy(false));
+          }}
+        />
+      </label>
+      <label>
+        Horário diário da cópia · São Paulo
+        <input
+          type="time"
+          value={time}
+          disabled={busy}
+          onChange={(event) => setTime(event.target.value)}
+          onBlur={() => {
+            if (!time) return;
+            setBusy(true);
+            void request('/operations/system-backups/settings', 'PUT', { automatic, time })
               .catch((error) => notify(errorMessage(error), true))
               .finally(() => setBusy(false));
           }}

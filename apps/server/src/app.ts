@@ -82,8 +82,8 @@ export function createApp(
     },
     authenticate,
   );
-  app.use(express.json({ limit: `${env.BODY_LIMIT_MB}mb` }));
   app.use('/api/backups', backupRoutes(db));
+  app.use(express.json({ limit: `${env.BODY_LIMIT_MB}mb` }));
   if (whatsapp) app.use('/api/whatsapp', whatsappRoutes(db, whatsapp));
   if (whatsapp) app.use('/api/crm', crmRoutes(db, whatsapp));
   if (whatsapp) {
