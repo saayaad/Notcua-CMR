@@ -1,0 +1,100 @@
+/* Explicit centering is required because the CSS reset clears dialog margins. */
+dialog.modal {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(500px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  max-height: min(90dvh, calc(100dvh - 32px));
+  padding: 0;
+  overflow: hidden;
+}
+dialog.modal-wide {
+  width: min(720px, calc(100vw - 32px));
+}
+dialog.modal[open] {
+  display: flex;
+  flex-direction: column;
+}
+.modal-header {
+  flex-shrink: 0;
+  gap: 16px;
+}
+.modal-header h2 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+.modal-header .icon-button {
+  flex-shrink: 0;
+}
+.modal-body {
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  overflow-wrap: anywhere;
+}
+.modal-body > *,
+.modal-body form,
+.modal-body fieldset {
+  min-width: 0;
+}
+.modal-body fieldset {
+  padding: 0;
+  border: 0;
+}
+.modal-body textarea {
+  max-width: 100%;
+}
+.modal-body .form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.modal-actions {
+  flex-wrap: wrap;
+}
+.modal-actions .button {
+  min-width: 0;
+  white-space: normal;
+}
+.client-profile h2 {
+  overflow-wrap: anywhere;
+}
+.pix-preview > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.toast {
+  inset: auto 24px 24px auto;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.toast > span {
+  min-width: 0;
+}
+@media (max-width: 700px) {
+  .modal-header {
+    padding: 16px;
+  }
+  .modal-body {
+    padding: 18px 16px;
+  }
+  .modal-body .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .toast {
+    inset: auto 12px 12px auto;
+  }
+}
+@media (max-height: 480px) {
+  dialog.modal {
+    max-height: calc(100dvh - 16px);
+  }
+  .modal-header {
+    padding: 10px 16px;
+  }
+  .modal-body {
+    padding: 14px 16px;
+  }
+}

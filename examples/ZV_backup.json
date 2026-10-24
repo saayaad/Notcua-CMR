@@ -1,0 +1,54 @@
+{
+  "format": "ZV_backup",
+  "version": 1,
+  "messages": [
+    { "id": "msg-boas-vindas", "name": "Boas-vindas", "text": "Olá, #nome! Como posso ajudar?", "isFavorite": true }
+  ],
+  "audios": [
+    { "id": "audio-exemplo", "name": "Arquivo de teste", "objectId": "obj-exemplo", "isPtt": false }
+  ],
+  "medias": [],
+  "docs": [],
+  "objectsList": [
+    { "id": "obj-exemplo", "filename": "fixture.txt", "mimeType": "text/plain", "base64": "Tm9jdHVh" }
+  ],
+  "labels": [
+    { "id": "label-novo", "name": "Novo lead", "color": "#8B5CF6", "description": "Primeiro contato", "phoneNumbers": ["5511999990000"] }
+  ],
+  "funnels": [
+    { "id": "funil-inicial", "name": "Primeiro atendimento", "itemsSequence": [
+      { "itemId": "msg-boas-vindas", "type": "message", "delayBeforeSend": 1000 }
+    ] }
+  ],
+  "flows": [
+    {
+      "id": "fluxo-inicial",
+      "name": "Recepção",
+      "enabled": false,
+      "draft": {
+        "nodes": [
+          { "id": "inicio", "type": "start", "position": { "x": 0, "y": 0 }, "data": {
+            "keywordRules": [{ "rule": "contains", "keyword": "olá" }], "isCaseSensitive": false,
+            "sendToContacts": true, "sendToGroups": false,
+            "schedule": { "days": [1, 2, 3, 4, 5], "minTime": "08:00", "maxTime": "18:00" },
+            "nextNodeIds": ["resposta"]
+          } },
+          { "id": "resposta", "type": "text", "position": { "x": 300, "y": 0 }, "data": {
+            "itemId": "msg-boas-vindas", "simulationDelay": 1000, "nextNodeIds": ["aguardar"]
+          } },
+          { "id": "aguardar", "type": "user-input", "position": { "x": 600, "y": 0 }, "data": {
+            "compareRule": "anything", "expirationTimeoutInMs": 60000, "nextNodeIdOnExpiration": "recuperar"
+          } },
+          { "id": "recuperar", "type": "delay", "position": { "x": 900, "y": 0 }, "data": { "delayInMs": 1000 } }
+        ],
+        "edges": [{ "source": "inicio", "target": "resposta" }, { "source": "resposta", "target": "aguardar" }]
+      }
+    }
+  ],
+  "respostasRapidasAcao": [
+    { "id": "macro-inicial", "name": "Receber lead", "acao": [
+      { "type": "txt", "text": "Olá, #nome!", "aguarde": 1, "composing": 2 },
+      { "type": "addLabel", "labelID": "label-novo", "aguarde": 0 }
+    ] }
+  ]
+}

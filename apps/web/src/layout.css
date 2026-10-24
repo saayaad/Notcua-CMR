@@ -1,0 +1,525 @@
+/* Keep the application shell fixed; each content column owns its scrolling. */
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+:root {
+  --muted: #a3a3b6;
+}
+:root[data-theme='light'] {
+  --muted: #6d697e;
+}
+.app-shell {
+  width: 100%;
+  height: 100dvh;
+}
+.workspace-main {
+  min-height: 0;
+  overflow: hidden;
+}
+.inbox-layout {
+  overflow: hidden;
+  grid-template-columns: 310px minmax(0, 1fr) 284px;
+}
+.inbox-layout > * {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.conversation-column,
+.chat-pane,
+.contact-panel {
+  height: 100%;
+}
+.conversation-column {
+  grid-column: 1;
+  grid-row: 1;
+}
+.chat-pane {
+  grid-column: 2;
+  grid-row: 1;
+}
+.contact-panel {
+  grid-column: 3;
+  grid-row: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.chat-list,
+.message-area {
+  overscroll-behavior: contain;
+}
+.list-heading,
+.search-box,
+.filter-tabs,
+.label-filter,
+.list-footer {
+  flex-shrink: 0;
+}
+.navigation {
+  width: 208px;
+  padding-top: 25px;
+}
+.workspace-name {
+  margin: 27px 0 24px;
+}
+.workspace-name strong {
+  font-size: 12px;
+}
+.workspace-name small {
+  font-size: 10px;
+  line-height: 1.5;
+}
+.nav-group-label {
+  font-size: 10px;
+}
+nav button {
+  font-size: 13px;
+  min-height: 44px;
+}
+.nav-tip p {
+  font-size: 12px;
+  line-height: 1.65;
+}
+.nav-tip > span,
+.nav-bottom > button {
+  font-size: 12px;
+}
+.local-account strong {
+  font-size: 12px;
+}
+.local-account small {
+  font-size: 10px;
+}
+.topbar {
+  height: 68px;
+}
+.breadcrumb,
+.breadcrumb strong,
+.session-select select {
+  font-size: 12px;
+}
+.connection-status {
+  font-size: 11px;
+}
+.list-heading {
+  padding: 24px 20px 18px;
+}
+.list-heading h1 {
+  font-size: 21px;
+}
+.list-heading p {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.search-box {
+  min-height: 42px;
+}
+.search-box input {
+  font-size: 13px !important;
+}
+.search-box kbd {
+  display: none;
+}
+.filter-tabs {
+  gap: 4px;
+  padding-top: 14px;
+}
+.filter-tabs button {
+  padding: 8px;
+  font-size: 12px;
+}
+.label-filter {
+  min-height: 35px;
+  font-size: 12px;
+}
+.chat-item {
+  padding: 17px 16px;
+  gap: 12px;
+}
+.chat-item .avatar {
+  width: 43px;
+  height: 43px;
+  font-size: 13px;
+}
+.chat-item-top strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+.chat-item-top time {
+  font-size: 11px;
+}
+.chat-preview {
+  font-size: 12px;
+  line-height: 1.6;
+  margin-top: 5px;
+}
+.chat-item-bottom {
+  margin-top: 9px;
+}
+.tag,
+.tags-wrap .tag {
+  font-size: 10px;
+  padding: 4px 7px;
+}
+.list-footer {
+  height: 46px;
+  font-size: 11px;
+}
+.chat-header {
+  height: 78px;
+  padding: 16px 24px;
+}
+.chat-header .avatar {
+  width: 42px;
+  height: 42px;
+}
+.chat-heading strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+.chat-heading > span {
+  font-size: 12px;
+}
+.header-actions {
+  gap: 7px;
+}
+.header-actions .icon-button {
+  width: 36px;
+  height: 36px;
+}
+.message-area {
+  padding: 24px;
+}
+.history-notice {
+  font-size: 11px;
+  line-height: 1.6;
+}
+.date-divider {
+  margin: 16px 0;
+}
+.date-divider span {
+  font-size: 11px;
+  padding: 6px 11px;
+}
+.message-row {
+  margin-bottom: 13px;
+}
+.message-bubble {
+  padding: 12px 15px 8px;
+  max-width: 86%;
+  border-radius: 12px;
+}
+.outbound .message-bubble {
+  border-radius: 12px;
+}
+.message-text {
+  font-size: 14px;
+  line-height: 1.65;
+}
+.message-meta {
+  font-size: 10px;
+  margin-top: 7px;
+}
+.message-error {
+  font-size: 11px;
+}
+.history-empty,
+.load-history,
+.media-placeholder {
+  font-size: 12px;
+}
+.media-placeholder small {
+  font-size: 11px;
+  line-height: 1.5;
+}
+.composer-container {
+  padding: 0 22px 20px;
+}
+.composer-shortcuts {
+  padding: 13px 2px 11px;
+  font-size: 11px;
+}
+.composer-shortcuts button {
+  font-size: 12px;
+}
+.composer-shortcuts code {
+  font-size: 11px;
+}
+.composer {
+  border-radius: 12px;
+}
+.composer > textarea {
+  padding: 16px 16px 0;
+  min-height: 72px;
+  font-size: 14px;
+}
+.composer-toolbar {
+  padding: 10px 12px;
+}
+.composer-toolbar small {
+  display: none;
+}
+.send-button {
+  width: 38px;
+  height: 36px;
+  border-radius: 9px;
+}
+.panel-title {
+  height: 55px;
+  font-size: 12px;
+}
+.contact-profile {
+  padding: 24px 18px;
+}
+.contact-profile h2 {
+  font-size: 17px;
+}
+.contact-profile p {
+  font-size: 12px;
+}
+.subtle-badge {
+  font-size: 10px;
+}
+.section-label > span {
+  font-size: 10px;
+  letter-spacing: 0.8px;
+}
+.text-button {
+  font-size: 12px;
+}
+.note-input {
+  font-size: 13px;
+  line-height: 1.6;
+  min-height: 88px;
+}
+.panel-tabs {
+  gap: 22px;
+}
+.panel-tabs button {
+  font-size: 12px;
+}
+.quick-item {
+  padding: 12px 7px;
+}
+.quick-item strong {
+  font-size: 12px;
+}
+.quick-item small {
+  font-size: 11px;
+}
+.pix-action strong {
+  font-size: 12px;
+}
+.pix-action small {
+  font-size: 10px;
+  line-height: 1.5;
+}
+.panel-empty,
+.contact-idle p {
+  font-size: 12px;
+  line-height: 1.8;
+}
+.empty p {
+  font-size: 14px;
+}
+.privacy-note {
+  font-size: 12px;
+}
+.resource-footer > span {
+  font-size: 11px;
+}
+.button {
+  font-size: 13px;
+}
+.resource-card > p {
+  font-size: 14px;
+}
+.modal-body label {
+  font-size: 13px;
+}
+
+@media (max-width: 1280px) {
+  .navigation {
+    width: 76px;
+    padding: 25px 10px 14px;
+    align-items: center;
+  }
+  .wordmark {
+    font-size: 0;
+    padding: 0;
+    gap: 0;
+  }
+  .wordmark .brand-dot,
+  .workspace-name,
+  .nav-group-label,
+  .nav-tip,
+  .local-account,
+  .nav-bottom > button > span,
+  nav button > span,
+  nav button > b {
+    display: none;
+  }
+  nav {
+    margin-top: 38px;
+    width: 100%;
+    gap: 9px;
+  }
+  nav button {
+    justify-content: center;
+    padding: 14px;
+  }
+  .nav-bottom {
+    width: 100%;
+  }
+  .nav-bottom > button {
+    justify-content: center;
+    padding: 14px 0;
+  }
+  .inbox-layout {
+    grid-template-columns: 300px minmax(0, 1fr) 270px;
+  }
+}
+@media (max-width: 1100px) {
+  .inbox-layout {
+    grid-template-columns: 300px minmax(0, 1fr);
+  }
+  .contact-panel {
+    display: none;
+  }
+  .contact-panel.panel-open {
+    display: flex;
+    position: fixed;
+    top: 68px;
+    right: 0;
+    bottom: 0;
+    height: auto;
+    width: 300px;
+    z-index: 15;
+    box-shadow: -20px 0 60px #0004;
+  }
+  .panel-close {
+    display: inline-flex;
+  }
+}
+@media (min-width: 1101px) {
+  .contact-panel {
+    display: flex;
+    position: static;
+    width: auto;
+    box-shadow: none;
+  }
+  .contact-panel.panel-open {
+    position: static;
+    width: auto;
+    box-shadow: none;
+  }
+  .panel-close {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .navigation {
+    width: 60px;
+    padding: 20px 6px 12px;
+  }
+  nav button {
+    padding: 12px;
+  }
+  .topbar {
+    height: 60px;
+    padding: 0 12px;
+  }
+  .breadcrumb,
+  .topbar-avatar {
+    display: none;
+  }
+  .topbar-right {
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .session-select {
+    padding-left: 9px;
+  }
+  .session-select select {
+    width: 125px;
+    font-size: 12px;
+  }
+  .connection-status {
+    font-size: 10px;
+  }
+  .inbox-layout {
+    display: flex;
+  }
+  .conversation-column {
+    flex: 1;
+    width: 100%;
+  }
+  .chat-pane,
+  .chat-idle {
+    display: none;
+  }
+  .chat-selected .conversation-column {
+    display: none;
+  }
+  .chat-selected .chat-pane {
+    display: flex;
+    flex: 1;
+  }
+  .mobile-back {
+    display: flex;
+  }
+  .chat-header {
+    height: 72px;
+    padding: 10px 12px 10px 6px;
+    gap: 7px;
+  }
+  .chat-header .avatar {
+    width: 34px;
+    height: 34px;
+  }
+  .chat-heading strong {
+    font-size: 14px;
+  }
+  .chat-heading > span {
+    font-size: 11px;
+  }
+  .header-actions {
+    gap: 0;
+  }
+  .header-actions .icon-button {
+    width: 30px;
+  }
+  .message-area {
+    padding: 14px;
+  }
+  .message-text {
+    font-size: 14px;
+  }
+  .message-bubble {
+    max-width: 94%;
+    padding: 10px 12px 7px;
+  }
+  .composer-container {
+    padding: 0 10px 12px;
+  }
+  .composer-shortcuts > span {
+    display: none;
+  }
+  .composer > textarea {
+    font-size: 14px;
+  }
+  .contact-panel.panel-open {
+    top: 60px;
+    width: min(320px, calc(100% - 60px));
+  }
+}
+@media (max-height: 780px) and (min-width: 1281px) {
+  .nav-tip {
+    display: none;
+  }
+}

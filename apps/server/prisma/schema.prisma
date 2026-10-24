@@ -1,0 +1,542 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model OperationRecord {
+  id String @id
+  kind String
+  data Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([kind])
+}
+
+model DeliveryTask {
+  id String @id @default(cuid())
+  batchId String
+  sessionId String
+  conversationId String
+  status String @default("QUEUED")
+  payload Json
+  runAt DateTime
+  error String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status, runAt])
+  @@index([batchId])
+}
+
+enum ConnectionStatus {
+  DISCONNECTED
+  AWAITING_QR
+  CONNECTING
+  CONNECTED
+}
+
+enum AssetKind {
+  MESSAGE
+  AUDIO
+  MEDIA
+  DOCUMENT
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum ExecutionStatus {
+  QUEUED
+  RUNNING
+  WAITING_INPUT
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum FlowVersionStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum NodeType {
+  START
+  TEXT
+  AUDIO
+  MEDIA
+  DELAY
+  USER_INPUT
+}
+
+enum MacroActionType {
+  TEXT
+  MEDIA
+  ADD_LABEL
+  REMOVE_LABEL
+}
+
+model WhatsappSession {
+  id              String           @id @default(cuid())
+  name            String
+  phoneNumber     String?
+  status          ConnectionStatus @default(DISCONNECTED)
+  lastConnectedAt DateTime?
+  autoConnect     Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  conversations   Conversation[]
+  labels          Label[]
+  settings        SessionSettings?
+  authEntries     WhatsappAuthEntry[]
+  flows           Flow[]
+}
+
+// Credential values must be encrypted by the connection service before persistence.
+model WhatsappAuthEntry {
+  id        String          @id @default(cuid())
+  sessionId String
+  category  String
+  key       String
+  encryptedValue Bytes
+  updatedAt DateTime        @updatedAt
+  session   WhatsappSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, category, key])
+}
+
+model SessionSettings {
+  id                    String          @id @default(cuid())
+  sessionId             String          @unique
+  firstMessageLabelId   String?
+  autoLabelFirstMessage Boolean         @default(false)
+  timezone              String          @default("America/Sao_Paulo")
+  session               WhatsappSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  firstMessageLabel     Label?          @relation(fields: [firstMessageLabelId], references: [id], onDelete: SetNull)
+}
+
+model Contact {
+  id             String         @id @default(cuid())
+  phoneNumber    String         @unique
+  whatsappJid    String?        @unique
+  name           String
+  profilePicture String?
+  isGroup        Boolean        @default(false)
+  isSavedContact Boolean        @default(false)
+  firstInboundAt DateTime?
+  metadata       Json           @default(dbgenerated("'{}'"))
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  labels         ContactLabel[]
+  conversations  Conversation[]
+  deals          Deal[]
+  flowRuns       FlowExecution[]
+  funnelRuns     FunnelExecution[]
+  macroRuns      MacroExecution[]
+  identities     WhatsappIdentity[]
+}
+
+model WhatsappIdentity {
+  jid       String   @id
+  contactId String
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([contactId])
+}
+
+model Conversation {
+  id            String          @id @default(cuid())
+  sessionId     String
+  contactId     String
+  status        String          @default("OPEN")
+  unreadCount   Int             @default(0)
+  pinned        Boolean         @default(false)
+  assignedTo    String          @default("")
+  lastMessageAt DateTime?
+  firstInboundAt DateTime?
+  hasHistory     Boolean         @default(false)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  session       WhatsappSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  contact       Contact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  messages      ChatMessage[]
+  sequenceRuns  SequenceRun[]
+  opportunity   CrmOpportunity?
+  flowRuns      FlowExecution[]
+
+  @@unique([sessionId, contactId])
+  @@index([status, lastMessageAt])
+  @@index([pinned, lastMessageAt])
+}
+
+model ChatMessage {
+  id                String           @id @default(cuid())
+  conversationId    String
+  whatsappMessageId String?
+  direction         MessageDirection
+  status            MessageStatus    @default(PENDING)
+  type              String           @default("text")
+  text              String?
+  caption           String?
+  fileId            String?
+  isPtt             Boolean          @default(false)
+  isPtv             Boolean          @default(false)
+  asViewOnce        Boolean          @default(false)
+  error             String?
+  rawPayload        Json             @default(dbgenerated("'{}'"))
+  sentAt            DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  conversation      Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  file              StoredFile?      @relation(fields: [fileId], references: [id], onDelete: SetNull)
+
+  @@unique([conversationId, whatsappMessageId])
+  @@index([conversationId, sentAt])
+}
+
+// Decoded media stays in SQLite so each backup import is a single atomic transaction.
+model StoredFile {
+  id          String        @id @default(cuid())
+  sha256      String        @unique
+  filename    String
+  mimeType    String
+  byteLength  Int
+  data        Bytes
+  createdAt   DateTime      @default(now())
+  assets      Asset[]
+  messages    ChatMessage[]
+  actions     MacroAction[]
+}
+
+model Asset {
+  id         String        @id
+  kind       AssetKind
+  name       String
+  text       String?
+  caption    String?
+  fileId     String?
+  isFavorite Boolean       @default(false)
+  isPtt      Boolean       @default(false)
+  isPtv      Boolean       @default(false)
+  asViewOnce Boolean       @default(false)
+  metadata   Json          @default(dbgenerated("'{}'"))
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  file       StoredFile?   @relation(fields: [fileId], references: [id], onDelete: SetNull)
+  funnelItems FunnelItem[]
+  flowNodes  FlowNode[]
+
+  @@index([kind, isFavorite])
+}
+
+model Label {
+  id           String           @id
+  name         String
+  color        String           @default("#8B5CF6")
+  description  String           @default("")
+  createReason String           @default("Criado no Noctua")
+  whatsappId   String?
+  whatsappColor Int?
+  isDeleted    Boolean          @default(false)
+  sessionId    String?
+  position     Int              @default(0)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  session      WhatsappSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  contacts     ContactLabel[]
+  deals        Deal[]
+  settings     SessionSettings[]
+  actions      MacroAction[]
+
+  @@unique([sessionId, whatsappId])
+}
+
+model ContactLabel {
+  contactId String
+  labelId   String
+  createdAt DateTime @default(now())
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  label     Label    @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([contactId, labelId])
+  @@index([labelId])
+}
+
+model Deal {
+  id          String   @id @default(cuid())
+  contactId   String
+  labelId     String
+  title       String
+  valueInCents Int     @default(0)
+  position    Float    @default(0)
+  status      String   @default("OPEN")
+  wonAt       DateTime?
+  lostAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  contact     Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  label       Label    @relation(fields: [labelId], references: [id], onDelete: Restrict)
+
+  @@index([labelId, position])
+}
+
+model CrmOpportunity {
+  conversationId String       @id
+  title          String       @default("")
+  valueInCents   Int          @default(0)
+  status         String       @default("OPEN")
+  wonAt          DateTime?
+  lostAt         DateTime?
+  placements     Json         @default(dbgenerated("'{}'"))
+  version        Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([status, wonAt])
+}
+
+model Macro {
+  id         String           @id
+  name       String
+  text       String?
+  isFavorite Boolean          @default(false)
+  metadata   Json             @default(dbgenerated("'{}'"))
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  actions    MacroAction[]
+  executions MacroExecution[]
+}
+
+model MacroAction {
+  id           String          @id @default(cuid())
+  macroId      String
+  position     Int
+  type         MacroActionType
+  text         String?
+  waitMs       Int             @default(0)
+  composingMs  Int             @default(0)
+  fileId       String?
+  labelId      String?
+  payload      Json            @default(dbgenerated("'{}'"))
+  macro        Macro           @relation(fields: [macroId], references: [id], onDelete: Cascade)
+  file         StoredFile?     @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  label        Label?          @relation(fields: [labelId], references: [id], onDelete: Restrict)
+
+  @@unique([macroId, position])
+}
+
+model MacroExecution {
+  id              String          @id @default(cuid())
+  macroId         String
+  contactId       String
+  status          ExecutionStatus @default(QUEUED)
+  currentPosition Int             @default(0)
+  nextRunAt       DateTime?
+  error           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  macro           Macro           @relation(fields: [macroId], references: [id], onDelete: Restrict)
+  contact         Contact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextRunAt])
+}
+
+model Funnel {
+  id         String            @id
+  name       String
+  metadata   Json              @default(dbgenerated("'{}'"))
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  items      FunnelItem[]
+  executions FunnelExecution[]
+}
+
+model FunnelItem {
+  id                String @id @default(cuid())
+  funnelId          String
+  assetId           String
+  position          Int
+  delayBeforeSendMs Int    @default(0)
+  funnel            Funnel @relation(fields: [funnelId], references: [id], onDelete: Cascade)
+  asset             Asset  @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
+  @@unique([funnelId, position])
+}
+
+model FunnelExecution {
+  id              String          @id @default(cuid())
+  funnelId        String
+  contactId       String
+  currentPosition Int             @default(0)
+  status          ExecutionStatus @default(QUEUED)
+  nextRunAt       DateTime?
+  error           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  funnel          Funnel          @relation(fields: [funnelId], references: [id], onDelete: Restrict)
+  contact         Contact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextRunAt])
+}
+
+model Flow {
+  id        String        @id
+  name      String
+  enabled   Boolean       @default(false)
+  sessionId String?
+  enabledAt DateTime?
+  archived  Boolean       @default(false)
+  revision  Int           @default(0)
+  metadata  Json          @default(dbgenerated("'{}'"))
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  versions  FlowVersion[]
+  session   WhatsappSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, enabled, archived])
+}
+
+// A published version is a snapshot. Executions always reference the version they started with.
+model FlowVersion {
+  id          String            @id @default(cuid())
+  flowId      String
+  version     Int
+  status      FlowVersionStatus @default(DRAFT)
+  graph       Json
+  publishedAt DateTime?
+  createdAt   DateTime          @default(now())
+  flow        Flow              @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  nodes       FlowNode[]
+  executions  FlowExecution[]
+
+  @@unique([flowId, version])
+}
+
+model FlowNode {
+  id                  String   @id @default(cuid())
+  versionId           String
+  sourceId            String
+  type                NodeType
+  x                   Float    @default(0)
+  y                   Float    @default(0)
+  assetId             String?
+  simulationDelayMs   Int      @default(0)
+  delayInMs           Int      @default(0)
+  expirationTimeoutMs Int?
+  config              Json     @default(dbgenerated("'{}'"))
+  version             FlowVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  asset               Asset?   @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
+  @@unique([versionId, sourceId])
+}
+
+model FlowExecution {
+  id                 String          @id @default(cuid())
+  versionId          String
+  contactId          String
+  conversationId     String?
+  triggerMessageId   String?
+  currentNodeId      String?
+  status             ExecutionStatus @default(QUEUED)
+  context            Json            @default(dbgenerated("'{}'"))
+  nextRunAt          DateTime?
+  inputExpiresAt     DateTime?
+  lastInputMessageId String?
+  error              String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  version            FlowVersion     @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  contact            Contact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  jobs               ScheduledJob[]
+  conversation       Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, triggerMessageId])
+  @@index([conversationId, status])
+
+  @@index([status, nextRunAt])
+  @@index([status, inputExpiresAt])
+  @@index([contactId, status])
+}
+
+model FlowInboxEvent {
+  messageId      String   @id
+  conversationId String
+  receivedAt     DateTime @default(now())
+  processedAt    DateTime?
+  outcome        String?
+
+  @@index([processedAt, receivedAt])
+}
+
+model ScheduledJob {
+  id              String         @id @default(cuid())
+  executionId     String?
+  type            String
+  deduplicationKey String        @unique
+  payload         Json
+  status          ExecutionStatus @default(QUEUED)
+  runAt           DateTime
+  lockedAt        DateTime?
+  attempts        Int            @default(0)
+  maxAttempts     Int            @default(3)
+  error           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  execution       FlowExecution? @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  @@index([status, runAt])
+}
+
+model PixKey {
+  id           String   @id @default(cuid())
+  name         String
+  type         String
+  value        String
+  merchantName String
+  merchantCity String
+  isFavorite   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model SequenceRun {
+  id             String          @id @default(cuid())
+  requestKey     String          @unique
+  conversationId String
+  kind           String
+  sourceId       String
+  name           String
+  steps          Json
+  position       Int             @default(0)
+  status         ExecutionStatus @default(QUEUED)
+  nextRunAt      DateTime
+  error          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  conversation   Conversation    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextRunAt])
+  @@index([conversationId, status])
+}
+
+model ImportBatch {
+  id          String   @id @default(cuid())
+  sha256      String   @unique
+  format      String
+  sourceName  String
+  payload     Json
+  report      Json
+  createdAt   DateTime @default(now())
+}

@@ -1,0 +1,14 @@
+node_modules
+**/node_modules
+.git
+.env
+**/.env
+**/.env.*
+**/.secrets
+**/*.db
+**/*.db-*
+**/dist
+backups
+*.log
+.npm-cache
+apps/server/backups

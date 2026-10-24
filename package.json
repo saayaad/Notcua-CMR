@@ -1,0 +1,37 @@
+{
+  "name": "noctua-crm",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "workspaces": [
+    "apps/server",
+    "apps/web"
+  ],
+  "overrides": {
+    "deepmerge-ts": "8.0.2",
+    "@grpc/grpc-js": "1.14.6",
+    "uuid": "11.1.1"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n API,WEB -c blue,magenta \"npm run dev -w @noctua/server\" \"npm run dev -w @noctua/web\"",
+    "dev:server": "npm run dev -w @noctua/server",
+    "dev:web": "npm run dev -w @noctua/web",
+    "build": "npm run build --workspaces --if-present",
+    "start": "npm run start -w @noctua/server",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test -w @noctua/server",
+    "db:generate": "npm run db:generate -w @noctua/server",
+    "db:migrate": "npm run db:migrate -w @noctua/server",
+    "db:deploy": "npm run db:deploy -w @noctua/server",
+    "db:studio": "npm run db:studio -w @noctua/server",
+    "backup:import": "npm run backup:import -w @noctua/server --",
+    "backup:export": "npm run backup:export -w @noctua/server --",
+    "format": "prettier --write \"apps/*/src/**/*.{ts,tsx,css}\" \"apps/*/test/**/*.ts\" \"apps/*/*.ts\" \"docs/**/*.md\" \"*.json\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "prettier": "^3.9.10"
+  }
+}

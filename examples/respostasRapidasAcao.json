@@ -1,0 +1,13 @@
+{
+  "respostasRapidasAcao": [
+    {
+      "id": "macro-comprovante",
+      "name": "Solicitar comprovante",
+      "text": "Pode enviar seu comprovante, #nome?",
+      "isFavorite": true,
+      "acao": [
+        { "type": "txt", "text": "Pode enviar seu comprovante, #nome?", "aguarde": 0.5, "composing": 2 }
+      ]
+    }
+  ]
+}

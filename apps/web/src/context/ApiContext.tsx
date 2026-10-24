@@ -1,0 +1,102 @@
+import { API_BASE } from '../config';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useLayoutEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
+import { createPortal } from 'react-dom';
+import { X, CheckCircle2, AlertCircle } from 'lucide-react';
+
+interface Api {
+  token: string;
+  setToken: (value: string) => void;
+  request: <T>(path: string, method?: string, body?: unknown, signal?: AbortSignal) => Promise<T>;
+  blob: (path: string) => Promise<Blob>;
+  notify: (message: string, error?: boolean) => void;
+}
+const Context = createContext<Api | null>(null);
+function Notification({ message, error, onClose }: { message: string; error: boolean; onClose: () => void }) {
+  const [host, setHost] = useState<HTMLElement>(document.body);
+  useLayoutEffect(() => {
+    // A z-index cannot place a body element above a native modal's top layer.
+    const syncHost = () =>
+      setHost(
+        Array.from(document.querySelectorAll<HTMLDialogElement>('dialog[open]')).at(-1) ?? document.body,
+      );
+    syncHost();
+    const observer = new MutationObserver(syncHost);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['open'],
+    });
+    return () => observer.disconnect();
+  }, []);
+  return createPortal(
+    <div className={`toast ${error ? 'toast-error' : ''}`} role={error ? 'alert' : 'status'}>
+      {error ? <AlertCircle size={19} /> : <CheckCircle2 size={19} />}
+      <span>{message}</span>
+      <button type="button" className="icon-button" aria-label="Fechar aviso" onClick={onClose}>
+        <X size={17} />
+      </button>
+    </div>,
+    host,
+  );
+}
+export function ApiProvider({ children }: { children: ReactNode }) {
+  const [token, setToken] = useState('');
+  const [toast, setToast] = useState<{ message: string; error: boolean } | null>(null);
+  const notify = useCallback((message: string, error = false) => {
+    setToast({ message, error });
+  }, []);
+  const request = useCallback(
+    async <T,>(path: string, method = 'GET', body?: unknown, signal?: AbortSignal): Promise<T> => {
+      const response = await fetch(`${API_BASE}/api${path}`, {
+        method,
+        signal,
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error?.message ?? 'Não foi possível concluir a operação.');
+      return data as T;
+    },
+    [token],
+  );
+  const blob = useCallback(
+    async (path: string) => {
+      const response = await fetch(`${API_BASE}/api${path}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error?.message ?? 'Arquivo indisponível.');
+      }
+      return response.blob();
+    },
+    [token],
+  );
+  const api = useMemo(() => ({ token, setToken, request, blob, notify }), [token, request, blob, notify]);
+  return (
+    <Context.Provider value={api}>
+      {children}
+      {toast && <Notification {...toast} onClose={() => setToast(null)} />}
+    </Context.Provider>
+  );
+}
+export function useApi() {
+  const api = useContext(Context);
+  if (!api) throw new Error('API não inicializada.');
+  return api;
+}
+export function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Não foi possível concluir a operação.';
+}
