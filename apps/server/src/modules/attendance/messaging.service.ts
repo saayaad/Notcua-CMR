@@ -65,7 +65,7 @@ export class MessagingService {
     await socket.sendPresenceUpdate?.(type, chat.jid);
   }
 
-  async send(sessionId: string, conversationId: string, raw: unknown) {
+  async send(sessionId: string, conversationId: string, raw: unknown, beforeSend?: () => Promise<void>) {
     const input = sendSchema.parse(raw);
     let queue = this.queues.get(conversationId);
     if (!queue) {
@@ -92,7 +92,19 @@ export class MessagingService {
       }
       const socket = this.whatsapp.connectedSocket(sessionId);
       if (!socket.sendMessage) throw new AppError(503, 'O serviço de envio não está disponível.');
-      const personalize = (text: string) => text.replaceAll('#nome', chat.contact.name);
+      const hour = Number(
+        new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'America/Sao_Paulo',
+          hour: '2-digit',
+          hourCycle: 'h23',
+        }).format(new Date()),
+      );
+      const greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
+      const personalize = (text: string) =>
+        text
+          .replaceAll('#nome', chat.contact.name)
+          .replace(/\{\{\s*nome\s*\}\}/g, () => chat.contact.name)
+          .replace(/\{\{\s*saudacao\s*\}\}/g, greeting);
       const file = input.fileId ? await this.db.storedFile.findUnique({ where: { id: input.fileId } }) : null;
       if (input.kind !== 'text' && !file) throw new AppError(404, 'Arquivo não encontrado.');
       const text = input.text ? personalize(input.text) : undefined;
@@ -152,6 +164,7 @@ export class MessagingService {
             .catch(() => undefined);
           await new Promise((resolve) => setTimeout(resolve, input.composingMs));
         }
+        await beforeSend?.();
         const result = await socket.sendMessage(chat.jid, content, { messageId: whatsappMessageId });
         if (!result?.key.id) throw new Error('WhatsApp não confirmou o envio.');
         const current = await this.db.chatMessage.findUniqueOrThrow({ where: { id } });

@@ -16,9 +16,14 @@ export interface Batch {
   nextAllowedAt?: string;
   count: number;
   createdAt: string;
+  pauseEvery?: number;
+  pauseSeconds?: number;
+  sentCount?: number;
 }
 export interface Delivery {
-  kind: 'text' | 'asset' | 'funnel' | 'flow' | 'reminder';
+  kind: 'text' | 'asset' | 'funnel' | 'flow' | 'reminder' | 'sequence';
+  steps?: { snapshot: Record<string, unknown>; waitSeconds: number }[];
+  stepIndex?: number;
   text?: string;
   assetId?: string;
   funnelId?: string;
@@ -141,6 +146,9 @@ export class DeliveryWorker {
           data: { status: 'RUNNING' },
         });
         if (!claimed.count) continue;
+        const index = data.stepIndex ?? 0;
+        const step = data.kind === 'sequence' ? data.steps?.[index] : undefined;
+        const hasNext = data.kind === 'sequence' && index + 1 < (data.steps?.length ?? 0);
         try {
           if (data.kind === 'reminder')
             await putRecord(this.db, `notice:${task.id}`, 'NOTICE', {
@@ -161,16 +169,27 @@ export class DeliveryWorker {
           else if (data.kind === 'flow') await this.flows.launch(task.sessionId, data.flowId!, chat.id);
           else
             await this.messaging.send(task.sessionId, chat.id, {
-              ...(data.snapshot ?? { kind: 'text', text: data.text }),
-              requestId: `delivery:${task.id}`,
+              ...(step?.snapshot ?? data.snapshot ?? { kind: 'text', text: data.text }),
+              requestId: `delivery:${task.id}${data.kind === 'sequence' ? `:${index}` : ''}`,
             });
           await this.db.$transaction(async (tx) => {
             await tx.deliveryTask.updateMany({
               where: { id: task.id, status: 'RUNNING' },
-              data: { status: 'COMPLETED' },
+              data: hasNext
+                ? {
+                    status: 'QUEUED',
+                    payload: json({ ...data, stepIndex: index + 1 }),
+                    runAt: new Date(Date.now() + (data.steps?.[index + 1]?.waitSeconds ?? 1) * 1000),
+                  }
+                : { status: 'COMPLETED' },
             });
             const current = await tx.operationRecord.findUnique({ where: { id: task.batchId } });
             const latest = current?.data as unknown as Batch | undefined;
+            if (hasNext && latest?.status === 'CANCELLED')
+              await tx.deliveryTask.updateMany({
+                where: { id: task.id, status: 'QUEUED' },
+                data: { status: 'CANCELLED' },
+              });
             if (latest?.status === 'ACTIVE') {
               const remaining = await tx.deliveryTask.count({
                 where: { batchId: task.batchId, status: 'QUEUED' },
@@ -181,8 +200,14 @@ export class DeliveryWorker {
                   data: json({
                     ...latest,
                     status: remaining ? 'ACTIVE' : 'COMPLETED',
+                    sentCount: (latest.sentCount ?? 0) + 1,
                     nextAllowedAt: new Date(
-                      Date.now() + randomInt(batch.minSeconds, batch.maxSeconds + 1) * 1000,
+                      Date.now() +
+                        (randomInt(batch.minSeconds, batch.maxSeconds + 1) +
+                          (latest.pauseEvery && ((latest.sentCount ?? 0) + 1) % latest.pauseEvery === 0
+                            ? (latest.pauseSeconds ?? 0)
+                            : 0)) *
+                          1000,
                     ).toISOString(),
                   }),
                 },

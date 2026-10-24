@@ -1,5 +1,6 @@
 import { FlowLaunch, FlowIndicator } from './FlowActions';
 import { AiAssistant } from './ContactWorkspace';
+import { AiControl } from './AiControl';
 import { CampaignsPage } from '../pages/OperationsPages';
 import type { Library } from '../types';
 import { useEffect, useRef, useState } from 'react';
@@ -318,6 +319,7 @@ export function ChatPane({
         })}
       </div>
       <FlowIndicator sessionId={sessionId} conversationId={chat.id} revision={revision} />
+      <AiControl sessionId={sessionId} conversationId={chat.id} revision={revision} />
       <div className="composer-container">
         <Composer
           key={chat.id}

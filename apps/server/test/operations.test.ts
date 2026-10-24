@@ -29,6 +29,12 @@ import { AiWorker } from '../src/modules/operations/ai.worker.js';
 import { FlowEngine } from '../src/modules/flows/flow.engine.js';
 import { FlowService } from '../src/modules/flows/flow.service.js';
 import { InactivityWorker } from '../src/modules/operations/inactivity.js';
+import { aiControl, requestsHuman, setAiControl } from '../src/modules/operations/ai-control.js';
+import { generateSuggestion } from '../src/modules/operations/ai.service.js';
+import { aiUsage } from '../src/modules/operations/ai-provider.js';
+import { preprocessMedia } from '../src/modules/operations/ai-media.js';
+import { SyncService } from '../src/modules/whatsapp/sync.service.js';
+import { inflateRawSync } from 'node:zlib';
 class FakeSocket implements WhatsappSocket {
   ev = makeEventBuffer(pino({ level: 'silent' }));
   user = { id: '5511000000000@s.whatsapp.net' };
@@ -562,4 +568,455 @@ test('editar macro importada preserva o arquivo original e suas opções', async
   const action = await db.macroAction.findFirstOrThrow({ where: { macroId: macro.id } });
   assert.equal(action.fileId, file.id);
   assert.equal(action.waitMs, 1000);
+});
+test('importação extrai telefone misturado com texto, exige DDD e cria lista segmentável', async () => {
+  const preview = await contacts.preview({
+    filename: 'irregular.csv',
+    areaCode: '11',
+    base64: Buffer.from(
+      'Nome;WhatsApp\nAna;Whats: (11) 98888-1122\nBia;98888-1123\nDuas opções;11988881124 / 11988881125',
+    ).toString('base64'),
+  });
+  assert.equal(preview.items.length, 2);
+  assert.equal(preview.items[1]!.phoneNumber, '5511988881123');
+  const withoutArea = await contacts.preview({
+    filename: 'local.csv',
+    base64: Buffer.from('Nome;Telefone\nBia;98888-1123').toString('base64'),
+  });
+  assert.equal(withoutArea.items.length, 0);
+  const imported = await contacts.import(sessionId, {
+    items: preview.items,
+    listName: 'Lista fictícia',
+    extraTag: 'Lista teste nova',
+  });
+  const list = await record<{ conversationIds: string[] }>(db, imported.listId!, { conversationIds: [] });
+  const label = await db.label.findFirstOrThrow({ where: { name: 'Lista teste nova', sessionId } });
+  await db.conversation.update({
+    where: { id: list.conversationIds[0]! },
+    data: { lastMessageAt: new Date() },
+  });
+  const and = await request(app)
+    .post(`/api/operations/sessions/${sessionId}/audience`)
+    .send({ listId: imported.listId, labelId: label.id, inactiveDays: 10, match: 'AND' })
+    .expect(200);
+  const or = await request(app)
+    .post(`/api/operations/sessions/${sessionId}/audience`)
+    .send({ listId: imported.listId, labelId: label.id, inactiveDays: 10, match: 'OR' })
+    .expect(200);
+  assert.equal(and.body.count, 1);
+  assert.equal(or.body.count, 2);
+  await request(app)
+    .post(`/api/operations/sessions/${otherSession}/audience`)
+    .send({ listId: imported.listId })
+    .expect(404);
+});
+
+test('sequência de campanha congela recursos, preserva ordem e aplica pausa por lote', async () => {
+  const chat = await makeContact('5511777770031', 'Pessoa Sequência');
+  const asset = await db.asset.create({
+    data: { id: 'sequence-frozen', name: 'Segunda', kind: 'MESSAGE', text: 'Segundo original' },
+  });
+  const created = await request(app)
+    .post(`/api/operations/sessions/${sessionId}/batches`)
+    .send({
+      name: 'Sequência fictícia',
+      mode: 'CAMPAIGN',
+      audience: { conversationIds: [chat.id] },
+      delivery: {
+        kind: 'sequence',
+        steps: [
+          { kind: 'text', text: '{{saudacao}}, {{nome}}!', waitSeconds: 0 },
+          { kind: 'asset', assetId: asset.id, waitSeconds: 0 },
+          { kind: 'text', text: 'Terceiro', waitSeconds: 0 },
+        ],
+      },
+      minSeconds: 1,
+      maxSeconds: 1,
+      pauseEvery: 2,
+      pauseSeconds: 300,
+    })
+    .expect(201);
+  await db.asset.update({ where: { id: asset.id }, data: { text: 'Mudança posterior' } });
+  const batchId = created.body.id as string;
+  await request(app)
+    .put(`/api/operations/sessions/${sessionId}/batches/${batchId}`)
+    .send({ status: 'ACTIVE' })
+    .expect(200);
+  const before = socket.sends.length;
+  await worker.flush();
+  await worker.flush();
+  assert.equal(socket.sends.length, before + 1);
+  assert.match(
+    (socket.sends.at(-1) as { text: string }).text,
+    /^(Bom dia|Boa tarde|Boa noite), Pessoa Sequência!$/,
+  );
+  let batch = await record<Batch>(db, batchId, created.body);
+  await putRecord(db, batchId, 'BATCH', { ...batch, nextAllowedAt: new Date(0).toISOString() });
+  await worker.flush();
+  assert.equal((socket.sends.at(-1) as { text: string }).text, 'Segundo original');
+  batch = await record<Batch>(db, batchId, created.body);
+  assert.ok(new Date(batch.nextAllowedAt!).getTime() > Date.now() + 295000);
+  assert.equal(batch.sentCount, 2);
+  await putRecord(db, batchId, 'BATCH', { ...batch, nextAllowedAt: new Date(0).toISOString() });
+  await worker.flush();
+  assert.equal((socket.sends.at(-1) as { text: string }).text, 'Terceiro');
+  assert.equal((await record<Batch>(db, batchId, created.body)).status, 'COMPLETED');
+});
+
+async function aiTest(run: () => Promise<void>) {
+  const keyFile = env.WHATSAPP_KEY_FILE;
+  const fetch = globalThis.fetch;
+  env.WHATSAPP_KEY_FILE = join(dir, 'extended-ai.key');
+  try {
+    await run();
+  } finally {
+    globalThis.fetch = fetch;
+    env.WHATSAPP_KEY_FILE = keyFile;
+    await putRecord(db, 'integration:ai', 'INTEGRATION', { enabled: false });
+  }
+}
+async function configureAi(extra: object = {}) {
+  await request(app)
+    .put('/api/operations/ai')
+    .send({
+      apiKey: 'chave-ficticia',
+      provider: 'openai',
+      model: 'modelo-ficticio',
+      instructions: 'Não inventar preços.',
+      knowledge: 'Exemplo',
+      style: 'Cordial',
+      enabled: false,
+      dailyLimit: 5000,
+      ...extra,
+    })
+    .expect(200);
+}
+async function inbound(chatId: string, text: string) {
+  const message = await db.chatMessage.create({
+    data: { conversationId: chatId, direction: 'INBOUND', text, sentAt: new Date() },
+  });
+  await db.flowInboxEvent.create({
+    data: {
+      messageId: message.id,
+      conversationId: chatId,
+      receivedAt: new Date(),
+      processedAt: new Date(),
+      outcome: 'no-trigger',
+    },
+  });
+  return message;
+}
+
+test('assumir durante geração impede envio da IA e mantém pausa após mensagem manual', async () =>
+  aiTest(async () => {
+    const chat = await makeContact('5511777770032');
+    await configureAi({ enabled: true });
+    const message = await inbound(chat.id, 'Qual o próximo passo?');
+    globalThis.fetch = async () => {
+      await request(app)
+        .post(`/api/attendance/sessions/${sessionId}/conversations/${chat.id}/send`)
+        .send({ kind: 'text', text: 'Sou o atendente humano.', requestId: 'manual-during-ai' })
+        .expect(201);
+      return new Response(
+        JSON.stringify({
+          output: [{ content: [{ type: 'output_text', text: 'Não deve enviar' }] }],
+          usage: { input_tokens: 10, output_tokens: 5 },
+        }),
+      );
+    };
+    const before = socket.sends.length;
+    const ai = new AiWorker(db, whatsapp, messaging);
+    await ai.flush();
+    await ai.stop();
+    assert.equal(socket.sends.length, before + 1);
+    assert.equal((await aiControl(db, chat.id)).paused, true);
+    assert.equal(
+      (await record<{ status: string }>(db, `ai-run:${message.id}`, { status: '' })).status,
+      'HELD',
+    );
+  }));
+
+test('pedido por humano e mensagem pelo celular pausam a IA; histórico antigo não pausa', async () => {
+  assert.equal(requestsHuman('Gostaria de falar com uma pessoa'), true);
+  assert.equal(requestsHuman('Quero saber os preços'), false);
+  const sync = new SyncService(db, silentPublisher);
+  const chat = await makeContact('5511777770033');
+  const jid = '5511777770033@s.whatsapp.net';
+  await sync.messagesUpsert(
+    sessionId,
+    [
+      {
+        key: { id: 'human-old', remoteJid: jid, fromMe: true },
+        message: { conversation: 'Mensagem antiga' },
+        messageTimestamp: Math.floor(Date.now() / 1000),
+      },
+    ],
+    false,
+  );
+  assert.equal((await aiControl(db, chat.id)).paused, false);
+  await sync.messagesUpsert(
+    sessionId,
+    [
+      {
+        key: { id: 'human-request', remoteJid: jid, fromMe: false },
+        message: { conversation: 'Quero falar com um atendente' },
+        messageTimestamp: Math.floor(Date.now() / 1000),
+      },
+    ],
+    true,
+  );
+  assert.equal((await aiControl(db, chat.id)).paused, true);
+  await setAiControl(db, chat.id, false, 'Retomada');
+  await sync.messagesUpsert(
+    sessionId,
+    [
+      {
+        key: { id: 'human-mobile', remoteJid: jid, fromMe: true },
+        message: { conversation: 'Eu assumo' },
+        messageTimestamp: Math.floor(Date.now() / 1000),
+      },
+    ],
+    true,
+  );
+  assert.equal((await aiControl(db, chat.id)).paused, true);
+});
+
+test('provedores Claude e Gemini contabilizam tokens e limites bloqueiam antes da chamada', async () =>
+  aiTest(async () => {
+    const chat = await makeContact('5511777770034');
+    let calls = 0;
+    for (const provider of ['anthropic', 'gemini']) {
+      await configureAi({ provider });
+      globalThis.fetch = async (url, options) => {
+        calls++;
+        const body = JSON.parse(String(options?.body));
+        assert.equal(String(url).includes('chave-ficticia'), false);
+        if (provider === 'anthropic') {
+          assert.equal(body.messages[0].role, 'user');
+          return new Response(
+            JSON.stringify({
+              content: [{ type: 'text', text: 'Claude fictício' }],
+              usage: { input_tokens: 12, output_tokens: 8 },
+            }),
+          );
+        }
+        assert.ok(body.systemInstruction);
+        return new Response(
+          JSON.stringify({
+            candidates: [{ content: { parts: [{ text: 'Gemini fictício' }] } }],
+            usageMetadata: { promptTokenCount: 14, candidatesTokenCount: 6, thoughtsTokenCount: 2 },
+          }),
+        );
+      };
+      const result = await generateSuggestion(db, chat.id, 'Sugira.');
+      assert.match(result.text, /fictício/);
+    }
+    assert.equal(calls, 2);
+    const usage = await aiUsage(db);
+    assert.ok(usage.todayTokens >= 42);
+    await configureAi({ dailyTokenLimit: 1 });
+    await assert.rejects(generateSuggestion(db, chat.id, 'Sugira.'), /Limite diário/);
+    assert.equal(calls, 2);
+    await configureAi({ monthlyBudget: 0.000001, inputPrice: 1, outputPrice: 1 });
+    await assert.rejects(generateSuggestion(db, chat.id, 'Sugira.'), /Orçamento mensal/);
+    assert.equal(calls, 2);
+  }));
+
+test('conhecimento aprovado conserva contexto cliente e ordem do vendedor', async () =>
+  aiTest(async () => {
+    const chat = await makeContact('5511777770035');
+    await db.chatMessage.createMany({
+      data: [
+        {
+          id: 'knowledge-later',
+          conversationId: chat.id,
+          direction: 'OUTBOUND',
+          text: 'Primeiro confirmo sua necessidade.',
+          sentAt: new Date('2026-01-01T10:01:00Z'),
+        },
+        {
+          id: 'knowledge-first',
+          conversationId: chat.id,
+          direction: 'INBOUND',
+          text: 'Quero um orçamento especial.',
+          sentAt: new Date('2026-01-01T10:00:00Z'),
+        },
+      ],
+    });
+    await request(app)
+      .post(`/api/operations/sessions/${sessionId}/contacts/${chat.id}/knowledge`)
+      .expect(200);
+    const knowledge = await record<{ turns: { role: string }[] }>(db, `knowledge:${chat.id}`, { turns: [] });
+    assert.deepEqual(
+      knowledge.turns.map((turn) => turn.role),
+      ['user', 'assistant'],
+    );
+    await configureAi();
+    globalThis.fetch = async (_url, options) => {
+      const body = JSON.parse(String(options?.body));
+      assert.match(body.instructions, /user: Quero um orçamento especial/);
+      assert.match(body.instructions, /assistant: Primeiro confirmo/);
+      return new Response(
+        JSON.stringify({
+          output: [{ content: [{ type: 'output_text', text: 'Sugestão' }] }],
+          usage: { input_tokens: 15, output_tokens: 3 },
+        }),
+      );
+    };
+    await generateSuggestion(db, chat.id, 'Orçamento especial');
+  }));
+
+test('análise de mídia usa conteúdo explícito, cache e impede visualização única', async () =>
+  aiTest(async () => {
+    const chat = await makeContact('5511777770036');
+    const file = await db.storedFile.create({
+      data: {
+        sha256: 'a'.repeat(64),
+        filename: 'imagem.png',
+        mimeType: 'image/png',
+        byteLength: 3,
+        data: Buffer.from('png'),
+      },
+    });
+    const message = await db.chatMessage.create({
+      data: { conversationId: chat.id, direction: 'INBOUND', type: 'imageMessage', fileId: file.id },
+    });
+    await configureAi({ provider: 'gemini', mediaModel: 'modelo-ficticio' });
+    let calls = 0;
+    globalThis.fetch = async (_url, options) => {
+      calls++;
+      const body = JSON.parse(String(options?.body));
+      assert.equal(body.contents[0].parts[1].inlineData.data, Buffer.from('png').toString('base64'));
+      return new Response(
+        JSON.stringify({
+          candidates: [{ content: { parts: [{ text: 'Descrição fictícia.' }] } }],
+          usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5 },
+        }),
+      );
+    };
+    assert.equal(
+      (await preprocessMedia(db, messaging, sessionId, chat.id, message.id)).text,
+      'Descrição fictícia.',
+    );
+    await preprocessMedia(db, messaging, sessionId, chat.id, message.id);
+    assert.equal(calls, 1);
+    await db.chatMessage.update({ where: { id: message.id }, data: { asViewOnce: true } });
+    await assert.rejects(
+      preprocessMedia(db, messaging, sessionId, chat.id, message.id),
+      /visualização única/,
+    );
+    assert.equal(calls, 1);
+  }));
+
+test('falha da geração envia contingência uma vez, pausa e avisa atendente', async () =>
+  aiTest(async () => {
+    const chat = await makeContact('5511777770037');
+    await configureAi({ enabled: true, fallbackText: 'Nossa equipe vai continuar o atendimento.' });
+    await inbound(chat.id, 'Preciso de informações');
+    globalThis.fetch = async () => new Response('{}', { status: 503 });
+    const before = socket.sends.length;
+    const ai = new AiWorker(db, whatsapp, messaging);
+    await ai.flush();
+    await ai.flush();
+    await ai.stop();
+    assert.equal(socket.sends.length, before + 1);
+    assert.equal((socket.sends.at(-1) as { text: string }).text, 'Nossa equipe vai continuar o atendimento.');
+    assert.equal((await aiControl(db, chat.id)).paused, true);
+  }));
+
+test('ordem das etiquetas persiste, aparece no CRM e rejeita outra conexão sem alterar a lista', async () => {
+  const a = await db.label.create({ data: { id: 'reorder-a', name: 'Ordem A', sessionId, position: 900 } });
+  const b = await db.label.create({ data: { id: 'reorder-b', name: 'Ordem B', sessionId, position: 901 } });
+  const foreign = await db.label.create({
+    data: { id: 'reorder-foreign', name: 'Outra conexão', sessionId: otherSession },
+  });
+  const url = `/api/operations/sessions/${sessionId}/label-order`;
+  await request(app)
+    .put(url)
+    .send({ ids: [b.id, a.id] })
+    .expect(200);
+  const listed = await request(app).get(`/api/whatsapp/sessions/${sessionId}/labels`).expect(200);
+  assert.deepEqual(
+    listed.body.items.slice(0, 2).map((label: { id: string }) => label.id),
+    [b.id, a.id],
+  );
+  const board = await request(app).get(`/api/crm/sessions/${sessionId}/board`).expect(200);
+  const columns = board.body.columns.filter((column: { labelId: string | null }) => column.labelId);
+  assert.deepEqual(
+    columns.slice(0, 2).map((column: { labelId: string }) => column.labelId),
+    [b.id, a.id],
+  );
+  await request(app)
+    .put(url)
+    .send({ ids: [a.id, foreign.id] })
+    .expect(422);
+  await request(app)
+    .put(url)
+    .send({ ids: [a.id, a.id] })
+    .expect(422);
+  assert.equal((await db.label.findUniqueOrThrow({ where: { id: b.id } })).position, 0);
+});
+
+function unzipEntries(bytes: Buffer) {
+  const files = new Map<string, string>();
+  for (let at = 0; at + 46 <= bytes.length; at++) {
+    if (bytes.readUInt32LE(at) !== 0x02014b50) continue;
+    const size = bytes.readUInt32LE(at + 20),
+      nameLength = bytes.readUInt16LE(at + 28),
+      extra = bytes.readUInt16LE(at + 30),
+      comment = bytes.readUInt16LE(at + 32),
+      offset = bytes.readUInt32LE(at + 42);
+    const name = bytes.subarray(at + 46, at + 46 + nameLength).toString();
+    const begin = offset + 30 + bytes.readUInt16LE(offset + 26) + bytes.readUInt16LE(offset + 28);
+    const content = bytes.subarray(begin, begin + size);
+    files.set(name, (bytes.readUInt16LE(at + 10) === 8 ? inflateRawSync(content) : content).toString());
+    at += 45 + nameLength + extra + comment;
+  }
+  return files;
+}
+test('exportação estruturada ordena por horário, separa papéis e protege CSV', async () => {
+  const chat = await makeContact('5511777770038');
+  await db.chatMessage.createMany({
+    data: [
+      {
+        id: 'export-z-first',
+        conversationId: chat.id,
+        direction: 'INBOUND',
+        text: '=formula',
+        sentAt: new Date('2026-01-01T00:00:00Z'),
+      },
+      {
+        id: 'export-a-second',
+        conversationId: chat.id,
+        direction: 'OUTBOUND',
+        text: 'Resposta depois',
+        sentAt: new Date('2026-01-01T00:01:00Z'),
+      },
+    ],
+  });
+  const exported = await request(app)
+    .get(`/api/operations/sessions/${sessionId}/history-export?ids=${chat.id}`)
+    .buffer(true)
+    .parse((res, callback) => {
+      const chunks: Buffer[] = [];
+      res.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+      res.on('end', () => callback(null, Buffer.concat(chunks)));
+    })
+    .expect(200);
+  const files = unzipEntries(exported.body);
+  const turns = files
+    .get('dialogo.jsonl')!
+    .split('\n')
+    .map((line) => JSON.parse(line));
+  assert.deepEqual(
+    turns.map((turn) => turn.role),
+    ['user', 'assistant'],
+  );
+  assert.equal(turns[0].content, '=formula');
+  assert.match(files.get('dialogo.csv')!, /'=formula/);
+  assert.ok(files.has('conversa.jsonl'));
+  assert.ok(files.has('dialogo.txt'));
+  await request(app)
+    .get(`/api/operations/sessions/${otherSession}/history-export?ids=${chat.id}`)
+    .expect(404);
 });

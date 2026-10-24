@@ -1,4 +1,6 @@
 import { MacroEditor } from '../components/MacroEditor';
+import { usePreferences } from '../context/PreferencesContext';
+import { orderItems } from '../context/ordering';
 import { ResourcePicker } from '../components/ResourcePicker';
 import { useState, type FormEvent } from 'react';
 import {
@@ -33,6 +35,7 @@ export function LibraryPage({
   refresh: () => Promise<void>;
 }) {
   const { request, notify } = useApi();
+  const { preferences } = usePreferences();
   const [macroEditor, setMacroEditor] = useState<string | null>(null);
   const [tab, setTab] = useState('MESSAGE');
   const [search, setSearch] = useState('');
@@ -105,7 +108,7 @@ export function LibraryPage({
         }
       </div>
       <div className="library-tabs">
-        {tabs.map(({ id, name, icon: Icon }) => (
+        {orderItems(tabs, preferences.folderOrder, (item) => item.id).map(({ id, name, icon: Icon }) => (
           <button className={tab === id ? 'selected' : ''} key={id} onClick={() => setTab(id)}>
             <Icon size={17} />
             {name}

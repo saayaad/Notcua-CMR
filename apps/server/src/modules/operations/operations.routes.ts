@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { retryDatabaseOperation } from '../../database/retry.js';
 import { randomUUID } from 'node:crypto';
 import { stat } from 'node:fs/promises';
 import { z } from 'zod';
@@ -13,6 +14,10 @@ import { json } from '../backups/validation.js';
 import { ContactsService, leadSchema } from './contacts.service.js';
 import { record, putRecord, type AgentSettings } from './records.js';
 import { generateSuggestion } from './ai.service.js';
+import { aiControl, setAiControl } from './ai-control.js';
+import { aiUsage } from './ai-provider.js';
+import { preprocessMedia } from './ai-media.js';
+import { exportHistory } from './history-export.js';
 import type { Batch, Delivery } from './delivery.worker.js';
 import { macroRoutes } from './macros.routes.js';
 import { createSystemBackup, type SystemBackup } from './system-backups.js';
@@ -49,6 +54,35 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
   const admin = (role: string) => {
     if (role !== 'ADMIN') throw new AppError(403, 'Esta ação exige acesso de administrador.');
   };
+  router.put('/sessions/:sessionId/label-order', async (req, res) => {
+    admin(res.locals.identity.role);
+    const sessionId = id.parse(req.params.sessionId);
+    await whatsapp.snapshot(sessionId);
+    const { ids } = z.object({ ids: z.array(id).max(5000) }).parse(req.body);
+    if (new Set(ids).size !== ids.length)
+      throw new AppError(422, 'Cada etiqueta deve aparecer uma única vez.');
+    await retryDatabaseOperation(() =>
+      db.$transaction(
+        async (tx) => {
+          const labels = await tx.label.findMany({
+            where: { isDeleted: false, OR: [{ sessionId }, { sessionId: null }] },
+            orderBy: [{ position: 'asc' }, { name: 'asc' }, { id: 'asc' }],
+          });
+          if (ids.some((id) => !labels.some((label) => label.id === id)))
+            throw new AppError(422, 'Uma etiqueta não está disponível nesta conexão. Atualize a lista.');
+          const ordered = [
+            ...ids,
+            ...labels.filter((label) => !ids.includes(label.id)).map((label) => label.id),
+          ];
+          for (const [position, id] of ordered.entries())
+            await tx.label.update({ where: { id }, data: { position } });
+        },
+        { timeout: 30000 },
+      ),
+    );
+    whatsapp.notify(sessionId, 'labels');
+    res.json({ saved: true });
+  });
   router.get('/system-backups', async (_req, res) => {
     admin(res.locals.identity.role);
     const rows = await db.operationRecord.findMany({
@@ -183,7 +217,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       db.deliveryTask.groupBy({ by: ['status'], where: { sessionId }, _count: true }),
       db.conversation.count({ where: { sessionId, status: 'OPEN', unreadCount: { gt: 0 } } }),
     ]);
-    res.json({ people, messages, batches, waiting });
+    res.json({ people, messages, batches, waiting, ai: await aiUsage(db) });
   });
   router.get('/sessions/:sessionId/contacts', async (req, res) => {
     const sessionId = id.parse(req.params.sessionId);
@@ -199,6 +233,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       .parse(req.query.page ?? 1);
     const where = {
       sessionId,
+      ...(req.query.assignedTo ? { assignedTo: z.string().max(200).parse(req.query.assignedTo) } : {}),
       contact: search ? { OR: [{ name: { contains: search } }, { phoneNumber: { contains: search } }] } : {},
     };
     const [items, total] = await Promise.all([
@@ -209,7 +244,13 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
         take: 100,
         include: {
           contact: {
-            include: { labels: { where: { label: { isDeleted: false } }, include: { label: true } } },
+            include: {
+              labels: {
+                where: { label: { isDeleted: false } },
+                include: { label: true },
+                orderBy: [{ label: { position: 'asc' } }, { label: { name: 'asc' } }],
+              },
+            },
           },
         },
       }),
@@ -257,34 +298,46 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     const input = z
       .object({
         labelId: z.string().max(200).default(''),
+        match: z.enum(['AND', 'OR']).default('AND'),
+        listId: z.string().max(200).default(''),
         inactiveDays: z.coerce.number().min(0).max(3650).default(0),
         conversationIds: z.array(id).max(5000).default([]),
       })
       .parse(raw);
     await whatsapp.snapshot(sessionId);
+    const list = input.listId
+      ? await record<{ sessionId: string; conversationIds: string[] } | null>(db, input.listId, null)
+      : null;
+    if (input.listId && (!list || list.sessionId !== sessionId || !input.listId.startsWith('lead-list:')))
+      throw new AppError(404, 'Lista não encontrada nesta conexão.');
+    const criteria: Prisma.ConversationWhereInput[] = [];
+    if (input.inactiveDays)
+      criteria.push({
+        OR: [
+          { lastMessageAt: { lte: new Date(Date.now() - input.inactiveDays * 86400000) } },
+          { lastMessageAt: null },
+        ],
+      });
+    if (input.labelId)
+      criteria.push({
+        contact: {
+          labels: {
+            some: {
+              labelId: input.labelId,
+              label: { isDeleted: false, OR: [{ sessionId }, { sessionId: null }] },
+            },
+          },
+        },
+      });
     const where: Prisma.ConversationWhereInput = {
       sessionId,
       ...(input.conversationIds.length ? { id: { in: input.conversationIds } } : {}),
-      ...(input.inactiveDays
-        ? {
-            OR: [
-              { lastMessageAt: { lte: new Date(Date.now() - input.inactiveDays * 86400000) } },
-              { lastMessageAt: null },
-            ],
-          }
-        : {}),
+      AND: [
+        ...(list ? [{ id: { in: list.conversationIds } }] : []),
+        ...(criteria.length ? [{ [input.match]: criteria }] : []),
+      ],
       contact: {
         isGroup: false,
-        ...(input.labelId
-          ? {
-              labels: {
-                some: {
-                  labelId: input.labelId,
-                  label: { isDeleted: false, OR: [{ sessionId }, { sessionId: null }] },
-                },
-              },
-            }
-          : {}),
       },
     };
     const rows = await db.conversation.findMany({
@@ -296,6 +349,23 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     if (rows.length > 5000) throw new AppError(422, 'Refine o público para até 5.000 contatos.');
     return rows.filter((row) => !(row.contact.metadata as { optOut?: boolean }).optOut);
   };
+  router.get('/sessions/:sessionId/lead-lists', async (req, res) => {
+    const sessionId = id.parse(req.params.sessionId);
+    await whatsapp.snapshot(sessionId);
+    const rows = await db.operationRecord.findMany({
+      where: { kind: 'LEAD_LIST' },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({
+      items: rows
+        .map((row) => ({
+          id: row.id,
+          ...(row.data as { name: string; sessionId: string; conversationIds: string[] }),
+        }))
+        .filter((row) => row.sessionId === sessionId)
+        .map((row) => ({ id: row.id, name: row.name, count: row.conversationIds.length })),
+    });
+  });
   router.post('/sessions/:sessionId/audience', async (req, res) => {
     admin(res.locals.identity.role);
     const rows = await audience(id.parse(req.params.sessionId), req.body);
@@ -338,7 +408,19 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
         mode: z.enum(['CAMPAIGN', 'SCHEDULE', 'REMINDER']),
         audience: z.unknown(),
         delivery: z.object({
-          kind: z.enum(['text', 'asset', 'funnel', 'flow', 'reminder']),
+          kind: z.enum(['text', 'asset', 'funnel', 'flow', 'reminder', 'sequence']),
+          steps: z
+            .array(
+              z.object({
+                kind: z.enum(['text', 'asset']),
+                text: z.string().max(10000).optional(),
+                assetId: id.optional(),
+                waitSeconds: z.number().int().min(0).max(86400).default(1),
+              }),
+            )
+            .min(1)
+            .max(30)
+            .optional(),
           text: z.string().max(10000).optional(),
           assetId: id.optional(),
           funnelId: id.optional(),
@@ -346,6 +428,8 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
         }),
         minSeconds: z.number().int().min(1).max(86400).default(15),
         maxSeconds: z.number().int().min(1).max(86400).default(45),
+        pauseEvery: z.number().int().min(0).max(5000).default(0),
+        pauseSeconds: z.number().int().min(0).max(86400).default(0),
         runAt: z.iso.datetime().optional(),
       })
       .parse(req.body);
@@ -357,7 +441,43 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     if (!people.length) throw new AppError(422, 'Nenhum contato corresponde ao público escolhido.');
     if (input.mode !== 'CAMPAIGN' && people.length !== 1)
       throw new AppError(422, 'Selecione uma conversa para o agendamento individual.');
-    const delivery: Delivery = { ...input.delivery };
+    const { steps, ...initialDelivery } = input.delivery;
+    const delivery: Delivery = { ...initialDelivery };
+    if (delivery.kind === 'sequence') {
+      if (!steps?.length) throw new AppError(422, 'Adicione mensagens à sequência.');
+      delivery.steps = [];
+      for (const step of steps) {
+        if (step.kind === 'text') {
+          if (!step.text?.trim()) throw new AppError(422, 'Preencha todos os textos da sequência.');
+          delivery.steps.push({ snapshot: { kind: 'text', text: step.text }, waitSeconds: step.waitSeconds });
+        } else {
+          if (!step.assetId) throw new AppError(422, 'Selecione o recurso de cada etapa.');
+          const asset = await db.asset.findUnique({ where: { id: step.assetId }, include: { file: true } });
+          if (!asset) throw new AppError(422, 'Recurso não encontrado.');
+          delivery.steps.push({
+            snapshot: {
+              kind:
+                asset.kind === 'MESSAGE'
+                  ? 'text'
+                  : asset.kind === 'AUDIO'
+                    ? 'audio'
+                    : asset.kind === 'DOCUMENT'
+                      ? 'document'
+                      : asset.file?.mimeType.startsWith('video/')
+                        ? 'video'
+                        : 'image',
+              text: asset.text ?? undefined,
+              caption: asset.caption ?? undefined,
+              fileId: asset.fileId ?? undefined,
+              isPtt: asset.isPtt,
+              isPtv: asset.isPtv,
+              asViewOnce: asset.asViewOnce,
+            },
+            waitSeconds: step.waitSeconds,
+          });
+        }
+      }
+    }
     if (['text', 'reminder'].includes(delivery.kind) && !delivery.text?.trim())
       throw new AppError(422, 'Escreva a mensagem.');
     if (delivery.kind === 'asset') {
@@ -399,6 +519,9 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       mode: input.mode,
       minSeconds: input.minSeconds,
       maxSeconds: input.maxSeconds,
+      pauseEvery: input.pauseEvery,
+      pauseSeconds: input.pauseSeconds,
+      sentCount: 0,
       count: people.length,
       createdAt: new Date().toISOString(),
     };
@@ -411,7 +534,10 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
             sessionId,
             conversationId: chat.id,
             payload: json(delivery),
-            runAt: input.runAt ? new Date(input.runAt) : new Date(),
+            runAt: new Date(
+              (input.runAt ? new Date(input.runAt).getTime() : Date.now()) +
+                (delivery.steps?.[0]?.waitSeconds ?? 0) * 1000,
+            ),
           })),
         });
       },
@@ -455,13 +581,23 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       enabled: false,
     });
     const { encryptedKey, ...safe } = settings;
-    res.json({ ...safe, configured: Boolean(encryptedKey) });
+    res.json({ ...safe, configured: Boolean(encryptedKey), usage: await aiUsage(db) });
   });
   router.put('/ai', async (req, res) => {
     admin(res.locals.identity.role);
     const input = z
       .object({
         apiKey: z.string().max(500).optional(),
+        provider: z.enum(['openai', 'anthropic', 'gemini']).default('openai'),
+        dailyTokenLimit: z.number().int().min(0).max(100000000).default(0),
+        maxOutputTokens: z.number().int().min(100).max(16000).default(1200),
+        monthlyBudget: z.number().min(0).max(1000000).default(0),
+        inputPrice: z.number().min(0).max(10000).default(0),
+        outputPrice: z.number().min(0).max(10000).default(0),
+        fallbackText: z.string().max(2000).default(''),
+        mediaEnabled: z.boolean().default(false),
+        mediaModel: z.string().max(100).default(''),
+        transcriptionModel: z.string().max(100).default(''),
         model: z.string().max(100),
         instructions: z.string().max(12000),
         knowledge: z.string().max(100000),
@@ -472,7 +608,15 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       .parse(req.body);
     const previous = await record<AgentSettings | null>(db, 'integration:ai', null);
     const { apiKey, ...settings } = input;
-    let encryptedKey = previous?.encryptedKey;
+    let encryptedKey =
+      settings.provider === (previous?.provider ?? 'openai') ? previous?.encryptedKey : undefined;
+    if (settings.monthlyBudget && (!settings.inputPrice || !settings.outputPrice))
+      throw new AppError(
+        422,
+        'Para limitar o orçamento estimado, informe os preços de entrada e saída do modelo.',
+      );
+    if (settings.mediaEnabled && !settings.mediaModel)
+      throw new AppError(422, 'Informe o modelo de análise antes de ativar mídias.');
     if (apiKey?.trim())
       encryptedKey = (await CredentialCipher.load(env.WHATSAPP_KEY_FILE))
         .encrypt(apiKey.trim())
@@ -497,99 +641,105 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     const chat = await messaging.chat(id.parse(req.params.sessionId), id.parse(req.params.conversationId));
     res.json(await generateSuggestion(db, chat.id, task));
   });
+  router.get('/sessions/:sessionId/contacts/:conversationId/ai-control', async (req, res) => {
+    const chat = await messaging.chat(id.parse(req.params.sessionId), id.parse(req.params.conversationId));
+    const settings = await record<AgentSettings | null>(db, 'integration:ai', null);
+    res.json({ ...(await aiControl(db, chat.id)), enabled: Boolean(settings?.enabled) });
+  });
+  router.put('/sessions/:sessionId/contacts/:conversationId/ai-control', async (req, res) => {
+    const chat = await messaging.chat(id.parse(req.params.sessionId), id.parse(req.params.conversationId));
+    const { paused } = z.object({ paused: z.boolean() }).parse(req.body);
+    res.json(
+      await setAiControl(
+        db,
+        chat.id,
+        paused,
+        paused ? 'Atendimento assumido pelo operador.' : 'IA retomada para novas mensagens.',
+      ),
+    );
+    whatsapp.notify(chat.sessionId, 'messages');
+  });
+  router.get('/sessions/:sessionId/contacts/:conversationId/media-analysis', async (req, res) => {
+    const chat = await messaging.chat(id.parse(req.params.sessionId), id.parse(req.params.conversationId));
+    const messages = await db.chatMessage.findMany({
+      where: { conversationId: chat.id, text: null, asViewOnce: false },
+      orderBy: { sentAt: 'desc' },
+      take: 100,
+    });
+    res.json({
+      items: await Promise.all(
+        messages
+          .filter((item) => /audio|image|video|ptv/.test(item.type))
+          .map(async (item) => ({
+            id: item.id,
+            type: item.type,
+            sentAt: item.sentAt,
+            analysis: await record(db, `ai-media:${item.id}`, null),
+          })),
+      ),
+    });
+  });
+  router.post('/sessions/:sessionId/contacts/:conversationId/media-analysis', async (req, res) => {
+    const { messageId } = z.object({ messageId: id, consent: z.literal(true) }).parse(req.body);
+    res.json(
+      await preprocessMedia(
+        db,
+        messaging,
+        id.parse(req.params.sessionId),
+        id.parse(req.params.conversationId),
+        messageId,
+      ),
+    );
+  });
   router.post('/sessions/:sessionId/contacts/:conversationId/knowledge', async (req, res) => {
     admin(res.locals.identity.role);
     const chat = await messaging.chat(id.parse(req.params.sessionId), id.parse(req.params.conversationId));
-    const settings = await record<AgentSettings>(db, 'integration:ai', {
-      model: '',
-      instructions: '',
-      knowledge: '',
-      style: '',
-      enabled: false,
-    });
     const examples = await db.chatMessage.findMany({
-      where: { conversationId: chat.id, direction: 'OUTBOUND', text: { not: null } },
-      orderBy: { sentAt: 'asc' },
+      where: { conversationId: chat.id, asViewOnce: false },
+      orderBy: [{ sentAt: 'desc' }, { id: 'desc' }],
       take: 100,
     });
-    const text = examples.map((item) => item.text).join('\n');
-    await putRecord(db, 'integration:ai', 'INTEGRATION', {
-      ...settings,
-      knowledge: `${settings.knowledge}\nExemplos aprovados de atendimento:\n${text}`.slice(-100000),
+    const turns = [];
+    for (const item of examples.reverse()) {
+      const media = await record<{ text?: string }>(db, `ai-media:${item.id}`, {});
+      const content = [item.text, item.caption, media.text].filter(Boolean).join('\n');
+      if (content)
+        turns.push({
+          role: item.direction === 'INBOUND' ? 'user' : 'assistant',
+          content,
+          sentAt: item.sentAt.toISOString(),
+        });
+    }
+    await putRecord(db, `knowledge:${chat.id}`, 'AI_KNOWLEDGE', {
+      turns,
+      conversationId: chat.id,
+      approvedAt: new Date().toISOString(),
     });
     res.json({ examples: examples.length, sentToProvider: false });
   });
   router.get('/sessions/:sessionId/contacts/:conversationId/export', async (req, res, next) => {
-    const sessionId = id.parse(req.params.sessionId);
-    const chat = await messaging.chat(sessionId, id.parse(req.params.conversationId));
-    const includeMedia = req.query.media === 'true';
-    const archive = new ZipArchive({ zlib: { level: 5 } });
-    archive.on('error', (error) => {
-      if (res.headersSent) res.destroy(error);
-      else next(error);
-    });
-    res.on('close', () => {
-      if (!res.writableFinished) archive.abort();
-    });
-    res.attachment(`atendimento-${chat.id.replace(/[^a-zA-Z0-9]/g, '')}.zip`);
-    archive.pipe(res);
-    const manifest: object[] = [];
-    let cursor: string | undefined;
-    let more = true;
-    while (more && !res.destroyed) {
-      const rows = await db.chatMessage.findMany({
-        where: { conversationId: chat.id },
-        orderBy: { id: 'asc' },
-        take: 200,
-        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-      });
-      more = rows.length === 200;
-      cursor = rows.at(-1)?.id;
-      for (const message of rows) {
-        let media: string | undefined;
-        let mediaStatus = message.asViewOnce
-          ? 'Visualização única: conteúdo não exportável.'
-          : 'Não solicitado ou sem mídia.';
-        if (
-          includeMedia &&
-          !message.asViewOnce &&
-          !['text', 'conversation', 'extendedTextMessage'].includes(message.type)
-        ) {
-          try {
-            const file = await messaging.media(sessionId, chat.id, message.id);
-            media = `midias/${message.id.replace(/[^a-zA-Z0-9]/g, '')}-${file.filename.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-            archive.append(Buffer.from(file.data), { name: media });
-            mediaStatus = 'Exportado';
-          } catch {
-            mediaStatus = 'Mídia indisponível no histórico/WhatsApp.';
-          }
-        }
-        manifest.push({
-          id: message.id,
-          direction: message.direction,
-          text: message.text,
-          caption: message.caption,
-          type: message.type,
-          status: message.status,
-          sentAt: message.sentAt,
-          media,
-          mediaStatus,
-        });
-      }
-    }
-    archive.append(
-      JSON.stringify(
-        {
-          contact: { name: chat.contact.name, phoneNumber: chat.contact.phoneNumber },
-          exportedAt: new Date(),
-          messages: manifest,
-        },
-        null,
-        2,
-      ),
-      { name: 'historico.json' },
+    await exportHistory(
+      db,
+      messaging,
+      id.parse(req.params.sessionId),
+      [id.parse(req.params.conversationId)],
+      req.query.media === 'true',
+      res,
+      next,
     );
-    await archive.finalize();
+  });
+  router.get('/sessions/:sessionId/history-export', async (req, res, next) => {
+    const sessionId = id.parse(req.params.sessionId);
+    const ids = z
+      .array(id)
+      .min(1)
+      .max(100)
+      .parse(
+        String(req.query.ids ?? '')
+          .split(',')
+          .filter(Boolean),
+      );
+    await exportHistory(db, messaging, sessionId, ids, req.query.media === 'true', res, next);
   });
   return router;
 }

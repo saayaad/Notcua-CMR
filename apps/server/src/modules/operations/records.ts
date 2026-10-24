@@ -12,6 +12,7 @@ export async function putRecord(db: PrismaClient, id: string, kind: string, data
   });
 }
 export interface AgentSettings {
+  provider?: 'openai' | 'anthropic' | 'gemini';
   model: string;
   instructions: string;
   knowledge: string;
@@ -21,6 +22,14 @@ export interface AgentSettings {
   dailyLimit?: number;
   encryptedKey?: string;
   monthlyBudget?: number;
+  dailyTokenLimit?: number;
+  maxOutputTokens?: number;
+  inputPrice?: number;
+  outputPrice?: number;
+  fallbackText?: string;
+  mediaEnabled?: boolean;
+  mediaModel?: string;
+  transcriptionModel?: string;
 }
 export interface BusinessSettings {
   company?: string;

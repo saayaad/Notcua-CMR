@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Router, type Request } from 'express';
+import { setAiControl } from '../operations/ai-control.js';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import QRCode from 'qrcode';
@@ -209,7 +210,13 @@ export function attendanceRoutes(
         take: pageSize,
         include: {
           contact: {
-            include: { labels: { where: { label: { isDeleted: false } }, include: { label: true } } },
+            include: {
+              labels: {
+                where: { label: { isDeleted: false } },
+                include: { label: true },
+                orderBy: [{ label: { position: 'asc' } }, { label: { name: 'asc' } }],
+              },
+            },
           },
           messages: {
             orderBy: { sentAt: 'desc' },
@@ -253,6 +260,7 @@ export function attendanceRoutes(
             labels: {
               where: { label: { isDeleted: false, OR: [{ sessionId }, { sessionId: null }] } },
               include: { label: true },
+              orderBy: [{ label: { position: 'asc' } }, { label: { name: 'asc' } }],
             },
           },
         },
@@ -297,11 +305,15 @@ export function attendanceRoutes(
   });
   router.post('/sessions/:sessionId/conversations/:conversationId/send', async (req, res) => {
     const { sessionId, conversationId } = ids(req);
+    await messaging.chat(sessionId, conversationId);
+    await setAiControl(db, conversationId, true, 'Atendimento assumido por mensagem manual.');
     res.status(201).json(await messaging.send(sessionId, conversationId, req.body));
   });
   router.post('/sessions/:sessionId/conversations/:conversationId/send-asset', async (req, res) => {
     const { sessionId, conversationId } = ids(req);
     const body = z.object({ assetId: stringId, requestId: stringId }).parse(req.body);
+    await messaging.chat(sessionId, conversationId);
+    await setAiControl(db, conversationId, true, 'Atendimento assumido por envio manual.');
     res.status(201).json(await messaging.sendAsset(sessionId, conversationId, body.assetId, body.requestId));
   });
   router.post('/sessions/:sessionId/conversations/:conversationId/read', async (req, res) => {
@@ -397,6 +409,8 @@ export function attendanceRoutes(
     const body = z
       .object({ kind: z.enum(['FUNNEL', 'MACRO']), sourceId: stringId, requestId: stringId })
       .parse(req.body);
+    await messaging.chat(sessionId, conversationId);
+    await setAiControl(db, conversationId, true, 'Atendimento assumido com sequência manual.');
     res
       .status(202)
       .json(await sequences.enqueue(sessionId, conversationId, body.kind, body.sourceId, body.requestId));

@@ -8,7 +8,11 @@ export const errorHandler: ErrorRequestHandler = (error: unknown, _req, res, _ne
     return;
   }
   if (error instanceof ZodError) {
-    res.status(422).json({ error: { message: 'Backup inválido.', details: error.issues } });
+    res
+      .status(422)
+      .json({
+        error: { message: 'Confira os campos obrigatórios e os valores informados.', details: error.issues },
+      });
     return;
   }
   if (error && typeof error === 'object' && 'type' in error) {

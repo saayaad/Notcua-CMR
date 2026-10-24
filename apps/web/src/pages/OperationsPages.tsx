@@ -1,4 +1,7 @@
 import type { FlowSummary } from './flows/flow.types';
+import { CampaignMedia } from '../components/CampaignMedia';
+import { HistoryExport } from '../components/HistoryExport';
+import type { Asset } from '../types';
 import { useCallback, useEffect, useState } from 'react';
 import {
   Plus,
@@ -32,6 +35,7 @@ export function OverviewPage({
     people: number;
     messages: number;
     waiting: number;
+    ai: { todayTokens: number };
     batches: { status: string; _count: number }[];
   } | null>(null);
   useEffect(() => {
@@ -54,6 +58,7 @@ export function OverviewPage({
           { title: 'Contatos', value: metrics?.people ?? 0, icon: Users },
           { title: 'Mensagens enviadas', value: metrics?.messages ?? 0, icon: Send },
           { title: 'Conversas não lidas', value: metrics?.waiting ?? 0, icon: MessageSquare },
+          { title: 'Tokens de IA hoje · operação', value: metrics?.ai.todayTokens ?? 0, icon: MessageSquare },
           {
             title: 'Envios pendentes',
             value: metrics?.batches.find((row) => row.status === 'QUEUED')?._count ?? 0,
@@ -133,6 +138,7 @@ export function ContactsPage({ sessionId, onOpen }: { sessionId: string; onOpen:
   const [search, setSearch] = useState('');
   const [tick, setTick] = useState(0);
   const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -172,6 +178,9 @@ export function ContactsPage({ sessionId, onOpen }: { sessionId: string; onOpen:
           <button className="button" disabled={!sessionId} onClick={() => setImporting(true)}>
             <Upload size={16} />
             Importar Excel / CSV
+          </button>
+          <button className="button" disabled={!sessionId} onClick={() => setExporting(true)}>
+            Exportar históricos
           </button>
           <button className="button primary" disabled={!sessionId} onClick={() => setCreating(true)}>
             <Plus size={16} />
@@ -230,6 +239,7 @@ export function ContactsPage({ sessionId, onOpen }: { sessionId: string; onOpen:
           }}
         />
       )}
+      {exporting && <HistoryExport sessionId={sessionId} onClose={() => setExporting(false)} />}
       {creating && (
         <Modal title="Novo contato" onClose={() => setCreating(false)}>
           <form
@@ -292,6 +302,8 @@ function LeadImport({
   const [tag, setTag] = useState('');
   const [busy, setBusy] = useState(false);
   const [countryCode, setCountryCode] = useState('55');
+  const [areaCode, setAreaCode] = useState('');
+  const [listName, setListName] = useState('');
   const inspect = async (phoneColumn?: number, nameColumn?: number) => {
     if (!file) return;
     setBusy(true);
@@ -301,6 +313,7 @@ function LeadImport({
           filename: file.name,
           base64: await fileBase64(file),
           countryCode,
+          areaCode,
           phoneColumn,
           nameColumn,
         }),
@@ -327,6 +340,7 @@ function LeadImport({
             const chosen = event.target.files?.[0];
             if (chosen && chosen.size <= 10 * 1024 * 1024) {
               setFile(chosen);
+              setListName(chosen.name.replace(/\.(xlsx|csv)$/i, '').slice(0, 100));
               setPreview(null);
             } else notify('Escolha um arquivo de até 10 MiB.', true);
           }}
@@ -346,6 +360,28 @@ function LeadImport({
       <button className="button" disabled={!file || busy} onClick={() => void inspect()}>
         {busy ? <Spinner /> : <Search size={15} />}Ler planilha
       </button>
+      <label>
+        DDD padrão para números locais (opcional)
+        <input
+          value={areaCode}
+          maxLength={2}
+          placeholder="Ex.: 11"
+          onChange={(event) => {
+            setAreaCode(event.target.value.replace(/\D/g, ''));
+            setPreview(null);
+          }}
+        />
+      </label>
+      <label>
+        Nome da lista de contatos
+        <input
+          value={listName}
+          maxLength={100}
+          onChange={(event) => setListName(event.target.value)}
+          placeholder="Ex.: Leads de outubro"
+        />
+        <small>A lista ficará disponível no público das campanhas.</small>
+      </label>
       {preview && (
         <>
           <div className="form-grid">
@@ -427,6 +463,7 @@ function LeadImport({
             void request<{ imported: number }>(`/operations/sessions/${sessionId}/contacts/import`, 'POST', {
               items: preview!.items,
               extraTag: tag,
+              listName,
             })
               .then((data) => {
                 notify(`${data.imported} contatos importados. Nenhuma mensagem enviada.`);
@@ -676,6 +713,13 @@ function BatchEditor({
   const [labels, setLabels] = useState<Label[]>([]);
   const [people, setPeople] = useState<Conversation[]>(initialConversation ? [initialConversation] : []);
   const [labelId, setLabelId] = useState('');
+  const [match, setMatch] = useState('AND');
+  const [extraAssets, setExtraAssets] = useState<Asset[]>([]);
+  const [listId, setListId] = useState('');
+  const [lists, setLists] = useState<{ id: string; name: string; count: number }[]>([]);
+  const [steps, setSteps] = useState<
+    { id: string; kind: string; text: string; assetId: string; waitSeconds: number }[]
+  >([{ id: crypto.randomUUID(), kind: 'text', text: '', assetId: '', waitSeconds: 1 }]);
   const [days, setDays] = useState(0);
   const [conversationId, setConversationId] = useState(initialConversation?.id ?? '');
   const [kind, setKind] = useState('text');
@@ -685,6 +729,9 @@ function BatchEditor({
   } | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
+    void request<{ items: typeof lists }>(`/operations/sessions/${sessionId}/lead-lists`)
+      .then((result) => setLists(result.items))
+      .catch((error) => notify(errorMessage(error), true));
     void request<{ items: FlowSummary[] }>('/automation/sessions/' + sessionId + '/flows')
       .then((data) => setFlows(data.items.filter((item) => item.enabled)))
       .catch((error) => notify(errorMessage(error), true));
@@ -698,6 +745,8 @@ function BatchEditor({
   }, [sessionId, schedule, initialConversation, request, notify]);
   const audience = {
     labelId,
+    match,
+    listId,
     inactiveDays: days,
     conversationIds: schedule && conversationId ? [conversationId] : [],
   };
@@ -719,6 +768,15 @@ function BatchEditor({
             audience: { conversationIds: preview.items.map((item) => item.id) },
             delivery: {
               kind,
+              steps:
+                kind === 'sequence'
+                  ? steps.map((step) => ({
+                      kind: step.kind,
+                      waitSeconds: step.waitSeconds,
+                      text: step.kind === 'text' ? step.text : undefined,
+                      assetId: step.kind === 'asset' ? step.assetId : undefined,
+                    }))
+                  : undefined,
               text: data.get('text') || undefined,
               assetId: data.get('assetId') || undefined,
               funnelId: data.get('funnelId') || undefined,
@@ -726,6 +784,8 @@ function BatchEditor({
             },
             minSeconds: Number(data.get('minSeconds') || 15),
             maxSeconds: Number(data.get('maxSeconds') || 45),
+            pauseEvery: Number(data.get('pauseEvery') || 0),
+            pauseSeconds: Number(data.get('pauseSeconds') || 0),
             runAt: data.get('runAt') ? new Date(String(data.get('runAt'))).toISOString() : undefined,
           })
             .then(onSaved)
@@ -765,6 +825,36 @@ function BatchEditor({
         ) : (
           <div className="form-grid">
             <label>
+              Lista importada
+              <select
+                value={listId}
+                onChange={(event) => {
+                  setListId(event.target.value);
+                  setPreview(null);
+                }}
+              >
+                <option value="">Todas as listas e contatos</option>
+                {lists.map((list) => (
+                  <option key={list.id} value={list.id}>
+                    {list.name} · {list.count}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Combinar etiqueta e inatividade
+              <select
+                value={match}
+                onChange={(event) => {
+                  setMatch(event.target.value);
+                  setPreview(null);
+                }}
+              >
+                <option value="AND">E · atender aos dois filtros</option>
+                <option value="OR">OU · atender a qualquer filtro</option>
+              </select>
+            </label>
+            <label>
               Etiqueta
               <select
                 value={labelId}
@@ -800,13 +890,159 @@ function BatchEditor({
           Conteúdo
           <select value={kind} onChange={(event) => setKind(event.target.value)}>
             <option value="text">Mensagem de texto</option>
+            <option value="sequence">Sequência de textos e mídias</option>
             <option value="asset">Recurso da biblioteca</option>
             <option value="funnel">Funil de atendimento</option>
             <option value="flow">Fluxo de autoatendimento</option>
             {schedule && <option value="reminder">Lembrete interno · sem envio ao cliente</option>}
           </select>
         </label>
-        {['text', 'reminder'].includes(kind) ? (
+        {kind === 'sequence' ? (
+          <div className="surface">
+            <p className="muted">
+              As mensagens serão enviadas na ordem abaixo. Use {'{{nome}}'} e {'{{saudacao}}'} nos textos.
+            </p>
+            {steps.map((step, index) => (
+              <section className="surface" key={step.id}>
+                <div className="form-grid">
+                  <label>
+                    Etapa {index + 1}
+                    <select
+                      value={step.kind}
+                      onChange={(event) =>
+                        setSteps((current) =>
+                          current.map((item) =>
+                            item.id === step.id ? { ...item, kind: event.target.value } : item,
+                          ),
+                        )
+                      }
+                    >
+                      <option value="text">Texto</option>
+                      <option value="asset">Áudio, imagem, vídeo ou recurso</option>
+                    </select>
+                  </label>
+                  <label>
+                    Espera antes da etapa (s)
+                    <input
+                      type="number"
+                      min={0}
+                      max={86400}
+                      value={step.waitSeconds}
+                      onChange={(event) =>
+                        setSteps((current) =>
+                          current.map((item) =>
+                            item.id === step.id ? { ...item, waitSeconds: Number(event.target.value) } : item,
+                          ),
+                        )
+                      }
+                    />
+                  </label>
+                </div>
+                {step.kind === 'text' ? (
+                  <label>
+                    Mensagem
+                    <textarea
+                      required
+                      maxLength={10000}
+                      value={step.text}
+                      onChange={(event) =>
+                        setSteps((current) =>
+                          current.map((item) =>
+                            item.id === step.id ? { ...item, text: event.target.value } : item,
+                          ),
+                        )
+                      }
+                    />
+                  </label>
+                ) : (
+                  <label>
+                    Recurso da biblioteca
+                    <select
+                      required
+                      value={step.assetId}
+                      onChange={(event) =>
+                        setSteps((current) =>
+                          current.map((item) =>
+                            item.id === step.id ? { ...item, assetId: event.target.value } : item,
+                          ),
+                        )
+                      }
+                    >
+                      <option value="">Selecione</option>
+                      {[...library.assets, ...extraAssets].map((asset) => (
+                        <option key={asset.id} value={asset.id}>
+                          {asset.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                <div className="modal-actions">
+                  <button
+                    className="button small"
+                    type="button"
+                    disabled={!index}
+                    onClick={() =>
+                      setSteps((current) => {
+                        const next = [...current];
+                        [next[index - 1], next[index]] = [next[index]!, next[index - 1]!];
+                        return next;
+                      })
+                    }
+                  >
+                    Subir
+                  </button>
+                  <button
+                    className="button small"
+                    type="button"
+                    disabled={index === steps.length - 1}
+                    onClick={() =>
+                      setSteps((current) => {
+                        const next = [...current];
+                        [next[index + 1], next[index]] = [next[index]!, next[index + 1]!];
+                        return next;
+                      })
+                    }
+                  >
+                    Descer
+                  </button>
+                  <button
+                    className="button small"
+                    type="button"
+                    disabled={steps.length === 1}
+                    onClick={() => setSteps((current) => current.filter((item) => item.id !== step.id))}
+                  >
+                    Remover
+                  </button>
+                </div>
+              </section>
+            ))}
+            {steps.length < 30 && (
+              <CampaignMedia
+                onCreated={(asset) => {
+                  setExtraAssets((current) => [...current, asset]);
+                  setSteps((current) => [
+                    ...current,
+                    { id: crypto.randomUUID(), kind: 'asset', text: '', assetId: asset.id, waitSeconds: 1 },
+                  ]);
+                }}
+              />
+            )}
+            <button
+              type="button"
+              className="button"
+              disabled={steps.length >= 30}
+              onClick={() =>
+                setSteps((current) => [
+                  ...current,
+                  { id: crypto.randomUUID(), kind: 'text', text: '', assetId: '', waitSeconds: 1 },
+                ])
+              }
+            >
+              Adicionar mensagem
+            </button>
+          </div>
+        ) : ['text', 'reminder'].includes(kind) ? (
           <label>
             {kind === 'reminder' ? 'Texto do lembrete' : 'Mensagem'}
             <textarea
@@ -814,7 +1050,7 @@ function BatchEditor({
               rows={4}
               required
               maxLength={10000}
-              placeholder="Use #nome para personalizar"
+              placeholder="Use {{nome}} e {{saudacao}} para personalizar"
             />
           </label>
         ) : kind === 'asset' ? (
@@ -882,6 +1118,17 @@ function BatchEditor({
               </label>
             </div>
             <p className="muted">Intervalos variáveis não garantem proteção contra bloqueios.</p>
+            <div className="form-grid">
+              <label>
+                Pausa longa a cada quantas mensagens?{' '}
+                <input name="pauseEvery" type="number" min={0} max={5000} defaultValue={0} />
+                <small>0 desativa a pausa por lote.</small>
+              </label>
+              <label>
+                Duração da pausa longa (s)
+                <input name="pauseSeconds" type="number" min={0} max={86400} defaultValue={300} />
+              </label>
+            </div>
           </>
         )}
         <button

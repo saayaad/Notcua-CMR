@@ -1,4 +1,6 @@
 import { MacroEditor } from './MacroEditor';
+import { usePreferences } from '../context/PreferencesContext';
+import { orderItems } from '../context/ordering';
 import { useEffect, useState } from 'react';
 import {
   X,
@@ -66,6 +68,7 @@ export function ToolsPanel({
   onLibraryRefresh: () => Promise<void>;
 }) {
   const { request, notify } = useApi();
+  const { preferences } = usePreferences();
   const [tab, setTab] = useState<Tab>('MESSAGE');
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState('');
@@ -189,7 +192,7 @@ export function ToolsPanel({
             setMenu('');
           }}
         >
-          {tabs.map(({ id, name }) => (
+          {orderItems(tabs, preferences.folderOrder, (item) => item.id).map(({ id, name }) => (
             <option key={id} value={id}>
               {name}
             </option>

@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { usePreferences } from '../context/PreferencesContext';
+import { orderItems } from '../context/ordering';
 import type { Library } from '../types';
 export const kindName: Record<string, string> = {
   MESSAGE: 'Texto',
@@ -16,6 +18,7 @@ export function ResourcePicker({
   onChange: (value: string) => void;
 }) {
   const selected = library.assets.find((asset) => asset.id === value);
+  const { preferences } = usePreferences();
   const [category, setCategory] = useState(selected?.kind ?? 'MESSAGE');
   const [search, setSearch] = useState('');
   const matches = library.assets.filter(
@@ -37,11 +40,13 @@ export function ResourcePicker({
               onChange('');
             }}
           >
-            {Object.entries(kindName).map(([kind, name]) => (
-              <option key={kind} value={kind}>
-                {name}
-              </option>
-            ))}
+            {orderItems(Object.entries(kindName), preferences.folderOrder, (item) => item[0]!).map(
+              ([kind, name]) => (
+                <option key={kind} value={kind}>
+                  {name}
+                </option>
+              ),
+            )}
           </select>
         </label>
         <label>

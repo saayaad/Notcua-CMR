@@ -1,4 +1,5 @@
 import { Fragment, lazy, Suspense, useEffect, useState } from 'react';
+import { menuGroups, orderItems } from './context/ordering';
 import {
   LayoutDashboard,
   CalendarDays,
@@ -175,7 +176,7 @@ export default function App() {
     { id: 'settings' as const, name: 'Configurações', icon: Settings },
   ];
   const session = workspace.session;
-  const connected = session?.status === 'CONNECTED';
+  const connected = workspace.serverConnected && session?.status === 'CONNECTED';
   return (
     <div className="app-shell">
       <aside className="navigation">
@@ -202,25 +203,35 @@ export default function App() {
         </div>
         <p className="nav-group-label">WORKSPACE</p>
         <nav>
-          <small className="nav-section-label">MENSAGERIA</small>
-          {navigation
-            .filter((item) => !preferences.hiddenViews.includes(item.id))
-            .map(({ id, name, icon: Icon }) => (
-              <Fragment key={id}>
-                {id === 'contacts' && <small className="nav-section-label">RELACIONAMENTOS</small>}
-                {id === 'connections' && <small className="nav-section-label">CONTA</small>}
-                <button
-                  title={name}
-                  aria-label={name}
-                  className={view === id ? 'selected' : ''}
-                  onClick={() => setView(id)}
-                >
-                  <Icon size={19} />
-                  <span>{name}</span>
-                  {id === 'inbox' && total > 0 && <b>{total}</b>}
-                </button>
-              </Fragment>
-            ))}
+          {orderItems(menuGroups, preferences.menuGroupOrder, (group) => group.id).map((group) => (
+            <Fragment key={group.id}>
+              <small className="nav-section-label">{group.name.toLocaleUpperCase('pt-BR')}</small>
+              {orderItems(
+                navigation.filter((item) => group.items.some(([id]) => id === item.id)),
+                preferences.menuOrder,
+                (item) => item.id,
+              )
+                .filter(
+                  (item) =>
+                    ['inbox', 'connections', 'settings'].includes(item.id) ||
+                    !preferences.hiddenViews.includes(item.id),
+                )
+                .map(({ id, name, icon: Icon }) => (
+                  <Fragment key={id}>
+                    <button
+                      title={name}
+                      aria-label={name}
+                      className={view === id ? 'selected' : ''}
+                      onClick={() => setView(id)}
+                    >
+                      <Icon size={19} />
+                      <span>{name}</span>
+                      {id === 'inbox' && total > 0 && <b>{total}</b>}
+                    </button>
+                  </Fragment>
+                ))}
+            </Fragment>
+          ))}
         </nav>
         <div className="nav-tip">
           <span>
@@ -283,13 +294,15 @@ export default function App() {
             )}
             <span className={`connection-status ${connected ? 'connected' : ''}`}>
               <i />
-              {connected
-                ? 'WhatsApp conectado'
-                : session?.status === 'AWAITING_QR'
-                  ? 'Aguardando QR'
-                  : session?.status === 'CONNECTING'
-                    ? 'Conectando…'
-                    : 'WhatsApp desconectado'}
+              {!workspace.serverConnected
+                ? 'Servidor desconectado'
+                : connected
+                  ? 'WhatsApp conectado'
+                  : session?.status === 'AWAITING_QR'
+                    ? 'Aguardando QR'
+                    : session?.status === 'CONNECTING'
+                      ? 'Conectando…'
+                      : 'WhatsApp desconectado'}
             </span>
             <label className="session-select">
               <Wifi size={14} />
@@ -439,6 +452,9 @@ export default function App() {
           />
         ) : (
           <WorkspaceSettings
+            sessionId={workspace.sessionId}
+            library={workspace.library}
+            onOrderRefresh={workspace.refresh}
             onImported={async () => {
               await workspace.loadLibrary();
               workspace.refresh();

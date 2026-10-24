@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { MediaAnalysis } from './MediaAnalysis';
 import { Download, Sparkles, Copy, Save, CalendarDays } from 'lucide-react';
 import type { Conversation } from '../types';
 import { useApi, errorMessage } from '../context/ApiContext';
@@ -255,6 +256,7 @@ export function AiAssistant({
   const [suggestion, setSuggestion] = useState('');
   return (
     <Modal title="Assistente de atendimento" onClose={onClose} wide>
+      <MediaAnalysis sessionId={sessionId} conversationId={chat.id} />
       <p className="muted">
         A IA gera uma sugestão para sua revisão. Copie o texto para a conversa quando estiver de acordo.
       </p>

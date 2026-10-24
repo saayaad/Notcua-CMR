@@ -7,9 +7,55 @@
   gap: 9px;
   flex-wrap: wrap;
 }
+.reorder-list {
+  list-style: none;
+  margin: 14px 0;
+  padding: 0;
+}
+.reorder-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  margin: 5px 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.reorder-list li > span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.reorder-list .icon-button {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.reorder-grip {
+  color: var(--muted);
+  cursor: grab;
+  flex-shrink: 0;
+}
+.ordering-visibility {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-bottom: 20px;
+}
+.settings-content > .surface + .surface {
+  margin-top: 16px;
+}
+.settings-content details > summary {
+  cursor: pointer;
+  font-weight: 600;
+  margin-top: 16px;
+}
 .operation-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 16px;
   margin: 20px 0 30px;
 }

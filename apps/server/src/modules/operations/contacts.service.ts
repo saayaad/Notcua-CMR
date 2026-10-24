@@ -6,6 +6,21 @@ import type { PrismaClient } from '@prisma/client';
 import { AppError } from '../../shared/errors.js';
 import { json } from '../backups/validation.js';
 import { retryDatabaseOperation } from '../../database/retry.js';
+import { putRecord } from './records.js';
+export function normalizeLeadPhone(value: string, countryCode = '55', areaCode = '') {
+  const matches = value.match(/\+?\d[\d\s().-]{6,}\d/g) ?? [];
+  if (matches.length !== 1) return '';
+  let phone = matches[0]!.replace(/\D/g, '').replace(/^00/, '');
+  if (countryCode === '55') {
+    if ([8, 9].includes(phone.length)) {
+      if (!/^[1-9]\d$/.test(areaCode)) return '';
+      phone = areaCode + phone;
+    }
+    if ([10, 11].includes(phone.length)) phone = '55' + phone;
+    if (phone.startsWith('55') && !/^55[1-9]\d\d{8,9}$/.test(phone)) return '';
+  }
+  return /^\d{8,15}$/.test(phone) ? phone : '';
+}
 export const leadSchema = z.object({
   name: z.string().trim().min(1).max(100),
   phoneNumber: z.string().regex(/^\d{8,15}$/),
@@ -88,6 +103,10 @@ export class ContactsService {
     const input = z
       .object({
         filename: z.string().max(200),
+        areaCode: z
+          .string()
+          .regex(/^$|^[1-9]\d$/)
+          .default(''),
         base64: z.string().max(15_000_000),
         countryCode: z
           .string()
@@ -137,10 +156,8 @@ export class ContactsService {
               col,
               score: candidate
                 .slice(0, 30)
-                .filter(
-                  (row) =>
-                    /^(\+?[\d ()\-.]{8,22})$/.test(row[col] ?? '') &&
-                    (row[col] ?? '').replace(/\D/g, '').length >= 10,
+                .filter((row) =>
+                  Boolean(normalizeLeadPhone(row[col] ?? '', input.countryCode, input.areaCode)),
                 ).length,
             }))
             .sort((a, b) => b.score - a.score)[0]?.col ?? 0));
@@ -152,12 +169,11 @@ export class ContactsService {
     const rejected: { row: number; reason: string }[] = [];
     const seen = new Set<string>();
     for (const [index, row] of candidate.entries()) {
-      let phone = (row[phoneColumn] ?? '').replace(/\D/g, '');
-      if ([10, 11].includes(phone.length) && input.countryCode === '55') phone = `55${phone}`;
-      if (!/^\d{8,15}$/.test(phone)) {
+      const phone = normalizeLeadPhone(row[phoneColumn] ?? '', input.countryCode, input.areaCode);
+      if (!phone) {
         rejected.push({
           row: index + Math.max(0, headerIndex + 1) + 1,
-          reason: 'Telefone ausente ou inválido.',
+          reason: 'Telefone ausente, ambíguo ou inválido. Para números locais, informe o DDD padrão.',
         });
         continue;
       }
@@ -196,11 +212,13 @@ export class ContactsService {
       .object({
         items: z.array(leadSchema).min(1).max(5000),
         extraTag: z.string().trim().max(80).default(''),
+        listName: z.string().trim().max(100).default(''),
       })
       .parse(raw);
     if (!(await this.db.whatsappSession.findUnique({ where: { id: sessionId } })))
       throw new AppError(404, 'Conexão não encontrada.');
     let imported = 0;
+    const conversationIds: string[] = [];
     for (let offset = 0; offset < input.items.length; offset += 50)
       await this.db.$transaction(
         async (tx) => {
@@ -227,11 +245,12 @@ export class ContactsService {
               create: { jid, contactId: contact.id },
               update: {},
             });
-            await tx.conversation.upsert({
+            const conversation = await tx.conversation.upsert({
               where: { sessionId_contactId: { sessionId, contactId: contact.id } },
               create: { sessionId, contactId: contact.id },
               update: {},
             });
+            conversationIds.push(conversation.id);
             for (const name of new Set([...lead.tags, ...(input.extraTag ? [input.extraTag] : [])])) {
               let label = await tx.label.findFirst({ where: { name, sessionId, isDeleted: false } });
               if (!label)
@@ -255,6 +274,14 @@ export class ContactsService {
         },
         { timeout: 30_000 },
       );
-    return { imported, sends: 0 };
+    const listId = input.listName ? `lead-list:${randomUUID()}` : undefined;
+    if (listId)
+      await putRecord(this.db, listId, 'LEAD_LIST', {
+        name: input.listName,
+        sessionId,
+        conversationIds: [...new Set(conversationIds)],
+        createdAt: new Date().toISOString(),
+      });
+    return { imported, sends: 0, listId };
   }
 }

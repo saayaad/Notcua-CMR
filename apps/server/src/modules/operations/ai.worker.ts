@@ -2,6 +2,9 @@ import type { PrismaClient } from '@prisma/client';
 import type { MessagingService } from '../attendance/messaging.service.js';
 import type { WhatsappService } from '../whatsapp/whatsapp.service.js';
 import { generateSuggestion } from './ai.service.js';
+import { aiControl, requestsHuman, setAiControl } from './ai-control.js';
+import { preprocessMedia } from './ai-media.js';
+import { AppError } from '../../shared/errors.js';
 import { putRecord, record, type AgentSettings } from './records.js';
 export class AiWorker {
   private timer?: ReturnType<typeof setTimeout>;
@@ -66,9 +69,16 @@ export class AiWorker {
           chat.contact.isGroup ||
           chat.status !== 'OPEN' ||
           (chat.contact.metadata as { optOut?: boolean }).optOut ||
-          !message.text
+          message.asViewOnce
         )
           continue;
+        if (requestsHuman(message.text ?? '')) {
+          await setAiControl(this.db, chat.id, true, 'Cliente solicitou atendimento humano.');
+          continue;
+        }
+        const control = await aiControl(this.db, chat.id);
+        if (control.paused || (control.changedAt && new Date(control.changedAt) >= message.sentAt)) continue;
+        if (!message.text && !settings.mediaEnabled) continue;
         try {
           this.whatsapp.connectedSocket(chat.sessionId);
         } catch {
@@ -90,7 +100,27 @@ export class AiWorker {
         await this.db.operationRecord.create({
           data: { id: key, kind: 'AI_RUN', data: { status: 'RUNNING', conversationId: chat.id } },
         });
+        let attemptedSend = false;
         try {
+          if (!message.text) {
+            const analysis = await preprocessMedia(
+              this.db,
+              this.messaging,
+              chat.sessionId,
+              chat.id,
+              message.id,
+            );
+            if (requestsHuman(analysis.text)) {
+              await setAiControl(
+                this.db,
+                chat.id,
+                true,
+                'Cliente solicitou atendimento humano por áudio ou mídia.',
+              );
+              await putRecord(this.db, key, 'AI_RUN', { status: 'HELD', conversationId: chat.id });
+              return;
+            }
+          }
           const suggestion = await generateSuggestion(
             this.db,
             chat.id,
@@ -107,6 +137,7 @@ export class AiWorker {
           });
           if (
             !current?.enabled ||
+            (await aiControl(this.db, chat.id)).paused ||
             currentChat?.status !== 'OPEN' ||
             (currentChat.contact.metadata as { optOut?: boolean }).optOut ||
             last?.id !== message.id ||
@@ -122,17 +153,78 @@ export class AiWorker {
             });
             return;
           }
-          await this.messaging.send(chat.sessionId, chat.id, {
-            kind: 'text',
-            text: suggestion.text,
-            requestId: key,
-          });
+          attemptedSend = true;
+          await this.messaging.send(
+            chat.sessionId,
+            chat.id,
+            {
+              kind: 'text',
+              text: suggestion.text,
+              requestId: key,
+            },
+            async () => {
+              const finalControl = await aiControl(this.db, chat.id);
+              const finalSettings = await record<AgentSettings | null>(this.db, 'integration:ai', null);
+              const changed = await this.db.chatMessage.findFirst({
+                where: { conversationId: chat.id, id: { not: `out:${key}` } },
+                orderBy: [{ sentAt: 'desc' }, { id: 'desc' }],
+              });
+              if (
+                finalControl.paused ||
+                finalControl.changedAt !== control.changedAt ||
+                !finalSettings?.enabled ||
+                changed?.id !== message.id
+              )
+                throw new AppError(409, 'IA pausada: a conversa mudou antes do envio.');
+            },
+          );
           await putRecord(this.db, key, 'AI_RUN', {
             status: 'COMPLETED',
             conversationId: chat.id,
             usage: suggestion.usage ?? null,
           });
         } catch (error) {
+          const failureControl = await aiControl(this.db, chat.id);
+          if (!failureControl.paused && failureControl.changedAt === control.changedAt) {
+            if (!attemptedSend && settings.fallbackText?.trim()) {
+              await this.messaging
+                .send(
+                  chat.sessionId,
+                  chat.id,
+                  { kind: 'text', text: settings.fallbackText, requestId: `${key}:fallback` },
+                  async () => {
+                    const now = await aiControl(this.db, chat.id);
+                    const current = await record<AgentSettings | null>(this.db, 'integration:ai', null);
+                    const latest = await this.db.chatMessage.findFirst({
+                      where: { conversationId: chat.id, id: { not: `out:${key}:fallback` } },
+                      orderBy: [{ sentAt: 'desc' }, { id: 'desc' }],
+                    });
+                    if (
+                      now.paused ||
+                      now.changedAt !== control.changedAt ||
+                      !current?.enabled ||
+                      latest?.id !== message.id ||
+                      (await active())
+                    )
+                      throw new AppError(409, 'Contingência suspensa: atendimento alterado.');
+                  },
+                )
+                .catch(() => undefined);
+            }
+            await setAiControl(
+              this.db,
+              chat.id,
+              true,
+              'A IA encontrou um limite ou falha; atendimento humano necessário.',
+            );
+            await putRecord(this.db, `notice:${key}`, 'NOTICE', {
+              title: 'Atendimento humano necessário',
+              text: settings.fallbackText || 'A IA não conseguiu responder. Confira a conversa.',
+              conversationId: chat.id,
+              read: false,
+              createdAt: new Date().toISOString(),
+            });
+          }
           await putRecord(this.db, key, 'AI_RUN', {
             status: 'FAILED',
             conversationId: chat.id,

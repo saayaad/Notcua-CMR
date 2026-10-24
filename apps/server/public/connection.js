@@ -9,6 +9,7 @@ let busy = false;
 let refreshTimer;
 let selectionVersion = 0;
 let feedbackSource = 'action';
+let serverOnline = false;
 
 function feedback(message, isError = false, source = 'action') {
   feedbackSource = source;
@@ -33,7 +34,7 @@ async function action(task) {
   busy = true;
   document.querySelectorAll('button').forEach((button) => { button.disabled = true; });
   try { feedback(''); await task(); }
-  catch (error) { feedback(error.message || 'Não foi possível concluir a operação.', true); }
+  catch (error) { feedback(error instanceof TypeError ? 'Servidor indisponível. Inicie o Noctua e aguarde a reconexão.' : error.message || 'Não foi possível concluir a operação.', true); }
   finally { busy = false; document.querySelectorAll('button').forEach((button) => { button.disabled = false; }); render(); }
 }
 
@@ -49,6 +50,13 @@ function render() {
   element('connection').hidden = !session;
   element('automation').hidden = !session;
   if (!session) return;
+  if (!serverOnline) {
+    element('status').textContent = 'Servidor desconectado'; element('status').classList.remove('connected');
+    element('connection-message').textContent = 'A conexão com o servidor foi interrompida. O painel tentará reconectar automaticamente.';
+    element('qr').hidden = true; element('qr').removeAttribute('src'); element('qr-empty').hidden = false; element('qr-empty').textContent = 'Aguardando o servidor…';
+    for (const id of ['connect','disconnect','resync']) element(id).disabled = true;
+    return;
+  }
   element('status').textContent = statusNames[session.status] || session.status;
   element('status').classList.toggle('connected', session.status === 'CONNECTED');
   const connected = session.status === 'CONNECTED';
@@ -95,8 +103,10 @@ async function loadDetails(loadSettings = false) {
 function realtime() {
   if (typeof io !== 'function') { feedback('O serviço em tempo real não carregou. Reinicie o servidor e atualize a página.', true); return; }
   if (socket) socket.disconnect();
-  socket = io({ auth: { token: element('token').value.trim() }, reconnectionAttempts: 5 });
-  socket.on('connect_error', () => feedback('Não foi possível abrir a atualização em tempo real. Confira o servidor e o token, se configurado.', true));
+  socket = io({ auth: { token: element('token').value.trim() }, reconnection: true, reconnectionDelay: 1000, reconnectionDelayMax: 10000 });
+  socket.on('connect', () => { serverOnline = true; feedback(''); render(); void api('/sessions').then((data) => { sessions = data.items; if (!sessions.some((entry) => entry.id === selected)) selected = sessions[0]?.id || ''; drawOptions(); render(); return loadDetails(true); }).catch((error) => feedback(error.message, true)); });
+  socket.on('disconnect', () => { serverOnline = false; render(); feedback('Servidor desconectado. A reconexão será automática.', true); });
+  socket.on('connect_error', () => { serverOnline = false; render(); feedback('Servidor indisponível ou acesso não autorizado. Confira o servidor e o token, se configurado.', true); });
   socket.on('whatsapp:state', (state) => {
     const index = sessions.findIndex((entry) => entry.id === state.id);
     if (index < 0) { sessions.push(state); drawOptions(); }
@@ -165,4 +175,5 @@ element('create-label').addEventListener('submit', (event) => {
   });
 });
 setInterval(render, 1000);
+realtime();
 void action(load);

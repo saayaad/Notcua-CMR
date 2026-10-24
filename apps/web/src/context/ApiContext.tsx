@@ -98,5 +98,7 @@ export function useApi() {
   return api;
 }
 export function errorMessage(error: unknown) {
+  if (error instanceof TypeError && /fetch|network|load failed/i.test(error.message)) return 'Não foi possível acessar o servidor. Inicie o Noctua e aguarde a reconexão.';
+  if (error instanceof SyntaxError) return 'O servidor não respondeu corretamente. Aguarde a inicialização e tente novamente.';
   return error instanceof Error ? error.message : 'Não foi possível concluir a operação.';
 }

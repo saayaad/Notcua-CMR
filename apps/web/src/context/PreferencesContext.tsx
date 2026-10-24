@@ -16,6 +16,10 @@ export interface Preferences {
   replacements: string;
   desktopNotifications: boolean;
   hiddenViews: string[];
+  menuGroupOrder: string[];
+  menuOrder: string[];
+  folderOrder: string[];
+  resourceOrder: Record<string, string[]>;
 }
 const defaults: Preferences = {
   waitingTimer: true,
@@ -34,6 +38,10 @@ const defaults: Preferences = {
   replacements: '',
   desktopNotifications: false,
   hiddenViews: [],
+  menuGroupOrder: [],
+  menuOrder: [],
+  folderOrder: [],
+  resourceOrder: {},
 };
 const Context = createContext<{
   preferences: Preferences;

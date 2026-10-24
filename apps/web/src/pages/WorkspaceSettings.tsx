@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react';
+import { AiSettings } from '../components/AiSettings';
+import { OrderingSettings } from '../components/OrderingSettings';
+import type { Library } from '../types';
 import { LogOut, Plus, Save, Bell, ShieldCheck } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { firebaseAuth } from '../auth/firebase';
@@ -17,7 +20,17 @@ const menuItems = [
   ['flows', 'Autoatendimento'],
   ['crm', 'CRM'],
 ] as const;
-export function WorkspaceSettings({ onImported }: { onImported: () => Promise<void> }) {
+export function WorkspaceSettings({
+  onImported,
+  sessionId,
+  library,
+  onOrderRefresh,
+}: {
+  onImported: () => Promise<void>;
+  sessionId: string;
+  library: Library;
+  onOrderRefresh: () => void;
+}) {
   const { request, notify } = useApi();
   const { preferences, updatePreferences } = usePreferences();
   const [tab, setTab] = useState('general');
@@ -30,7 +43,6 @@ export function WorkspaceSettings({ onImported }: { onImported: () => Promise<vo
     { id: string; data: { title: string; text: string; createdAt: string; read: boolean } }[]
   >([]);
   const [me, setMe] = useState<{ email: string; role: string; profile: Record<string, string> } | null>(null);
-  const [configured, setConfigured] = useState(false);
   useEffect(() => {
     void request<typeof me>('/operations/me')
       .then(setMe)
@@ -38,17 +50,11 @@ export function WorkspaceSettings({ onImported }: { onImported: () => Promise<vo
   }, [request, notify]);
   useEffect(() => {
     setData({});
-    let path =
-      tab === 'business' || tab === 'departments'
-        ? `/operations/settings/${tab}`
-        : tab === 'integrations'
-          ? '/operations/ai'
-          : '';
+    const path = tab === 'business' || tab === 'departments' ? `/operations/settings/${tab}` : '';
     if (path)
       void request<Record<string, unknown>>(path)
         .then((result) => {
           setData(result);
-          setConfigured(Boolean(result.configured));
         })
         .catch((error) => notify(errorMessage(error), true));
     if (tab === 'team')
@@ -205,26 +211,7 @@ export function WorkspaceSettings({ onImported }: { onImported: () => Promise<vo
             </div>
           )}
           {tab === 'menu' && (
-            <div className="surface">
-              <h2>Ferramentas visíveis no menu</h2>
-              <p>Personalize seus atalhos. Configurações e Conversas continuam acessíveis.</p>
-              {menuItems.map(([id, title]) => (
-                <label className="preference-row" key={id}>
-                  {title}
-                  <input
-                    type="checkbox"
-                    checked={!preferences.hiddenViews.includes(id)}
-                    onChange={(event) =>
-                      updatePreferences({
-                        hiddenViews: event.target.checked
-                          ? preferences.hiddenViews.filter((view) => view !== id)
-                          : [...preferences.hiddenViews, id],
-                      })
-                    }
-                  />
-                </label>
-              ))}
-            </div>
+            <OrderingSettings sessionId={sessionId} library={library} onRefresh={onOrderRefresh} />
           )}
           {tab === 'chat' && (
             <div className="surface">
@@ -525,111 +512,7 @@ export function WorkspaceSettings({ onImported }: { onImported: () => Promise<vo
               </p>
             </div>
           )}
-          {tab === 'integrations' && (
-            <div className="surface">
-              <h2>Assistente de IA</h2>
-              <p>
-                {configured
-                  ? 'Credencial salva de forma cifrada no servidor.'
-                  : 'A integração aguarda a chave do provedor.'}{' '}
-                As sugestões são revisadas pelo atendente antes de enviar.
-              </p>
-              <form
-                key={String(configured) + String(data.model ?? '')}
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  const form = new FormData(event.currentTarget);
-                  void save('/operations/ai', {
-                    model: form.get('model'),
-                    instructions: form.get('instructions'),
-                    knowledge: form.get('knowledge'),
-                    style: form.get('style'),
-                    apiKey: form.get('apiKey') || undefined,
-                    enabled: form.has('enabled'),
-                    dailyLimit: Number(form.get('dailyLimit') || 100),
-                  }).then((saved) => {
-                    if (!saved) return;
-                    void request<Record<string, unknown>>('/operations/ai').then((result) => {
-                      setData(result);
-                      setConfigured(Boolean(result.configured));
-                    });
-                  });
-                }}
-              >
-                <label>
-                  Chave OpenAI
-                  <input
-                    name="apiKey"
-                    type="password"
-                    autoComplete="new-password"
-                    placeholder={
-                      configured ? 'Preencha somente para substituir' : 'Configure quando estiver pronto'
-                    }
-                  />
-                </label>
-                <label>
-                  Modelo
-                  <input
-                    name="model"
-                    maxLength={100}
-                    required
-                    defaultValue={String(data.model ?? '')}
-                    placeholder="Nome do modelo disponível na sua conta"
-                  />
-                </label>
-                <label className="checkbox">
-                  <input
-                    name="enabled"
-                    type="checkbox"
-                    defaultChecked={Boolean(data.enabled)}
-                    disabled={!configured}
-                  />
-                  Ativar respostas automáticas de IA para novas mensagens individuais sem fluxo ativo
-                </label>
-                <label>
-                  Limite diário de respostas automáticas
-                  <input
-                    name="dailyLimit"
-                    type="number"
-                    min={1}
-                    max={5000}
-                    defaultValue={Number(data.dailyLimit ?? 100)}
-                  />
-                </label>
-                <label>
-                  Regras de atendimento
-                  <textarea
-                    name="instructions"
-                    rows={5}
-                    maxLength={12000}
-                    defaultValue={String(data.instructions ?? '')}
-                    placeholder="O que pode responder, quando perguntar ao atendente e o que não deve inventar."
-                  />
-                </label>
-                <label>
-                  Tom de voz e roteiro de vendas
-                  <textarea name="style" rows={4} maxLength={6000} defaultValue={String(data.style ?? '')} />
-                </label>
-                <label>
-                  Base de conhecimento e exemplos aprovados
-                  <textarea
-                    name="knowledge"
-                    rows={8}
-                    maxLength={100000}
-                    defaultValue={String(data.knowledge ?? '')}
-                  />
-                </label>
-                <button className="button primary" disabled={busy}>
-                  {busy ? <Spinner /> : <Save size={15} />}Salvar integração
-                </button>
-              </form>
-              <p>
-                Os históricos incluídos como exemplos ficam nesta base. Gerar uma sugestão envia ao provedor a
-                base e as últimas mensagens da conversa selecionada. Arquivos de áudio e vídeo não são
-                transcritos automaticamente.
-              </p>
-            </div>
-          )}
+          {tab === 'integrations' && <AiSettings />}
           {tab === 'backup' && (
             <>
               <SystemBackups />

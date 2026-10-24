@@ -1,3 +1,4 @@
+import { requestsHuman, setAiControl } from '../operations/ai-control.js';
 import {
   BufferJSON,
   getContentType,
@@ -161,6 +162,17 @@ export class SyncService {
           const inbound = !entry.key.fromMe;
           const sentAt = timestamp(entry.messageTimestamp) ?? new Date();
           const text = content?.conversation ?? content?.extendedTextMessage?.text ?? null;
+          if (
+            live &&
+            Math.abs(Date.now() - sentAt.getTime()) <= 300_000 &&
+            (!inbound || requestsHuman(text ?? ''))
+          )
+            await setAiControl(
+              tx,
+              chat.id,
+              true,
+              inbound ? 'Cliente solicitou atendimento humano.' : 'Mensagem manual enviada pelo WhatsApp.',
+            );
           const media = content?.imageMessage ?? content?.videoMessage ?? content?.documentMessage;
           const createdMessage = await tx.chatMessage.create({
             data: {

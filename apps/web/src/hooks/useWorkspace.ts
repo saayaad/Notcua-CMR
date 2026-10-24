@@ -1,5 +1,6 @@
 import { API_BASE } from '../config';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { orderedLibrary } from '../context/ordering';
 import { io } from 'socket.io-client';
 import { useApi, errorMessage } from '../context/ApiContext';
 import type { Library, Session } from '../types';
@@ -13,6 +14,11 @@ export function useWorkspace() {
   const [revision, setRevision] = useState(0);
   const [library, setLibrary] = useState<Library>({ assets: [], funnels: [], macros: [], pixKeys: [] });
   const [loading, setLoading] = useState(true);
+  const [serverConnected, setServerConnected] = useState(false);
+  const sortedLibrary = useMemo(
+    () => orderedLibrary(library, preferences.resourceOrder),
+    [library, preferences.resourceOrder],
+  );
   const refresh = useCallback(() => setRevision((n) => n + 1), []);
   const loadLibrary = useCallback(async () => {
     setLibrary(await request<Library>('/attendance/library'));
@@ -42,7 +48,22 @@ export function useWorkspace() {
   }, [loadSessions, loadLibrary, notify]);
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout> | undefined;
-    const socket = io(API_BASE || undefined, { auth: { token }, reconnectionAttempts: 8 });
+    let warned = false;
+    const socket = io(API_BASE || undefined, {
+      auth: { token },
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 10000,
+    });
+    socket.on('connect', () => {
+      setServerConnected(true);
+      if (warned) notify('Conexão com o servidor restabelecida.');
+      warned = false;
+      void Promise.all([loadSessions(), loadLibrary()])
+        .then(refresh)
+        .catch((error) => notify(errorMessage(error), true));
+    });
+    socket.on('disconnect', () => setServerConnected(false));
     socket.on('whatsapp:state', (state: Session) =>
       setSessions((current) =>
         current.some((item) => item.id === state.id)
@@ -68,14 +89,20 @@ export function useWorkspace() {
     socket.on('whatsapp:error', (event: { message: string; sessionId: string }) => {
       if (event.sessionId === sessionId) notify(event.message, true);
     });
-    socket.on('connect_error', () =>
-      notify('Atualização em tempo real indisponível. Confira o servidor e o token de acesso.', true),
-    );
+    socket.on('connect_error', () => {
+      setServerConnected(false);
+      if (!warned)
+        notify(
+          'Servidor desconectado. Inicie o Noctua no computador do servidor. A reconexão será automática.',
+          true,
+        );
+      warned = true;
+    });
     return () => {
       if (timeout) clearTimeout(timeout);
       socket.disconnect();
     };
-  }, [token, sessionId, refresh, notify, preferences.desktopNotifications]);
+  }, [token, sessionId, refresh, notify, preferences.desktopNotifications, loadSessions, loadLibrary]);
   return {
     sessions,
     sessionId,
@@ -83,7 +110,8 @@ export function useWorkspace() {
     session: sessions.find((s) => s.id === sessionId),
     revision,
     refresh,
-    library,
+    library: sortedLibrary,
+    serverConnected,
     loadLibrary,
     loadSessions,
     loading,

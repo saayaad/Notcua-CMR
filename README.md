@@ -4,6 +4,8 @@ Servidor local de atendimento, CRM e automação WhatsApp. Contém a arquitetura
 
 **Para abrir a central:** execute `npm.cmd run dev` e acesse [http://127.0.0.1:5173/atendimento](http://127.0.0.1:5173/atendimento). Veja o [guia da Etapa 3](docs/atendimento.md) e o [guia do CRM da Etapa 4](docs/crm.md).
 
+No Windows, você também pode abrir `Iniciar Noctua.cmd` na pasta do projeto. Ele reconhece os serviços já ligados e inicia os que faltarem. Mantenha a janela aberta durante o uso. A ordenação do menu, das pastas e das etiquetas fica em Configurações → Menu e atalhos. Veja as novas funções no [guia da operação](docs/operacao.md) e o [escopo consolidado](docs/escopo-ampliacao.md).
+
 **Para conectar seu WhatsApp:** abra [http://127.0.0.1:3333/whatsapp](http://127.0.0.1:3333/whatsapp) com o servidor aberto e siga o [passo a passo da Etapa 2](docs/whatsapp.md). Na atualização, pare o servidor, execute `npm.cmd install`, `npm.cmd run db:deploy` e `npm.cmd run db:generate`; depois inicie com `npm.cmd run dev`.
 
 ## Iniciar no Windows (PowerShell)
