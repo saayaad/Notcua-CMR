@@ -1,0 +1,18 @@
+# Arquivos locais que não fazem parte do painel publicado
+.npm-cache
+node_modules
+**/node_modules
+backups
+apps/server/backups
+apps/server/.secrets
+apps/server/.env*
+.env
+.env.*
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.log
+*.log.*
+apps/web/dist
+apps/server/dist
