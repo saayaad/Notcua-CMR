@@ -6,6 +6,7 @@ const schema = z.object({
   HOST: z.string().default('127.0.0.1'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3333),
   CLIENT_ORIGIN: z.string().url().default('http://localhost:5173'),
+  CLIENT_ORIGINS: z.string().default(''),
   DATABASE_URL: z.string().min(1).default('file:./noctua.db'),
   API_TOKEN: z.string().default(''),
   AUTH_MODE: z.enum(['local', 'firebase']).default('local'),

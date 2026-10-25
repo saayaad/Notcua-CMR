@@ -1,3 +1,4 @@
+import { useHudPlacement, HudMoveHandle } from './HudPlacement';
 import { FlowLaunch, FlowIndicator } from './FlowActions';
 import { AiAssistant } from './ContactWorkspace';
 import { AiControl } from './AiControl';
@@ -19,12 +20,24 @@ import {
   Download,
   Eye,
   FileText,
-  ChevronDown,
+  SlidersHorizontal,
+  Maximize2,
+  Minimize2,
+  WandSparkles,
+  LockKeyhole,
 } from 'lucide-react';
 import { useApi, errorMessage } from '../context/ApiContext';
 import type { Conversation, Message, Paged } from '../types';
-import { Avatar, Empty, FormattedText, Spinner, phone, time } from './ui';
+import { Avatar, Empty, FormattedText, Modal, Spinner, phone, time } from './ui';
 import { Composer } from './Composer';
+import { AttendanceFunctions } from './AttendanceFunctions';
+import { AttendanceShortcuts } from './AttendanceShortcuts';
+import { NextAction } from './NextAction';
+import { SequenceMonitor } from './SequenceMonitor';
+import { BookOpenCheck } from 'lucide-react';
+import { usePreferences } from '../context/PreferencesContext';
+import { completeOrder } from '../context/hud';
+import { Ellipsis } from 'lucide-react';
 
 function MessageMedia({ message, base }: { message: Message; base: string }) {
   const { blob, notify } = useApi();
@@ -100,6 +113,12 @@ export function ChatPane({
   onDetails,
   onQuick,
   onRefresh,
+  toolsVisible,
+  toolsCompact,
+  onToggleTools,
+  onToggleToolSize,
+  onCustomize,
+  onToolRequest,
 }: {
   library: Library;
   chat: Conversation | null;
@@ -110,8 +129,16 @@ export function ChatPane({
   onDetails: () => void;
   onQuick: () => void;
   onRefresh: () => void;
+  toolsVisible: boolean;
+  toolsCompact: boolean;
+  onToggleTools: () => void;
+  onToggleToolSize: () => void;
+  onCustomize: () => void;
+  onToolRequest: (section: string, kind?: string, question?: string) => void;
 }) {
   const { request, notify } = useApi();
+  const { preferences } = usePreferences();
+  const placement = useHudPlacement('chat');
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -119,6 +146,11 @@ export function ChatPane({
   const [flowOpen, setFlowOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [summary, setSummary] = useState('');
+  const [summaryBusy, setSummaryBusy] = useState(false);
+  const [transcriptions, setTranscriptions] = useState<Record<string, string>>({});
+  const [transcribing, setTranscribing] = useState('');
   const messageArea = useRef<HTMLDivElement>(null);
   const previousCount = useRef(0);
   const base = `/attendance/sessions/${sessionId}/conversations/${chat?.id ?? ''}`;
@@ -200,9 +232,81 @@ export function ChatPane({
       notify(errorMessage(error), true);
     }
   };
+  const addInternalNote = async (text: string) => {
+    const note = await request<Message>(`${base}/internal-notes`, 'POST', { text });
+    setMessages((current) =>
+      [...current, note].sort((a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()),
+    );
+    setTotal((current) => current + 1);
+  };
+  const transcribe = async (messageId: string) => {
+    setTranscribing(messageId);
+    try {
+      const result = await request<{ result?: { text?: string }; text?: string }>(
+        `/operations/sessions/${sessionId}/contacts/${chat.id}/media-analysis`,
+        'POST',
+        { messageId, consent: true },
+      );
+      const text = result.result?.text ?? result.text ?? '';
+      setTranscriptions((current) => ({ ...current, [messageId]: text }));
+    } catch (error) {
+      notify(errorMessage(error), true);
+    } finally {
+      setTranscribing('');
+    }
+  };
+  const summarize = async () => {
+    setSummaryBusy(true);
+    try {
+      const result = await request<{ text: string }>(
+        `/operations/sessions/${sessionId}/contacts/${chat.id}/ai`,
+        'POST',
+        {
+          consent: true,
+          task: 'Crie um resumo executivo em exatamente três tópicos: Objetivo principal do cliente; Dúvidas ou objeções apresentadas; Próximo passo recomendado. Seja conciso, use somente informações do histórico e identifique claramente cada tópico.',
+        },
+      );
+      setSummary(result.text);
+    } catch (error) {
+      notify(errorMessage(error), true);
+    } finally {
+      setSummaryBusy(false);
+    }
+  };
+  const actions = [
+    {
+      id: 'summary',
+      name: 'Resumir conversa',
+      icon: WandSparkles,
+      run: () => {
+        setSummary('');
+        setSummaryOpen(true);
+      },
+    },
+    { id: 'schedule', name: 'Agendar mensagem', icon: CalendarDays, run: () => setScheduleOpen(true) },
+    {
+      id: 'archive',
+      name: chat.status === 'OPEN' ? 'Arquivar conversa' : 'Reabrir conversa',
+      icon: chat.status === 'OPEN' ? Archive : ArchiveRestore,
+      run: () => void close(),
+    },
+    { id: 'flow', name: 'Iniciar fluxo', icon: Workflow, run: () => setFlowOpen(true) },
+    { id: 'ai', name: 'Assistente de IA', icon: Sparkles, run: () => setAiOpen(true) },
+  ];
+  const orderedActions = completeOrder(
+    preferences.hudHeaderOrder,
+    actions.map((item) => item.id),
+  ).map((id) => actions.find((item) => item.id === id)!);
+  const shortcut = (id: string) => {
+    if (id === 'client') onDetails();
+    else if (id === 'schedule') setScheduleOpen(true);
+    else if (['faq', 'notes', 'next', 'transfers'].includes(id)) onToolRequest(id);
+    else onToolRequest('responses', id);
+  };
   return (
-    <main className="chat-pane">
+    <main className="chat-pane" {...placement.attributes} style={placement.style}>
       <header className="chat-header">
+        <HudMoveHandle placement={placement} name="chat" />
         <button className="icon-button mobile-back" onClick={onBack} aria-label="Voltar à lista">
           <ArrowLeft size={20} />
         </button>
@@ -219,118 +323,207 @@ export function ChatPane({
               <i className={connected ? 'online-dot' : 'offline-dot'} />
               {phone(chat.contact.phoneNumber)}
             </span>
-            <small>Clique no nome para ver informações</small>
           </span>
         </button>
         <div className="header-actions">
-          <button
-            className="icon-button"
-            aria-label="Iniciar fluxo"
-            title="Iniciar fluxo"
-            onClick={() => setFlowOpen(true)}
+          {orderedActions
+            .filter((action) => !preferences.hudHiddenActions.includes(action.id))
+            .slice(0, 3)
+            .map(({ id, name, icon: Icon, run }) => (
+              <button
+                key={id}
+                className="icon-button chat-main-action"
+                aria-label={name}
+                title={name}
+                onClick={run}
+              >
+                <Icon size={17} />
+              </button>
+            ))}
+          <details
+            className="chat-more-actions"
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') event.currentTarget.removeAttribute('open');
+            }}
           >
-            <Workflow size={18} />
-          </button>
+            <summary className="icon-button" aria-label="Mais ações do atendimento" title="Mais ações">
+              <Ellipsis size={19} />
+            </summary>
+            <div className="chat-action-menu">
+              {orderedActions.map(({ id, name, icon: Icon, run }) => (
+                <button
+                  key={id}
+                  onClick={(event) => {
+                    event.currentTarget.closest('details')?.removeAttribute('open');
+                    run();
+                  }}
+                >
+                  <Icon size={16} />
+                  {name}
+                </button>
+              ))}
+              <button onClick={onToggleTools}>
+                <Wrench size={16} />
+                {toolsVisible ? 'Ocultar mensagens fixadas' : 'Mostrar mensagens fixadas'}
+              </button>
+              <button onClick={onToggleToolSize}>
+                {toolsCompact ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
+                {toolsCompact ? 'Ampliar ferramentas' : 'Compactar ferramentas'}
+              </button>
+              <button onClick={onCustomize}>
+                <SlidersHorizontal size={16} />
+                Personalizar Atendimento
+              </button>
+            </div>
+          </details>
           <button
-            className="icon-button"
-            aria-label="Assistente de IA"
-            title="Assistente de IA"
-            onClick={() => setAiOpen(true)}
+            className="icon-button chat-customize-button"
+            aria-label="Personalizar Atendimento com prévia"
+            title="Personalizar Atendimento"
+            onClick={onCustomize}
           >
-            <Sparkles size={18} />
-          </button>
-          <button
-            className="icon-button"
-            aria-label="Agendar mensagem"
-            title="Agendar mensagem"
-            onClick={() => setScheduleOpen(true)}
-          >
-            <CalendarDays size={18} />
-          </button>
-          <button
-            className="icon-button"
-            onClick={() => void close()}
-            title={chat.status === 'OPEN' ? 'Encerrar atendimento' : 'Reabrir atendimento'}
-            aria-label={chat.status === 'OPEN' ? 'Encerrar atendimento' : 'Reabrir atendimento'}
-          >
-            {chat.status === 'OPEN' ? <Archive size={19} /> : <ArchiveRestore size={19} />}
+            <SlidersHorizontal size={17} />
           </button>
         </div>
       </header>
-      <div ref={messageArea} className="message-area" role="log" aria-label="Mensagens da conversa">
-        <div className="history-notice">Histórico sincronizado · horários locais</div>
-        {messages.length < total && (
-          <button className="load-history" disabled={loading} onClick={() => void loadOlder()}>
-            {loading ? 'Carregando…' : 'Carregar mensagens anteriores'}
-          </button>
-        )}
-        {loading && !messages.length && (
-          <div className="list-placeholder">
-            <Spinner />
-            Carregando histórico…
-          </div>
-        )}
-        {!loading && !messages.length && (
-          <div className="history-empty">Envie a primeira mensagem desta conversa.</div>
-        )}
-        {messages.map((message, index) => {
-          const date = new Date(message.sentAt).toLocaleDateString('pt-BR', {
-            day: '2-digit',
-            month: 'long',
-          });
-          const previous = messages[index - 1];
-          const dateChanged =
-            !previous || new Date(previous.sentAt).toDateString() !== new Date(message.sentAt).toDateString();
-          const media =
-            !['text', 'conversation', 'extendedTextMessage'].includes(message.type) && !message.text;
-          return (
-            <div key={message.id}>
-              {dateChanged && (
-                <div className="date-divider">
-                  <span>{date}</span>
-                </div>
-              )}
-              <div className={`message-row ${message.direction === 'OUTBOUND' ? 'outbound' : ''}`}>
-                <div className={`message-bubble ${message.status === 'FAILED' ? 'message-failed' : ''}`}>
-                  {media && <MessageMedia message={message} base={base} />}
-                  {(message.text || message.caption) && (
-                    <div className="message-text">
-                      <FormattedText text={message.text || message.caption || ''} />
-                    </div>
-                  )}
-                  <div className="message-meta">
-                    <time>{time(message.sentAt)}</time>
-                    {message.direction === 'OUTBOUND' &&
-                      (message.status === 'PENDING' ? (
-                        <Clock3 size={12} />
-                      ) : message.status === 'FAILED' ? (
-                        <AlertCircle size={13} />
-                      ) : message.status === 'SENT' ? (
-                        <Check size={15} />
-                      ) : (
-                        <CheckCheck size={15} className={message.status === 'READ' ? 'read-status' : ''} />
-                      ))}
+      <NextAction
+        sessionId={sessionId}
+        conversationId={chat.id}
+        revision={revision}
+        compact
+        onEdit={() => onToolRequest('next')}
+      />
+      <SequenceMonitor base={base} revision={revision} onRefresh={onRefresh} />
+      <div
+        className={`attendance-chat-body shortcuts-position-${preferences.attendanceShortcutPosition} functions-position-${preferences.attendanceFunctionsPosition}`}
+      >
+        <AttendanceFunctions onAction={(section) => onToolRequest(section)} />
+        <AttendanceShortcuts onAction={shortcut} />
+        <div ref={messageArea} className="message-area" role="log" aria-label="Mensagens da conversa">
+          <div className="history-notice">Histórico sincronizado · horários locais</div>
+          {messages.length < total && (
+            <button className="load-history" disabled={loading} onClick={() => void loadOlder()}>
+              {loading ? 'Carregando…' : 'Carregar mensagens anteriores'}
+            </button>
+          )}
+          {loading && !messages.length && (
+            <div className="list-placeholder">
+              <Spinner />
+              Carregando histórico…
+            </div>
+          )}
+          {!loading && !messages.length && (
+            <div className="history-empty">Envie a primeira mensagem desta conversa.</div>
+          )}
+          {messages.map((message, index) => {
+            const date = new Date(message.sentAt).toLocaleDateString('pt-BR', {
+              day: '2-digit',
+              month: 'long',
+            });
+            const previous = messages[index - 1];
+            const dateChanged =
+              !previous ||
+              new Date(previous.sentAt).toDateString() !== new Date(message.sentAt).toDateString();
+            const media =
+              !['text', 'conversation', 'extendedTextMessage'].includes(message.type) && !message.text;
+            return (
+              <div key={message.id}>
+                {dateChanged && (
+                  <div className="date-divider">
+                    <span>{date}</span>
                   </div>
-                  {message.error && <small className="message-error">{message.error}</small>}
+                )}
+                <div className={`message-row ${message.direction === 'OUTBOUND' ? 'outbound' : ''}`}>
+                  <div
+                    className={`message-bubble ${message.status === 'FAILED' ? 'message-failed' : ''} ${message.internal ? 'internal-note-bubble' : ''}`}
+                  >
+                    {message.internal && (
+                      <div className="internal-note-label">
+                        <LockKeyhole size={13} /> Nota interna · {message.author || 'Atendente'}
+                      </div>
+                    )}
+                    {media && <MessageMedia message={message} base={base} />}
+                    {(message.text || message.caption) && (
+                      <div className="message-text">
+                        <FormattedText text={message.text || message.caption || ''} />
+                      </div>
+                    )}
+                    {message.direction === 'INBOUND' && message.text && (
+                      <button
+                        className="message-save-question"
+                        title="Cadastrar resposta padrão para esta pergunta"
+                        aria-label="Cadastrar resposta padrão a partir desta mensagem"
+                        onClick={() => onToolRequest('faq', undefined, message.text!)}
+                      >
+                        <BookOpenCheck size={14} />
+                      </button>
+                    )}
+                    {message.direction === 'INBOUND' &&
+                      /audio/i.test(message.type) &&
+                      !message.asViewOnce && (
+                        <div className="transcription-actions">
+                          <button
+                            className="text-button"
+                            disabled={transcribing === message.id}
+                            onClick={() => void transcribe(message.id)}
+                          >
+                            {transcribing === message.id ? <Spinner /> : <FileText size={14} />}{' '}
+                            {transcriptions[message.id] ? 'Atualizar transcrição' : 'Ler transcrição'}
+                          </button>
+                        </div>
+                      )}
+                    {transcriptions[message.id] && (
+                      <div className="transcription-text">
+                        <strong>Transcrição</strong>
+                        <p>{transcriptions[message.id]}</p>
+                      </div>
+                    )}
+                    {message.deletedByClient && (
+                      <small className="deleted-message-badge">🗑️ Apagada pelo cliente</small>
+                    )}
+                    <div className="message-meta">
+                      <time>{time(message.sentAt)}</time>
+                      {message.direction === 'OUTBOUND' &&
+                        !message.internal &&
+                        (message.status === 'PENDING' ? (
+                          <Clock3 size={12} />
+                        ) : message.status === 'FAILED' ? (
+                          <AlertCircle size={13} />
+                        ) : message.status === 'SENT' ? (
+                          <Check size={15} />
+                        ) : (
+                          <CheckCheck size={15} className={message.status === 'READ' ? 'read-status' : ''} />
+                        ))}
+                    </div>
+                    {message.error && <small className="message-error">{message.error}</small>}
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
-      <FlowIndicator sessionId={sessionId} conversationId={chat.id} revision={revision} />
-      <AiControl sessionId={sessionId} conversationId={chat.id} revision={revision} />
-      <div className="composer-container">
-        <Composer
-          key={chat.id}
-          base={base}
-          connected={connected}
-          onSent={() => {
-            setPage(1);
-            onRefresh();
-          }}
-          onQuick={onQuick}
-        />
+            );
+          })}
+        </div>
+        <div className="attendance-flow-slot">
+          <FlowIndicator sessionId={sessionId} conversationId={chat.id} revision={revision} />
+        </div>
+        <div className="attendance-ai-slot">
+          <AiControl sessionId={sessionId} conversationId={chat.id} revision={revision} />
+        </div>
+        <div className="composer-container">
+          <Composer
+            key={chat.id}
+            base={base}
+            sessionId={sessionId}
+            conversationId={chat.id}
+            library={library}
+            connected={connected}
+            onInternalNote={addInternalNote}
+            onSent={() => {
+              setPage(1);
+              onRefresh();
+            }}
+            onQuick={onQuick}
+          />
+        </div>
       </div>
       {flowOpen && (
         <FlowLaunch sessionId={sessionId} conversationId={chat.id} onClose={() => setFlowOpen(false)} />
@@ -344,6 +537,34 @@ export function ChatPane({
           initialConversation={chat}
           onClose={() => setScheduleOpen(false)}
         />
+      )}
+      {summaryOpen && (
+        <Modal title="✨ Resumo da conversa" onClose={() => setSummaryOpen(false)}>
+          {!summary ? (
+            <div className="ai-summary-intro">
+              <p>A IA vai analisar o histórico e a base aprovada para preparar um resumo em três tópicos.</p>
+              <small>O histórico será enviado ao provedor configurado em Integração de IA.</small>
+              <button className="button primary" disabled={summaryBusy} onClick={() => void summarize()}>
+                {summaryBusy ? <Spinner /> : <WandSparkles size={16} />} Gerar resumo
+              </button>
+            </div>
+          ) : (
+            <div className="ai-summary-result">
+              <p>{summary}</p>
+              <button
+                className="button"
+                onClick={() =>
+                  void navigator.clipboard
+                    .writeText(summary)
+                    .then(() => notify('Resumo copiado.'))
+                    .catch(() => notify('Não foi possível copiar o resumo.', true))
+                }
+              >
+                Copiar resumo
+              </button>
+            </div>
+          )}
+        </Modal>
       )}
     </main>
   );

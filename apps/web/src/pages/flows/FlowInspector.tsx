@@ -1,3 +1,4 @@
+import {Select} from '../../components/Select';
 import { X, Plus, Trash2, ArrowRight } from 'lucide-react';
 import type { Label, Library } from '../../types';
 import { blockNames, type BlockData, type GraphBlock } from './flow.types';
@@ -38,7 +39,7 @@ export function FlowInspector({
   const route = (handle: string, label: string) => (
     <label>
       {label}
-      <select value={target(handle)} onChange={(event) => setTarget(handle, event.target.value)}>
+      <Select value={target(handle)} onChange={(event) => setTarget(handle, event.target.value)}>
         <option value="">Encerrar este caminho</option>
         {all
           .filter((item) => item.id !== node.id && item.type !== 'start')
@@ -47,7 +48,7 @@ export function FlowInspector({
               {item.data.title || blockNames[item.type]}
             </option>
           ))}
-      </select>
+      </Select>
     </label>
   );
   return (
@@ -75,7 +76,7 @@ export function FlowInspector({
           <>
             <label>
               Quando iniciar
-              <select
+              <Select
                 value={data.triggerMode ?? 'keyword'}
                 onChange={(event) => update({ triggerMode: event.target.value as typeof data.triggerMode })}
               >
@@ -84,11 +85,11 @@ export function FlowInspector({
                 <option value="first">Primeira mensagem do cliente</option>
                 <option value="first-day">Primeira mensagem do dia</option>
                 <option value="manual">Somente início manual</option>
-              </select>
+              </Select>
             </label>
             <label>
               Etiquetar ao iniciar
-              <select
+              <Select
                 value={data.startLabelId ?? ''}
                 onChange={(event) => update({ startLabelId: event.target.value || undefined })}
               >
@@ -98,11 +99,11 @@ export function FlowInspector({
                     {label.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label>
               Responder somente a esta etiqueta
-              <select
+              <Select
                 value={data.allowedLabelIds?.[0] ?? ''}
                 onChange={(event) =>
                   update({ allowedLabelIds: event.target.value ? [event.target.value] : [] })
@@ -114,11 +115,11 @@ export function FlowInspector({
                     {label.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label>
               Não responder a esta etiqueta
-              <select
+              <Select
                 value={data.excludedLabelIds?.[0] ?? ''}
                 onChange={(event) =>
                   update({ excludedLabelIds: event.target.value ? [event.target.value] : [] })
@@ -130,7 +131,7 @@ export function FlowInspector({
                     {label.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <div className="flow-inspector-title">Palavras-chave</div>
             <p className="flow-field-help">
@@ -138,7 +139,7 @@ export function FlowInspector({
             </p>
             {(data.keywordRules ?? []).map((rule, index) => (
               <div className="keyword-rule" key={index}>
-                <select
+                <Select
                   aria-label={`Regra ${index + 1}`}
                   value={rule.rule}
                   onChange={(event) =>
@@ -158,7 +159,7 @@ export function FlowInspector({
                   <option value="contains">Contém</option>
                   <option value="starts">Começa com</option>
                   <option value="not-contains">Não contém</option>
-                </select>
+                </Select>
                 <input
                   aria-label={`Palavra-chave ${index + 1}`}
                   maxLength={100}
@@ -293,14 +294,14 @@ export function FlowInspector({
           <>
             <label>
               Recurso da biblioteca
-              <select value={data.itemId ?? ''} onChange={(event) => update({ itemId: event.target.value })}>
+              <Select value={data.itemId ?? ''} onChange={(event) => update({ itemId: event.target.value })}>
                 <option value="">Selecione um recurso</option>
                 {resources.map((asset) => (
                   <option key={asset.id} value={asset.id}>
                     {asset.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             {data.itemId && (
               <div className="flow-resource-preview">
@@ -347,13 +348,13 @@ export function FlowInspector({
           <>
             <label>
               Aceitar resposta
-              <select
+              <Select
                 value={data.compareRule ?? 'anything'}
                 onChange={(event) => update({ compareRule: event.target.value as 'anything' | 'contains' })}
               >
                 <option value="anything">Qualquer mensagem</option>
                 <option value="contains">Contém uma resposta esperada</option>
-              </select>
+              </Select>
             </label>
             {data.compareRule === 'contains' && (
               <label>
@@ -392,7 +393,7 @@ export function FlowInspector({
             </p>
             <label>
               Follow-up ao esgotar o prazo
-              <select
+              <Select
                 value={data.followUpData?.itemId ?? ''}
                 onChange={(event) =>
                   update({
@@ -408,7 +409,7 @@ export function FlowInspector({
                     {asset.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             {route('different', 'Se a resposta for diferente')}
             {route('timeout', 'Se não houver resposta no prazo')}

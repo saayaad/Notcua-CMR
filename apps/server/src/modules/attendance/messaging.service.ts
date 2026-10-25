@@ -162,11 +162,14 @@ export class MessagingService {
       });
       this.whatsapp.notify(sessionId, 'messages');
       try {
-        if (input.composingMs) {
+        const presenceMs = input.composingMs || (input.kind === 'text'
+          ? Math.min(8000, Math.max(700, (text?.trim().length ?? 0) * 18))
+          : input.kind === 'audio' ? 1400 : 0);
+        if (presenceMs) {
           await socket
-            .sendPresenceUpdate?.(input.isPtt ? 'recording' : 'composing', chat.jid)
+            .sendPresenceUpdate?.(input.kind === 'audio' ? 'recording' : 'composing', chat.jid)
             .catch(() => undefined);
-          await new Promise((resolve) => setTimeout(resolve, input.composingMs));
+          await new Promise((resolve) => setTimeout(resolve, presenceMs));
         }
         await beforeSend?.();
         const result = await socket.sendMessage(chat.jid, content, { messageId: whatsappMessageId });

@@ -1,3 +1,4 @@
+import {Select} from '../components/Select';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { DragDropContext, Draggable, Droppable, type DropResult } from '@hello-pangea/dnd';
@@ -49,11 +50,13 @@ export function CrmPage({
   revision,
   connected,
   onOpenChat,
+  labelStyles,
 }: {
   sessionId: string;
   revision: number;
   connected: boolean;
   onOpenChat: (conversationId: string) => void;
+  labelStyles: Record<string, { color: string; icon: string }>;
 }) {
   const { request, notify } = useApi();
   const [board, setBoard] = useState<CrmBoard>(blankBoard);
@@ -196,7 +199,7 @@ export function CrmPage({
         <div className="crm-heading-actions">
           <label className="crm-period">
             <Clock3 size={15} />
-            <select
+            <Select
               aria-label="Período dos indicadores"
               value={days}
               onChange={(event) => setDays(Number(event.target.value))}
@@ -204,7 +207,7 @@ export function CrmPage({
               <option value={7}>Últimos 7 dias</option>
               <option value={30}>Últimos 30 dias</option>
               <option value={90}>Últimos 90 dias</option>
-            </select>
+            </Select>
           </label>
           <button className="button primary" onClick={() => setNewLabel(true)}>
             <Plus size={16} />
@@ -235,7 +238,7 @@ export function CrmPage({
                 onChange={(event) => setSearch(event.target.value)}
               />
             </label>
-            <select
+            <Select
               className="crm-status-filter"
               aria-label="Filtrar negociações"
               value={filter}
@@ -245,7 +248,7 @@ export function CrmPage({
               <option value="OPEN">Em negociação</option>
               <option value="WON">Ganhas</option>
               <option value="LOST">Perdidas</option>
-            </select>
+            </Select>
             <button className="button" onClick={() => setLabels(true)}>
               <Settings2 size={15} />
               Etapas
@@ -317,7 +320,8 @@ export function CrmPage({
                 >
                   <header>
                     <div>
-                      <i style={{ background: column.color }} />
+                      <i style={{ background: labelStyles[column.id]?.color || column.color }} />
+                      {labelStyles[column.id]?.icon && <b className="kanban-column-icon">{labelStyles[column.id]?.icon}</b>}
                       <h2 title={column.name}>{column.name}</h2>
                       <span>{column.conversationIds.length}</span>
                       {column.whatsappId && <Wifi size={13} aria-label="Etiqueta do WhatsApp" />}
@@ -590,11 +594,11 @@ function OpportunityEditor({
           </label>
           <label>
             Resultado
-            <select value={status} onChange={(event) => setStatus(event.target.value as OpportunityStatus)}>
+            <Select value={status} onChange={(event) => setStatus(event.target.value as OpportunityStatus)}>
               <option value="OPEN">Em negociação</option>
               <option value="WON">Ganho</option>
               <option value="LOST">Perdido</option>
-            </select>
+            </Select>
           </label>
         </div>
         <div className="modal-actions">
@@ -609,13 +613,13 @@ function OpportunityEditor({
       <div className="opportunity-move">
         <label>
           Mover de “{column.name}” para
-          <select value={stage} onChange={(event) => setStage(event.target.value)}>
+          <Select value={stage} onChange={(event) => setStage(event.target.value)}>
             {columns.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.name}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <button
           className="button"

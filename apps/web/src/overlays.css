@@ -15,7 +15,14 @@ dialog.modal-wide {
 dialog.modal[open] {
   display: flex;
   flex-direction: column;
+  animation: noctua-modal-in 180ms ease-out both;
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  box-shadow: 0 24px 80px #0006;
+  backdrop-filter: blur(16px);
 }
+dialog.modal::backdrop { background: #05050ab8; backdrop-filter: blur(5px); }
+@keyframes noctua-modal-in { from { opacity: 0; transform: translateY(.5rem) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .modal-header {
   flex-shrink: 0;
   gap: 16px;
@@ -73,6 +80,17 @@ dialog.modal[open] {
 .toast > span {
   min-width: 0;
 }
+.toast { position: fixed; overflow: hidden; }
+.toast-progress {
+  position: absolute;
+  inset: auto 0 0;
+  height: 2px;
+  background: var(--accent);
+  transform-origin: left;
+  animation: toast-progress 4.5s linear forwards;
+}
+.toast-error .toast-progress { animation-duration: 7s; background: #ef647a; }
+@keyframes toast-progress { to { transform: scaleX(0); } }
 @media (max-width: 700px) {
   .modal-header {
     padding: 16px;

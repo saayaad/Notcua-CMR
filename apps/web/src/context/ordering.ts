@@ -26,6 +26,7 @@ export const menuGroups = [
     items: [
       ['connections', 'Conexões'],
       ['settings', 'Configurações'],
+      ['personalization', 'Personalização'],
     ],
   },
 ];

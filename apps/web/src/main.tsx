@@ -9,6 +9,8 @@ import './components/tools.css';
 import './components/tools-compact.css';
 import './overlays.css';
 import './components/toolbox.css';
+import './attendance.css';
+import './workbench.css';
 
 createRoot(document.getElementById('root')!).render(
   <ApiProvider>

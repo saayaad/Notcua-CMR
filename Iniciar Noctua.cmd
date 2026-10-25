@@ -1,5 +1,5 @@
 @echo off
 cd /d "%~dp0"
-echo Iniciando o Noctua. Mantenha esta janela aberta enquanto usa o sistema.
-node scripts/start-local.mjs
+title Noctua - iniciar atendimento online
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\iniciar-noctua-online.ps1"
 pause

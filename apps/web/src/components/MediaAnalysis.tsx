@@ -1,3 +1,4 @@
+import {Select} from './Select';
 import { useEffect, useState } from 'react';
 import { useApi, errorMessage } from '../context/ApiContext';
 import { Spinner } from './ui';
@@ -21,7 +22,7 @@ export function MediaAnalysis({ sessionId, conversationId }: { sessionId: string
       <summary>Transcrever áudio ou descrever mídia</summary>
       <label>
         Arquivo da conversa
-        <select value={id} onChange={(event) => setId(event.target.value)}>
+        <Select value={id} onChange={(event) => setId(event.target.value)}>
           <option value="">Selecione uma mídia</option>
           {items.map((item) => (
             <option key={item.id} value={item.id}>
@@ -30,7 +31,7 @@ export function MediaAnalysis({ sessionId, conversationId }: { sessionId: string
               {item.analysis ? ' · analisado' : ''}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       {selected?.analysis ? (
         <textarea readOnly rows={8} aria-label="Análise da mídia" value={selected.analysis.text} />

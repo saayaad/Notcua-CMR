@@ -95,6 +95,7 @@ export function HelpCenter({
       | 'library'
       | 'connections'
       | 'settings'
+      | 'personalization'
       | 'crm'
       | 'flows'
       | 'overview'

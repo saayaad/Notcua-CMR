@@ -1,3 +1,4 @@
+import { TransferDialog } from './TransferDialog';
 import { useEffect, useState } from 'react';
 import {
   UserRound,
@@ -11,6 +12,8 @@ import {
   Mail,
   ShieldBan,
   ArrowRightLeft,
+  BookOpenCheck,
+  AlarmClock,
 } from 'lucide-react';
 import type { Conversation, Label } from '../types';
 import { useApi, errorMessage } from '../context/ApiContext';
@@ -19,7 +22,9 @@ import { ContactDetails } from './ContactDetails';
 import { Avatar, Modal } from './ui';
 
 export const toolboxSections = [
-  { id: 'responses', name: 'Respostas', icon: Zap },
+  { id: 'responses', name: 'Biblioteca', icon: Zap },
+  { id: 'faq', name: 'Padrões', icon: BookOpenCheck },
+  { id: 'next', name: 'Retorno', icon: AlarmClock },
   { id: 'profile', name: 'Cliente', icon: UserRound },
   { id: 'notes', name: 'Notas', icon: StickyNote },
   { id: 'transfers', name: 'Caixa', icon: Inbox },
@@ -111,14 +116,6 @@ export function ToolboxWorkspace({
     }
   };
   const base = `/attendance/sessions/${sessionId}/conversations/${chat?.id}`;
-  useEffect(() => {
-    if (!transfer) return;
-    void request<{ items: { email: string; name: string; department: string; active: boolean }[] }>(
-      '/operations/team',
-    )
-      .then((data) => setTeam(data.items.filter((item) => item.active)))
-      .catch(() => setTeam([]));
-  }, [transfer, request]);
   return (
     <div className="toolbox-workspace">
       {section === 'transfers' ? (
@@ -317,96 +314,15 @@ export function ToolboxWorkspace({
         </Modal>
       )}
       {transfer && chat && (
-        <Modal title="Transferir atendimento" onClose={() => setTransfer(false)}>
-          <p>
-            Conversa: <strong>{chat.contact.name}</strong>. O novo responsável será definido quando a
-            transferência for aceita.
-          </p>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              const form = new FormData(event.currentTarget);
-              void act(`/operations/toolbox/sessions/${sessionId}/transfers`, 'POST', {
-                conversationId: chat.id,
-                target: form.get('target'),
-                note: form.get('note'),
-              });
-            }}
-          >
-            <label>
-              Atendente ou setor
-              <input
-                type="hidden"
-                name="target"
-                value={
-                  teamSearch.includes('@')
-                    ? teamSearch
-                    : (team.find((item) => item.name === teamSearch)?.email ?? '')
-                }
-              />
-              <input
-                autoComplete="off"
-                required
-                value={teamSearch}
-                onFocus={() => setTeamOpen(true)}
-                onChange={(event) => {
-                  setTeamSearch(event.target.value);
-                  setTeamOpen(true);
-                }}
-                placeholder="Busque por nome, setor ou e-mail"
-              />
-              {teamOpen && (
-                <div className="team-suggestions">
-                  {team
-                    .filter((item) =>
-                      `${item.name} ${item.department} ${item.email}`
-                        .toLocaleLowerCase()
-                        .includes(teamSearch.toLocaleLowerCase()),
-                    )
-                    .map((item) => (
-                      <button
-                        type="button"
-                        key={item.email}
-                        onClick={() => {
-                          setTeamSearch(item.name);
-                          setTeamOpen(false);
-                        }}
-                      >
-                        <span className="team-initial">{item.name.slice(0, 1).toUpperCase()}</span>
-                        <span>
-                          <strong>{item.name}</strong>
-                          <small>
-                            {item.department || 'Sem setor'} · {item.email}
-                          </small>
-                        </span>
-                        <i>Ativo</i>
-                      </button>
-                    ))}
-                  {teamSearch.includes('@') && !team.some((item) => item.email === teamSearch) && (
-                    <small>Confirme se este membro está cadastrado e ativo.</small>
-                  )}
-                </div>
-              )}
-            </label>
-            <label>
-              Observações
-              <textarea name="note" maxLength={2000} rows={4} />
-            </label>
-            <div className="modal-actions">
-              <button type="button" className="button" onClick={() => setTransfer(false)}>
-                Cancelar
-              </button>
-              <button
-                className="button primary"
-                disabled={
-                  busy || (!teamSearch.includes('@') && !team.some((item) => item.name === teamSearch))
-                }
-              >
-                Solicitar transferência
-              </button>
-            </div>
-          </form>
-        </Modal>
+        <TransferDialog
+          chat={chat}
+          sessionId={sessionId}
+          onClose={() => setTransfer(false)}
+          onSaved={() => {
+            setRefresh((value) => value + 1);
+            onRefresh();
+          }}
+        />
       )}
     </div>
   );

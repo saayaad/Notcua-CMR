@@ -18,7 +18,7 @@ import './flows.css';
 import type { Label, Library } from '../../types';
 import { useApi, errorMessage } from '../../context/ApiContext';
 import { FlowInspector } from './FlowInspector';
-import { FlowSimulation } from './FlowSimulation';
+import { ConversationSimulator } from '../../components/ConversationSimulator';
 import { blockNames, type BlockType, type GraphBlock, type FlowDetail, type FlowGraph } from './flow.types';
 type CanvasNode = Node<{ block: GraphBlock; subtitle: string }, 'automation'>;
 function Block({ data, selected }: NodeProps<CanvasNode>) {
@@ -339,7 +339,7 @@ export function FlowEditor({
         )}
       </div>
       {simulation && (
-        <FlowSimulation labels={labels} base={base} graph={graph()} onClose={() => setSimulation(false)} />
+        <ConversationSimulator base={base} graph={graph()} onClose={() => setSimulation(false)} />
       )}
     </section>
   );

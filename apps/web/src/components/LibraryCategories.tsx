@@ -1,7 +1,9 @@
+import {Select} from './Select';
 import { useEffect, useState } from 'react';
 import { useApi, errorMessage } from '../context/ApiContext';
 import type { Library } from '../types';
 import { Modal } from './ui';
+import { ReorderList } from './ReorderList';
 export interface Organization {
   categories: string[];
   assignments: Record<string, string>;
@@ -70,11 +72,16 @@ export function LibraryCategories({ library, onClose }: { library: Library; onCl
           </button>
         ))}
       </div>
+      <ReorderList
+        label="Ordem das categorias"
+        items={value.categories.map((name) => ({ id: name, name }))}
+        onChange={(categories) => setDraft({ ...value, categories })}
+      />
       <div className="category-assignments">
         {resources.map((item) => (
           <label key={item.id}>
             <span>{item.name}</span>
-            <select
+            <Select
               value={value.assignments[item.id] ?? ''}
               onChange={(event) =>
                 setDraft({ ...value, assignments: { ...value.assignments, [item.id]: event.target.value } })
@@ -84,7 +91,7 @@ export function LibraryCategories({ library, onClose }: { library: Library; onCl
               {value.categories.map((category) => (
                 <option key={category}>{category}</option>
               ))}
-            </select>
+            </Select>
           </label>
         ))}
       </div>

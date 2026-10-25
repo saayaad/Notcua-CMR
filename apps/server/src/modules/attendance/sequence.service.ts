@@ -100,7 +100,7 @@ export class SequenceService {
             'Há um fluxo ativo nesta conversa. Cancele a automação antes de iniciar uma sequência manual.',
           );
         const active = await this.db.sequenceRun.findFirst({
-          where: { conversationId, status: { in: ['QUEUED', 'RUNNING'] } },
+          where: { conversationId, status: { in: ['QUEUED', 'RUNNING', 'WAITING_INPUT'] } },
         });
         if (active) throw new AppError(409, 'Já existe uma sequência em andamento nesta conversa.');
         const steps: SequenceStep[] = [];
@@ -249,12 +249,53 @@ export class SequenceService {
   async cancel(sessionId: string, conversationId: string, id: string) {
     await this.messaging.chat(sessionId, conversationId);
     const updated = await this.db.sequenceRun.updateMany({
-      where: { id, conversationId, status: { in: ['QUEUED', 'RUNNING'] } },
+      where: { id, conversationId, status: { in: ['QUEUED', 'RUNNING', 'WAITING_INPUT'] } },
       data: { status: 'CANCELLED' },
     });
     await this.messaging.presence(sessionId, conversationId, 'paused').catch(() => undefined);
     this.whatsapp.notify(sessionId, 'messages');
     return { cancelled: updated.count > 0 };
+  }
+
+  async pause(sessionId: string, conversationId: string, id: string, paused: boolean) {
+    await this.messaging.chat(sessionId, conversationId);
+    const result = await this.db.$transaction(async (tx) => {
+      const run = await tx.sequenceRun.findFirst({ where: { id, conversationId } });
+      if (!run) throw new AppError(404, 'Sequência não encontrada.');
+      if (run.status === 'RUNNING')
+        throw new AppError(
+          409,
+          'Uma etapa já está em execução. Aguarde a confirmação para pausar a próxima.',
+        );
+      if (!['QUEUED', 'WAITING_INPUT'].includes(run.status))
+        throw new AppError(409, 'Esta sequência já foi encerrada.');
+      if ((paused && run.status === 'WAITING_INPUT') || (!paused && run.status === 'QUEUED')) return run;
+      const key = `sequence-pause:${id}`;
+      if (paused) {
+        await tx.operationRecord.upsert({
+          where: { id: key },
+          create: {
+            id: key,
+            kind: 'SEQUENCE_PAUSE',
+            data: { remainingMs: Math.max(0, run.nextRunAt.getTime() - Date.now()) },
+          },
+          update: { data: { remainingMs: Math.max(0, run.nextRunAt.getTime() - Date.now()) } },
+        });
+        return tx.sequenceRun.update({ where: { id }, data: { status: 'WAITING_INPUT' } });
+      }
+      const stored = await tx.operationRecord.findUnique({ where: { id: key } });
+      const remaining = Math.min(
+        86400000,
+        Math.max(0, Number((stored?.data as { remainingMs?: number })?.remainingMs ?? 0)),
+      );
+      return tx.sequenceRun.update({
+        where: { id },
+        data: { status: 'QUEUED', nextRunAt: new Date(Date.now() + remaining) },
+      });
+    });
+    await this.messaging.presence(sessionId, conversationId, 'paused').catch(() => undefined);
+    this.whatsapp.notify(sessionId, 'messages');
+    return result;
   }
 
   async flush() {

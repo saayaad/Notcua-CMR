@@ -1,3 +1,4 @@
+import {Select} from './Select';
 import { useEffect, useState } from 'react';
 import { usePreferences } from '../context/PreferencesContext';
 import { useApi, errorMessage } from '../context/ApiContext';
@@ -93,18 +94,18 @@ export function OrderingSettings({
         <p>A ordem vale também para o painel de ferramentas do atendimento.</p>
         <ReorderList
           label="Ordem das pastas"
-          items={folders.map(([id, name]) => ({ id: id!, name: name! }))}
+          items={folders.map(([id, name]) => ({ id: id!, name: prefs.folderLabels[id!] || name! }))}
           onChange={(folderOrder) => updatePreferences({ folderOrder })}
         />
         <label>
           Recursos dentro da pasta
-          <select value={folder} onChange={(event) => setFolder(event.target.value)}>
+          <Select value={folder} onChange={(event) => setFolder(event.target.value)}>
             {folders.map(([id, name]) => (
               <option key={id} value={id}>
-                {name}
+                {prefs.folderLabels[id!] || name}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <ReorderList
           label="Ordem dos recursos da pasta"
@@ -125,21 +126,36 @@ export function OrderingSettings({
         {!sessionId ? (
           <p>Selecione uma conexão.</p>
         ) : (
-          <ReorderList
-            label="Ordem das etiquetas"
-            items={labels.map((item) => ({ id: item.id, name: item.name }))}
-            disabled={busy}
-            onChange={(ids) => {
-              setBusy(true);
-              void request(`/operations/sessions/${sessionId}/label-order`, 'PUT', { ids })
-                .then(() => {
-                  setLabels(orderItems(labels, ids, (item) => item.id));
-                  onRefresh();
-                })
-                .catch((error) => notify(errorMessage(error), true))
-                .finally(() => setBusy(false));
-            }}
-          />
+          <>
+            <ReorderList
+              label="Ordem das etiquetas"
+              items={labels.map((item) => ({ id: item.id, name: item.name }))}
+              disabled={busy}
+              onChange={(ids) => {
+                setBusy(true);
+                void request(`/operations/sessions/${sessionId}/label-order`, 'PUT', { ids })
+                  .then(() => {
+                    setLabels(orderItems(labels, ids, (item) => item.id));
+                    onRefresh();
+                  })
+                  .catch((error) => notify(errorMessage(error), true))
+                  .finally(() => setBusy(false));
+              }}
+            />
+            <p className="muted">As cores e ícones abaixo personalizam a exibição no CRM desta conta. Etiquetas sincronizadas do WhatsApp mantêm a cor original no WhatsApp.</p>
+            <div className="label-style-list">
+              {labels.map((label) => {
+                const style = prefs.labelStyles[label.id] ?? { color: label.color, icon: '' };
+                return (
+                  <div className="label-style-row" key={label.id}>
+                    <span className="label-style-name"><i style={{ background: style.color }} />{style.icon && <b>{style.icon}</b>}{label.name}</span>
+                    <label>Cor visual<input aria-label={`Cor visual de ${label.name}`} type="color" value={style.color} onChange={(event) => updatePreferences({ labelStyles: { ...prefs.labelStyles, [label.id]: { ...style, color: event.target.value } } })} /></label>
+                    <label>Ícone<input aria-label={`Ícone de ${label.name}`} className="label-icon-input" maxLength={4} value={style.icon} placeholder="🏷️" onChange={(event) => updatePreferences({ labelStyles: { ...prefs.labelStyles, [label.id]: { ...style, icon: event.target.value } } })} /></label>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
       <button

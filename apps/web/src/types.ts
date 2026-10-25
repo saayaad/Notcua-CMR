@@ -35,6 +35,9 @@ export interface Message {
   asViewOnce: boolean;
   fileId: string | null;
   error: string | null;
+  internal?: boolean;
+  author?: string;
+  deletedByClient?: boolean;
 }
 export interface Conversation {
   pinned?: boolean;

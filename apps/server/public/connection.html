@@ -1,42 +1,115 @@
 <!doctype html>
 <html lang="pt-BR">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark light">
-  <title>Noctua — Conexão WhatsApp</title>
-  <link rel="stylesheet" href="/connection-assets/connection.css">
-  <script src="/socket.io/socket.io.js" defer></script>
-  <script src="/connection-assets/connection.js" defer></script>
-</head>
-<body>
-<main>
-  <header><span class="brand" aria-hidden="true">◉</span><div><p class="eyebrow">NOCTUA · ETAPA 2</p><h1>Conecte seu WhatsApp</h1><p>Vincule sua conta e acompanhe a sincronização.</p></div></header>
-  <div id="feedback" role="status" aria-live="polite" hidden></div>
-  <section class="card">
-    <h2>1. Escolha uma conexão</h2>
-    <details><summary>Acesso com token (opcional)</summary><p>Preencha somente se você configurou um token no servidor. Ele fica apenas nesta página enquanto ela estiver aberta.</p><label for="token">Token de acesso</label><input id="token" type="password" autocomplete="off"><button id="authenticate" type="button">Aplicar acesso</button></details>
-    <div class="row"><label class="grow" for="sessions">Conexões existentes<select id="sessions"><option value="">Selecione uma conexão</option></select></label><button id="refresh" type="button">Atualizar</button></div>
-    <form id="create-session" class="row"><label class="grow" for="name">Nome da nova conexão<input id="name" maxlength="100" placeholder="Ex.: Atendimento principal" required></label><button type="submit">Criar conexão</button></form>
-  </section>
-  <section class="card" id="connection" hidden>
-    <div class="section-heading"><h2>2. Vincule pelo celular</h2><span id="status" class="badge">Desconectado</span></div>
-    <p id="connection-message">Clique em Conectar para gerar um QR Code.</p>
-    <div class="qr-area"><img id="qr" alt="QR Code para vincular o WhatsApp ao Noctua" width="320" height="320" hidden><p id="qr-empty">O QR Code aparecerá aqui.</p></div>
-    <p class="instructions" id="qr-instructions">No WhatsApp do celular, abra <strong>Aparelhos conectados → Conectar um aparelho</strong> e escaneie o código acima.</p>
-    <p id="connection-warning" role="alert" hidden></p>
-    <div class="actions"><button id="connect" class="primary" type="button">Conectar</button><button id="disconnect" type="button">Pausar conexão</button><button id="logout" class="danger" type="button">Desvincular WhatsApp</button></div>
-    <div class="metrics"><div><strong id="chats-count">0</strong><span>conversas</span></div><div><strong id="messages-count">0</strong><span>mensagens</span></div><div><strong id="labels-count">0</strong><span>etiquetas do WhatsApp</span></div></div>
-    <p class="muted" id="sync-message">O histórico e as fotos serão sincronizados conforme disponibilizados pelo WhatsApp.</p>
-    <button id="resync" type="button">Sincronizar etiquetas novamente</button>
-  </section>
-  <section class="card" id="automation" hidden>
-    <h2>3. Etiquete novos contatos</h2><p>Escolha uma etiqueta para a primeira mensagem nova de cada conversa individual. Mensagens antigas e grupos ficam fora dessa regra.</p>
-    <form id="save-settings"><label class="check"><input id="auto-label" type="checkbox">Ativar etiqueta na primeira mensagem</label><label for="labels">Etiqueta<select id="labels"><option value="">Selecione uma etiqueta</option></select></label><button class="primary" type="submit">Salvar regra</button></form>
-    <form id="create-label" class="row"><label class="grow" for="label-name">Ou crie uma etiqueta do CRM<input id="label-name" maxlength="100" placeholder="Ex.: Novo lead" required></label><button type="submit">Criar etiqueta local</button></form>
-    <p class="muted">Etiquetas importadas são aplicadas também no WhatsApp. Etiquetas locais ficam no CRM.</p><p id="job-message" class="muted"></p>
-  </section>
-  <footer>Painel de conexão da Etapa 2. A central de atendimento completa será construída na Etapa 3.</footer>
-</main>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <title>Noctua — Conexão WhatsApp</title>
+    <link rel="stylesheet" href="/connection-assets/connection.css" />
+    <script src="/socket.io/socket.io.js" defer></script>
+    <script src="/connection-assets/connection.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <span class="brand" aria-hidden="true">◉</span>
+        <div>
+          <p class="eyebrow">NOCTUA · ETAPA 2</p>
+          <h1>Conecte seu WhatsApp</h1>
+          <p>Vincule sua conta e acompanhe a sincronização.</p>
+        </div>
+      </header>
+      <div id="feedback" role="status" aria-live="polite" hidden></div>
+      <section class="card">
+        <h2>1. Escolha uma conexão</h2>
+        <details>
+          <summary>Acesso com token (opcional)</summary>
+          <p>
+            Preencha somente se você configurou um token no servidor. Ele fica apenas nesta página enquanto
+            ela estiver aberta.
+          </p>
+          <label for="token">Token de acesso</label
+          ><input id="token" type="password" autocomplete="off" /><button id="authenticate" type="button">
+            Aplicar acesso
+          </button>
+        </details>
+        <div class="row">
+          <label class="grow" for="sessions"
+            >Conexões existentes
+            <div id="sessions" class="legacy-dropdown" data-label="Conexões existentes"></div></label
+          ><button id="refresh" type="button">Atualizar</button>
+        </div>
+        <form id="create-session" class="row">
+          <label class="grow" for="name"
+            >Nome da nova conexão<input
+              id="name"
+              maxlength="100"
+              placeholder="Ex.: Atendimento principal"
+              required /></label
+          ><button type="submit">Criar conexão</button>
+        </form>
+      </section>
+      <section class="card" id="connection" hidden>
+        <div class="section-heading">
+          <h2>2. Vincule pelo celular</h2>
+          <span id="status" class="badge">Desconectado</span>
+        </div>
+        <p id="connection-message">Clique em Conectar para gerar um QR Code.</p>
+        <div class="qr-area">
+          <img id="qr" alt="QR Code para vincular o WhatsApp ao Noctua" width="320" height="320" hidden />
+          <p id="qr-empty">O QR Code aparecerá aqui.</p>
+        </div>
+        <p class="instructions" id="qr-instructions">
+          No WhatsApp do celular, abra <strong>Aparelhos conectados → Conectar um aparelho</strong> e escaneie
+          o código acima.
+        </p>
+        <p id="connection-warning" role="alert" hidden></p>
+        <div class="actions">
+          <button id="connect" class="primary" type="button">Conectar</button
+          ><button id="disconnect" type="button">Pausar conexão</button
+          ><button id="logout" class="danger" type="button">Desvincular WhatsApp</button>
+        </div>
+        <div class="metrics">
+          <div><strong id="chats-count">0</strong><span>conversas</span></div>
+          <div><strong id="messages-count">0</strong><span>mensagens</span></div>
+          <div><strong id="labels-count">0</strong><span>etiquetas do WhatsApp</span></div>
+        </div>
+        <p class="muted" id="sync-message">
+          O histórico e as fotos serão sincronizados conforme disponibilizados pelo WhatsApp.
+        </p>
+        <button id="resync" type="button">Sincronizar etiquetas novamente</button>
+      </section>
+      <section class="card" id="automation" hidden>
+        <h2>3. Etiquete novos contatos</h2>
+        <p>
+          Escolha uma etiqueta para a primeira mensagem nova de cada conversa individual. Mensagens antigas e
+          grupos ficam fora dessa regra.
+        </p>
+        <form id="save-settings">
+          <label class="check"
+            ><input id="auto-label" type="checkbox" />Ativar etiqueta na primeira mensagem</label
+          ><label for="labels"
+            >Etiqueta
+            <div id="labels" class="legacy-dropdown" data-label="Etiqueta"></div></label
+          ><button class="primary" type="submit">Salvar regra</button>
+        </form>
+        <form id="create-label" class="row">
+          <label class="grow" for="label-name"
+            >Ou crie uma etiqueta do CRM<input
+              id="label-name"
+              maxlength="100"
+              placeholder="Ex.: Novo lead"
+              required /></label
+          ><button type="submit">Criar etiqueta local</button>
+        </form>
+        <p class="muted">
+          Etiquetas importadas são aplicadas também no WhatsApp. Etiquetas locais ficam no CRM.
+        </p>
+        <p id="job-message" class="muted"></p>
+      </section>
+      <footer>
+        Painel de conexão da Etapa 2. A central de atendimento completa será construída na Etapa 3.
+      </footer>
+    </main>
+  </body>
 </html>

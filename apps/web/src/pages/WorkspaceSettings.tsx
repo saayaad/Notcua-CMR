@@ -1,8 +1,13 @@
+import { SafetyZone } from '../components/SafetyZone';
+import { TeamManager } from '../components/TeamManager';
+import { Select } from '../components/Select';
 import { useEffect, useState } from 'react';
 import { AiSettings } from '../components/AiSettings';
 import { OrderingSettings } from '../components/OrderingSettings';
+import { ColorPalette } from '../components/ColorPalette';
+import { HudEditor } from '../components/HudEditor';
 import type { Library } from '../types';
-import { LogOut, Plus, Save, Bell, ShieldCheck } from 'lucide-react';
+import { LogOut, Plus, Bell, ShieldCheck, Palette } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { firebaseAuth } from '../auth/firebase';
 import { useApi, errorMessage } from '../context/ApiContext';
@@ -25,20 +30,20 @@ export function WorkspaceSettings({
   sessionId,
   library,
   onOrderRefresh,
+  initialTab = 'general',
 }: {
   onImported: () => Promise<void>;
   sessionId: string;
   library: Library;
   onOrderRefresh: () => void;
+  initialTab?: string;
 }) {
   const { request, notify } = useApi();
   const { preferences, updatePreferences } = usePreferences();
-  const [tab, setTab] = useState('general');
+  const [tab, setTab] = useState(initialTab);
+  const [hudOpen, setHudOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [data, setData] = useState<Record<string, unknown>>({});
-  const [team, setTeam] = useState<
-    { email: string; name: string; role: string; active: boolean; department: string }[]
-  >([]);
   const [notices, setNotices] = useState<
     { id: string; data: { title: string; text: string; createdAt: string; read: boolean } }[]
   >([]);
@@ -56,10 +61,6 @@ export function WorkspaceSettings({
         .then((result) => {
           setData(result);
         })
-        .catch((error) => notify(errorMessage(error), true));
-    if (tab === 'team')
-      void request<{ items: typeof team }>('/operations/team')
-        .then((result) => setTeam(result.items))
         .catch((error) => notify(errorMessage(error), true));
     if (tab === 'notifications')
       void request<{ items: typeof notices }>('/operations/notices')
@@ -112,6 +113,7 @@ export function WorkspaceSettings({
         <aside className="settings-nav">
           {[
             ['general', 'Geral'],
+            ['personalization', 'Personalização'],
             ['profile', 'Meu perfil'],
             ['privacy', 'Privacidade'],
             ['notifications', 'Notificações'],
@@ -130,128 +132,179 @@ export function WorkspaceSettings({
         </aside>
         <section className="settings-content">
           {tab === 'general' && (
-            <div className="surface">
-              <h2>Identidade visual</h2>
-              <label>
-                Nome da plataforma
-                <input
-                  maxLength={40}
-                  value={preferences.brandingName}
-                  onChange={(event) => updatePreferences({ brandingName: event.target.value })}
-                />
-              </label>
-              <div className="form-grid">
-                <label>
-                  Cor de destaque
-                  <div className="accent-picker">
+            <div className="surface personalization-card">
+              <h2>Preferências da operação</h2>
+              <p>
+                O nome da plataforma é Noctua. Cores, aparência e organização do atendimento ficam em
+                Personalização.
+              </p>
+              <button className="button primary" onClick={() => setTab('personalization')}>
+                <Palette size={16} />
+                Abrir Personalização
+              </button>
+              <button className="button" onClick={() => setHudOpen(true)}>
+                Personalizar Atendimento com prévia
+              </button>
+              <p>Idioma: Português (Brasil).</p>{me?.role==='ADMIN'&&<SafetyZone/>}
+            </div>
+          )}
+          {tab === 'personalization' && (
+            <>
+              <div className="surface personalization-card">
+                <h2>
+                  <Palette size={18} /> Identidade e cores
+                </h2>
+                <p>As alterações são salvas na sua conta e acompanham você em outros dispositivos.</p>
+                <div className="fixed-platform-name">
+                  <strong>noctua.</strong>
+                  <span>Nome oficial da plataforma</span>
+                </div>
+                <ColorPalette />
+                <div className="form-grid">
+                  <label>
+                    Logotipo
                     <input
-                      aria-label="Cor de destaque"
-                      type="color"
-                      value={preferences.accentColor}
-                      onChange={(event) => updatePreferences({ accentColor: event.target.value })}
-                    />
-                    <input
-                      aria-label="Código da cor de destaque"
-                      value={preferences.accentColor}
-                      maxLength={7}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
                       onChange={(event) => {
-                        if (/^#[\da-fA-F]{0,6}$/.test(event.target.value))
-                          updatePreferences({ accentColor: event.target.value });
+                        const file = event.target.files?.[0];
+                        if (file)
+                          void compressBrandImage(file, 128)
+                            .then((image) => updatePreferences({ brandingLogo: image }))
+                            .catch(() => notify('Não foi possível abrir esta imagem.', true));
                       }}
                     />
-                  </div>
-                </label>
-                <label className="brand-logo-upload">
-                  Logotipo
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (!file) return;
-                      const image = new Image();
-                      const url = URL.createObjectURL(file);
-                      image.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = 128;
-                        canvas.height = 128;
-                        const context = canvas.getContext('2d');
-                        if (context) {
-                          const scale = Math.min(128 / image.width, 128 / image.height);
-                          const width = image.width * scale;
-                          const height = image.height * scale;
-                          context.drawImage(image, (128 - width) / 2, (128 - height) / 2, width, height);
-                          updatePreferences({ brandingLogo: canvas.toDataURL('image/webp', 0.78) });
-                        }
-                        URL.revokeObjectURL(url);
-                      };
-                      image.onerror = () => URL.revokeObjectURL(url);
-                      image.src = url;
-                    }}
-                  />
-                  {preferences.brandingLogo && (
-                    <button
-                      type="button"
-                      className="button small"
-                      onClick={() => updatePreferences({ brandingLogo: '' })}
-                    >
-                      Remover logotipo
-                    </button>
-                  )}
-                </label>
-              </div>
-              <h3>Nome dos itens do menu</h3>
-              <div className="form-grid">
-                {[
-                  ['overview', 'Visão geral'],
-                  ['inbox', 'Atendimento'],
-                  ['campaigns', 'Campanhas'],
-                  ['schedule', 'Agenda'],
-                  ['library', 'Biblioteca'],
-                  ['flows', 'Autoatendimento'],
-                  ['contacts', 'Contatos'],
-                  ['crm', 'CRM e negócios'],
-                  ['connections', 'Conexões'],
-                  ['settings', 'Configurações'],
-                ].map(([id, title]) => (
-                  <label key={id}>
-                    {title}
-                    <input
-                      maxLength={50}
-                      value={preferences.menuLabels[id!] ?? title}
-                      onChange={(event) =>
-                        updatePreferences({
-                          menuLabels: { ...preferences.menuLabels, [id!]: event.target.value },
-                        })
-                      }
-                    />
+                    {preferences.brandingLogo && (
+                      <button
+                        type="button"
+                        className="button small"
+                        onClick={() => updatePreferences({ brandingLogo: '' })}
+                      >
+                        Remover logotipo
+                      </button>
+                    )}
                   </label>
-                ))}
+                  <label>
+                    Ícone do navegador (favicon)
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/x-icon"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file)
+                          void compressBrandImage(file, 64)
+                            .then((image) => updatePreferences({ favicon: image }))
+                            .catch(() => notify('Não foi possível abrir esta imagem.', true));
+                      }}
+                    />
+                    {preferences.favicon && (
+                      <button
+                        type="button"
+                        className="button small"
+                        onClick={() => updatePreferences({ favicon: '' })}
+                      >
+                        Remover ícone
+                      </button>
+                    )}
+                  </label>
+                </div>
+                <div className="form-grid">
+                  <label>
+                    Tema
+                    <Select
+                      value={preferences.theme}
+                      onChange={(event) => updatePreferences({ theme: event.target.value })}
+                    >
+                      <option value="dark">Escuro</option>
+                      <option value="light">Claro</option>
+                    </Select>
+                  </label>
+                </div>
+                <div className="hud-settings-entry">
+                  <h3>Organização do Atendimento</h3>
+                  <p>
+                    Posição dos painéis, tamanho, ordem dos botões e ferramentas, com prévia antes de salvar.
+                  </p>
+                  <button className="button primary" onClick={() => setHudOpen(true)}>
+                    Personalizar Atendimento com prévia
+                  </button>
+                </div>
+                {toggle('compactNav', 'Menu lateral compacto', 'Mostra apenas os ícones e libera espaço.')}
               </div>
-              <h2>Aparência</h2>
-              <label>
-                Tema
-                <select
-                  value={preferences.theme}
-                  onChange={(event) => updatePreferences({ theme: event.target.value })}
-                >
-                  <option value="dark">Noturno</option>
-                  <option value="light">Claro</option>
-                </select>
-              </label>
-              {toggle(
-                'compactNav',
-                'Menu lateral compacto',
-                'Mostra ícones e libera espaço para as conversas.',
-              )}
-              <p>
-                O nome, o logotipo, a cor e os nomes do menu são salvos na conta e sincronizados entre
-                dispositivos.
-              </p>
-              <p>
-                Idioma: Português (Brasil). Os dados desta instalação pertencem a uma única operação privada.
-              </p>
-            </div>
+              <div className="surface personalization-card">
+                <h2>Renomear grupos e pastas</h2>
+                <p>Deixe os nomes da navegação e da Biblioteca com a linguagem da sua equipe.</p>
+                <div className="form-grid">
+                  {[
+                    ['overview', 'Visão geral'],
+                    ['inbox', 'Atendimento'],
+                    ['campaigns', 'Campanhas'],
+                    ['schedule', 'Agenda'],
+                    ['library', 'Biblioteca'],
+                    ['flows', 'Autoatendimento'],
+                    ['contacts', 'Contatos'],
+                    ['crm', 'CRM e negócios'],
+                    ['connections', 'Conexões'],
+                    ['settings', 'Configurações'],
+                    ['personalization', 'Personalização'],
+                  ].map(([id, title]) => (
+                    <label key={id}>
+                      Menu · {title}
+                      <input
+                        maxLength={50}
+                        value={preferences.menuLabels[id!] ?? title}
+                        onChange={(event) =>
+                          updatePreferences({
+                            menuLabels: { ...preferences.menuLabels, [id!]: event.target.value },
+                          })
+                        }
+                      />
+                    </label>
+                  ))}
+                  {[
+                    ['group:messaging', 'Mensageria'],
+                    ['group:relationships', 'Relacionamentos'],
+                    ['group:account', 'Conta'],
+                  ].map(([id, title]) => (
+                    <label key={id}>
+                      Grupo · {title}
+                      <input
+                        maxLength={40}
+                        value={preferences.menuLabels[id!] ?? title}
+                        onChange={(event) =>
+                          updatePreferences({
+                            menuLabels: { ...preferences.menuLabels, [id!]: event.target.value },
+                          })
+                        }
+                      />
+                    </label>
+                  ))}
+                  {[
+                    ['MESSAGE', 'Textos'],
+                    ['AUDIO', 'Áudios'],
+                    ['MEDIA', 'Mídias'],
+                    ['DOCUMENT', 'Documentos'],
+                    ['FUNNEL', 'Funis'],
+                    ['MACRO', 'Macros'],
+                    ['PIX', 'PIX'],
+                  ].map(([id, title]) => (
+                    <label key={id}>
+                      Pasta · {title}
+                      <input
+                        maxLength={40}
+                        value={preferences.folderLabels[id!] ?? title}
+                        onChange={(event) =>
+                          updatePreferences({
+                            folderLabels: { ...preferences.folderLabels, [id!]: event.target.value },
+                          })
+                        }
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <OrderingSettings sessionId={sessionId} library={library} onRefresh={onOrderRefresh} />
+            </>
           )}
           {tab === 'profile' && (
             <div className="surface">
@@ -536,83 +589,7 @@ export function WorkspaceSettings({
               </form>
             </div>
           )}
-          {tab === 'team' && (
-            <div className="surface">
-              <h2>Equipe e convites</h2>
-              <p>
-                Convide pelo e-mail que a pessoa usará no Firebase. Não há envio automático de e-mail:
-                compartilhe o endereço do painel com ela.
-              </p>
-              {team.map((member) => (
-                <div className="preference-row" key={member.email}>
-                  <span>
-                    <strong>{member.name}</strong>
-                    <small>
-                      {member.email} · {member.role === 'ADMIN' ? 'Administrador' : 'Membro'} ·{' '}
-                      {member.department}
-                    </small>
-                  </span>
-                  <input
-                    aria-label={`Acesso de ${member.name}`}
-                    type="checkbox"
-                    checked={member.active}
-                    onChange={(event) => {
-                      const active = event.target.checked;
-                      void save('/operations/team', { ...member, active }).then(
-                        (saved) =>
-                          saved &&
-                          setTeam((current) =>
-                            current.map((item) => (item.email === member.email ? { ...item, active } : item)),
-                          ),
-                      );
-                    }}
-                  />
-                </div>
-              ))}
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  const body = { ...Object.fromEntries(new FormData(event.currentTarget)), active: true };
-                  void save('/operations/team', body).then(async (saved) => {
-                    if (!saved) return;
-                    const result = await request<{ items: typeof team }>('/operations/team');
-                    setTeam(result.items);
-                  });
-                }}
-              >
-                <div className="form-grid">
-                  <label>
-                    Nome
-                    <input name="name" required maxLength={100} />
-                  </label>
-                  <label>
-                    E-mail
-                    <input name="email" type="email" required />
-                  </label>
-                </div>
-                <div className="form-grid">
-                  <label>
-                    Função
-                    <select name="role">
-                      <option value="MEMBER">Membro · atendimento</option>
-                      <option value="ADMIN">Administrador · acesso total</option>
-                    </select>
-                  </label>
-                  <label>
-                    Departamento
-                    <input name="department" maxLength={100} />
-                  </label>
-                </div>
-                <button className="button primary" disabled={busy}>
-                  Salvar convite
-                </button>
-              </form>
-              <p>
-                Membros compartilham o atendimento da operação. Backups, credenciais, equipe, campanhas e
-                publicação de fluxos são reservados aos administradores.
-              </p>
-            </div>
-          )}
+          {tab === 'team' && <TeamManager />}
           {tab === 'integrations' && <AiSettings />}
           {tab === 'backup' && (
             <>
@@ -622,6 +599,37 @@ export function WorkspaceSettings({
           )}
         </section>
       </div>
+      {hudOpen && <HudEditor onClose={() => setHudOpen(false)} />}
     </main>
   );
+}
+
+function compressBrandImage(file: File, size: number): Promise<string> {
+  if (file.size > 5 * 1024 * 1024) return Promise.reject(new Error('Imagem acima de 5 MB.'));
+  return new Promise((resolve, reject) => {
+    const source = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const context = canvas.getContext('2d');
+      if (!context) {
+        URL.revokeObjectURL(source);
+        reject(new Error('Canvas indisponível.'));
+        return;
+      }
+      const scale = Math.min(size / image.width, size / image.height);
+      const width = image.width * scale;
+      const height = image.height * scale;
+      context.drawImage(image, (size - width) / 2, (size - height) / 2, width, height);
+      URL.revokeObjectURL(source);
+      resolve(canvas.toDataURL('image/webp', 0.78));
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(source);
+      reject(new Error('Imagem inválida.'));
+    };
+    image.src = source;
+  });
 }

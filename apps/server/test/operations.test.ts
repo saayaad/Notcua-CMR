@@ -440,7 +440,9 @@ test('fixação e atribuição persistem na conversa e o filtro Minhas respeita 
     .send({ pinned: true, assignedTo: 'local' })
     .expect(200);
   const listing = await request(app).get(`/api/attendance/sessions/${sessionId}/conversations`).expect(200);
-  assert.equal(listing.body.items[0].id, chat.id);
+  const pinned=listing.body.items.find((item:{id:string})=>item.id===chat.id);
+  assert.equal(pinned?.pinned,true);
+  assert.equal(pinned?.assignedTo,'local');
   const mine = await request(app)
     .get(`/api/attendance/sessions/${sessionId}/conversations?filter=mine`)
     .expect(200);
@@ -1020,3 +1022,7 @@ test('exportação estruturada ordena por horário, separa papéis e protege CSV
     .get(`/api/operations/sessions/${otherSession}/history-export?ids=${chat.id}`)
     .expect(404);
 });
+
+test('campanha congela as variações por destinatário e nunca envia ao salvar',async()=>{const first=await makeContact('5511888877701','Primeiro');const second=await makeContact('5511888877702','Segundo');const before=socket.sends.length;const result=await draft([first.id,second.id],{kind:'text',text:'Base {{nome}}',textVariations:['Olá {{nome}}, opção A','Olá {{nome}}, opção B']});const tasks=await db.deliveryTask.findMany({where:{batchId:result.id},orderBy:{conversationId:'asc'}});const texts=tasks.map((task)=>(task.payload as {snapshot:{text:string}}).snapshot.text);assert.equal(new Set(texts).size,2);assert.ok(texts.every((text)=>text.includes('{{nome}}')));assert.equal(socket.sends.length,before);});
+test('transferência para setor valida a fila, pode ser aceita e não envia WhatsApp',async()=>{const chat=await makeContact('5511888877703','Setor');await putRecord(db,'settings:departments','SETTINGS',{items:[{name:'Comercial',label:''}]});const before=socket.sends.length;await request(app).post(`/api/operations/toolbox/sessions/${sessionId}/transfers`).send({conversationId:chat.id,target:'Inexistente',targetType:'DEPARTMENT',note:''}).expect(422);const created=await request(app).post(`/api/operations/toolbox/sessions/${sessionId}/transfers`).send({conversationId:chat.id,target:'Comercial',targetType:'DEPARTMENT',note:'Acompanhamento'}).expect(201);assert.equal(created.body.department,'Comercial');assert.equal(created.body.targetType,'DEPARTMENT');await request(app).put(`/api/operations/toolbox/sessions/${sessionId}/transfers/${created.body.id}`).send({status:'ACCEPTED'}).expect(200);assert.equal(socket.sends.length,before);});
+test('diretório fornece avatar e presença recente sem expor dados de integração',async()=>{await putRecord(db,'team:presence@example.com','TEAM',{email:'presence@example.com',name:'Presença',department:'Comercial',role:'MEMBER',active:true,avatar:''});await putRecord(db,'presence:presence@example.com','TEAM_PRESENCE',{email:'presence@example.com',seenAt:new Date().toISOString()});const result=await request(app).get('/api/operations/directory').expect(200);assert.equal(result.body.items.find((item:{email:string})=>item.email==='presence@example.com').online,true);assert.ok(result.body.departments.some((item:{name:string})=>item.name==='Comercial'));assert.equal(result.body.encryptedKey,undefined);});

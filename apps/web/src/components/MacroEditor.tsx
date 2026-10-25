@@ -1,3 +1,4 @@
+import {Select} from './Select';
 import { useEffect, useState } from 'react';
 import { Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import type { Label, Library } from '../types';
@@ -202,7 +203,7 @@ export function MacroEditor({
             </div>
             <label>
               Tipo de ação
-              <select
+              <Select
                 value={action.type}
                 onChange={(event) => update(index, { type: event.target.value as Action['type'] })}
               >
@@ -212,7 +213,7 @@ export function MacroEditor({
                 <option value="ADD_LABEL">Adicionar etiqueta / etapa do CRM</option>
                 <option value="REMOVE_LABEL">Remover etiqueta / etapa do CRM</option>
                 <option value="UTILITY">Temporizador ou utilitário</option>
-              </select>
+              </Select>
             </label>
             {action.type === 'TEXT' && (
               <label>
@@ -243,7 +244,7 @@ export function MacroEditor({
             {['ADD_LABEL', 'REMOVE_LABEL'].includes(action.type) && (
               <label>
                 Etiqueta
-                <select
+                <Select
                   required
                   value={action.labelId}
                   onChange={(event) => update(index, { labelId: event.target.value })}
@@ -254,14 +255,14 @@ export function MacroEditor({
                       {label.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
             )}
             {action.type === 'UTILITY' && (
               <>
                 <label>
                   Utilitário
-                  <select
+                  <Select
                     value={action.command}
                     onChange={(event) => update(index, { command: event.target.value })}
                   >
@@ -279,19 +280,19 @@ export function MacroEditor({
                         {title}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </label>
                 {action.command === 'WAIT' && (
                   <label>
                     Durante a espera
-                    <select
+                    <Select
                       value={action.presence}
                       onChange={(event) => update(index, { presence: event.target.value })}
                     >
                       <option value="none">Sem presença</option>
                       <option value="composing">Mostrar digitando</option>
                       <option value="recording">Mostrar gravando áudio</option>
-                    </select>
+                    </Select>
                   </label>
                 )}
                 {action.command === 'TRANSFER' && (

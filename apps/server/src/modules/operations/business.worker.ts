@@ -2,6 +2,7 @@ import type { PrismaClient } from '@prisma/client';
 import type { WhatsappService } from '../whatsapp/whatsapp.service.js';
 import { record, putRecord, type BusinessSettings } from './records.js';
 import { json } from '../backups/validation.js';
+import { remindNextActions } from './next-actions.js';
 export class BusinessWorker {
   private timer?: ReturnType<typeof setTimeout>;
   private stopped = false;
@@ -27,6 +28,7 @@ export class BusinessWorker {
     await this.work;
   }
   async flush() {
+    await remindNextActions(this.db, (sessionId) => this.whatsapp.notify(sessionId, 'messages'));
     const settings = await record<BusinessSettings>(this.db, 'settings:business', {});
     const minutes = settings.autoCloseMinutes;
     if (settings.distribution) {

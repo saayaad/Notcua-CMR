@@ -1,3 +1,5 @@
+import {Select} from './Select';
+import { useHudPlacement, HudMoveHandle } from './HudPlacement';
 import { useEffect, useState } from 'react';
 import { usePreferences } from '../context/PreferencesContext';
 import { Pin, Search, Plus, ChevronLeft, ChevronRight, CheckCheck, MessageSquare } from 'lucide-react';
@@ -23,17 +25,34 @@ interface Props {
 }
 export function ConversationList(p: Props) {
   const { preferences } = usePreferences();
+  const placement = useHudPlacement('list');
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(timer);
   }, []);
+  const orderedChats = [...p.chats].sort((left, right) => {
+    const isUrgent = (chat: Conversation) =>
+      p.filter !== 'archived' &&
+      chat.messages[0]?.direction === 'INBOUND' &&
+      Boolean(chat.lastMessageAt) &&
+      now - new Date(chat.lastMessageAt!).getTime() >= preferences.waitingRed * 60000;
+    const urgentDifference = Number(isUrgent(right)) - Number(isUrgent(left));
+    if (urgentDifference) return urgentDifference;
+    if (isUrgent(left) && isUrgent(right))
+      return new Date(left.lastMessageAt ?? 0).getTime() - new Date(right.lastMessageAt ?? 0).getTime();
+    if (left.pinned !== right.pinned) return left.pinned ? -1 : 1;
+    return 0;
+  });
   return (
     <section
+      {...placement.attributes}
+      style={placement.style}
       className={`conversation-column ${p.active ? 'has-selection' : ''}`}
       aria-label="Lista de conversas"
     >
       <div className="list-heading">
+        <HudMoveHandle placement={placement} name="list" />
         <div>
           <h1>
             Atendimento <span className="count-chip">{p.total}</span>
@@ -56,7 +75,7 @@ export function ConversationList(p: Props) {
       </label>
       <div className="filter-tabs">
         {[
-          ['all', 'Todas'],
+          ['all', 'Ativas'],
           ['unread', 'Não lidas'],
           ['mine', 'Minhas'],
           ['archived', 'Arquivadas'],
@@ -70,7 +89,7 @@ export function ConversationList(p: Props) {
           </button>
         ))}
       </div>
-      <select
+      <Select
         className="label-filter"
         aria-label="Filtrar por etiqueta"
         value={p.label}
@@ -82,7 +101,7 @@ export function ConversationList(p: Props) {
             {label.name}
           </option>
         ))}
-      </select>
+      </Select>
       <div className="chat-list">
         {p.loading && !p.chats.length ? (
           <div className="list-placeholder">
@@ -96,13 +115,18 @@ export function ConversationList(p: Props) {
             <small>Conecte seu WhatsApp ou tente outra busca.</small>
           </div>
         ) : (
-          p.chats.map((chat) => {
+          orderedChats.map((chat) => {
             const last = chat.messages[0];
             const label = chat.contact.labels[0]?.label;
+            const urgent =
+              p.filter !== 'archived' &&
+              last?.direction === 'INBOUND' &&
+              Boolean(chat.lastMessageAt) &&
+              now - new Date(chat.lastMessageAt!).getTime() >= preferences.waitingRed * 60000;
             return (
               <button
                 key={chat.id}
-                className={`chat-item ${p.active === chat.id ? 'active' : ''}`}
+                className={`chat-item ${p.active === chat.id ? 'active' : ''} ${urgent ? 'sla-urgent' : ''}`}
                 onClick={() => p.onSelect(chat)}
               >
                 <Avatar contact={chat.contact} />

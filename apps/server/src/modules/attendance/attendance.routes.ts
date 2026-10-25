@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Router, type Request } from 'express';
 import { setAiControl } from '../operations/ai-control.js';
-import type { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, type PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import QRCode from 'qrcode';
 import type { WhatsappService } from '../whatsapp/whatsapp.service.js';
@@ -13,6 +13,7 @@ import { MessagingService } from './messaging.service.js';
 import { SequenceService } from './sequence.service.js';
 import { pixKeySchema, pixPayload } from './pix.js';
 import { queueLabelChange } from '../whatsapp/label-changes.js';
+import { putRecord } from '../operations/records.js';
 
 const stringId = z.string().min(1).max(200);
 const pageSchema = z.object({
@@ -138,6 +139,20 @@ export function attendanceRoutes(
   });
   router.delete('/assets/:id', async (req, res) => {
     const id = stringId.parse(req.params.id);
+    const standardReplies = await db.operationRecord.findMany({
+      where: { kind: 'STANDARD_REPLY' },
+      select: { data: true },
+    });
+    if (
+      standardReplies.some((row) => {
+        const value = row.data as { archived?: boolean; assetIds?: string[] };
+        return !value.archived && value.assetIds?.includes(id);
+      })
+    )
+      throw new AppError(
+        409,
+        'Este recurso está vinculado a uma resposta padrão. Edite ou arquive o padrão antes de excluir o recurso.',
+      );
     if (
       (await db.funnelItem.count({ where: { assetId: id } })) ||
       (await db.flowNode.count({ where: { assetId: id } }))
@@ -231,31 +246,56 @@ export function attendanceRoutes(
         ...(input.labelId ? { labels: { some: { labelId: input.labelId } } } : {}),
       },
     };
-    const [items, total] = await Promise.all([
-      db.conversation.findMany({
-        where,
-        orderBy: [{ pinned: 'desc' }, { lastMessageAt: 'desc' }, { id: 'asc' }],
-        skip: (page - 1) * pageSize,
-        take: pageSize,
+    const include = {
+      contact: {
         include: {
-          contact: {
-            include: {
-              labels: {
-                where: { label: { isDeleted: false } },
-                include: { label: true },
-                orderBy: [{ label: { position: 'asc' } }, { label: { name: 'asc' } }],
-              },
-            },
-          },
-          messages: {
-            orderBy: { sentAt: 'desc' },
-            take: 1,
-            select: { text: true, caption: true, type: true, direction: true, status: true },
+          labels: {
+            where: { label: { isDeleted: false } },
+            include: { label: true },
+            orderBy: [{ label: { position: 'asc' as const } }, { label: { name: 'asc' as const } }],
           },
         },
-      }),
+      },
+      messages: {
+        orderBy: { sentAt: 'desc' as const },
+        take: 1,
+        select: { text: true, caption: true, type: true, direction: true, status: true },
+      },
+    };
+    const archived = input.filter === 'archived' || input.filter === 'closed';
+    const cutoff = BigInt(Date.now() - 15 * 60_000);
+    const [ranked, total] = await Promise.all([
+      db.$queryRaw<{ id: string }[]>(Prisma.sql`
+        WITH candidates AS (
+          SELECT c.id, c.status, c.pinned, c.lastMessageAt,
+            (SELECT m.direction FROM ChatMessage m WHERE m.conversationId = c.id
+             ORDER BY m.sentAt DESC, m.id DESC LIMIT 1) AS latestDirection
+          FROM Conversation c JOIN Contact p ON p.id = c.contactId
+          WHERE c.sessionId = ${String(where.sessionId)} AND c.status = ${archived ? 'CLOSED' : 'OPEN'}
+          ${input.filter === 'mine' ? Prisma.sql`AND c.assignedTo = ${res.locals.identity?.email || res.locals.identity?.uid || 'local'}` : Prisma.empty}
+          ${input.filter === 'unread' ? Prisma.sql`AND c.unreadCount > 0` : Prisma.empty}
+          ${input.search ? Prisma.sql`AND (instr(lower(p.name), lower(${input.search})) > 0 OR instr(p.phoneNumber, ${input.search}) > 0)` : Prisma.empty}
+          ${input.labelId ? Prisma.sql`AND EXISTS (SELECT 1 FROM ContactLabel cl WHERE cl.contactId = c.contactId AND cl.labelId = ${input.labelId})` : Prisma.empty}
+        ), ranked AS (
+          SELECT *, CASE WHEN status = 'OPEN' AND latestDirection = 'INBOUND'
+            AND lastMessageAt <= ${cutoff} THEN 1 ELSE 0 END AS urgent FROM candidates
+        )
+        SELECT id FROM ranked ORDER BY urgent DESC,
+          CASE WHEN urgent = 1 THEN lastMessageAt END ASC,
+          pinned DESC, lastMessageAt DESC, id ASC
+        LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}
+      `),
       db.conversation.count({ where }),
     ]);
+    const found = await db.conversation.findMany({
+      where: { ...where, id: { in: ranked.map((row) => row.id) } },
+      include,
+    });
+    const byId = new Map(found.map((chat) => [chat.id, chat]));
+    const items = ranked.flatMap((row) => {
+      const chat = byId.get(row.id);
+      return chat ? [chat] : [];
+    });
     res.json({ items, total, page, pageSize });
   });
   router.post('/sessions/:sessionId/conversations', async (req, res) => {
@@ -307,12 +347,11 @@ export function attendanceRoutes(
     const { sessionId, conversationId } = ids(req);
     await messaging.chat(sessionId, conversationId);
     const { page, pageSize } = pageSchema.parse(req.query);
-    const [items, total] = await Promise.all([
+    const [items, total, noteRows] = await Promise.all([
       db.chatMessage.findMany({
         where: { conversationId },
         orderBy: [{ sentAt: 'desc' }, { id: 'desc' }],
-        skip: (page - 1) * pageSize,
-        take: pageSize,
+        take: page * pageSize,
         select: {
           id: true,
           text: true,
@@ -326,11 +365,80 @@ export function attendanceRoutes(
           asViewOnce: true,
           fileId: true,
           error: true,
+          rawPayload: true,
         },
       }),
       db.chatMessage.count({ where: { conversationId } }),
+      db.operationRecord.findMany({
+        where: { kind: { in: ['INTERNAL_NOTE', `INTERNAL_NOTE:${conversationId}`] } },
+        orderBy: { createdAt: 'desc' },
+      }),
     ]);
-    res.json({ items, total, page, pageSize });
+    const notes = noteRows.flatMap((row) => {
+      const note = row.data as { conversationId?: string; text?: string; author?: string; sentAt?: string };
+      return note.conversationId === conversationId && note.text && note.sentAt
+        ? [
+            {
+              id: row.id,
+              text: note.text,
+              caption: null,
+              direction: 'OUTBOUND' as const,
+              status: 'SENT' as const,
+              type: 'internalNote',
+              sentAt: note.sentAt,
+              isPtt: false,
+              isPtv: false,
+              asViewOnce: false,
+              fileId: null,
+              error: null,
+              internal: true,
+              author: note.author ?? 'Atendente',
+            },
+          ]
+        : [];
+    });
+    const messages = items.map((item) => ({
+      ...item,
+      deletedByClient: Boolean((item.rawPayload as { deletedByClient?: boolean } | null)?.deletedByClient),
+      rawPayload: undefined,
+    }));
+    const timeline = [...messages, ...notes].sort(
+      (left, right) =>
+        new Date(right.sentAt).getTime() - new Date(left.sentAt).getTime() || right.id.localeCompare(left.id),
+    );
+    const skip = (page - 1) * pageSize;
+    res.json({ items: timeline.slice(skip, skip + pageSize), total: total + notes.length, page, pageSize });
+  });
+  router.post('/sessions/:sessionId/conversations/:conversationId/internal-notes', async (req, res) => {
+    const { sessionId, conversationId } = ids(req);
+    await messaging.chat(sessionId, conversationId);
+    const { text } = z.object({ text: z.string().trim().min(1).max(5000) }).parse(req.body);
+    const id = `internal-note:${randomUUID()}`;
+    const note = {
+      sessionId,
+      conversationId,
+      text,
+      author: res.locals.identity?.email || 'Atendente',
+      sentAt: new Date().toISOString(),
+    };
+    await putRecord(db, id, `INTERNAL_NOTE:${conversationId}`, note);
+    whatsapp.notify(sessionId, 'messages');
+    res.status(201).json({
+      id,
+      text,
+      caption: null,
+      direction: 'OUTBOUND',
+      status: 'SENT',
+      type: 'internalNote',
+      sentAt: note.sentAt,
+      isPtt: false,
+      isPtv: false,
+      asViewOnce: false,
+      fileId: null,
+      error: null,
+      internal: true,
+      author: note.author,
+    });
   });
   router.post('/sessions/:sessionId/conversations/:conversationId/send', async (req, res) => {
     const { sessionId, conversationId } = ids(req);
@@ -438,22 +546,26 @@ export function attendanceRoutes(
   router.get('/sessions/:sessionId/conversations/:conversationId/sequences', async (req, res) => {
     const { sessionId, conversationId } = ids(req);
     await messaging.chat(sessionId, conversationId);
+    const items = await db.sequenceRun.findMany({
+      where: { conversationId },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      select: {
+        id: true,
+        name: true,
+        kind: true,
+        position: true,
+        status: true,
+        nextRunAt: true,
+        error: true,
+        steps: true,
+      },
+    });
     res.json({
-      items: await db.sequenceRun.findMany({
-        where: { conversationId },
-        orderBy: { createdAt: 'desc' },
-        take: 10,
-        select: {
-          id: true,
-          name: true,
-          kind: true,
-          position: true,
-          status: true,
-          nextRunAt: true,
-          error: true,
-          steps: true,
-        },
-      }),
+      items: items.map((item) => ({
+        ...item,
+        status: item.status === 'WAITING_INPUT' ? 'PAUSED' : item.status,
+      })),
     });
   });
   router.post('/sessions/:sessionId/conversations/:conversationId/sequences', async (req, res) => {
@@ -472,6 +584,14 @@ export function attendanceRoutes(
     async (req, res) => {
       const { sessionId, conversationId } = ids(req);
       res.json(await sequences.cancel(sessionId, conversationId, stringId.parse(req.params.runId)));
+    },
+  );
+  router.post(
+    '/sessions/:sessionId/conversations/:conversationId/sequences/:runId/pause',
+    async (req, res) => {
+      const { sessionId, conversationId } = ids(req);
+      const { paused } = z.object({ paused: z.boolean() }).parse(req.body);
+      res.json(await sequences.pause(sessionId, conversationId, stringId.parse(req.params.runId), paused));
     },
   );
   return router;

@@ -3,7 +3,15 @@ import type { Asset } from '../types';
 import { useApi, errorMessage } from '../context/ApiContext';
 import { Spinner } from './ui';
 
-export function AssetPreview({ asset, name }: { asset: Asset; name?: string }) {
+export function AssetPreview({
+  asset,
+  name,
+  compact = false,
+}: {
+  asset: Asset;
+  name?: string;
+  compact?: boolean;
+}) {
   const { blob } = useApi();
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
@@ -45,11 +53,11 @@ export function AssetPreview({ asset, name }: { asset: Asset; name?: string }) {
           ) : (
             <p>Documento disponível para baixar.</p>
           )}
-          <p>{asset.file?.filename}</p>
-          <small>
+          {!compact && <p>{asset.file?.filename}</p>}
+          <small hidden={compact}>
             {mime} · {Math.ceil((asset.file?.byteLength ?? 0) / 1024)} KB
           </small>
-          {url && (
+          {url && !compact && (
             <a className="button" href={url} download={asset.file?.filename}>
               Baixar arquivo
             </a>

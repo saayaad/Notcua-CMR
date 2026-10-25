@@ -32,7 +32,7 @@ export function AiControl({
       active = false;
     };
   }, [path, revision, request, notify]);
-  if (!control) return null;
+  if (!control?.enabled) return null;
   return (
     <div className="flow-indicator">
       <span title={control.reason}>

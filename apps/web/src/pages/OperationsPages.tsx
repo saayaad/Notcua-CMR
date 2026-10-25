@@ -1,8 +1,13 @@
+import { CampaignPhonePreview } from '../components/CampaignPhonePreview';
+import { usePreferences } from '../context/PreferencesContext';
+import { formatContactPhone, cleanContactName, cleanPhone } from '../context/contact-search';
+import { ContactCombobox } from '../components/ContactCombobox';
+import { Select, MultiSelect } from '../components/Select';
 import type { FlowSummary } from './flows/flow.types';
 import { CampaignMedia } from '../components/CampaignMedia';
 import { HistoryExport } from '../components/HistoryExport';
 import type { Asset } from '../types';
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import {
   Plus,
   Upload,
@@ -38,12 +43,31 @@ export function OverviewPage({
     ai: { todayTokens: number };
     batches: { status: string; _count: number }[];
   } | null>(null);
+  const [crmMoney, setCrmMoney] = useState<{ openValueInCents: number; wonValueInCents: number } | null>(
+    null,
+  );
   useEffect(() => {
     if (sessionId)
       void request<typeof metrics>(`/operations/sessions/${sessionId}/overview`)
         .then(setMetrics)
         .catch((error) => notify(errorMessage(error), true));
   }, [sessionId, request, notify]);
+  useEffect(() => {
+    if (!sessionId) {
+      setCrmMoney(null);
+      return;
+    }
+    const controller = new AbortController();
+    void request<{ openValueInCents: number; wonValueInCents: number }>(
+      `/crm/sessions/${sessionId}/metrics?days=30`,
+      'GET',
+      undefined,
+      controller.signal,
+    )
+      .then(setCrmMoney)
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [sessionId, request]);
   return (
     <main className="workspace-page operations-page">
       <div className="page-heading">
@@ -58,16 +82,30 @@ export function OverviewPage({
           { title: 'Contatos', value: metrics?.people ?? 0, icon: Users },
           { title: 'Mensagens enviadas', value: metrics?.messages ?? 0, icon: Send },
           { title: 'Conversas não lidas', value: metrics?.waiting ?? 0, icon: MessageSquare },
+          {
+            title: 'Vendas ganhas · CRM',
+            value: (crmMoney?.wonValueInCents ?? 0) / 100,
+            icon: Send,
+            currency: true,
+          },
+          {
+            title: 'Valor em negociação · CRM',
+            value: (crmMoney?.openValueInCents ?? 0) / 100,
+            icon: Clock3,
+            currency: true,
+          },
           { title: 'Tokens de IA hoje · operação', value: metrics?.ai.todayTokens ?? 0, icon: MessageSquare },
           {
             title: 'Envios pendentes',
             value: metrics?.batches.find((row) => row.status === 'QUEUED')?._count ?? 0,
             icon: Clock3,
           },
-        ].map(({ title, value, icon: Icon }) => (
+        ].map(({ title, value, icon: Icon, currency }) => (
           <article className="surface" key={title}>
             <Icon size={21} />
-            <strong>{value}</strong>
+            <strong>
+              {currency ? value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : value}
+            </strong>
             <span>{title}</span>
           </article>
         ))}
@@ -387,7 +425,7 @@ function LeadImport({
           <div className="form-grid">
             <label>
               Coluna do telefone
-              <select
+              <Select
                 disabled={busy}
                 value={preview.phoneColumn}
                 onChange={(event) => void inspect(Number(event.target.value), preview.nameColumn)}
@@ -397,11 +435,11 @@ function LeadImport({
                     {header || `Coluna ${index + 1}`}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label>
               Coluna do nome
-              <select
+              <Select
                 disabled={busy}
                 value={preview.nameColumn}
                 onChange={(event) => void inspect(preview.phoneColumn, Number(event.target.value))}
@@ -411,7 +449,7 @@ function LeadImport({
                     {header || `Coluna ${index + 1}`}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
           </div>
           <p className="notice">
@@ -487,6 +525,8 @@ interface BatchRow {
   count: number;
   createdAt: string;
   counts: { status: string; _count: number }[];
+  investmentInCents?: number;
+  attributedRevenueInCents?: number;
 }
 const batchStatus: Record<string, string> = {
   DRAFT: 'Rascunho',
@@ -501,12 +541,14 @@ export function CampaignsPage({
   schedule = false,
   initialConversation,
   onClose,
+  initialSearch = '',
 }: {
   sessionId: string;
   library: Library;
   schedule?: boolean;
   initialConversation?: Conversation;
   onClose?: () => void;
+  initialSearch?: string;
 }) {
   const { request, notify } = useApi();
   const [items, setItems] = useState<BatchRow[]>([]);
@@ -515,6 +557,10 @@ export function CampaignsPage({
   const [activate, setActivate] = useState<BatchRow | null>(null);
   const [tasks, setTasks] = useState<{ status: string; error?: string; runAt: string }[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [search, setSearch] = useState(initialSearch);
+  const [financeBatch, setFinanceBatch] = useState('');
+  const [finance, setFinance] = useState({ investment: '0.00', revenue: '0.00' });
+  useEffect(() => setSearch(initialSearch), [initialSearch]);
   useEffect(() => {
     if (!sessionId) return;
     const controller = new AbortController();
@@ -571,6 +617,17 @@ export function CampaignsPage({
           </p>
         </div>
         <div className="operation-actions">
+          {!schedule && (
+            <label className="crm-search">
+              <Search size={16} />
+              <input
+                aria-label="Buscar campanha"
+                placeholder="Buscar campanha"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </label>
+          )}
           <button className="icon-button" aria-label="Atualizar envios" onClick={() => setTick(tick + 1)}>
             <RefreshCw size={17} />
           </button>
@@ -581,53 +638,169 @@ export function CampaignsPage({
         </div>
       </div>
       <div className="batch-list">
-        {items.map((item) => (
-          <article className="surface" key={item.id}>
-            <div>
-              <span className={`flow-status ${item.status === 'ACTIVE' ? 'enabled' : ''}`}>
-                {batchStatus[item.status]}
-              </span>
-              <h2>{item.name}</h2>
-              <p>
-                {item.count} contatos · {item.counts.find((row) => row.status === 'COMPLETED')?._count ?? 0}{' '}
-                encaminhados · {item.counts.find((row) => row.status === 'FAILED')?._count ?? 0} falhas
-              </p>
-              <small>{new Date(item.createdAt).toLocaleString('pt-BR')}</small>
-            </div>
-            <div className="operation-actions">
-              <button
-                className="button"
-                onClick={() =>
-                  void request<{ items: NonNullable<typeof tasks> }>(
-                    `/operations/sessions/${sessionId}/batches/${item.id}/tasks`,
-                  )
-                    .then((data) => setTasks(data.items))
-                    .catch((error) => notify(errorMessage(error), true))
-                }
-              >
-                Ver envios
-              </button>
-              {['DRAFT', 'PAUSED'].includes(item.status) && (
-                <button className="button primary" disabled={busy} onClick={() => setActivate(item)}>
-                  <Play size={14} />
-                  Ativar
-                </button>
+        {items
+          .filter(
+            (item) =>
+              !search || item.name.toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')),
+          )
+          .map((item) => (
+            <Fragment key={item.id}>
+              <article className="surface">
+                <div>
+                  <span className={`flow-status ${item.status === 'ACTIVE' ? 'enabled' : ''}`}>
+                    {batchStatus[item.status]}
+                  </span>
+                  <h2>{item.name}</h2>
+                  <p>
+                    {item.count} contatos ·{' '}
+                    {item.counts.find((row) => row.status === 'COMPLETED')?._count ?? 0} encaminhados ·{' '}
+                    {item.counts.find((row) => row.status === 'FAILED')?._count ?? 0} falhas
+                  </p>
+                  <small>{new Date(item.createdAt).toLocaleString('pt-BR')}</small>
+                  {!schedule && (
+                    <div className="campaign-financial-summary">
+                      <strong>
+                        Receita atribuída:{' '}
+                        {(Number(item.attributedRevenueInCents ?? 0) / 100).toLocaleString('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        })}
+                      </strong>
+                      <span>
+                        Investimento:{' '}
+                        {(Number(item.investmentInCents ?? 0) / 100).toLocaleString('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        })}
+                      </span>
+                      <b>
+                        {(item.investmentInCents ?? 0) > 0
+                          ? `ROI ${((100 * ((item.attributedRevenueInCents ?? 0) - (item.investmentInCents ?? 0))) / (item.investmentInCents ?? 1)).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
+                          : 'Informe o investimento para calcular o ROI'}
+                      </b>
+                    </div>
+                  )}
+                </div>
+                <div className="operation-actions">
+                  {!schedule && (
+                    <button
+                      className="button"
+                      onClick={() => {
+                        setFinanceBatch(financeBatch === item.id ? '' : item.id);
+                        setFinance({
+                          investment: ((item.investmentInCents ?? 0) / 100).toFixed(2),
+                          revenue: ((item.attributedRevenueInCents ?? 0) / 100).toFixed(2),
+                        });
+                      }}
+                    >
+                      Financeiro
+                    </button>
+                  )}
+                  <button
+                    className="button"
+                    onClick={() =>
+                      void request<{ items: NonNullable<typeof tasks> }>(
+                        `/operations/sessions/${sessionId}/batches/${item.id}/tasks`,
+                      )
+                        .then((data) => setTasks(data.items))
+                        .catch((error) => notify(errorMessage(error), true))
+                    }
+                  >
+                    Ver envios
+                  </button>
+                  {['DRAFT', 'PAUSED'].includes(item.status) && (
+                    <button className="button primary" disabled={busy} onClick={() => setActivate(item)}>
+                      <Play size={14} />
+                      Ativar
+                    </button>
+                  )}
+                  {item.status === 'ACTIVE' && (
+                    <button className="button" disabled={busy} onClick={() => change(item, 'PAUSED')}>
+                      <Pause size={14} />
+                      Pausar
+                    </button>
+                  )}
+                  {!['COMPLETED', 'CANCELLED'].includes(item.status) && (
+                    <button className="button" disabled={busy} onClick={() => change(item, 'CANCELLED')}>
+                      <Square size={13} />
+                      Cancelar
+                    </button>
+                  )}
+                </div>
+              </article>
+              {financeBatch === item.id && !schedule && (
+                <form
+                  className="surface campaign-financial-editor"
+                  key={`finance:${item.id}`}
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    setBusy(true);
+                    void request(`/operations/sessions/${sessionId}/batches/${item.id}`, 'PUT', {
+                      investmentInCents: Math.round(Number(finance.investment.replace(',', '.')) * 100),
+                      attributedRevenueInCents: Math.round(Number(finance.revenue.replace(',', '.')) * 100),
+                    })
+                      .then(() => {
+                        setItems((current) =>
+                          current.map((row) =>
+                            row.id === item.id
+                              ? {
+                                  ...row,
+                                  investmentInCents: Math.round(
+                                    Number(finance.investment.replace(',', '.')) * 100,
+                                  ),
+                                  attributedRevenueInCents: Math.round(
+                                    Number(finance.revenue.replace(',', '.')) * 100,
+                                  ),
+                                }
+                              : row,
+                          ),
+                        );
+                        setFinanceBatch('');
+                        notify('Valores da campanha salvos.');
+                      })
+                      .catch((error) => notify(errorMessage(error), true))
+                      .finally(() => setBusy(false));
+                  }}
+                >
+                  <label>
+                    Investimento da campanha (R$)
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={finance.investment}
+                      onChange={(event) =>
+                        setFinance((current) => ({ ...current, investment: event.target.value }))
+                      }
+                    />
+                  </label>
+                  <label>
+                    Receita atribuída (R$)
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={finance.revenue}
+                      onChange={(event) =>
+                        setFinance((current) => ({ ...current, revenue: event.target.value }))
+                      }
+                    />
+                  </label>
+                  <small className="muted">
+                    Informe manualmente a receita atribuída a esta campanha para calcular o ROI.
+                  </small>
+                  <button className="button primary" disabled={busy}>
+                    Salvar valores
+                  </button>
+                </form>
               )}
-              {item.status === 'ACTIVE' && (
-                <button className="button" disabled={busy} onClick={() => change(item, 'PAUSED')}>
-                  <Pause size={14} />
-                  Pausar
-                </button>
-              )}
-              {!['COMPLETED', 'CANCELLED'].includes(item.status) && (
-                <button className="button" disabled={busy} onClick={() => change(item, 'CANCELLED')}>
-                  <Square size={13} />
-                  Cancelar
-                </button>
-              )}
-            </div>
-          </article>
-        ))}
+            </Fragment>
+          ))}
+        {!schedule &&
+          search &&
+          !items.some((item) =>
+            item.name.toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')),
+          ) && <p className="muted">Nenhuma campanha corresponde a “{search}”.</p>}
       </div>
       {!items.length && (
         <div className="operation-empty">
@@ -693,7 +866,7 @@ export function CampaignsPage({
     </main>
   );
 }
-function BatchEditor({
+export function BatchEditor({
   sessionId,
   library,
   schedule,
@@ -709,6 +882,17 @@ function BatchEditor({
   onSaved: () => void;
 }) {
   const { request, notify } = useApi();
+  const { preferences } = usePreferences();
+  const [message, setMessage] = useState('');
+  const [variants, setVariants] = useState<string[]>([]);
+  const [generating, setGenerating] = useState(false);
+  const [variantIndex, setVariantIndex] = useState(0);
+  const [selectedAssets, setSelectedAssets] = useState<string[]>([]);
+  const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
+  const [showLeads, setShowLeads] = useState(false);
+  const [leadQuery, setLeadQuery] = useState('');
+  const [audienceLoading, setAudienceLoading] = useState(false);
+
   const [flows, setFlows] = useState<FlowSummary[]>([]);
   const [labels, setLabels] = useState<Label[]>([]);
   const [people, setPeople] = useState<Conversation[]>(initialConversation ? [initialConversation] : []);
@@ -723,7 +907,9 @@ function BatchEditor({
     { id: string; kind: string; text: string; assetId: string; waitSeconds: number }[]
   >([{ id: crypto.randomUUID(), kind: 'text', text: '', assetId: '', waitSeconds: 1 }]);
   const [days, setDays] = useState(0);
-  const [conversationId, setConversationId] = useState(initialConversation?.id ?? '');
+  const [conversationId, setConversationId] = useState(
+    initialConversation && cleanPhone(initialConversation.contact.phoneNumber) ? initialConversation.id : '',
+  );
   const [contactQuery, setContactQuery] = useState('');
   const [kind, setKind] = useState('text');
   const [preview, setPreview] = useState<{
@@ -755,494 +941,658 @@ function BatchEditor({
     inactiveDays: days,
     conversationIds: schedule && conversationId ? [conversationId] : [],
   };
+  useEffect(() => {
+    if (schedule && !conversationId) {
+      setAudienceLoading(false);
+      setPreview(null);
+      setSelectedLeads([]);
+      return;
+    }
+    const controller = new AbortController();
+    setAudienceLoading(true);
+    const timer = window.setTimeout(() => {
+      void request<NonNullable<typeof preview>>(
+        `/operations/sessions/${sessionId}/audience`,
+        'POST',
+        audience,
+        controller.signal,
+      )
+        .then((data) => {
+          setPreview(data);
+          setSelectedLeads(data.items.map((item) => item.id));
+        })
+        .catch((error) => {
+          if (!controller.signal.aborted) notify(errorMessage(error), true);
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setAudienceLoading(false);
+        });
+    }, 350);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [
+    sessionId,
+    schedule,
+    conversationId,
+    labelId,
+    JSON.stringify(labelIds),
+    match,
+    listId,
+    JSON.stringify(listIds),
+    days,
+    request,
+    notify,
+  ]);
+  const previewAssets = selectedAssets
+    .map((id) => library.assets.find((asset) => asset.id === id))
+    .filter((asset): asset is Asset => Boolean(asset));
+  const displayText =
+    kind === 'text' || kind === 'reminder'
+      ? (variants[variantIndex] ?? message)
+      : kind === 'sequence'
+        ? steps
+            .filter((step) => step.kind === 'text')
+            .map((step) => step.text)
+            .join('\n\n')
+        : kind === 'funnel'
+          ? 'Sequência de atendimento: confira as etapas antes de ativar.'
+          : kind === 'flow'
+            ? 'Fluxo de atendimento: usa a versão publicada.'
+            : '';
   return (
     <Modal
       title={schedule ? 'Agendar mensagem ou lembrete' : 'Nova campanha segmentada'}
+      className="batch-editor-modal"
       onClose={onClose}
       wide
     >
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (!preview) return;
-          const data = new FormData(event.currentTarget);
-          setBusy(true);
-          void request(`/operations/sessions/${sessionId}/batches`, 'POST', {
-            name: data.get('name'),
-            mode: kind === 'reminder' ? 'REMINDER' : schedule ? 'SCHEDULE' : 'CAMPAIGN',
-            audience: { conversationIds: preview.items.map((item) => item.id) },
-            delivery: {
-              kind,
-              steps:
-                kind === 'sequence'
-                  ? steps.map((step) => ({
-                      kind: step.kind,
-                      waitSeconds: step.waitSeconds,
-                      text: step.kind === 'text' ? step.text : undefined,
-                      assetId: step.kind === 'asset' ? step.assetId : undefined,
-                    }))
-                  : undefined,
-              text: data.get('text') || undefined,
-              assetId: data.get('assetId') || undefined,
-              funnelId: data.get('funnelId') || undefined,
-              flowId: data.get('flowId') || undefined,
-            },
-            minSeconds: Number(data.get('minSeconds') || 15),
-            maxSeconds: Number(data.get('maxSeconds') || 45),
-            pauseEvery: Number(data.get('pauseEvery') || 0),
-            pauseSeconds: Number(data.get('pauseSeconds') || 0),
-            runAt: data.get('runAt') ? new Date(String(data.get('runAt'))).toISOString() : undefined,
-          })
-            .then(onSaved)
-            .catch((error) => notify(errorMessage(error), true))
-            .finally(() => setBusy(false));
-        }}
-      >
-        <label>
-          Nome
-          <input
-            name="name"
-            required
-            maxLength={100}
-            placeholder={schedule ? 'Ex.: Retorno do orçamento' : 'Ex.: Remarketing de outubro'}
-          />
-        </label>
-        {schedule ? (
-          <label className="contact-combobox-label">
-            Contato
-            <input type="hidden" name="conversationId" value={conversationId} />
-            <input
-              autoComplete="off"
-              role="combobox"
-              aria-expanded={Boolean(contactQuery)}
-              aria-controls="scheduled-contact-options"
-              placeholder="Busque por nome ou telefone"
-              value={contactQuery || people.find((item) => item.id === conversationId)?.contact.name || ''}
-              onChange={(event) => {
-                setContactQuery(event.target.value);
-                setConversationId('');
-                setPreview(null);
-              }}
-              onFocus={() =>
-                setContactQuery(people.find((item) => item.id === conversationId)?.contact.name ?? '')
-              }
-            />
-            {contactQuery && (
-              <div id="scheduled-contact-options" className="contact-combobox-options" role="listbox">
-                {people
-                  .filter((item) => {
-                    const q = contactQuery.toLocaleLowerCase();
-                    const digits = q.replace(/\D/g, '').replace(/^55/, '');
-                    return (
-                      item.contact.name.toLocaleLowerCase().includes(q) ||
-                      item.contact.phoneNumber.includes(q.replace(/\D/g, '')) ||
-                      item.contact.phoneNumber.endsWith(digits)
-                    );
-                  })
-                  .slice(0, 25)
-                  .map((item) => (
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={conversationId === item.id}
-                      key={item.id}
-                      onClick={() => {
-                        setConversationId(item.id);
-                        setContactQuery('');
-                        setPreview(null);
-                      }}
-                    >
-                      <span className="schedule-avatar">
-                        {item.contact.profilePicture ? (
-                          <img src={item.contact.profilePicture} alt="" />
-                        ) : (
-                          item.contact.name
-                            .trim()
-                            .split(/\s+/)
-                            .slice(0, 2)
-                            .map((part) => part[0])
-                            .join('')
-                            .toUpperCase()
-                        )}
-                      </span>
-                      <span>
-                        <strong>{item.contact.name}</strong>
-                        <small>
-                          +
-                          {item.contact.phoneNumber.replace(
-                            /^(\d{2})(\d{2})(\d{4,5})(\d{4})$/,
-                            '+$1 ($2) $3-$4',
-                          )}
-                        </small>
-                      </span>
-                    </button>
-                  ))}
-                {!people.some((item) => {
-                  const q = contactQuery.toLocaleLowerCase();
-                  return (
-                    item.contact.name.toLocaleLowerCase().includes(q) ||
-                    item.contact.phoneNumber.includes(q.replace(/\D/g, ''))
-                  );
-                }) && <p>Nenhum contato encontrado nesta conexão.</p>}
-              </div>
-            )}
-            <small className="muted">Busque por nome ou por qualquer parte do telefone.</small>
-          </label>
-        ) : (
-          <div className="form-grid">
-            <fieldset className="audience-multiselect">
-              <legend>Listas importadas</legend>
-              <p className="muted">Nenhuma selecionada inclui todos os contatos compatíveis.</p>
-              {lists.map((list) => (
-                <label key={list.id}>
-                  <input
-                    type="checkbox"
-                    checked={listIds.includes(list.id)}
-                    onChange={(event) => {
-                      setListIds((current) =>
-                        event.target.checked ? [...current, list.id] : current.filter((id) => id !== list.id),
-                      );
-                      setPreview(null);
-                    }}
-                  />
-                  {list.name} · {list.count}
-                </label>
-              ))}
-            </fieldset>
-            <label>
-              Combinar etiqueta e inatividade
-              <select
-                value={match}
-                onChange={(event) => {
-                  setMatch(event.target.value);
-                  setPreview(null);
-                }}
-              >
-                <option value="AND">E · atender aos dois filtros</option>
-                <option value="OR">OU · atender a qualquer filtro</option>
-              </select>
-            </label>
-            <fieldset className="audience-multiselect">
-              <legend>Etiquetas</legend>
-              <p className="muted">Contatos com qualquer etiqueta selecionada.</p>
-              {labels.map((label) => (
-                <label key={label.id}>
-                  <input
-                    type="checkbox"
-                    checked={labelIds.includes(label.id)}
-                    onChange={(event) => {
-                      setLabelIds((current) =>
-                        event.target.checked
-                          ? [...current, label.id]
-                          : current.filter((id) => id !== label.id),
-                      );
-                      setPreview(null);
-                    }}
-                  />
-                  <i style={{ background: label.color }} />
-                  {label.name}
-                </label>
-              ))}
-            </fieldset>
-            <label>
-              Sem interação há pelo menos (dias)
-              <input
-                type="number"
-                value={days}
-                min={0}
-                max={3650}
-                onChange={(event) => {
-                  setDays(Number(event.target.value));
-                  setPreview(null);
-                }}
-              />
-            </label>
-          </div>
-        )}
-        <label>
-          Conteúdo
-          <select value={kind} onChange={(event) => setKind(event.target.value)}>
-            <option value="text">Mensagem de texto</option>
-            <option value="sequence">Sequência de textos e mídias</option>
-            <option value="asset">Recurso da biblioteca</option>
-            <option value="funnel">Funil de atendimento</option>
-            <option value="flow">Fluxo de autoatendimento</option>
-            {schedule && <option value="reminder">Lembrete interno · sem envio ao cliente</option>}
-          </select>
-        </label>
-        {kind === 'sequence' ? (
-          <div className="surface">
-            <p className="muted">
-              As mensagens serão enviadas na ordem abaixo. Use {'{{nome}}'} e {'{{saudacao}}'} nos textos.
-            </p>
-            {steps.map((step, index) => (
-              <section className="surface" key={step.id}>
-                <div className="form-grid">
-                  <label>
-                    Etapa {index + 1}
-                    <select
-                      value={step.kind}
-                      onChange={(event) =>
-                        setSteps((current) =>
-                          current.map((item) =>
-                            item.id === step.id ? { ...item, kind: event.target.value } : item,
-                          ),
-                        )
-                      }
-                    >
-                      <option value="text">Texto</option>
-                      <option value="asset">Áudio, imagem, vídeo ou recurso</option>
-                    </select>
-                  </label>
-                  <label>
-                    Espera antes da etapa (s)
-                    <input
-                      type="number"
-                      min={0}
-                      max={86400}
-                      value={step.waitSeconds}
-                      onChange={(event) =>
-                        setSteps((current) =>
-                          current.map((item) =>
-                            item.id === step.id ? { ...item, waitSeconds: Number(event.target.value) } : item,
-                          ),
-                        )
-                      }
-                    />
-                  </label>
-                </div>
-                {step.kind === 'text' ? (
-                  <label>
-                    Mensagem
-                    <textarea
-                      required
-                      maxLength={10000}
-                      value={step.text}
-                      onChange={(event) =>
-                        setSteps((current) =>
-                          current.map((item) =>
-                            item.id === step.id ? { ...item, text: event.target.value } : item,
-                          ),
-                        )
-                      }
-                    />
-                  </label>
-                ) : (
-                  <label>
-                    Recurso da biblioteca
-                    <select
-                      required
-                      value={step.assetId}
-                      onChange={(event) =>
-                        setSteps((current) =>
-                          current.map((item) =>
-                            item.id === step.id ? { ...item, assetId: event.target.value } : item,
-                          ),
-                        )
-                      }
-                    >
-                      <option value="">Selecione</option>
-                      {[...library.assets, ...extraAssets].map((asset) => (
-                        <option key={asset.id} value={asset.id}>
-                          {asset.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-                <div className="modal-actions">
-                  <button
-                    className="button small"
-                    type="button"
-                    disabled={!index}
-                    onClick={() =>
-                      setSteps((current) => {
-                        const next = [...current];
-                        [next[index - 1], next[index]] = [next[index]!, next[index - 1]!];
-                        return next;
-                      })
-                    }
-                  >
-                    Subir
-                  </button>
-                  <button
-                    className="button small"
-                    type="button"
-                    disabled={index === steps.length - 1}
-                    onClick={() =>
-                      setSteps((current) => {
-                        const next = [...current];
-                        [next[index + 1], next[index]] = [next[index]!, next[index + 1]!];
-                        return next;
-                      })
-                    }
-                  >
-                    Descer
-                  </button>
-                  <button
-                    className="button small"
-                    type="button"
-                    disabled={steps.length === 1}
-                    onClick={() => setSteps((current) => current.filter((item) => item.id !== step.id))}
-                  >
-                    Remover
-                  </button>
-                </div>
-              </section>
-            ))}
-            {steps.length < 30 && (
-              <CampaignMedia
-                onCreated={(asset) => {
-                  setExtraAssets((current) => [...current, asset]);
-                  setSteps((current) => [
-                    ...current,
-                    { id: crypto.randomUUID(), kind: 'asset', text: '', assetId: asset.id, waitSeconds: 1 },
-                  ]);
-                }}
-              />
-            )}
-            <button
-              type="button"
-              className="button"
-              disabled={steps.length >= 30}
-              onClick={() =>
-                setSteps((current) => [
-                  ...current,
-                  { id: crypto.randomUUID(), kind: 'text', text: '', assetId: '', waitSeconds: 1 },
-                ])
-              }
-            >
-              Adicionar mensagem
-            </button>
-          </div>
-        ) : ['text', 'reminder'].includes(kind) ? (
-          <label>
-            {kind === 'reminder' ? 'Texto do lembrete' : 'Mensagem'}
-            <textarea
-              name="text"
-              rows={4}
-              required
-              maxLength={10000}
-              placeholder="Use {{nome}} e {{saudacao}} para personalizar"
-            />
-          </label>
-        ) : kind === 'asset' ? (
-          <label>
-            Recurso
-            <select name="assetId" required>
-              <option value="">Selecione</option>
-              {library.assets.map((asset) => (
-                <option value={asset.id} key={asset.id}>
-                  {asset.kind === 'MESSAGE'
-                    ? 'Texto'
-                    : asset.kind === 'AUDIO'
-                      ? 'Áudio'
-                      : asset.kind === 'DOCUMENT'
-                        ? 'Documento'
-                        : 'Mídia'}{' '}
-                  · {asset.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : kind === 'flow' ? (
-          <label>
-            Fluxo ativo
-            <select name="flowId" required>
-              <option value="">Selecione</option>
-              {flows.map((flow) => (
-                <option value={flow.id} key={flow.id}>
-                  {flow.name}
-                </option>
-              ))}
-            </select>
-            <small className="muted">Usa a versão publicada no momento em que iniciar.</small>
-          </label>
-        ) : (
-          <label>
-            Funil
-            <select name="funnelId" required>
-              <option value="">Selecione</option>
-              {library.funnels.map((funnel) => (
-                <option value={funnel.id} key={funnel.id}>
-                  {funnel.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        <label>
-          {schedule ? 'Data e hora' : 'Agendar início (opcional)'}
-          <input name="runAt" type="datetime-local" required={schedule} />
-          <small className="muted">
-            Horário local do seu navegador. O envio também depende do servidor e do WhatsApp conectados.
-          </small>
-        </label>
-        {!schedule && (
-          <>
-            <div className="form-grid">
-              <label>
-                Intervalo mínimo (s)
-                <input name="minSeconds" type="number" min={1} max={86400} defaultValue={15} required />
-              </label>
-              <label>
-                Intervalo máximo (s)
-                <input name="maxSeconds" type="number" min={1} max={86400} defaultValue={45} required />
-              </label>
-            </div>
-            <p className="muted">Intervalos variáveis não garantem proteção contra bloqueios.</p>
-            <div className="form-grid">
-              <label>
-                Pausa longa a cada quantas mensagens?{' '}
-                <input name="pauseEvery" type="number" min={0} max={5000} defaultValue={0} />
-                <small>0 desativa a pausa por lote.</small>
-              </label>
-              <label>
-                Duração da pausa longa (s)
-                <input name="pauseSeconds" type="number" min={0} max={86400} defaultValue={300} />
-              </label>
-            </div>
-          </>
-        )}
-        <button
-          type="button"
-          className="button"
-          disabled={busy || (schedule && !conversationId)}
-          onClick={() => {
+      <div className="batch-editor-layout">
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!preview) return;
+            const data = new FormData(event.currentTarget);
             setBusy(true);
-            void request<NonNullable<typeof preview>>(
-              `/operations/sessions/${sessionId}/audience`,
-              'POST',
-              audience,
-            )
-              .then(setPreview)
+            void request(`/operations/sessions/${sessionId}/batches`, 'POST', {
+              name: data.get('name'),
+              mode: kind === 'reminder' ? 'REMINDER' : schedule ? 'SCHEDULE' : 'CAMPAIGN',
+              investmentInCents: Math.round(
+                Number(String(data.get('investment') || '0').replace(',', '.')) * 100,
+              ),
+              attributedRevenueInCents: Math.round(
+                Number(String(data.get('revenue') || '0').replace(',', '.')) * 100,
+              ),
+              audience: { ...audience, conversationIds: selectedLeads },
+              delivery: {
+                kind: kind === 'asset' && selectedAssets.length > 1 ? 'sequence' : kind,
+                textVariations: kind === 'text' ? variants : undefined,
+                steps:
+                  kind === 'asset' && selectedAssets.length > 1
+                    ? selectedAssets.map((assetId) => ({ kind: 'asset', assetId, waitSeconds: 1 }))
+                    : kind === 'sequence'
+                      ? steps.map((step) => ({
+                          kind: step.kind,
+                          waitSeconds: step.waitSeconds,
+                          text: step.kind === 'text' ? step.text : undefined,
+                          assetId: step.kind === 'asset' ? step.assetId : undefined,
+                        }))
+                      : undefined,
+                text: data.get('text') || undefined,
+                assetId: data.get('assetId') || undefined,
+                funnelId: data.get('funnelId') || undefined,
+                flowId: data.get('flowId') || undefined,
+              },
+              minSeconds: Number(data.get('minSeconds') || 15),
+              maxSeconds: Number(data.get('maxSeconds') || 45),
+              pauseEvery: Number(data.get('pauseEvery') || 0),
+              pauseSeconds: Number(data.get('pauseSeconds') || 0),
+              runAt: data.get('runAt') ? new Date(String(data.get('runAt'))).toISOString() : undefined,
+            })
+              .then(onSaved)
               .catch((error) => notify(errorMessage(error), true))
               .finally(() => setBusy(false));
           }}
         >
-          <Users size={15} />
-          Conferir público
-        </button>
-        {preview && (
+          <label>
+            Nome
+            <input
+              name="name"
+              required
+              maxLength={100}
+              placeholder={schedule ? 'Ex.: Retorno do orçamento' : 'Ex.: Remarketing de outubro'}
+            />
+          </label>
+          {!schedule && (
+            <div className="form-grid">
+              <label>
+                Investimento inicial (R$)
+                <input name="investment" type="number" min="0" step="0.01" defaultValue="0" />
+              </label>
+              <label>
+                Receita já atribuída (R$)
+                <input name="revenue" type="number" min="0" step="0.01" defaultValue="0" />
+              </label>
+              <small className="muted">
+                Pode preencher depois; o ROI usa os valores informados manualmente.
+              </small>
+            </div>
+          )}
+          {schedule ? (
+            <label className="contact-combobox-label">
+              Contato
+              <ContactCombobox
+                people={people}
+                value={conversationId}
+                sessionId={sessionId}
+                onChange={(id) => {
+                  setConversationId(id);
+                  setPreview(null);
+                }}
+                onCreated={(items) =>
+                  setPeople((current) => [
+                    ...current,
+                    ...items.filter((item) => !current.some((existing) => existing.id === item.id)),
+                  ])
+                }
+              />
+            </label>
+          ) : (
+            <div className="form-grid">
+              <label>
+                Listas importadas
+                <MultiSelect
+                  label="Listas importadas"
+                  options={lists.map((list) => ({ value: list.id, label: `${list.name} · ${list.count}` }))}
+                  value={listIds}
+                  onChange={(ids) => {
+                    setListIds(ids);
+                    setPreview(null);
+                  }}
+                  placeholder="Todas as listas"
+                />
+              </label>
+              <label>
+                Combinar etiqueta e inatividade
+                <Select
+                  value={match}
+                  onChange={(event) => {
+                    setMatch(event.target.value);
+                    setPreview(null);
+                  }}
+                >
+                  <option value="AND">E · atender aos dois filtros</option>
+                  <option value="OR">OU · atender a qualquer filtro</option>
+                </Select>
+              </label>
+              <label>
+                Etiquetas
+                <MultiSelect
+                  label="Etiquetas"
+                  options={labels.map((label) => ({
+                    value: label.id,
+                    label: label.name,
+                    color: preferences.labelStyles[label.id]?.color || label.color,
+                  }))}
+                  value={labelIds}
+                  onChange={(ids) => {
+                    setLabelIds(ids);
+                    setPreview(null);
+                  }}
+                  placeholder="Todas as etiquetas"
+                />
+              </label>
+              <label>
+                Sem interação há pelo menos (dias)
+                <input
+                  type="number"
+                  value={days}
+                  min={0}
+                  max={3650}
+                  onChange={(event) => {
+                    setDays(Number(event.target.value));
+                    setPreview(null);
+                  }}
+                />
+              </label>
+            </div>
+          )}
+          <label>
+            Conteúdo
+            <Select value={kind} onChange={(event) => setKind(event.target.value)}>
+              <option value="text">Mensagem de texto</option>
+              <option value="sequence">Sequência de textos e mídias</option>
+              <option value="asset">Recurso da biblioteca</option>
+              <option value="funnel">Funil de atendimento</option>
+              <option value="flow">Fluxo de autoatendimento</option>
+              {schedule && <option value="reminder">Lembrete interno · sem envio ao cliente</option>}
+            </Select>
+          </label>
+          {kind === 'sequence' ? (
+            <div className="surface">
+              <p className="muted">
+                As mensagens serão enviadas na ordem abaixo. Use {'{{nome}}'} e {'{{saudacao}}'} nos textos.
+              </p>
+              {steps.map((step, index) => (
+                <section className="surface" key={step.id}>
+                  <div className="form-grid">
+                    <label>
+                      Etapa {index + 1}
+                      <Select
+                        value={step.kind}
+                        onChange={(event) =>
+                          setSteps((current) =>
+                            current.map((item) =>
+                              item.id === step.id ? { ...item, kind: event.target.value } : item,
+                            ),
+                          )
+                        }
+                      >
+                        <option value="text">Texto</option>
+                        <option value="asset">Áudio, imagem, vídeo ou recurso</option>
+                      </Select>
+                    </label>
+                    <label>
+                      Espera antes da etapa (s)
+                      <input
+                        type="number"
+                        min={0}
+                        max={86400}
+                        value={step.waitSeconds}
+                        onChange={(event) =>
+                          setSteps((current) =>
+                            current.map((item) =>
+                              item.id === step.id
+                                ? { ...item, waitSeconds: Number(event.target.value) }
+                                : item,
+                            ),
+                          )
+                        }
+                      />
+                    </label>
+                  </div>
+                  {step.kind === 'text' ? (
+                    <label>
+                      Mensagem
+                      <textarea
+                        required
+                        maxLength={10000}
+                        value={step.text}
+                        onChange={(event) =>
+                          setSteps((current) =>
+                            current.map((item) =>
+                              item.id === step.id ? { ...item, text: event.target.value } : item,
+                            ),
+                          )
+                        }
+                      />
+                    </label>
+                  ) : (
+                    <label>
+                      Recurso da biblioteca
+                      <Select
+                        required
+                        value={step.assetId}
+                        onChange={(event) =>
+                          setSteps((current) =>
+                            current.map((item) =>
+                              item.id === step.id ? { ...item, assetId: event.target.value } : item,
+                            ),
+                          )
+                        }
+                      >
+                        <option value="">Selecione</option>
+                        {[...library.assets, ...extraAssets].map((asset) => (
+                          <option key={asset.id} value={asset.id}>
+                            {asset.name}
+                          </option>
+                        ))}
+                      </Select>
+                    </label>
+                  )}
+                  <div className="modal-actions">
+                    <button
+                      className="button small"
+                      type="button"
+                      disabled={!index}
+                      onClick={() =>
+                        setSteps((current) => {
+                          const next = [...current];
+                          [next[index - 1], next[index]] = [next[index]!, next[index - 1]!];
+                          return next;
+                        })
+                      }
+                    >
+                      Subir
+                    </button>
+                    <button
+                      className="button small"
+                      type="button"
+                      disabled={index === steps.length - 1}
+                      onClick={() =>
+                        setSteps((current) => {
+                          const next = [...current];
+                          [next[index + 1], next[index]] = [next[index]!, next[index + 1]!];
+                          return next;
+                        })
+                      }
+                    >
+                      Descer
+                    </button>
+                    <button
+                      className="button small"
+                      type="button"
+                      disabled={steps.length === 1}
+                      onClick={() => setSteps((current) => current.filter((item) => item.id !== step.id))}
+                    >
+                      Remover
+                    </button>
+                  </div>
+                </section>
+              ))}
+              {steps.length < 30 && (
+                <CampaignMedia
+                  onCreated={(asset) => {
+                    setExtraAssets((current) => [...current, asset]);
+                    setSteps((current) => [
+                      ...current,
+                      { id: crypto.randomUUID(), kind: 'asset', text: '', assetId: asset.id, waitSeconds: 1 },
+                    ]);
+                  }}
+                />
+              )}
+              <button
+                type="button"
+                className="button"
+                disabled={steps.length >= 30}
+                onClick={() =>
+                  setSteps((current) => [
+                    ...current,
+                    { id: crypto.randomUUID(), kind: 'text', text: '', assetId: '', waitSeconds: 1 },
+                  ])
+                }
+              >
+                Adicionar mensagem
+              </button>
+            </div>
+          ) : ['text', 'reminder'].includes(kind) ? (
+            <div>
+              <label>
+                {kind === 'reminder' ? 'Texto do lembrete' : 'Mensagem'}
+                <textarea
+                  name="text"
+                  value={message}
+                  onChange={(event) => {
+                    setMessage(event.target.value);
+                    setVariants([]);
+                    setVariantIndex(0);
+                  }}
+                  rows={4}
+                  required
+                  maxLength={10000}
+                  placeholder="Use {{nome}} e {{saudacao}} para personalizar"
+                />
+              </label>
+              {kind === 'text' && (
+                <>
+                  <button
+                    type="button"
+                    className="button"
+                    disabled={generating || message.trim().length < 3}
+                    onClick={() => {
+                      setGenerating(true);
+                      void request<{ variants: string[] }>(
+                        `/operations/sessions/${sessionId}/campaign-variations`,
+                        'POST',
+                        { text: message, count: 4 },
+                      )
+                        .then((data) => {
+                          setVariants(data.variants);
+                          setVariantIndex(0);
+                          notify('Variações geradas. Revise antes de ativar a campanha.');
+                        })
+                        .catch((error) => notify(errorMessage(error), true))
+                        .finally(() => setGenerating(false));
+                    }}
+                  >
+                    {generating ? <Spinner /> : '✨'}Gerar variações com IA
+                  </button>
+                  <p className="muted">
+                    As variações alternam entre contatos. Também aceita spintax, por exemplo {'{Olá|Oi}'}.
+                    Variações e intervalos não garantem proteção contra bloqueios.
+                  </p>
+                  <button
+                    type="button"
+                    className="text-button"
+                    disabled={variants.length >= 5}
+                    onClick={() => setVariants((current) => [...current, message])}
+                  >
+                    Adicionar variação manual
+                  </button>
+                  {variants.map((text, index) => (
+                    <div className="variation-editor" key={index}>
+                      <label>
+                        Variação {index + 1}
+                        <textarea
+                          maxLength={10000}
+                          required
+                          value={text}
+                          onChange={(event) =>
+                            setVariants((current) =>
+                              current.map((item, i) => (i === index ? event.target.value : item)),
+                            )
+                          }
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        className="text-button"
+                        onClick={() => setVariants((current) => current.filter((_, i) => i !== index))}
+                      >
+                        Remover variação
+                      </button>
+                    </div>
+                  ))}
+                  {variants.length > 0 && (
+                    <button
+                      type="button"
+                      className="button small"
+                      onClick={() => setVariantIndex((index) => (index + 1) % variants.length)}
+                    >
+                      Ver próxima variação na prévia
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          ) : kind === 'asset' ? (
+            <label>
+              Recursos da biblioteca
+              <input type="hidden" name="assetId" value={selectedAssets[0] ?? ''} />
+              <MultiSelect
+                label="Recursos da biblioteca"
+                options={library.assets.map((asset) => ({ value: asset.id, label: asset.name }))}
+                value={selectedAssets}
+                onChange={setSelectedAssets}
+                placeholder="Selecione um ou mais recursos"
+              />
+            </label>
+          ) : kind === 'flow' ? (
+            <label>
+              Fluxo ativo
+              <Select name="flowId" required>
+                <option value="">Selecione</option>
+                {flows.map((flow) => (
+                  <option value={flow.id} key={flow.id}>
+                    {flow.name}
+                  </option>
+                ))}
+              </Select>
+              <small className="muted">Usa a versão publicada no momento em que iniciar.</small>
+            </label>
+          ) : (
+            <label>
+              Funil
+              <Select name="funnelId" required>
+                <option value="">Selecione</option>
+                {library.funnels.map((funnel) => (
+                  <option value={funnel.id} key={funnel.id}>
+                    {funnel.name}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          )}
+          <label>
+            {schedule ? 'Data e hora' : 'Agendar início (opcional)'}
+            <input name="runAt" type="datetime-local" required={schedule} />
+            <small className="muted">
+              Horário local do seu navegador. O envio também depende do servidor e do WhatsApp conectados.
+            </small>
+          </label>
+          {!schedule && (
+            <>
+              <div className="form-grid">
+                <label>
+                  Intervalo mínimo (s)
+                  <input name="minSeconds" type="number" min={1} max={86400} defaultValue={15} required />
+                </label>
+                <label>
+                  Intervalo máximo (s)
+                  <input name="maxSeconds" type="number" min={1} max={86400} defaultValue={45} required />
+                </label>
+              </div>
+              <p className="muted">Intervalos variáveis não garantem proteção contra bloqueios.</p>
+              <div className="form-grid">
+                <label>
+                  Pausa longa a cada quantas mensagens?{' '}
+                  <input name="pauseEvery" type="number" min={0} max={5000} defaultValue={0} />
+                  <small>0 desativa a pausa por lote.</small>
+                </label>
+                <label>
+                  Duração da pausa longa (s)
+                  <input name="pauseSeconds" type="number" min={0} max={86400} defaultValue={300} />
+                </label>
+              </div>
+            </>
+          )}
+          <button
+            type="button"
+            className="button"
+            disabled={busy || (schedule && !conversationId)}
+            onClick={() => {
+              setBusy(true);
+              void request<NonNullable<typeof preview>>(
+                `/operations/sessions/${sessionId}/audience`,
+                'POST',
+                audience,
+              )
+                .then((data) => {
+                  setPreview(data);
+                  setSelectedLeads(data.items.map((item) => item.id));
+                })
+                .catch((error) => notify(errorMessage(error), true))
+                .finally(() => setBusy(false));
+            }}
+          >
+            <Users size={15} />
+            Conferir público
+          </button>
           <div className="audience-preview">
-            <strong>{preview.count} contatos na seleção</strong>
-            {preview.items.slice(0, 15).map((item) => (
-              <span key={item.id}>
-                {item.name} · +{item.phoneNumber}
-              </span>
-            ))}
-            {preview.count > 15 && <small>Mais {preview.count - 15} contatos.</small>}
+            <strong>
+              🎯{' '}
+              {audienceLoading
+                ? 'Consultando contatos…'
+                : `${preview?.count ?? 0} contatos correspondem ao filtro`}
+            </strong>
+            {preview && (
+              <>
+                <span>{selectedLeads.length} selecionados para esta campanha</span>
+                <button type="button" className="button small" onClick={() => setShowLeads(!showLeads)}>
+                  Ver/Selecionar leads manualmente
+                </button>
+                {showLeads && (
+                  <div className="manual-leads">
+                    <input
+                      aria-label="Buscar leads da campanha"
+                      placeholder="Buscar na seleção…"
+                      value={leadQuery}
+                      onChange={(event) => setLeadQuery(event.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() =>
+                        setSelectedLeads(selectedLeads.length ? [] : preview.items.map((item) => item.id))
+                      }
+                    >
+                      {selectedLeads.length ? 'Desmarcar todos' : 'Selecionar todos'}
+                    </button>
+                    {preview.items
+                      .filter((item) =>
+                        `${item.name} ${item.phoneNumber}`.toLowerCase().includes(leadQuery.toLowerCase()),
+                      )
+                      .map((item) => (
+                        <label key={item.id}>
+                          <input
+                            type="checkbox"
+                            checked={selectedLeads.includes(item.id)}
+                            onChange={(event) =>
+                              setSelectedLeads((current) =>
+                                event.target.checked
+                                  ? [...current, item.id]
+                                  : current.filter((id) => id !== item.id),
+                              )
+                            }
+                          />
+                          <span>
+                            {cleanContactName(item.name, item.phoneNumber)}
+                            <small>{formatContactPhone(item.phoneNumber)}</small>
+                          </span>
+                        </label>
+                      ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
-        )}
-        <div className="modal-actions">
-          <button type="button" className="button" onClick={onClose}>
-            Cancelar
-          </button>
-          <button className="button primary" disabled={busy || !preview?.count}>
-            {busy ? <Spinner /> : <Plus size={15} />}Salvar rascunho
-          </button>
-        </div>
-      </form>
+          <div className="modal-actions">
+            <button type="button" className="button" onClick={onClose}>
+              Cancelar
+            </button>
+            <button
+              className="button primary"
+              disabled={
+                busy ||
+                audienceLoading ||
+                !selectedLeads.length ||
+                (kind === 'asset' && !selectedAssets.length)
+              }
+            >
+              {busy ? <Spinner /> : <Plus size={15} />}Salvar rascunho
+            </button>
+          </div>
+        </form>
+        <CampaignPhonePreview
+          text={displayText}
+          assets={
+            kind === 'asset'
+              ? previewAssets
+              : kind === 'sequence'
+                ? steps
+                    .filter((step) => step.kind === 'asset')
+                    .map(
+                      (step) =>
+                        library.assets.find((asset) => asset.id === step.assetId) ||
+                        extraAssets.find((asset) => asset.id === step.assetId),
+                    )
+                    .filter((asset): asset is Asset => Boolean(asset))
+                : []
+          }
+          name={preview?.items.find((item) => selectedLeads.includes(item.id))?.name || 'Ana'}
+        />
+      </div>
     </Modal>
   );
 }

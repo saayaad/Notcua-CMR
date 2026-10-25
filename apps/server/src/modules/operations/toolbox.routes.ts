@@ -58,6 +58,11 @@ export function toolboxRoutes(db: PrismaClient) {
   router.get('/sessions/:sessionId/transfers', async (req, res) => {
     const sessionId = id.parse(req.params.sessionId);
     const identity = res.locals.identity;
+    const member = await record<{ department?: string; active?: boolean } | null>(
+      db,
+      `team:${identity.email}`,
+      null,
+    );
     const rows = await db.operationRecord.findMany({
       where: { kind: 'TRANSFER', data: { path: '$.sessionId', equals: sessionId } },
       orderBy: { createdAt: 'desc' },
@@ -67,11 +72,19 @@ export function toolboxRoutes(db: PrismaClient) {
       items: rows
         .map((row) => ({ id: row.id, ...(row.data as object) }))
         .filter((row) => {
-          const transfer = row as { target?: string; from?: string };
+          const transfer = row as {
+            target?: string;
+            from?: string;
+            department?: string;
+            targetType?: string;
+          };
           return (
             identity.role === 'ADMIN' ||
             transfer.target === identity.email ||
-            transfer.from === identity.email
+            transfer.from === identity.email ||
+            (member?.active &&
+              transfer.targetType === 'DEPARTMENT' &&
+              transfer.department === member.department)
           );
         }),
     });
@@ -81,7 +94,8 @@ export function toolboxRoutes(db: PrismaClient) {
     const input = z
       .object({
         conversationId: id,
-        target: z.email().transform((value) => value.toLowerCase()),
+        target: z.string().min(1).max(200),
+        targetType: z.enum(['MEMBER', 'DEPARTMENT']).default('MEMBER'),
         note: z.string().max(2000).default(''),
       })
       .parse(req.body);
@@ -91,12 +105,23 @@ export function toolboxRoutes(db: PrismaClient) {
         include: { contact: true },
       });
       if (!chat) throw new AppError(404, 'Conversa não encontrada nesta conexão.');
-      const team = await tx.operationRecord.findUnique({ where: { id: `team:${input.target}` } });
-      if (
-        !(team?.data as { active?: boolean } | undefined)?.active &&
-        input.target !== res.locals.identity.email
-      )
-        throw new AppError(422, 'O destinatário precisa estar ativo na equipe.');
+      if (input.targetType === 'MEMBER') {
+        input.target = z.email().parse(input.target).toLowerCase();
+        const team = await tx.operationRecord.findUnique({ where: { id: `team:${input.target}` } });
+        if (
+          !(team?.data as { active?: boolean } | undefined)?.active &&
+          input.target !== res.locals.identity.email
+        )
+          throw new AppError(422, 'O destinatário precisa estar ativo na equipe.');
+      } else {
+        const groups = await tx.operationRecord.findUnique({ where: { id: 'settings:departments' } });
+        if (
+          !(groups?.data as { items?: { name: string }[] } | undefined)?.items?.some(
+            (item) => item.name === input.target,
+          )
+        )
+          throw new AppError(422, 'Escolha um setor cadastrado.');
+      }
       const pending = await tx.operationRecord.findFirst({
         where: {
           kind: 'TRANSFER',
@@ -109,6 +134,8 @@ export function toolboxRoutes(db: PrismaClient) {
       if (pending) throw new AppError(409, 'Esta conversa já possui uma transferência pendente.');
       const data = {
         ...input,
+        department: input.targetType === 'DEPARTMENT' ? input.target : '',
+        target: input.targetType === 'DEPARTMENT' ? `department:${input.target}` : input.target,
         sessionId,
         name: chat.contact.name,
         from: res.locals.identity.email,
@@ -130,16 +157,30 @@ export function toolboxRoutes(db: PrismaClient) {
         where: { id: id.parse(req.params.transferId), kind: 'TRANSFER' },
       });
       const data = row?.data as
-        { sessionId: string; status: string; target: string; conversationId: string } | undefined;
+        | {
+            sessionId: string;
+            status: string;
+            target: string;
+            conversationId: string;
+            targetType?: string;
+            department?: string;
+          }
+        | undefined;
       if (!row || !data || data.sessionId !== sessionId)
         throw new AppError(404, 'Transferência não encontrada.');
-      if (res.locals.identity.role !== 'ADMIN' && data.target !== res.locals.identity.email)
+      const member = await tx.operationRecord.findUnique({
+        where: { id: `team:${res.locals.identity.email}` },
+      });
+      const memberData = member?.data as { department?: string; active?: boolean } | undefined;
+      const inDepartment =
+        data.targetType === 'DEPARTMENT' && memberData?.active && memberData.department === data.department;
+      if (res.locals.identity.role !== 'ADMIN' && data.target !== res.locals.identity.email && !inDepartment)
         throw new AppError(403, 'Somente o destinatário pode responder à transferência.');
       if (data.status !== 'PENDING') throw new AppError(409, 'Esta transferência já foi respondida.');
       if (status === 'ACCEPTED')
         await tx.conversation.update({
           where: { id: data.conversationId },
-          data: { assignedTo: data.target },
+          data: { assignedTo: data.targetType === 'DEPARTMENT' ? res.locals.identity.email : data.target },
         });
       await tx.operationRecord.update({
         where: { id: row.id },

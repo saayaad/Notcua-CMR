@@ -139,6 +139,30 @@ export class SyncService {
     let count = 0;
     for (const entry of entries) {
       if (!entry.key.id || !entry.key.remoteJid || !entry.message) continue;
+      const protocol = entry.message.protocolMessage;
+      if (protocol?.type === 0 && protocol.key?.id) {
+        if (!entry.key.fromMe) {
+          const original = await this.db.chatMessage.findFirst({
+            where: { whatsappMessageId: protocol.key.id, conversation: { sessionId } },
+            select: { id: true, rawPayload: true },
+          });
+          if (original) {
+            const raw = original.rawPayload;
+            await this.db.chatMessage.update({
+              where: { id: original.id },
+              data: {
+                rawPayload: {
+                  ...(raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}),
+                  deletedByClient: true,
+                  deletedAt: new Date().toISOString(),
+                },
+              },
+            });
+            count++;
+          }
+        }
+        continue;
+      }
       const content = normalizeMessageContent(entry.message);
       const type = getContentType(content);
       if (!type || !realMessageTypes.has(type)) continue;

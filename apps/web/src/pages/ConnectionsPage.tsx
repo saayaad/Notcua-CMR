@@ -1,3 +1,4 @@
+import {Select} from '../components/Select';
 import { useEffect, useState } from 'react';
 import { Wifi, Plus, QrCode, Pause, Unplug, RefreshCw, CheckCircle2 } from 'lucide-react';
 import type { Label, Session } from '../types';
@@ -196,7 +197,7 @@ export function ConnectionsPage({
                   <input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} />
                   Ativar etiqueta automática
                 </label>
-                <select
+                <Select
                   aria-label="Etiqueta automática"
                   value={labelId}
                   onChange={(e) => setLabelId(e.target.value)}
@@ -207,7 +208,7 @@ export function ConnectionsPage({
                       {label.name}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <div className="rule-actions">
                   <button
                     className="button small primary"

@@ -1,3 +1,4 @@
+import {Select} from './Select';
 import { useEffect, useState } from 'react';
 import { useApi, errorMessage } from '../context/ApiContext';
 import { Modal } from './ui';
@@ -29,14 +30,14 @@ export function FlowLaunch({
       </p>
       <label>
         Fluxo
-        <select value={id} onChange={(event) => setId(event.target.value)}>
+        <Select value={id} onChange={(event) => setId(event.target.value)}>
           <option value="">Selecione um fluxo ativo</option>
           {flows.map((flow) => (
             <option key={flow.id} value={flow.id}>
               {flow.name}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       {!flows.length && (
         <p className="notice">Publique e ative um fluxo em Autoatendimento antes de iniciar.</p>

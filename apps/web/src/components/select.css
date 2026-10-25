@@ -1,0 +1,159 @@
+.custom-select {
+  position: relative;
+  min-width: 0;
+  width: 100%;
+}
+.select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  width: 100%;
+  min-height: 2.25rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  background: var(--input, var(--bg));
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+}
+.select-trigger > span {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.select-trigger > svg {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.select-trigger[aria-expanded='true'] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-bg);
+}
+.select-validation {
+  position: absolute;
+  width: 1px !important;
+  height: 1px !important;
+  min-height: 0 !important;
+  opacity: 0;
+  pointer-events: none;
+  padding: 0 !important;
+  border: 0;
+}
+.select-popover {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 0.35rem;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 0.7rem;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 0.8rem 3rem #0006;
+  z-index: 5000;
+  animation: select-in 0.15s ease;
+}
+.select-popover:popover-open {
+  display: flex;
+  flex-direction: column;
+}
+.select-options {
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1;
+  scrollbar-width: thin;
+}
+.select-options > button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.6rem;
+  background: transparent;
+  color: var(--text);
+  border: 0;
+  border-radius: 0.4rem;
+  text-align: left;
+  font-size: 0.8rem;
+}
+.select-options > button > span {
+  flex: 1;
+}
+.select-options > button > i {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.select-options > button:hover,
+.select-options > button.keyboard-active,
+.select-options > button[aria-selected='true'] {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+.select-options > button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.select-options > p {
+  padding: 0.6rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.select-search {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.5rem !important;
+  margin: 0 0 0.3rem !important;
+  border-bottom: 1px solid var(--line);
+}
+.select-search input {
+  min-width: 0;
+  width: 100%;
+  min-height: 1.8rem;
+  border: 0;
+  background: transparent;
+  padding: 0.3rem;
+  font-size: 0.8rem;
+}
+.select-popover > footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--line);
+}
+.select-popover > footer button {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 0;
+  background: var(--surface2);
+  color: var(--text);
+  border-radius: 0.4rem;
+  padding: 0.4rem 0.65rem;
+}
+@keyframes select-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .select-popover {
+    animation: none;
+  }
+}

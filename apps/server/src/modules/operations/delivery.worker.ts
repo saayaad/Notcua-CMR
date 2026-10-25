@@ -19,6 +19,8 @@ export interface Batch {
   pauseEvery?: number;
   pauseSeconds?: number;
   sentCount?: number;
+  investmentInCents?: number;
+  attributedRevenueInCents?: number;
 }
 export interface Delivery {
   kind: 'text' | 'asset' | 'funnel' | 'flow' | 'reminder' | 'sequence';

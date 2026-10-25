@@ -1,3 +1,4 @@
+import {Select} from './Select';
 import { useEffect, useState } from 'react';
 import { Copy, Send, QrCode } from 'lucide-react';
 import type { Library } from '../types';
@@ -6,17 +7,19 @@ import { Modal, Spinner } from './ui';
 
 export function PixModal({
   library,
+  initialKeyId,
   base,
   onClose,
   onSent,
 }: {
   library: Library;
+  initialKeyId?: string;
   base: string;
   onClose: () => void;
   onSent: () => void;
 }) {
   const { request, notify } = useApi();
-  const [keyId, setKeyId] = useState(library.pixKeys[0]?.id ?? '');
+  const [keyId, setKeyId] = useState(initialKeyId || library.pixKeys[0]?.id || '');
   const [amount, setAmount] = useState('');
   const [proof, setProof] = useState(true);
   const [audioId, setAudioId] = useState('');
@@ -90,13 +93,13 @@ export function PixModal({
         <>
           <label>
             Chave PIX
-            <select value={keyId} onChange={(e) => setKeyId(e.target.value)}>
+            <Select value={keyId} onChange={(e) => setKeyId(e.target.value)}>
               {library.pixKeys.map((key) => (
                 <option key={key.id} value={key.id}>
                   {key.name} · {key.type === 'RANDOM' ? 'Aleatória' : key.type}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <label>
             Valor em reais (opcional)
@@ -136,7 +139,7 @@ export function PixModal({
           </label>
           <label>
             Áudio de solicitação (opcional)
-            <select value={audioId} onChange={(e) => setAudioId(e.target.value)}>
+            <Select value={audioId} onChange={(e) => setAudioId(e.target.value)}>
               <option value="">Sem áudio adicional</option>
               {library.assets
                 .filter((asset) => asset.kind === 'AUDIO')
@@ -145,7 +148,7 @@ export function PixModal({
                     {asset.name}
                   </option>
                 ))}
-            </select>
+            </Select>
           </label>
           <div className="modal-actions">
             <button className="button" disabled={!preview || busy} onClick={() => void send(false)}>

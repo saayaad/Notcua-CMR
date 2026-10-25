@@ -1,3 +1,5 @@
+import { ConversationSimulator } from './ConversationSimulator';
+import {Select} from './Select';
 import { useEffect, useState } from 'react';
 import { Save } from 'lucide-react';
 import { useApi, errorMessage } from '../context/ApiContext';
@@ -5,6 +7,7 @@ import { Spinner } from './ui';
 export function AiSettings() {
   const { request, notify } = useApi();
   const [data, setData] = useState<Record<string, unknown> | null>(null);
+  const [simulation,setSimulation]=useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [provider, setProvider] = useState('openai');
@@ -41,7 +44,7 @@ export function AiSettings() {
   );
   return (
     <section className="surface">
-      <h2>Assistente de IA</h2>
+      <h2>Assistente de IA</h2><button className="button primary" onClick={()=>setSimulation(true)}>🧪 Testar / Simular atendimento</button>{simulation&&<ConversationSimulator aiOnly onClose={()=>setSimulation(false)}/>}
       <p>
         Defina as regras, escolha o provedor e acompanhe o consumo. Cada conversa tem seu próprio controle de
         pausa.
@@ -102,11 +105,11 @@ export function AiSettings() {
         <div className="form-grid">
           <label>
             Provedor
-            <select value={provider} onChange={(event) => setProvider(event.target.value)}>
+            <Select value={provider} onChange={(event) => setProvider(event.target.value)}>
               <option value="openai">OpenAI</option>
               <option value="anthropic">Anthropic · Claude</option>
               <option value="gemini">Google · Gemini</option>
-            </select>
+            </Select>
           </label>
           <label>
             Modelo de atendimento

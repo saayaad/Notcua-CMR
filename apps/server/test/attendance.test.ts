@@ -20,6 +20,7 @@ import { crc16, pixKeySchema, pixPayload } from '../src/modules/attendance/pix.j
 import { resolveContact } from '../src/modules/whatsapp/contact.repository.js';
 import { silentPublisher } from '../src/modules/whatsapp/whatsapp.types.js';
 import { createApp } from '../src/app.js';
+import { remindNextActions } from '../src/modules/operations/next-actions.js';
 
 class OutboundSocket implements WhatsappSocket {
   ev = makeEventBuffer(pino({ level: 'silent' }));
@@ -296,4 +297,207 @@ test('API filtra, protege escopo, salva ativos/funis/notas e entrega o históric
     .post(`/api/attendance/sessions/${other.id}/conversations/${conversationId}/send`)
     .send({ requestId: 'wrong-session', kind: 'text', text: 'Não enviar' })
     .expect(404);
+});
+
+test('notas internas não enviam WhatsApp e a paginação intercala notas e mensagens sem repetir itens', async () => {
+  const app = createApp(db, whatsapp, sequences, messaging);
+  const contact = await db.$transaction((tx) =>
+    resolveContact(tx, { jid: '5511888880011@s.whatsapp.net', name: 'Notas privadas' }),
+  );
+  const chat = await db.conversation.create({ data: { sessionId, contactId: contact!.id } });
+  const start = Date.now() - 60_000;
+  await db.chatMessage.createMany({
+    data: [1, 3, 5].map((offset) => ({
+      id: `timeline-message-${offset}`,
+      conversationId: chat.id,
+      direction: 'INBOUND' as const,
+      status: 'DELIVERED' as const,
+      text: `Mensagem ${offset}`,
+      sentAt: new Date(start + offset * 1000),
+    })),
+  });
+  await db.operationRecord.createMany({
+    data: [2, 4].map((offset) => ({
+      id: `timeline-note-${offset}`,
+      kind: offset === 2 ? 'INTERNAL_NOTE' : `INTERNAL_NOTE:${chat.id}`,
+      data: {
+        conversationId: chat.id,
+        text: `Nota ${offset}`,
+        author: 'Equipe',
+        sentAt: new Date(start + offset * 1000).toISOString(),
+      },
+    })),
+  });
+  const ids: string[] = [];
+  for (const page of [1, 2, 3]) {
+    const result = await request(app)
+      .get(`/api/attendance/sessions/${sessionId}/conversations/${chat.id}/messages?page=${page}&pageSize=2`)
+      .expect(200);
+    assert.equal(result.body.total, 5);
+    ids.push(...result.body.items.map((item: { id: string }) => item.id));
+    assert.ok(result.body.items.every((item: Record<string, unknown>) => !('rawPayload' in item)));
+  }
+  assert.deepEqual(ids, [
+    'timeline-message-5',
+    'timeline-note-4',
+    'timeline-message-3',
+    'timeline-note-2',
+    'timeline-message-1',
+  ]);
+  const sentBefore = socket.sends.length;
+  const messagesBefore = await db.chatMessage.count({ where: { conversationId: chat.id } });
+  const note = await request(app)
+    .post(`/api/attendance/sessions/${sessionId}/conversations/${chat.id}/internal-notes`)
+    .send({ text: 'Somente a equipe deve ler.' })
+    .expect(201);
+  assert.equal(note.body.internal, true);
+  assert.equal(socket.sends.length, sentBefore);
+  assert.equal(await db.chatMessage.count({ where: { conversationId: chat.id } }), messagesBefore);
+  assert.equal(
+    (await db.operationRecord.findUniqueOrThrow({ where: { id: note.body.id } })).kind,
+    `INTERNAL_NOTE:${chat.id}`,
+  );
+});
+
+test('fila SLA ordena antes de paginar e não mistura arquivadas com ativas', async () => {
+  const app = createApp(db, whatsapp, sequences, messaging);
+  const ids: string[] = [];
+  for (const [index, age] of [30, 20, 1].entries()) {
+    const contact = await db.$transaction((tx) =>
+      resolveContact(tx, { jid: `551188888002${index}@s.whatsapp.net`, name: `Fila revisão ${index}` }),
+    );
+    const sentAt = new Date(Date.now() - age * 60_000);
+    const chat = await db.conversation.create({
+      data: { sessionId, contactId: contact!.id, lastMessageAt: sentAt, pinned: index === 2 },
+    });
+    await db.chatMessage.create({
+      data: {
+        conversationId: chat.id,
+        direction: index === 2 ? 'OUTBOUND' : 'INBOUND',
+        status: 'SENT',
+        text: 'Conteúdo fictício',
+        sentAt,
+      },
+    });
+    ids.push(chat.id);
+  }
+  for (const page of [1, 2, 3]) {
+    const result = await request(app)
+      .get(
+        `/api/attendance/sessions/${sessionId}/conversations?search=${encodeURIComponent('Fila revisão')}&page=${page}&pageSize=1`,
+      )
+      .expect(200);
+    assert.equal(result.body.total, 3);
+    assert.equal(result.body.items[0].id, ids[page - 1]);
+  }
+  await db.conversation.update({ where: { id: ids[2] }, data: { status: 'CLOSED' } });
+  const archived = await request(app)
+    .get(
+      `/api/attendance/sessions/${sessionId}/conversations?search=${encodeURIComponent('Fila revisão')}&filter=archived`,
+    )
+    .expect(200);
+  assert.deepEqual(
+    archived.body.items.map((item: { id: string }) => item.id),
+    [ids[2]],
+  );
+});
+
+test('o nome Noctua é fixo ao salvar preferências', async () => {
+  const app = createApp(db, whatsapp, sequences, messaging);
+  const response = await request(app)
+    .put('/api/operations/settings/preferences')
+    .send({ brandingName: 'Outro nome', hudPanelOrder: ['list', 'chat', 'tools'] })
+    .expect(200);
+  assert.equal(response.body.brandingName, 'noctua');
+});
+
+test('resposta padrão exige confirmação e retoma o mesmo envio sem duplicar partes', async () => {
+  const app = createApp(db, whatsapp, sequences, messaging);
+  const base = `/api/operations/sessions/${sessionId}/standard-replies`;
+  const resource = await db.asset.create({
+    data: {
+      id: 'standard-resource',
+      kind: 'MESSAGE',
+      name: 'Complemento padrão',
+      text: 'Complemento de exemplo.',
+    },
+  });
+  const before = socket.sends.length;
+  const created = await request(app)
+    .post(base)
+    .send({
+      question: 'Como acompanho meu pedido?',
+      text: 'Você pode acompanhar pelo painel.',
+      assetIds: [resource.id],
+    })
+    .expect(201);
+  assert.equal(socket.sends.length, before);
+  const sendId = crypto.randomUUID();
+  await request(app)
+    .post(`${base}/${created.body.id}/send`)
+    .send({ conversationId, requestId: sendId, confirmed: false })
+    .expect(422);
+  assert.equal(socket.sends.length, before);
+  const body = { conversationId, requestId: sendId, confirmed: true };
+  await request(app).post(`${base}/${created.body.id}/send`).send(body).expect(200);
+  await request(app).post(`${base}/${created.body.id}/send`).send(body).expect(200);
+  assert.equal(socket.sends.length, before + 2);
+  await request(app).delete(`/api/attendance/assets/${resource.id}`).expect(409);
+  const other = await whatsapp.create('Escopo padrão');
+  await request(app)
+    .put(`/api/operations/sessions/${other.id}/standard-replies/${created.body.id}`)
+    .send({ question: 'Outra pergunta?', text: 'Não deve modificar.' })
+    .expect(404);
+  await request(app).delete(`${base}/${created.body.id}`).expect(200);
+  await request(app).delete(`/api/attendance/assets/${resource.id}`).expect(200);
+});
+
+test('próxima ação cria um único lembrete interno e nunca envia ao cliente', async () => {
+  const app = createApp(db, whatsapp, sequences, messaging);
+  const before = socket.sends.length;
+  const path = `/api/operations/sessions/${sessionId}/contacts/${conversationId}/next-action`;
+  const dueAt = new Date(Date.now() - 60000).toISOString();
+  await request(app)
+    .put(path)
+    .send({ title: 'Retornar orçamento de teste', dueAt, completed: false })
+    .expect(200);
+  await remindNextActions(db, () => undefined);
+  await remindNextActions(db, () => undefined);
+  const notices = await db.operationRecord.findMany({
+    where: { kind: 'NOTICE', id: { startsWith: `next-action-notice:next-action:${conversationId}:` } },
+  });
+  assert.equal(notices.length, 1);
+  assert.equal(socket.sends.length, before);
+  await request(app)
+    .put(path)
+    .send({ title: 'Retornar orçamento de teste', dueAt, completed: true })
+    .expect(200);
+  assert.equal((await request(app).get(path).expect(200)).body.completed, true);
+});
+
+test('sequência pode pausar e retomar preservando espera e sem envio durante a pausa', async () => {
+  await db.funnel.create({
+    data: {
+      id: 'pause-funnel',
+      name: 'Funil pausável',
+      items: { create: [{ assetId: 'hello', position: 0, delayBeforeSendMs: 30000 }] },
+    },
+  });
+  const before = socket.sends.length;
+  const run = await sequences.enqueue(sessionId, conversationId, 'FUNNEL', 'pause-funnel', 'pause-test');
+  const paused = await sequences.pause(sessionId, conversationId, run.id, true);
+  assert.equal(paused.status, 'WAITING_INPUT');
+  await sequences.flush();
+  assert.equal(socket.sends.length, before);
+  const app = createApp(db, whatsapp, sequences, messaging);
+  const list = await request(app)
+    .get(`/api/attendance/sessions/${sessionId}/conversations/${conversationId}/sequences`)
+    .expect(200);
+  assert.equal(list.body.items.find((item: { id: string }) => item.id === run.id).status, 'PAUSED');
+  const resumed = await sequences.pause(sessionId, conversationId, run.id, false);
+  assert.equal(resumed.status, 'QUEUED');
+  assert.ok(resumed.nextRunAt.getTime() > Date.now() + 20000);
+  await sequences.pause(sessionId, conversationId, run.id, true);
+  await sequences.cancel(sessionId, conversationId, run.id);
+  assert.equal((await db.sequenceRun.findUniqueOrThrow({ where: { id: run.id } })).status, 'CANCELLED');
 });

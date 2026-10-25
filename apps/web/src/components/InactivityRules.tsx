@@ -1,3 +1,4 @@
+import {Select} from './Select';
 import { useEffect, useState } from 'react';
 import { Plus, Play, Pause } from 'lucide-react';
 import type { FlowSummary } from '../pages/flows/flow.types';
@@ -122,25 +123,25 @@ export function InactivityRules({ sessionId }: { sessionId: string }) {
             </label>
             <label>
               Fluxo ativo
-              <select name="flowId" required>
+              <Select name="flowId" required>
                 <option value="">Selecione</option>
                 {flows.map((flow) => (
                   <option key={flow.id} value={flow.id}>
                     {flow.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label>
               Etiqueta
-              <select name="labelId">
+              <Select name="labelId">
                 <option value="">Todas as conversas individuais</option>
                 {labels.map((label) => (
                   <option key={label.id} value={label.id}>
                     {label.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <div className="form-grid">
               <label>
@@ -149,11 +150,11 @@ export function InactivityRules({ sessionId }: { sessionId: string }) {
               </label>
               <label>
                 Unidade
-                <select name="unit" defaultValue="1440">
+                <Select name="unit" defaultValue="1440">
                   <option value="1440">Dias</option>
                   <option value="60">Horas</option>
                   <option value="1">Minutos</option>
-                </select>
+                </Select>
               </label>
             </div>
             <div className="modal-actions">

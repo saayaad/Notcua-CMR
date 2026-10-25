@@ -1,3 +1,4 @@
+import {Select} from '../components/Select';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   GoogleAuthProvider,
@@ -374,12 +375,12 @@ function OnboardingGate({ children }: { children: ReactNode }) {
           <div className="form-grid">
             <label>
               Tamanho da equipe
-              <select name="employees">
+              <Select name="employees">
                 <option>Somente eu</option>
                 <option>2 a 5 pessoas</option>
                 <option>6 a 20 pessoas</option>
                 <option>Mais de 20 pessoas</option>
-              </select>
+              </Select>
             </label>
             <label>
               Contato

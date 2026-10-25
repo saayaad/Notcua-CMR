@@ -3,6 +3,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useState,
@@ -44,6 +45,7 @@ function Notification({ message, error, onClose }: { message: string; error: boo
       <button type="button" className="icon-button" aria-label="Fechar aviso" onClick={onClose}>
         <X size={17} />
       </button>
+      <i className="toast-progress" aria-hidden="true" />
     </div>,
     host,
   );
@@ -54,6 +56,11 @@ export function ApiProvider({ children }: { children: ReactNode }) {
   const notify = useCallback((message: string, error = false) => {
     setToast({ message, error });
   }, []);
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(null), toast.error ? 7000 : 4500);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
   const request = useCallback(
     async <T,>(path: string, method = 'GET', body?: unknown, signal?: AbortSignal): Promise<T> => {
       const response = await fetch(`${API_BASE}/api${path}`, {

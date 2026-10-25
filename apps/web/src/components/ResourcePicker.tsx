@@ -1,3 +1,4 @@
+import {Select} from './Select';
 import { useState } from 'react';
 import { usePreferences } from '../context/PreferencesContext';
 import { orderItems } from '../context/ordering';
@@ -31,7 +32,7 @@ export function ResourcePicker({
       <div className="form-grid">
         <label>
           Categoria
-          <select
+          <Select
             aria-label="Categoria do recurso"
             value={category}
             onChange={(event) => {
@@ -47,7 +48,7 @@ export function ResourcePicker({
                 </option>
               ),
             )}
-          </select>
+          </Select>
         </label>
         <label>
           Buscar recurso
@@ -61,7 +62,7 @@ export function ResourcePicker({
       </div>
       <label>
         Resposta
-        <select
+        <Select
           required
           aria-label="Resposta da etapa"
           value={value}
@@ -79,7 +80,7 @@ export function ResourcePicker({
               {asset.file ? ` · ${asset.file.mimeType.split('/')[1]}` : ''}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       {selected && (
         <p className="resource-choice-preview">

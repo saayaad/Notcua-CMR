@@ -1,10 +1,12 @@
+import { LibraryCardMedia } from '../components/LibraryCardMedia';
+import { Select } from '../components/Select';
 import { AssetPreview } from '../components/AssetPreview';
 import { LibraryCategories, useLibraryOrganization } from '../components/LibraryCategories';
 import { MacroEditor } from '../components/MacroEditor';
 import { usePreferences } from '../context/PreferencesContext';
 import { orderItems } from '../context/ordering';
 import { ResourcePicker } from '../components/ResourcePicker';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import {
   Plus,
   Search,
@@ -32,10 +34,14 @@ export function LibraryPage({
   library,
   refresh,
   sessionId,
+  focusResourceId = '',
+  onFocusResourceHandled,
 }: {
   sessionId: string;
   library: Library;
   refresh: () => Promise<void>;
+  focusResourceId?: string;
+  onFocusResourceHandled?: () => void;
 }) {
   const { request, notify } = useApi();
   const { preferences } = usePreferences();
@@ -44,11 +50,34 @@ export function LibraryPage({
   const [search, setSearch] = useState('');
   const [editor, setEditor] = useState<Asset | 'new' | null>(null);
   const [funnel, setFunnel] = useState<Funnel | 'new' | null>(null);
+  const [assetAction, setAssetAction] = useState<{ kind: 'duplicate' | 'delete'; asset: Asset } | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
   const [preview, setPreview] = useState<Asset | null>(null);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [category, setCategory] = useState('');
   const organization = useLibraryOrganization();
   const [pix, setPix] = useState(false);
+  useEffect(() => {
+    if (!focusResourceId) return;
+    const asset = library.assets.find((item) => item.id === focusResourceId);
+    const funnelItem = library.funnels.find((item) => item.id === focusResourceId);
+    const macro = library.macros.find((item) => item.id === focusResourceId);
+    const pixItem = library.pixKeys.find((item) => item.id === focusResourceId);
+    if (asset) {
+      setTab(asset.kind);
+      setPreview(asset);
+    } else if (funnelItem) {
+      setTab('FUNNEL');
+      setFunnel(funnelItem);
+    } else if (macro) {
+      setTab('MACRO');
+      setMacroEditor(macro.id);
+    } else if (pixItem) {
+      setTab('PIX');
+      setPix(true);
+    }
+    if (asset || funnelItem || macro || pixItem) onFocusResourceHandled?.();
+  }, [focusResourceId, library, onFocusResourceHandled]);
   const tabs = [
     { id: 'MESSAGE', name: 'Textos', icon: MessageSquare },
     { id: 'AUDIO', name: 'Áudios', icon: Mic },
@@ -57,7 +86,7 @@ export function LibraryPage({
     { id: 'FUNNEL', name: 'Funis', icon: GitBranch },
     { id: 'MACRO', name: 'Macros', icon: Layers },
     { id: 'PIX', name: 'PIX', icon: Wallet },
-  ];
+  ].map((item) => ({ ...item, name: preferences.folderLabels[item.id] || item.name }));
   const assets = library.assets.filter(
     (asset) =>
       asset.kind === tab &&
@@ -78,16 +107,7 @@ export function LibraryPage({
       notify(errorMessage(error), true);
     }
   };
-  const remove = async (asset: Asset) => {
-    if (!window.confirm(`Excluir a resposta “${asset.name}”?`)) return;
-    try {
-      await request(`/attendance/assets/${encodeURIComponent(asset.id)}`, 'DELETE');
-      await refresh();
-      notify('Resposta excluída.');
-    } catch (error) {
-      notify(errorMessage(error), true);
-    }
-  };
+  const remove = async (asset: Asset) => setAssetAction({ kind: 'delete', asset });
   return (
     <main className="workspace-page">
       <div className="page-heading">
@@ -138,7 +158,7 @@ export function LibraryPage({
         />
       </label>
       <div className="library-category-bar">
-        <select
+        <Select
           aria-label="Categoria da biblioteca"
           value={category}
           onChange={(event) => setCategory(event.target.value)}
@@ -148,14 +168,19 @@ export function LibraryPage({
           {organization.categories.map((name) => (
             <option key={name}>{name}</option>
           ))}
-        </select>
+        </Select>
         <button className="button" onClick={() => setCategoriesOpen(true)}>
           Organizar categorias
         </button>
       </div>
       {categoriesOpen && <LibraryCategories library={library} onClose={() => setCategoriesOpen(false)} />}
       {preview && (
-        <Modal title={preview.name} onClose={() => setPreview(null)}>
+        <Modal
+          title={preview.name}
+          onClose={() => setPreview(null)}
+          wide
+          className={preview.kind === 'MEDIA' ? 'asset-fullscreen' : 'asset-preview-modal'}
+        >
           <AssetPreview asset={preview} />
           <div className="modal-actions">
             <button
@@ -201,6 +226,7 @@ export function LibraryPage({
                 </button>
               </h2>
               <p>{asset.text || asset.caption || asset.file?.filename}</p>
+              <LibraryCardMedia asset={asset} onExpand={() => setPreview(asset)} />
               <div className="resource-footer">
                 <span>
                   {asset.isPtt
@@ -223,15 +249,7 @@ export function LibraryPage({
                     className="icon-button"
                     aria-label={`Duplicar ${asset.name}`}
                     title="Duplicar resposta"
-                    onClick={async () => {
-                      try {
-                        await request(`/attendance/assets/${encodeURIComponent(asset.id)}/duplicate`, 'POST');
-                        await refresh();
-                        notify('Resposta duplicada.');
-                      } catch (error) {
-                        notify(errorMessage(error), true);
-                      }
-                    }}
+                    onClick={() => setAssetAction({ kind: 'duplicate', asset })}
                   >
                     <Copy size={15} />
                   </button>
@@ -344,6 +362,45 @@ export function LibraryPage({
           }}
         />
       )}{' '}
+      {assetAction && (
+        <Modal
+          title={assetAction.kind === 'delete' ? 'Excluir recurso?' : 'Duplicar recurso?'}
+          onClose={() => {
+            if (!actionBusy) setAssetAction(null);
+          }}
+        >
+          <p>
+            {assetAction.kind === 'delete' ? 'Excluir' : 'Criar uma cópia de'}{' '}
+            <strong>{assetAction.asset.name}</strong>?
+          </p>
+          <div className="modal-actions">
+            <button className="button" disabled={actionBusy} onClick={() => setAssetAction(null)}>
+              Cancelar
+            </button>
+            <button
+              className="button primary"
+              disabled={actionBusy}
+              onClick={() => {
+                setActionBusy(true);
+                void request(
+                  `/attendance/assets/${encodeURIComponent(assetAction.asset.id)}${assetAction.kind === 'duplicate' ? '/duplicate' : ''}`,
+                  assetAction.kind === 'duplicate' ? 'POST' : 'DELETE',
+                )
+                  .then(refresh)
+                  .then(() => {
+                    notify(assetAction.kind === 'duplicate' ? 'Resposta duplicada.' : 'Resposta excluída.');
+                    setAssetAction(null);
+                  })
+                  .catch((error) => notify(errorMessage(error), true))
+                  .finally(() => setActionBusy(false));
+              }}
+            >
+              {actionBusy && <Spinner />}
+              {assetAction.kind === 'duplicate' ? 'Confirmar duplicação' : 'Confirmar exclusão'}
+            </button>
+          </div>
+        </Modal>
+      )}
       {editor && (
         <AssetEditor
           initial={editor === 'new' ? undefined : editor}
@@ -690,13 +747,13 @@ export function PixEditor({ onClose, onSaved }: { onClose: () => void; onSaved: 
         </label>
         <label>
           Tipo
-          <select value={type} onChange={(e) => setType(e.target.value)}>
+          <Select value={type} onChange={(e) => setType(e.target.value)}>
             <option value="RANDOM">Chave aleatória</option>
             <option value="EMAIL">E-mail</option>
             <option value="PHONE">Telefone com +55</option>
             <option value="CPF">CPF · somente números</option>
             <option value="CNPJ">CNPJ · somente números</option>
-          </select>
+          </Select>
         </label>
         <label>
           Chave cadastrada no banco

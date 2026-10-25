@@ -1,4 +1,10 @@
-import { Fragment, lazy, Suspense, useEffect, useState } from 'react';
+import { CampaignMonitor } from './components/CampaignMonitor';
+import { Select } from './components/Select';
+import { toolTarget } from './context/attendance';
+import { Fragment, lazy, Suspense, useEffect, useState, type CSSProperties } from 'react';
+import { HudEditor } from './components/HudEditor';
+import { hudGrid, panelOrder } from './context/hud';
+import type { ToolIntent } from './context/attendance';
 import { menuGroups, orderItems } from './context/ordering';
 import {
   LayoutDashboard,
@@ -21,6 +27,8 @@ import {
   CircleHelp,
   Plus,
   Search,
+  Palette,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { useWorkspace } from './hooks/useWorkspace';
 import { useApi, errorMessage } from './context/ApiContext';
@@ -44,6 +52,7 @@ type View =
   | 'library'
   | 'connections'
   | 'settings'
+  | 'personalization'
   | 'crm'
   | 'flows'
   | 'overview'
@@ -69,15 +78,95 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<Conversation | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [toolsOpen, setToolsOpen] = useState(
-    () => window.innerWidth > 1100 && localStorage.getItem('noctua-tools-open') !== 'false',
+  const [toolsOpen, setToolsOpenState] = useState(
+    () => window.innerWidth >= 1120 && preferences.toolsVisible && preferences.toolsDocked,
   );
-  const [compactTools, setCompactTools] = useState(
-    () => localStorage.getItem('noctua-tools-size') !== 'comfortable',
-  );
+  const [compactTools, setCompactToolsState] = useState(preferences.toolsCompact);
   const [quick, setQuick] = useState(0);
   const [newChat, setNewChat] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [commandSearch, setCommandSearch] = useState('');
+  const [commandCampaigns, setCommandCampaigns] = useState<{ id: string; name: string }[]>([]);
+  const [commandChats, setCommandChats] = useState<Conversation[]>([]);
+  const [campaignSearch, setCampaignSearch] = useState('');
+  const [focusResourceId, setFocusResourceId] = useState('');
+  const [hudOpen, setHudOpen] = useState(false);
+  const [hudTab, setHudTab] = useState('panels');
+  useEffect(() => {
+    const open = (event: Event) => {
+      setHudTab((event as CustomEvent<string>).detail || 'panels');
+      setHudOpen(true);
+    };
+    window.addEventListener('noctua:customize-attendance', open);
+    return () => window.removeEventListener('noctua:customize-attendance', open);
+  }, []);
+  const [toolIntent, setToolIntent] = useState<ToolIntent>();
+  useEffect(() => {
+    const ping = () => {
+      if (document.visibilityState === 'visible')
+        void request('/operations/directory/presence', 'POST', {}).catch(() => undefined);
+    };
+    ping();
+    const timer = window.setInterval(ping, 45000);
+    return () => window.clearInterval(timer);
+  }, [request]);
+  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
+  useEffect(() => {
+    setToolIntent(undefined);
+  }, [view]);
+  const [narrowNavigation, setNarrowNavigation] = useState(() => window.innerWidth <= 900);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const openTool = (section: string, kind?: string, question?: string) => {
+    if (toolTarget(section) === 'shelf') {
+      setToolsOpenState(true);
+      updatePreferences({
+        toolsVisible: true,
+        toolsDocked: true,
+        hudBlockPositions: {
+          ...preferences.hudBlockPositions,
+          tools: {
+            ...(preferences.hudBlockPositions.tools ?? { x: 70, y: 10, width: 28, height: 75 }),
+            mode: 'dock',
+          },
+        },
+      });
+    }
+    setToolIntent({ section, kind, question, stamp: Date.now() });
+  };
+  useEffect(() => {
+    const resize = () => {
+      setViewportWidth(window.innerWidth);
+      setNarrowNavigation(window.innerWidth <= 900);
+    };
+    window.addEventListener('resize', resize);
+    return () => window.removeEventListener('resize', resize);
+  }, []);
+  const setToolsOpen = (value: boolean) => {
+    setToolsOpenState(value);
+    updatePreferences({ toolsVisible: value });
+  };
+  const setCompactTools = (value: boolean) => {
+    setCompactToolsState(value);
+    updatePreferences({ toolsCompact: value, hudToolsWidth: value ? 17 : 20 });
+  };
+  useEffect(() => {
+    if (window.innerWidth >= 1120 && preferences.toolsDocked) setToolsOpenState(preferences.toolsVisible);
+    else if (!preferences.toolsVisible) setToolsOpenState(false);
+  }, [preferences.toolsVisible, preferences.toolsDocked]);
+  useEffect(() => {
+    let docked = window.innerWidth >= 1120;
+    const resize = () => {
+      const next = window.innerWidth >= 1120;
+      if (next !== docked) {
+        setToolsOpenState(next && preferences.toolsVisible && preferences.toolsDocked);
+        docked = next;
+      }
+    };
+    window.addEventListener('resize', resize);
+    return () => window.removeEventListener('resize', resize);
+  }, [preferences.toolsVisible, preferences.toolsDocked]);
+  useEffect(() => setCompactToolsState(preferences.toolsCompact), [preferences.toolsCompact]);
   useEffect(() => {
     localStorage.setItem('noctua-tools-open', String(toolsOpen));
   }, [toolsOpen]);
@@ -88,6 +177,56 @@ export default function App() {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem('noctua-theme', theme);
   }, [theme]);
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setCommandOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+  useEffect(() => {
+    if (!commandOpen || !workspace.sessionId) return;
+    const controller = new AbortController();
+    void request<{ items: { id: string; name: string; mode: string }[] }>(
+      `/operations/sessions/${workspace.sessionId}/batches`,
+      'GET',
+      undefined,
+      controller.signal,
+    )
+      .then((result) => setCommandCampaigns(result.items.filter((item) => item.mode === 'CAMPAIGN')))
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [commandOpen, workspace.sessionId, request]);
+  useEffect(() => {
+    if (!commandOpen || commandSearch.trim().length < 2 || !workspace.sessionId) {
+      setCommandChats([]);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      const query = new URLSearchParams({
+        page: '1',
+        pageSize: '8',
+        search: commandSearch.trim(),
+        filter: 'all',
+      });
+      void request<Paged<Conversation>>(
+        `/attendance/sessions/${workspace.sessionId}/conversations?${query}`,
+        'GET',
+        undefined,
+        controller.signal,
+      )
+        .then((result) => setCommandChats(result.items))
+        .catch(() => undefined);
+    }, 180);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [commandOpen, commandSearch, workspace.sessionId, request]);
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(search), 250);
     return () => clearTimeout(timer);
@@ -176,19 +315,30 @@ export default function App() {
     { id: 'crm' as const, name: 'CRM e negócios', icon: KanbanSquare },
     { id: 'connections' as const, name: 'Conexões', icon: Wifi },
     { id: 'settings' as const, name: 'Configurações', icon: Settings },
+    { id: 'personalization' as const, name: 'Personalização', icon: Palette },
   ].map((item) => ({ ...item, name: preferences.menuLabels[item.id] || item.name }));
   const session = workspace.session;
   const connected = workspace.serverConnected && session?.status === 'CONNECTED';
+  const hudOrder = panelOrder(preferences).filter(
+    (id) =>
+      (id !== 'tools' || (toolsOpen && preferences.toolsDocked)) &&
+      !(viewportWidth > 760 && preferences.hudBlockPositions[id]?.mode === 'floating'),
+  );
+  const hudStyle = hudGrid(hudOrder, preferences) as CSSProperties;
   return (
     <div className="app-shell">
-      <aside className="navigation">
-        <a
+      <aside
+        className={`navigation ${narrowNavigation ? (mobileNavOpen ? 'nav-is-expanded' : 'nav-is-compact') : preferences.compactNav ? 'nav-is-compact' : 'nav-is-expanded'}`}
+      >
+        <button
           className="wordmark"
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            setView('inbox');
-          }}
+          title="Clique na coruja para recolher ou expandir o menu"
+          aria-label="Recolher ou expandir menu principal"
+          onClick={() =>
+            narrowNavigation
+              ? setMobileNavOpen((value) => !value)
+              : updatePreferences({ compactNav: !preferences.compactNav })
+          }
         >
           {preferences.brandingLogo ? (
             <img className="branding-mark" src={preferences.brandingLogo} alt="" />
@@ -198,9 +348,9 @@ export default function App() {
               <i />
             </span>
           )}
-          {preferences.brandingName || 'noctua'}
+          noctua
           <span className="brand-dot">.</span>
-        </a>
+        </button>
         <div className="workspace-name">
           {preferences.brandingLogo ? (
             <img className="workspace-avatar branding-mark" src={preferences.brandingLogo} alt="" />
@@ -242,7 +392,11 @@ export default function App() {
                       title={name}
                       aria-label={name}
                       className={view === id ? 'selected' : ''}
-                      onClick={() => setView(id)}
+                      onClick={() => {
+                        setView(id);
+                        setToolIntent(undefined);
+                        setMobileNavOpen(false);
+                      }}
                     >
                       <Icon size={19} />
                       <span>{name}</span>
@@ -292,6 +446,13 @@ export default function App() {
           </div>
         </div>
       </aside>
+      {narrowNavigation && mobileNavOpen && (
+        <button
+          className="navigation-scrim"
+          aria-label="Recolher menu principal"
+          onClick={() => setMobileNavOpen(false)}
+        />
+      )}
       <div className="workspace-main">
         <header className="topbar">
           <div className="breadcrumb">
@@ -302,14 +463,34 @@ export default function App() {
           <div className="topbar-right">
             {view === 'inbox' && (
               <button
+                className="tools-toggle hud-open-button"
+                onClick={() => setHudOpen(true)}
+                title="Personalizar Atendimento com prévia"
+              >
+                <SlidersHorizontal size={16} />
+                <span>Personalizar</span>
+              </button>
+            )}
+            <button
+              className="global-search-trigger"
+              onClick={() => setCommandOpen(true)}
+              aria-label="Busca rápida"
+              title="Busca rápida (Ctrl+K)"
+            >
+              <Search size={16} />
+              <span>Buscar</span>
+              <kbd>Ctrl K</kbd>
+            </button>
+            {view === 'inbox' && (
+              <button
                 className={`tools-toggle ${toolsOpen ? 'active' : ''}`}
-                aria-label={toolsOpen ? 'Ocultar ferramentas' : 'Mostrar ferramentas'}
+                aria-label={toolsOpen ? 'Ocultar biblioteca lateral' : 'Mostrar biblioteca lateral'}
                 aria-expanded={toolsOpen}
                 aria-controls="message-tools"
-                onClick={() => setToolsOpen((value) => !value)}
+                onClick={() => setToolsOpen(!toolsOpen)}
               >
                 {toolsOpen ? <PanelRightClose size={17} /> : <PanelRightOpen size={17} />}
-                <span>Ferramentas</span>
+                <span>Biblioteca lateral</span>
               </button>
             )}
             <span className={`connection-status ${connected ? 'connected' : ''}`}>
@@ -326,7 +507,7 @@ export default function App() {
             </span>
             <label className="session-select">
               <Wifi size={14} />
-              <select
+              <Select
                 aria-label="Selecionar conexão"
                 value={workspace.sessionId}
                 onChange={(e) => workspace.setSessionId(e.target.value)}
@@ -339,7 +520,7 @@ export default function App() {
                     {item.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <button
               className="topbar-avatar"
@@ -352,7 +533,8 @@ export default function App() {
         </header>
         {view === 'inbox' ? (
           <div
-            className={`inbox-layout ${selected ? 'chat-selected' : ''} ${toolsOpen ? 'tools-visible' : 'tools-hidden'} ${compactTools ? 'tools-compact' : 'tools-comfortable'}`}
+            style={hudStyle}
+            className={`inbox-layout hud-layout-${preferences.hudPanelLayout} ${selected ? 'chat-selected' : ''} ${toolsOpen ? 'tools-visible' : 'tools-hidden'} ${preferences.toolsDocked ? 'tools-docked' : 'tools-floating'} ${compactTools ? 'tools-compact' : 'tools-comfortable'} ${preferences.panelPosition === 'left' ? 'tools-left' : ''}`}
           >
             <ConversationList
               chats={chats}
@@ -382,9 +564,15 @@ export default function App() {
               revision={workspace.revision}
               library={workspace.library}
               onBack={() => setSelected(null)}
+              toolsVisible={toolsOpen}
+              toolsCompact={compactTools}
+              onToggleTools={() => setToolsOpen(!toolsOpen)}
+              onToggleToolSize={() => setCompactTools(!compactTools)}
+              onCustomize={() => setHudOpen(true)}
+              onToolRequest={openTool}
               onDetails={() => setDetailsOpen(true)}
               onQuick={() => {
-                setToolsOpen(true);
+                openTool('responses', 'ALL');
                 setQuick((value) => value + 1);
               }}
               onRefresh={workspace.refresh}
@@ -398,12 +586,20 @@ export default function App() {
               connected={connected}
               open={toolsOpen}
               compact={compactTools}
-              onToggleSize={() => setCompactTools((value) => !value)}
+              onToggleSize={() => setCompactTools(!compactTools)}
               quick={quick}
+              intent={toolIntent}
               onClose={() => setToolsOpen(false)}
               onRefresh={workspace.refresh}
               onLibraryRefresh={workspace.loadLibrary}
             />
+            {toolsOpen && (
+              <button
+                className="tools-drawer-scrim"
+                aria-label="Fechar painel de ferramentas"
+                onClick={() => setToolsOpen(false)}
+              />
+            )}
           </div>
         ) : view === 'overview' ? (
           <OverviewPage sessionId={workspace.sessionId} onNavigate={setView} />
@@ -413,6 +609,7 @@ export default function App() {
             sessionId={workspace.sessionId}
             library={workspace.library}
             schedule={view === 'schedule'}
+            initialSearch={view === 'campaigns' ? campaignSearch : ''}
           />
         ) : view === 'contacts' ? (
           <ContactsPage
@@ -435,6 +632,7 @@ export default function App() {
             sessionId={workspace.sessionId}
             revision={workspace.revision}
             connected={connected}
+            labelStyles={preferences.labelStyles}
             onOpenChat={(conversationId) => {
               void request<Conversation>(
                 `/attendance/sessions/${workspace.sessionId}/conversations/${conversationId}`,
@@ -461,6 +659,8 @@ export default function App() {
             sessionId={workspace.sessionId}
             library={workspace.library}
             refresh={workspace.loadLibrary}
+            focusResourceId={focusResourceId}
+            onFocusResourceHandled={() => setFocusResourceId('')}
           />
         ) : view === 'connections' ? (
           <ConnectionsPage
@@ -472,8 +672,10 @@ export default function App() {
           />
         ) : view === 'help' ? (
           <HelpCenter onNavigate={setView} />
-        ) : (
+        ) : view === 'settings' || view === 'personalization' ? (
           <WorkspaceSettings
+            key={view}
+            initialTab={view === 'personalization' ? 'personalization' : 'general'}
             sessionId={workspace.sessionId}
             library={workspace.library}
             onOrderRefresh={workspace.refresh}
@@ -482,6 +684,8 @@ export default function App() {
               workspace.refresh();
             }}
           />
+        ) : (
+          <OverviewPage sessionId={workspace.sessionId} onNavigate={setView} />
         )}
       </div>
       {detailsOpen && selected && (
@@ -541,6 +745,128 @@ export default function App() {
               </button>
             </div>
           </form>
+        </Modal>
+      )}
+      <CampaignMonitor sessionId={workspace.sessionId} connected={Boolean(connected)} />
+      {hudOpen && (
+        <HudEditor
+          initialTab={hudTab}
+          library={workspace.library}
+          sessionId={workspace.sessionId}
+          onClose={() => setHudOpen(false)}
+        />
+      )}
+      {commandOpen && (
+        <Modal
+          title="Busca rápida"
+          onClose={() => {
+            setCommandOpen(false);
+            setCommandSearch('');
+          }}
+        >
+          <div className="command-palette">
+            <label className="command-search-field">
+              <Search size={18} />
+              <input
+                autoFocus
+                value={commandSearch}
+                onChange={(event) => setCommandSearch(event.target.value)}
+                placeholder="Buscar conversas, telas e recursos…"
+              />
+              <kbd>ESC</kbd>
+            </label>
+            <div className="command-results">
+              <p className="eyebrow">TELAS</p>
+              {navigation
+                .filter((item) =>
+                  item.name.toLocaleLowerCase('pt-BR').includes(commandSearch.toLocaleLowerCase('pt-BR')),
+                )
+                .map(({ id, name, icon: Icon }) => (
+                  <button
+                    key={id}
+                    onClick={() => {
+                      setView(id);
+                      setCommandOpen(false);
+                      setCommandSearch('');
+                    }}
+                  >
+                    <Icon size={17} />
+                    <span>{name}</span>
+                    <small>Abrir tela</small>
+                  </button>
+                ))}
+              {commandChats.slice(0, 8).map((chat) => (
+                <button
+                  key={chat.id}
+                  onClick={() => {
+                    setSelected(chat);
+                    setView('inbox');
+                    setCommandOpen(false);
+                    setCommandSearch('');
+                  }}
+                >
+                  <MessageSquare size={17} />
+                  <span>{chat.contact.name}</span>
+                  <small>Conversa</small>
+                </button>
+              ))}
+              {commandCampaigns
+                .filter(
+                  (item) =>
+                    commandSearch.length > 1 &&
+                    item.name.toLocaleLowerCase('pt-BR').includes(commandSearch.toLocaleLowerCase('pt-BR')),
+                )
+                .slice(0, 6)
+                .map((item) => (
+                  <button
+                    key={`campaign:${item.id}`}
+                    onClick={() => {
+                      setCampaignSearch(item.name);
+                      setView('campaigns');
+                      setCommandOpen(false);
+                      setCommandSearch('');
+                    }}
+                  >
+                    <Send size={17} />
+                    <span>{item.name}</span>
+                    <small>Campanha</small>
+                  </button>
+                ))}
+              {[
+                ...workspace.library.assets.map((item) => ({
+                  id: item.id,
+                  name: item.name,
+                  kind: 'Biblioteca',
+                })),
+                ...workspace.library.funnels.map((item) => ({ id: item.id, name: item.name, kind: 'Funil' })),
+                ...workspace.library.macros.map((item) => ({ id: item.id, name: item.name, kind: 'Macro' })),
+              ]
+                .filter(
+                  (item) =>
+                    commandSearch.length > 1 &&
+                    item.name.toLocaleLowerCase('pt-BR').includes(commandSearch.toLocaleLowerCase('pt-BR')),
+                )
+                .slice(0, 6)
+                .map((item) => (
+                  <button
+                    key={`${item.kind}:${item.id}`}
+                    onClick={() => {
+                      setFocusResourceId(item.id);
+                      setView('library');
+                      setCommandOpen(false);
+                      setCommandSearch('');
+                    }}
+                  >
+                    <LibraryIcon size={17} />
+                    <span>{item.name}</span>
+                    <small>{item.kind}</small>
+                  </button>
+                ))}
+              {commandSearch.length > 1 && commandChats.length === 0 && (
+                <small className="muted">Nenhuma conversa corresponde à busca.</small>
+              )}
+            </div>
+          </div>
         </Modal>
       )}
     </div>
