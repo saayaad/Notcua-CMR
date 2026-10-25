@@ -14,6 +14,7 @@ import { SerialQueue } from '../../shared/serial-queue.js';
 import type { WhatsappService } from '../whatsapp/whatsapp.service.js';
 import { messageJson } from '../whatsapp/sync.service.js';
 import { digest } from '../backups/validation.js';
+import { MediaService } from './media.service.js';
 
 export const sendSchema = z
   .object({
@@ -40,10 +41,11 @@ export type SendInput = z.infer<typeof sendSchema>;
 
 export class MessagingService {
   private readonly queues = new Map<string, SerialQueue>();
+  private readonly mediaService: MediaService;
   constructor(
     private readonly db: PrismaClient,
     private readonly whatsapp: WhatsappService,
-  ) {}
+  ) { this.mediaService = new MediaService(db); }
 
   async chat(sessionId: string, conversationId: string) {
     const chat = await this.db.conversation.findFirst({
@@ -67,6 +69,7 @@ export class MessagingService {
 
   async send(sessionId: string, conversationId: string, raw: unknown, beforeSend?: () => Promise<void>) {
     const input = sendSchema.parse(raw);
+    const isPtt = input.kind === 'audio' || input.isPtt;
     let queue = this.queues.get(conversationId);
     if (!queue) {
       queue = new SerialQueue();
@@ -112,8 +115,12 @@ export class MessagingService {
       let content: AnyMessageContent;
       if (input.kind === 'text') content = { text: text! };
       else {
-        const data = Buffer.from(file!.data);
-        const mime = file!.mimeType;
+        let data = Buffer.from(file!.data);
+        let mime = file!.mimeType;
+        if (input.kind === 'audio' && isPtt && !(data.subarray(0, 4).equals(Buffer.from('OggS')) && data.includes(Buffer.from('OpusHead')))) {
+          data = Buffer.from(await this.mediaService.transcodeVoice(data));
+          mime = 'audio/ogg; codecs=opus';
+        }
         if (
           input.kind !== 'document' &&
           !(input.kind === 'sticker'
@@ -122,7 +129,7 @@ export class MessagingService {
         )
           throw new AppError(422, 'O tipo do arquivo não corresponde ao envio selecionado.');
         if (
-          input.isPtt &&
+          isPtt &&
           (!data.subarray(0, 4).equals(Buffer.from('OggS')) || !data.includes(Buffer.from('OpusHead')))
         )
           throw new AppError(
@@ -135,7 +142,7 @@ export class MessagingService {
           input.kind === 'sticker'
             ? { sticker: data, mimetype: 'image/webp' }
             : input.kind === 'audio'
-              ? { audio: data, mimetype: mime, ptt: input.isPtt, viewOnce: input.asViewOnce }
+              ? { audio: data, mimetype: mime, ptt: isPtt, viewOnce: input.asViewOnce }
               : input.kind === 'image'
                 ? { image: data, caption, viewOnce: input.asViewOnce }
                 : input.kind === 'video'
@@ -154,7 +161,7 @@ export class MessagingService {
           text,
           caption,
           fileId: file?.id,
-          isPtt: input.isPtt,
+          isPtt,
           isPtv: input.isPtv,
           asViewOnce: input.asViewOnce,
           rawPayload: { requestFingerprint: fingerprint },
@@ -229,7 +236,7 @@ export class MessagingService {
       text: asset.text ?? undefined,
       caption: asset.caption ?? undefined,
       fileId: asset.fileId ?? undefined,
-      isPtt: asset.isPtt,
+      isPtt: asset.kind === 'AUDIO' || asset.isPtt,
       isPtv: asset.isPtv,
       asViewOnce: asset.asViewOnce,
     });

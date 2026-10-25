@@ -451,7 +451,7 @@ export function AssetEditor({
   const [name, setName] = useState(initial?.name ?? '');
   const [text, setText] = useState(initial?.text ?? '');
   const [caption, setCaption] = useState(initial?.caption ?? '');
-  const [ptt, setPtt] = useState(initial?.isPtt ?? kind === 'AUDIO');
+  const [ptt] = useState(kind === 'AUDIO');
   const [ptv, setPtv] = useState(initial?.isPtv ?? false);
   const [viewOnce, setViewOnce] = useState(initial?.asViewOnce ?? false);
   const [file, setFile] = useState<File | null>(null);
@@ -481,7 +481,7 @@ export function AssetEditor({
           text: kind === 'MESSAGE' ? text : undefined,
           caption: caption || undefined,
           fileId,
-          isPtt: ptt,
+          isPtt: kind === 'AUDIO' ? true : ptt,
           isPtv: ptv,
           asViewOnce: viewOnce,
           isFavorite: initial?.isFavorite ?? false,
@@ -537,10 +537,7 @@ export function AssetEditor({
               <textarea rows={3} value={caption} onChange={(e) => setCaption(e.target.value)} />
             </label>
             {kind === 'AUDIO' && (
-              <label className="checkbox">
-                <input type="checkbox" checked={ptt} onChange={(e) => setPtt(e.target.checked)} />
-                Mensagem de voz · converter para OGG/Opus
-              </label>
+              <p className="muted">Áudios da biblioteca são convertidos para OGG/Opus e enviados como mensagens de voz.</p>
             )}
             {kind === 'MEDIA' && (
               <>

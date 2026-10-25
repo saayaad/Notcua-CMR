@@ -11,6 +11,9 @@ import './overlays.css';
 import './components/toolbox.css';
 import './attendance.css';
 import './workbench.css';
+import './sandbox.css';
+import './client-ai.css';
+import './watermark.css';
 
 createRoot(document.getElementById('root')!).render(
   <ApiProvider>

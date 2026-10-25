@@ -15,6 +15,8 @@ import { usePreferences, type Preferences } from '../context/PreferencesContext'
 import { SettingsPage } from './SettingsPage';
 import { Spinner } from '../components/ui';
 import { SystemBackups } from '../components/SystemBackups';
+import { WatermarkSettings } from '../components/WatermarkSettings';
+import { EconomySettings } from '../components/EconomySettings';
 import './operations.css';
 const menuItems = [
   ['overview', 'Visão geral'],
@@ -55,7 +57,7 @@ export function WorkspaceSettings({
   }, [request, notify]);
   useEffect(() => {
     setData({});
-    const path = tab === 'business' || tab === 'departments' ? `/operations/settings/${tab}` : '';
+    const path = tab === 'business' || tab === 'departments' || tab === 'optout' ? `/operations/settings/${tab}` : '';
     if (path)
       void request<Record<string, unknown>>(path)
         .then((result) => {
@@ -120,9 +122,11 @@ export function WorkspaceSettings({
             ['menu', 'Menu e atalhos'],
             ['chat', 'Conversas'],
             ['business', 'Negócio'],
+            ['optout', 'Opt-out e envios'],
             ['departments', 'Departamentos'],
             ['team', 'Equipe'],
             ['integrations', 'Integração de IA'],
+            ['economy', 'Economia de Tokens'],
             ['backup', 'Backups e acesso'],
           ].map(([id, title]) => (
             <button key={id} className={tab === id ? 'selected' : ''} onClick={() => setTab(id!)}>
@@ -304,6 +308,7 @@ export function WorkspaceSettings({
                 </div>
               </div>
               <OrderingSettings sessionId={sessionId} library={library} onRefresh={onOrderRefresh} />
+              <WatermarkSettings />
             </>
           )}
           {tab === 'profile' && (
@@ -524,7 +529,7 @@ export function WorkspaceSettings({
                 <p>Horário de São Paulo. Cada fluxo também pode ter seu próprio horário de funcionamento.</p>
                 <label className="checkbox">
                   <input name="distribution" type="checkbox" defaultChecked={Boolean(data.distribution)} />
-                  Distribuir conversas sem responsável por rodízio entre convites ativos da equipe
+                  Distribuir conversas sem responsável por rodízio entre atendentes ativos e online
                 </label>
                 <label>
                   Encerrar conversas sem retorno do cliente após (minutos)
@@ -589,7 +594,23 @@ export function WorkspaceSettings({
               </form>
             </div>
           )}
+          {tab === 'optout' && (
+            <div className="surface">
+              <h2>Pedidos para parar mensagens</h2>
+              <p>Quando uma mensagem recebida começar com um destes termos, o contato é marcado como opt-out e os envios futuros são cancelados. Lembretes internos não são afetados.</p>
+              <form onSubmit={(event) => {
+                event.preventDefault();
+                const terms = String(new FormData(event.currentTarget).get('terms') ?? '').split(/[,\n]/).map((term) => term.trim()).filter(Boolean);
+                void save('/operations/settings/optout', { terms });
+              }}>
+                <label>Palavras ou frases, separadas por vírgula ou linha<textarea name="terms" rows={6} defaultValue={Array.isArray(data.terms) ? (data.terms as string[]).join(', ') : 'parar, sair, cancelar, remover, não quero mais, não me envie, pare'} /></label>
+                <small className="muted">A comparação ignora maiúsculas, acentos e pontuação inicial, e evita bloquear por uma palavra no meio de uma frase.</small>
+                <button className="button primary" disabled={busy}>Salvar regras de opt-out</button>
+              </form>
+            </div>
+          )}
           {tab === 'team' && <TeamManager />}
+          {tab === 'economy' && <EconomySettings />}
           {tab === 'integrations' && <AiSettings />}
           {tab === 'backup' && (
             <>

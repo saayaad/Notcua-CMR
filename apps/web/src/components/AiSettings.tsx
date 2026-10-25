@@ -1,9 +1,10 @@
 import { ConversationSimulator } from './ConversationSimulator';
 import {Select} from './Select';
 import { useEffect, useState } from 'react';
-import { Save } from 'lucide-react';
+import { KeyRound, Save } from 'lucide-react';
 import { useApi, errorMessage } from '../context/ApiContext';
 import { Spinner } from './ui';
+import { AiKeyManager } from './AiKeyManager';
 export function AiSettings() {
   const { request, notify } = useApi();
   const [data, setData] = useState<Record<string, unknown> | null>(null);
@@ -12,6 +13,7 @@ export function AiSettings() {
   const [error, setError] = useState('');
   const [provider, setProvider] = useState('openai');
   const [revision, setRevision] = useState(0);
+  const [showKeySettings, setShowKeySettings] = useState(true);
   useEffect(() => {
     void request<Record<string, unknown>>('/operations/ai')
       .then((result) => {
@@ -43,8 +45,9 @@ export function AiSettings() {
     </label>
   );
   return (
+    <>
     <section className="surface">
-      <h2>Assistente de IA</h2><button className="button primary" onClick={()=>setSimulation(true)}>🧪 Testar / Simular atendimento</button>{simulation&&<ConversationSimulator aiOnly onClose={()=>setSimulation(false)}/>}
+      <h2>Assistente de IA</h2><button className="button primary" onClick={()=>setSimulation(true)}>🧪 Testar / Simular atendimento</button>{simulation&&<ConversationSimulator aiOnly onClose={()=>setSimulation(false)}/>} <button type="button" className="button" aria-expanded={showKeySettings} onClick={() => setShowKeySettings((visible) => !visible)}><KeyRound size={15} /> {showKeySettings ? 'Ocultar chaves de API' : 'Mostrar configurações de chaves de API'}</button>
       <p>
         Defina as regras, escolha o provedor e acompanhe o consumo. Cada conversa tem seu próprio controle de
         pausa.
@@ -73,8 +76,11 @@ export function AiSettings() {
             'fallbackText',
             'mediaModel',
             'transcriptionModel',
+            'fastModel',
+            'reasoningModel',
           ])
             body[key] = String(form.get(key) ?? '');
+          body.imageModel = String(form.get('imageModel') ?? data.imageModel ?? '');
           for (const key of [
             'dailyLimit',
             'dailyTokenLimit',
@@ -197,6 +203,20 @@ export function AiSettings() {
           incluir modalidades e custos diferentes. Configure também o limite na conta do provedor.
         </p>
         <h3>Áudio, imagens e vídeos</h3>
+        {provider === 'gemini' && (
+          <>
+            <div className="form-grid">
+              <label>Modelo rápido · tarefas simples<input name="fastModel" maxLength={100} defaultValue={String(data.fastModel ?? '')} placeholder="Ex.: identificador Gemini Flash habilitado" /></label>
+              <label>Modelo de raciocínio · tarefas complexas<input name="reasoningModel" maxLength={100} defaultValue={String(data.reasoningModel ?? '')} placeholder="Ex.: identificador Gemini Pro habilitado" /></label>
+            </div>
+            <small className="muted">O classificador usa o motor rápido por padrão e o de raciocínio para negociação, auditoria e tarefas complexas. A disponibilidade depende dos modelos habilitados na sua conta Google AI.</small>
+            <label>
+              Modelo de geração de imagens
+              <input name="imageModel" maxLength={100} defaultValue={String(data.imageModel ?? '')} placeholder="Identificador de modelo Gemini com geração de imagens" />
+              <small>A geração pode ter consumo e limites próprios na conta Google.</small>
+            </label>
+          </>
+        )}
         <label>
           Modelo de análise de mídia
           <input
@@ -230,5 +250,7 @@ export function AiSettings() {
         </button>
       </form>
     </section>
+    {showKeySettings && <AiKeyManager />}
+    </>
   );
 }

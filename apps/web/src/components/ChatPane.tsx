@@ -25,6 +25,8 @@ import {
   Minimize2,
   WandSparkles,
   LockKeyhole,
+  ImagePlus,
+  BadgeDollarSign,
 } from 'lucide-react';
 import { useApi, errorMessage } from '../context/ApiContext';
 import type { Conversation, Message, Paged } from '../types';
@@ -38,6 +40,8 @@ import { BookOpenCheck } from 'lucide-react';
 import { usePreferences } from '../context/PreferencesContext';
 import { completeOrder } from '../context/hud';
 import { Ellipsis } from 'lucide-react';
+import { ClientAiStudio } from './ClientAiStudio';
+import { AudioTurboPlayer } from './AudioTurboPlayer';
 
 function MessageMedia({ message, base }: { message: Message; base: string }) {
   const { blob, notify } = useApi();
@@ -79,7 +83,7 @@ function MessageMedia({ message, base }: { message: Message; base: string }) {
     ) : kind.includes('video') || message.isPtv ? (
       <video className={`message-video ${message.isPtv ? 'circular-video' : ''}`} src={url} controls />
     ) : kind.includes('audio') ? (
-      <audio src={url} controls />
+      <AudioTurboPlayer src={url} />
     ) : (
       <a href={url} download="arquivo" className="media-placeholder">
         <FileText size={20} />
@@ -145,11 +149,17 @@ export function ChatPane({
   const [total, setTotal] = useState(0);
   const [flowOpen, setFlowOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [clientAiOpen, setClientAiOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [followUpOpen, setFollowUpOpen] = useState(false);
+  const [followUpBusy, setFollowUpBusy] = useState(false);
+  const [followUpSteps, setFollowUpSteps] = useState([{ waitMinutes: 120, text: '' }, { waitMinutes: 1440, text: '' }]);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summary, setSummary] = useState('');
   const [summaryBusy, setSummaryBusy] = useState(false);
   const [transcriptions, setTranscriptions] = useState<Record<string, string>>({});
+  const [receiptCandidates, setReceiptCandidates] = useState<Record<string, { amount?: string; date?: string; payer?: string }>>({});
+  const [audit, setAudit] = useState<{ score?: number; feedback?: string; status?: string; error?: string } | null>(null);
   const [transcribing, setTranscribing] = useState('');
   const messageArea = useRef<HTMLDivElement>(null);
   const previousCount = useRef(0);
@@ -159,6 +169,23 @@ export function ChatPane({
     setPage(1);
     previousCount.current = 0;
   }, [chat?.id]);
+  useEffect(() => {
+    setAudit(null);
+    if (!chat || chat.status !== 'CLOSED') return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let attempts = 0;
+    const load = async () => {
+      try {
+        const value = await request<{ score?: number; feedback?: string; status?: string; error?: string } | null>(`${base}/audit`);
+        if (cancelled) return;
+        if (value) setAudit(value);
+        if (attempts++ < 10 && (!value || value.status === 'PROCESSING')) timer = setTimeout(() => void load(), 1500);
+      } catch { /* A auditoria é opcional quando a IA não está configurada. */ }
+    };
+    void load();
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
+  }, [base, chat?.id, chat?.status, request]);
   useEffect(() => {
     if (!chat) return;
     const controller = new AbortController();
@@ -242,17 +269,32 @@ export function ChatPane({
   const transcribe = async (messageId: string) => {
     setTranscribing(messageId);
     try {
-      const result = await request<{ result?: { text?: string }; text?: string }>(
+      const result = await request<{ result?: { text?: string; receipt?: { detected?: boolean; amount?: string; date?: string; payer?: string } }; text?: string; receipt?: { detected?: boolean; amount?: string; date?: string; payer?: string } }>(
         `/operations/sessions/${sessionId}/contacts/${chat.id}/media-analysis`,
         'POST',
         { messageId, consent: true },
       );
       const text = result.result?.text ?? result.text ?? '';
       setTranscriptions((current) => ({ ...current, [messageId]: text }));
+      const receipt = result.result?.receipt ?? result.receipt;
+      if (receipt?.detected) setReceiptCandidates((current) => ({ ...current, [messageId]: receipt }));
     } catch (error) {
       notify(errorMessage(error), true);
     } finally {
       setTranscribing('');
+    }
+  };
+  const confirmReceipt = async (messageId: string) => {
+    try {
+      const result = await request<{ labelApplied: string | null }>(
+        `/operations/sessions/${sessionId}/contacts/${chat.id}/confirm-payment`,
+        'POST',
+        { messageId },
+      );
+      notify(`Negociação marcada como paga/fechada${result.labelApplied ? ` e etiqueta “${result.labelApplied}” aplicada` : ''}. Confira o comprovante original.`);
+      onRefresh();
+    } catch (error) {
+      notify(errorMessage(error), true);
     }
   };
   const summarize = async () => {
@@ -274,6 +316,7 @@ export function ChatPane({
     }
   };
   const actions = [
+    { id: 'image-studio', name: 'Estúdio de IA deste cliente', icon: ImagePlus, run: () => setClientAiOpen(true) },
     {
       id: 'summary',
       name: 'Resumir conversa',
@@ -284,6 +327,7 @@ export function ChatPane({
       },
     },
     { id: 'schedule', name: 'Agendar mensagem', icon: CalendarDays, run: () => setScheduleOpen(true) },
+    { id: 'follow-up', name: 'Ativar follow-up automático', icon: Clock3, run: () => setFollowUpOpen(true) },
     {
       id: 'archive',
       name: chat.status === 'OPEN' ? 'Arquivar conversa' : 'Reabrir conversa',
@@ -293,6 +337,19 @@ export function ChatPane({
     { id: 'flow', name: 'Iniciar fluxo', icon: Workflow, run: () => setFlowOpen(true) },
     { id: 'ai', name: 'Assistente de IA', icon: Sparkles, run: () => setAiOpen(true) },
   ];
+  const saveFollowUp = async () => {
+    setFollowUpBusy(true);
+    try {
+      const result = await request<{ scheduled: number; firstRunAt: string }>(
+        `/operations/sessions/${sessionId}/conversations/${chat.id}/follow-ups`,
+        'POST',
+        { steps: followUpSteps },
+      );
+      setFollowUpOpen(false);
+      notify(`Follow-up ativado com ${result.scheduled} etapas. Ele será cancelado assim que o cliente responder.`);
+    } catch (error) { notify(errorMessage(error), true); }
+    finally { setFollowUpBusy(false); }
+  };
   const orderedActions = completeOrder(
     preferences.hudHeaderOrder,
     actions.map((item) => item.id),
@@ -303,6 +360,7 @@ export function ChatPane({
     else if (['faq', 'notes', 'next', 'transfers'].includes(id)) onToolRequest(id);
     else onToolRequest('responses', id);
   };
+  const adReferral = chat.contact.metadata.adReferral as { source?: string; title?: string; body?: string; url?: string } | undefined;
   return (
     <main className="chat-pane" {...placement.attributes} style={placement.style}>
       <header className="chat-header">
@@ -386,6 +444,14 @@ export function ChatPane({
           </button>
         </div>
       </header>
+      {adReferral && (
+        <section className="ad-referral-card">
+          <strong>Lead vindo de anúncio · {adReferral.source || 'WhatsApp'}</strong>
+          <span>{adReferral.title || 'Origem identificada'}</span>
+          {adReferral.body && <small>{adReferral.body}</small>}
+          {adReferral.url && <a href={adReferral.url} target="_blank" rel="noreferrer">Abrir anúncio de origem</a>}
+        </section>
+      )}
       <NextAction
         sessionId={sessionId}
         conversationId={chat.id}
@@ -394,6 +460,13 @@ export function ChatPane({
         onEdit={() => onToolRequest('next')}
       />
       <SequenceMonitor base={base} revision={revision} onRefresh={onRefresh} />
+      {audit && (
+        <section className="conversation-audit" aria-live="polite">
+          <strong>{audit.status === 'FAILED' ? 'Auditoria não concluída' : typeof audit.score === 'number' ? `Qualidade do atendimento: ${audit.score}/10` : 'Analisando atendimento…'}</strong>
+          {audit.feedback && <p>{audit.feedback}</p>}
+          {audit.error && <small>{audit.error}</small>}
+        </section>
+      )}
       <div
         className={`attendance-chat-body shortcuts-position-${preferences.attendanceShortcutPosition} functions-position-${preferences.attendanceFunctionsPosition}`}
       >
@@ -459,7 +532,7 @@ export function ChatPane({
                       </button>
                     )}
                     {message.direction === 'INBOUND' &&
-                      /audio/i.test(message.type) &&
+                      (/audio|image|document|pdf/i.test(message.type) || /\.pdf$/i.test(message.caption ?? '')) &&
                       !message.asViewOnce && (
                         <div className="transcription-actions">
                           <button
@@ -468,7 +541,7 @@ export function ChatPane({
                             onClick={() => void transcribe(message.id)}
                           >
                             {transcribing === message.id ? <Spinner /> : <FileText size={14} />}{' '}
-                            {transcriptions[message.id] ? 'Atualizar transcrição' : 'Ler transcrição'}
+                            {transcriptions[message.id] ? 'Atualizar análise' : /audio/i.test(message.type) ? 'Ler transcrição' : 'Analisar mídia'}
                           </button>
                         </div>
                       )}
@@ -476,6 +549,14 @@ export function ChatPane({
                       <div className="transcription-text">
                         <strong>Transcrição</strong>
                         <p>{transcriptions[message.id]}</p>
+                      </div>
+                    )}
+                    {receiptCandidates[message.id] && (
+                      <div className="receipt-candidate">
+                        <strong><BadgeDollarSign size={15} /> Comprovante candidato — revise a mídia</strong>
+                        <span>Valor: {receiptCandidates[message.id]?.amount || 'não identificado'}</span>
+                        <span>Data: {receiptCandidates[message.id]?.date || 'não identificada'} · Pagador: {receiptCandidates[message.id]?.payer || 'não identificado'}</span>
+                        <button className="button button-primary button-small" onClick={() => void confirmReceipt(message.id)}>Confirmar e mover para Pago / Fechado</button>
                       </div>
                     )}
                     {message.deletedByClient && (
@@ -529,6 +610,7 @@ export function ChatPane({
         <FlowLaunch sessionId={sessionId} conversationId={chat.id} onClose={() => setFlowOpen(false)} />
       )}{' '}
       {aiOpen && <AiAssistant chat={chat} sessionId={sessionId} onClose={() => setAiOpen(false)} />}{' '}
+      {clientAiOpen && <ClientAiStudio chat={chat} sessionId={sessionId} messages={messages} onClose={() => setClientAiOpen(false)} />}
       {scheduleOpen && (
         <CampaignsPage
           sessionId={sessionId}
@@ -564,6 +646,24 @@ export function ChatPane({
               </button>
             </div>
           )}
+        </Modal>
+      )}
+      {followUpOpen && (
+        <Modal title="Follow-up automático" onClose={() => setFollowUpOpen(false)}>
+          <p>Programe mensagens após o orçamento. Qualquer resposta recebida cancela automaticamente as etapas restantes.</p>
+          <small className="muted">Use somente com contatos que aceitaram receber mensagens. O envio exige a sessão WhatsApp conectada na hora programada.</small>
+          <div className="follow-up-editor">
+            {followUpSteps.map((step, index) => (
+              <fieldset key={index}>
+                <legend>Mensagem {index + 1}</legend>
+                <label>Enviar após (minutos)<input type="number" min="1" max="43200" value={step.waitMinutes} onChange={(event) => setFollowUpSteps((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, waitMinutes: Number(event.target.value) } : item))}/></label>
+                <label>Mensagem<textarea rows={3} maxLength={10000} value={step.text} onChange={(event) => setFollowUpSteps((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, text: event.target.value } : item))}/></label>
+                {followUpSteps.length > 1 && <button className="button small" onClick={() => setFollowUpSteps((items) => items.filter((_, itemIndex) => itemIndex !== index))}>Remover etapa</button>}
+              </fieldset>
+            ))}
+          </div>
+          {followUpSteps.length < 5 && <button className="button small" onClick={() => setFollowUpSteps((items) => [...items, { waitMinutes: 2880, text: '' }])}>Adicionar etapa</button>}
+          <div className="modal-actions"><button className="button" onClick={() => setFollowUpOpen(false)}>Cancelar</button><button className="button primary" disabled={followUpBusy || followUpSteps.some((step) => !step.text.trim() || step.waitMinutes < 1)} onClick={() => void saveFollowUp()}>{followUpBusy ? <Spinner/> : <Clock3 size={15}/>}Ativar follow-up</button></div>
         </Modal>
       )}
     </main>

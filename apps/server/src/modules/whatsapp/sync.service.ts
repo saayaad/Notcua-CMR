@@ -76,6 +76,24 @@ export function timestamp(value: unknown): Date | undefined {
     : undefined;
 }
 
+function normalizeOptOut(value: string) {
+  return value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function findAdReferral(input: unknown, depth = 0): Record<string, unknown> | null {
+  if (!input || typeof input !== 'object' || depth > 6) return null;
+  const row = input as Record<string, unknown>;
+  for (const key of ['ctwaContext', 'externalAdReply', 'adReplyInfo']) {
+    const value = row[key];
+    if (value && typeof value === 'object') return value as Record<string, unknown>;
+  }
+  for (const value of Object.values(row)) {
+    const match = findAdReferral(value, depth + 1);
+    if (match) return match;
+  }
+  return null;
+}
+
 export class SyncService {
   private readonly contacts: ContactRepository;
   constructor(
@@ -186,6 +204,52 @@ export class SyncService {
           const inbound = !entry.key.fromMe;
           const sentAt = timestamp(entry.messageTimestamp) ?? new Date();
           const text = content?.conversation ?? content?.extendedTextMessage?.text ?? null;
+          if (inbound && live) {
+            const referral = findAdReferral(entry.message);
+            if (referral) {
+              const adReferral = {
+                source: 'WhatsApp Ads',
+                title: String(referral.title ?? referral.adTitle ?? referral.sourceUrl ?? 'Anúncio de WhatsApp').slice(0, 200),
+                body: String(referral.body ?? referral.description ?? '').slice(0, 500),
+                url: String(referral.sourceUrl ?? referral.url ?? '').slice(0, 1000),
+                receivedAt: new Date().toISOString(),
+              };
+              await tx.contact.update({ where: { id: contact.id }, data: { metadata: messageJson({ ...(contact.metadata as object), adReferral }) } });
+              const labels = await tx.label.findMany({ where: { isDeleted: false, OR: [{ sessionId }, { sessionId: null }] }, orderBy: { position: 'asc' } });
+              const adLabel = labels.find((label) => normalizeOptOut(label.name).includes('anuncio'));
+              if (adLabel) await tx.contactLabel.upsert({ where: { contactId_labelId: { contactId: contact.id, labelId: adLabel.id } }, create: { contactId: contact.id, labelId: adLabel.id }, update: {} });
+            }
+          }
+          if (inbound && live && text?.trim()) {
+            const settingsRow = await tx.operationRecord.findUnique({ where: { id: 'settings:opt-out' }, select: { data: true } });
+            const configured = (settingsRow?.data as { terms?: string[] } | null)?.terms;
+            const terms = configured?.length ? configured : ['parar', 'sair', 'cancelar', 'remover', 'não quero mais', 'não me envie', 'pare'];
+            const incoming = normalizeOptOut(text);
+            const optedOut = terms.some((term) => {
+              const normalized = normalizeOptOut(term);
+              return Boolean(normalized && (incoming === normalized || (normalized.includes(' ') ? incoming.includes(normalized) : incoming.startsWith(`${normalized} `))));
+            });
+            if (optedOut && !(contact.metadata as { optOut?: boolean }).optOut) {
+              await tx.contact.update({ where: { id: contact.id }, data: { metadata: messageJson({ ...(contact.metadata as object), optOut: true, optOutAt: new Date().toISOString(), optOutText: text.slice(0, 300) }) } });
+              const labels = await tx.label.findMany({ where: { isDeleted: false, OR: [{ sessionId }, { sessionId: null }] }, orderBy: { position: 'asc' } });
+              const blocked = labels.find((label) => /bloqueado|opt.?out/.test(normalizeOptOut(label.name)));
+              if (blocked) await tx.contactLabel.upsert({ where: { contactId_labelId: { contactId: contact.id, labelId: blocked.id } }, create: { contactId: contact.id, labelId: blocked.id }, update: {} });
+              await setAiControl(tx, chat.id, true, 'O cliente solicitou parar mensagens; contato marcado como opt-out.');
+              const queued = await tx.deliveryTask.findMany({ where: { conversationId: chat.id, status: 'QUEUED' }, select: { id: true, batchId: true, payload: true } });
+              const batches = new Set<string>();
+              for (const task of queued) {
+                if ((task.payload as { kind?: string }).kind === 'reminder') continue;
+                batches.add(task.batchId);
+                await tx.deliveryTask.update({ where: { id: task.id }, data: { status: 'CANCELLED', error: 'Contato pediu para parar mensagens.' } });
+              }
+              for (const batchId of batches) {
+                const batch = await tx.operationRecord.findUnique({ where: { id: batchId } });
+                if (!batch) continue;
+                const current = batch.data as { status?: string; [key: string]: unknown };
+                await tx.operationRecord.update({ where: { id: batchId }, data: { data: messageJson({ ...current, status: 'CANCELLED', cancelReason: 'Contato pediu para parar mensagens.', cancelledAt: new Date().toISOString() }) } });
+              }
+            }
+          }
           if (
             live &&
             Math.abs(Date.now() - sentAt.getTime()) <= 300_000 &&
@@ -227,6 +291,27 @@ export class SyncService {
             await tx.flowInboxEvent.create({
               data: { messageId: createdMessage.id, conversationId: chat.id, receivedAt: new Date() },
             });
+          if (inbound && live) {
+            const pending = await tx.deliveryTask.findMany({
+              where: { conversationId: chat.id, status: 'QUEUED' },
+              select: { id: true, batchId: true, payload: true },
+            });
+            const followUps = pending.filter((task) => (task.payload as { followUp?: boolean }).followUp);
+            for (const followUp of followUps) {
+              await tx.deliveryTask.updateMany({
+                where: { batchId: followUp.batchId, conversationId: chat.id, status: 'QUEUED' },
+                data: { status: 'CANCELLED', error: 'Follow-up cancelado: o cliente respondeu.' },
+              });
+              const batch = await tx.operationRecord.findUnique({ where: { id: followUp.batchId } });
+              if (batch) {
+                const current = batch.data as { status?: string; [key: string]: unknown };
+                await tx.operationRecord.update({
+                  where: { id: followUp.batchId },
+                  data: { data: messageJson({ ...current, status: 'CANCELLED', cancelReason: 'O cliente respondeu.', cancelledAt: new Date().toISOString() }) },
+                });
+              }
+            }
+          }
           const firstInbound = inbound && !chat.firstInboundAt;
           await tx.conversation.update({
             where: { id: chat.id },

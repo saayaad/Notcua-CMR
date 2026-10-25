@@ -8,12 +8,13 @@ import type { WhatsappService } from '../whatsapp/whatsapp.service.js';
 import { resolveContact } from '../whatsapp/contact.repository.js';
 import { AppError } from '../../shared/errors.js';
 import { json } from '../backups/validation.js';
+import { textCompletion } from '../operations/ai-provider.js';
+import { hasConfiguredKey, putRecord, record, type AgentSettings } from '../operations/records.js';
 import { MediaService } from './media.service.js';
 import { MessagingService } from './messaging.service.js';
 import { SequenceService } from './sequence.service.js';
 import { pixKeySchema, pixPayload } from './pix.js';
 import { queueLabelChange } from '../whatsapp/label-changes.js';
-import { putRecord } from '../operations/records.js';
 
 const stringId = z.string().min(1).max(200);
 const pageSchema = z.object({
@@ -507,8 +508,72 @@ export function attendanceRoutes(
           },
         });
     });
+    if (body.status === 'CLOSED') {
+      await putRecord(db, `ai-audit:${conversationId}`, 'AI_AUDIT', {
+        conversationId,
+        sessionId,
+        status: 'PROCESSING',
+        auditedAt: new Date().toISOString(),
+      });
+      void (async () => {
+        const ai = await record<AgentSettings | null>(db, 'integration:ai', null);
+        if (!ai?.enabled || !hasConfiguredKey(ai)) {
+          await putRecord(db, `ai-audit:${conversationId}`, 'AI_AUDIT', {
+            conversationId,
+            sessionId,
+            status: 'SKIPPED',
+            error: 'Ative e configure a IA para gerar a auditoria.',
+            auditedAt: new Date().toISOString(),
+          });
+          return;
+        }
+        const history = (await db.chatMessage.findMany({
+          where: { conversationId },
+          orderBy: [{ sentAt: 'desc' }, { id: 'desc' }],
+          take: 40,
+        })).filter((item) => item.type !== 'internalNote');
+        const dialogue = history.reverse().map((item) => `${item.direction === 'INBOUND' ? 'Cliente' : 'Atendente'}: ${(item.text ?? item.caption ?? `[${item.type}]`).slice(0, 1200)}`).join('\n');
+        if (!dialogue.trim()) return;
+        const rawAudit = (await textCompletion(
+          db,
+          ai,
+          conversationId,
+          'Avalie a qualidade deste atendimento. Considere tempo de resposta, clareza, tratamento de objeções e aderência às regras configuradas. Retorne apenas JSON com score inteiro de 0 a 10 e feedback curto em português. Não invente dados ausentes.',
+          dialogue,
+        )).text;
+        let result: { score: number; feedback: string };
+        try {
+          const parsed = JSON.parse(rawAudit.match(/\{[\s\S]*\}/)?.[0] ?? '{}') as Record<string, unknown>;
+          result = {
+            score: Math.max(0, Math.min(10, Math.round(Number(parsed.score) || 0))),
+            feedback: typeof parsed.feedback === 'string' ? parsed.feedback.slice(0, 3000) : rawAudit.slice(0, 3000),
+          };
+        } catch {
+          result = { score: 0, feedback: rawAudit.slice(0, 3000) };
+        }
+        await putRecord(db, `ai-audit:${conversationId}`, 'AI_AUDIT', {
+          ...result,
+          conversationId,
+          sessionId,
+          auditedAt: new Date().toISOString(),
+        });
+      })().catch(async (error: unknown) => {
+        await putRecord(db, `ai-audit:${conversationId}`, 'AI_AUDIT', {
+          conversationId,
+          sessionId,
+          status: 'FAILED',
+          error: error instanceof Error ? error.message.slice(0, 500) : 'Falha na auditoria',
+          auditedAt: new Date().toISOString(),
+        });
+      });
+    }
     whatsapp.notify(sessionId, 'chats');
     res.json({ saved: true });
+  });
+  router.get('/sessions/:sessionId/conversations/:conversationId/audit', async (req, res) => {
+    const { sessionId, conversationId } = ids(req);
+    await messaging.chat(sessionId, conversationId);
+    res.json(await record(db, `ai-audit:${conversationId}`, null));
   });
   router.put('/sessions/:sessionId/conversations/:conversationId/labels/:labelId', async (req, res) => {
     const { sessionId, conversationId } = ids(req);

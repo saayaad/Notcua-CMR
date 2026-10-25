@@ -29,6 +29,7 @@ import {
   Search,
   Palette,
   SlidersHorizontal,
+  FlaskConical,
 } from 'lucide-react';
 import { useWorkspace } from './hooks/useWorkspace';
 import { useApi, errorMessage } from './context/ApiContext';
@@ -46,6 +47,7 @@ import { WorkspaceSettings } from './pages/WorkspaceSettings';
 import { OverviewPage, ContactsPage, CampaignsPage } from './pages/OperationsPages';
 import { usePreferences } from './context/PreferencesContext';
 import { HelpCenter } from './pages/HelpCenter';
+import { SandboxPage } from './pages/SandboxPage';
 
 type View =
   | 'inbox'
@@ -59,6 +61,7 @@ type View =
   | 'contacts'
   | 'campaigns'
   | 'schedule'
+  | 'sandbox'
   | 'help';
 export default function App() {
   const workspace = useWorkspace();
@@ -311,6 +314,7 @@ export default function App() {
     { id: 'schedule' as const, name: 'Agenda', icon: CalendarDays },
     { id: 'library' as const, name: 'Biblioteca', icon: LibraryIcon },
     { id: 'flows' as const, name: 'Autoatendimento', icon: Workflow },
+    { id: 'sandbox' as const, name: 'Espaço de Teste', icon: FlaskConical },
     { id: 'contacts' as const, name: 'Contatos', icon: Users },
     { id: 'crm' as const, name: 'CRM e negócios', icon: KanbanSquare },
     { id: 'connections' as const, name: 'Conexões', icon: Wifi },
@@ -670,6 +674,8 @@ export default function App() {
             refresh={workspace.loadSessions}
             labels={labels}
           />
+        ) : view === 'sandbox' ? (
+          <SandboxPage />
         ) : view === 'help' ? (
           <HelpCenter onNavigate={setView} />
         ) : view === 'settings' || view === 'personalization' ? (

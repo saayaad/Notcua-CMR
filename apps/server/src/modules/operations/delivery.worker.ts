@@ -6,6 +6,7 @@ import type { SequenceService } from '../attendance/sequence.service.js';
 import { record, putRecord } from './records.js';
 import { json } from '../backups/validation.js';
 import { FlowEngine } from '../flows/flow.engine.js';
+import { queueLabelChange } from '../whatsapp/label-changes.js';
 export interface Batch {
   name: string;
   sessionId: string;
@@ -31,6 +32,9 @@ export interface Delivery {
   funnelId?: string;
   flowId?: string;
   snapshot?: Record<string, unknown>;
+  followUp?: boolean;
+  sourceMessageAt?: string;
+  labelTransition?: { fromLabelId?: string; toLabelId?: string };
 }
 export class DeliveryWorker {
   private stopped = false;
@@ -126,6 +130,17 @@ export class DeliveryWorker {
             await putRecord(this.db, task.batchId, 'BATCH', { ...batch, status: 'COMPLETED' });
           continue;
         }
+        if (data.followUp && data.sourceMessageAt) {
+          const reply = await this.db.chatMessage.findFirst({
+            where: { conversationId: chat.id, direction: 'INBOUND', sentAt: { gt: new Date(data.sourceMessageAt) } },
+            select: { id: true },
+          });
+          if (reply) {
+            await this.db.deliveryTask.updateMany({ where: { batchId: task.batchId, status: { in: ['QUEUED', 'RUNNING'] } }, data: { status: 'CANCELLED', error: 'Follow-up cancelado: o cliente respondeu.' } });
+            await putRecord(this.db, task.batchId, 'BATCH', { ...batch, status: 'CANCELLED' });
+            continue;
+          }
+        }
         if (
           data.kind !== 'reminder' &&
           ((await this.db.flowExecution.count({
@@ -185,6 +200,31 @@ export class DeliveryWorker {
                   }
                 : { status: 'COMPLETED' },
             });
+            if (!hasNext && data.labelTransition && data.kind !== 'reminder') {
+              const transition = data.labelTransition;
+              const scope = { isDeleted: false, OR: [{ sessionId: task.sessionId }, { sessionId: null }] };
+              const targetLabel = transition.toLabelId
+                ? await tx.label.findFirst({ where: { ...scope, id: transition.toLabelId } }) : null;
+              const sourceLabel = transition.fromLabelId
+                ? await tx.label.findFirst({ where: { ...scope, id: transition.fromLabelId } }) : null;
+              const jid = chat.contact.whatsappJid || `${chat.contact.phoneNumber}@s.whatsapp.net`;
+              if (!transition.toLabelId || targetLabel) {
+                if (sourceLabel && sourceLabel.id !== targetLabel?.id) {
+                  await tx.contactLabel.deleteMany({ where: { contactId: chat.contactId, labelId: sourceLabel.id } });
+                  if (sourceLabel.whatsappId) await queueLabelChange(tx, {
+                    sessionId: task.sessionId, contactId: chat.contactId, labelId: sourceLabel.id,
+                    jid, whatsappId: sourceLabel.whatsappId, active: false,
+                  });
+                }
+                if (targetLabel) {
+                  await tx.contactLabel.upsert({ where: { contactId_labelId: { contactId: chat.contactId, labelId: targetLabel.id } }, create: { contactId: chat.contactId, labelId: targetLabel.id }, update: {} });
+                  if (targetLabel.whatsappId) await queueLabelChange(tx, {
+                    sessionId: task.sessionId, contactId: chat.contactId, labelId: targetLabel.id,
+                    jid, whatsappId: targetLabel.whatsappId, active: true,
+                  });
+                }
+              }
+            }
             const current = await tx.operationRecord.findUnique({ where: { id: task.batchId } });
             const latest = current?.data as unknown as Batch | undefined;
             if (hasNext && latest?.status === 'CANCELLED')
@@ -216,6 +256,8 @@ export class DeliveryWorker {
               });
             }
           });
+          if (!hasNext && data.labelTransition && data.kind !== 'reminder')
+            this.whatsapp.notify(task.sessionId, 'labels');
         } catch (error) {
           await this.db.$transaction(async (tx) => {
             await tx.deliveryTask.updateMany({

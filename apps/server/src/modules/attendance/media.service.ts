@@ -14,15 +14,21 @@ export class MediaService {
 
   async upload(input: { base64: string; filename?: string; mimeType?: string; voice?: boolean }) {
     const decoded = decodeBase64(input.base64, input.mimeType);
-    let data: Uint8Array<ArrayBuffer> = new Uint8Array(decoded.data);
+    let data: Uint8Array<ArrayBuffer> = new Uint8Array(decoded.data) as Uint8Array<ArrayBuffer>;
     let mimeType = decoded.mimeType;
     let filename = cleanFilename(input.filename);
     if (input.voice) {
       if (!mimeType.startsWith('audio/') && mimeType !== 'video/webm')
         throw new AppError(422, 'A gravação deve ser um arquivo de áudio.');
-      data = await this.transcodeVoice(data);
+      data = (await this.transcodeVoice(data)) as Uint8Array<ArrayBuffer>;
       mimeType = 'audio/ogg; codecs=opus';
       filename = 'gravacao.ogg';
+    }
+    if (!input.voice && (mimeType.startsWith('image/') || mimeType.startsWith('video/'))) {
+      const optimized = await this.optimizeVisual(data, mimeType, filename);
+      data = optimized.data as Uint8Array<ArrayBuffer>;
+      mimeType = optimized.mimeType;
+      filename = optimized.filename;
     }
     return this.db.storedFile.upsert({
       where: { sha256: digest(Buffer.from(data)) },
@@ -30,6 +36,33 @@ export class MediaService {
       update: {},
       select: { id: true, filename: true, mimeType: true, byteLength: true },
     });
+  }
+
+  private async optimizeVisual(data: Uint8Array, mimeType: string, filename: string) {
+    if (!ffmpeg || typeof ffmpeg !== 'string') return { data, mimeType, filename };
+    const image = mimeType.startsWith('image/');
+    const directory = await mkdtemp(join(tmpdir(), 'noctua-media-'));
+    try {
+      const input = join(directory, image ? 'entrada.img' : 'entrada.mp4');
+      const output = join(directory, image ? 'otimizada.webp' : 'otimizado.mp4');
+      await writeFile(input, data);
+      await new Promise<void>((resolve, reject) => {
+        const args = image
+          ? ['-nostdin', '-v', 'error', '-i', input, '-frames:v', '1', '-c:v', 'libwebp', '-quality', '86', '-compression_level', '5', '-y', output]
+          : ['-nostdin', '-v', 'error', '-i', input, '-map', '0:v:0', '-map', '0:a?', '-vf', "scale=w='min(1920,iw)':h=-2", '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '27', '-c:a', 'aac', '-b:a', '96k', '-movflags', '+faststart', '-y', output];
+        const child = spawn(ffmpeg as string, args, { windowsHide: true, stdio: 'ignore' });
+        const timer = setTimeout(() => { child.kill(); reject(new AppError(422, 'A otimização do arquivo excedeu o tempo limite.')); }, 120_000);
+        child.once('error', () => { clearTimeout(timer); reject(new AppError(503, 'Não foi possível iniciar a otimização de mídia.')); });
+        child.once('exit', (code) => { clearTimeout(timer); code === 0 ? resolve() : reject(new AppError(422, 'Não foi possível otimizar este arquivo de mídia.'));
+        });
+      });
+      const optimized = new Uint8Array(await readFile(output));
+      if (!optimized.byteLength || optimized.byteLength >= data.byteLength) return { data, mimeType, filename };
+      const base = filename.replace(/\.[^.]+$/, '') || 'arquivo';
+      return { data: optimized, mimeType: image ? 'image/webp' : 'video/mp4', filename: `${base}${image ? '.webp' : '.mp4'}` };
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   }
 
   async transcodeVoice(data: Uint8Array): Promise<Uint8Array<ArrayBuffer>> {

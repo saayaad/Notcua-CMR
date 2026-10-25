@@ -41,6 +41,7 @@ export function SandboxPage() {
   const [presence, setPresence] = useState('');
   const [mobileChat, setMobileChat] = useState(false);
   const [panel, setPanel] = useState(true);
+  const [mobileResources, setMobileResources] = useState(false);
   const [pinned, setPinned] = useState<string[]>([]);
   const [now, setNow] = useState(Date.now());
   const [dragged, setDragged] = useState('');
@@ -188,7 +189,7 @@ export function SandboxPage() {
       )}
       
       {state.contacts.length > 0 && tab === 'chat' && (
-        <div className={`sandbox-inbox ${mobileChat ? 'show-chat' : ''} ${!panel ? 'without-resources' : ''}`} style={{ '--test-list': `${Math.min((preferences as any)?.conversationListWidth || 17, 22)}rem` } as React.CSSProperties}>
+        <div className={`sandbox-inbox ${mobileChat ? 'show-chat' : ''} ${mobileResources ? 'show-resources' : ''} ${!panel ? 'without-resources' : ''}`} style={{ '--test-list': `${Math.min((preferences as any)?.conversationListWidth || 17, 22)}rem` } as React.CSSProperties}>
           <section className="sandbox-contacts">
             <input aria-label="Buscar cliente fictício" placeholder="Buscar cliente…" value={search} onChange={e => setSearch(e.target.value)} />
             {state.contacts.filter(contact => contact.name.toLowerCase().includes(search.toLowerCase())).map(contact => (
@@ -205,8 +206,12 @@ export function SandboxPage() {
               <button className="button small sandbox-back" onClick={() => setMobileChat(false)}>Voltar</button>
               <Avatar contact={{ name: chat?.name || '', profilePicture: null } as any} />
               <strong>{chat?.name}</strong>
-              <button className="button small" onClick={() => setPanel(!panel)}>
-                <Settings2 size={14} />{panel ? 'Ocultar recursos' : 'Mostrar recursos'}
+              <button className="button small" onClick={() => {
+                const next = !panel;
+                setPanel(next);
+                setMobileResources(next && window.matchMedia('(max-width: 58rem)').matches);
+              }}>
+                <Settings2 size={14} />{panel ? 'Mensagens e recursos' : 'Mostrar recursos'}
               </button>
               <button className="button small" onClick={() => {
                 clearTimers();
@@ -247,7 +252,7 @@ export function SandboxPage() {
           
           {panel && (
             <aside className="sandbox-resources">
-              <h2>Mensagens e atalhos</h2>
+              <div className="sandbox-resource-heading"><h2>Mensagens e atalhos</h2><button className="button small sandbox-resource-back" onClick={() => setMobileResources(false)}>Voltar à conversa</button></div>
               <Select aria-label="Categoria de teste" value={category} onChange={e => setCategory(e.target.value)}>
                 <option value="">Todas as categorias</option>
                 {[...new Set(state.resources.map(r => r.category))].map(value => <option key={value}>{value}</option>)}

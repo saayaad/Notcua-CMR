@@ -177,6 +177,50 @@ test('campanha começa em rascunho, congela recurso, respeita intervalo e não r
   assert.equal(socket.sends.length, before + 2);
   assert.equal((await record<Batch>(db, item.id, item)).status, 'COMPLETED');
 });
+test('pós-envio remove etiqueta sem destino, preserva os outros vínculos e sincroniza uma única alteração', async () => {
+  const chat = await makeContact('5511777770198');
+  const source = await db.label.create({ data: {
+    id: 'label:transition-source', name: 'Remover ao concluir', sessionId, whatsappId: '777',
+  } });
+  await db.contactLabel.create({ data: { contactId: chat.contactId, labelId: source.id } });
+  const beforeLabels = await db.contactLabel.count({ where: { contactId: chat.contactId } });
+  const batch = await draft([chat.id], {
+    kind: 'text', text: 'Teste de remoção', labelTransition: { fromLabelId: source.id },
+  });
+  const tasks = await request(app).get(`/api/operations/sessions/${sessionId}/batches/${batch.id}/tasks`).expect(200);
+  assert.equal(tasks.body.items[0].contact.phoneNumber, '5511777770198');
+  const otherTasks = await request(app).get(`/api/operations/sessions/${otherSession}/batches/${batch.id}/tasks`).expect(200);
+  assert.equal(otherTasks.body.items.length, 0);
+  assert.ok(await db.contactLabel.findUnique({ where: {
+    contactId_labelId: { contactId: chat.contactId, labelId: source.id },
+  } }));
+  await request(app).put(`/api/operations/sessions/${sessionId}/batches/${batch.id}`)
+    .send({ status: 'ACTIVE' }).expect(200);
+  const beforeSends = socket.sends.length;
+  await worker.flush();
+  await worker.flush();
+  assert.equal(socket.sends.length, beforeSends + 1);
+  assert.equal(await db.contactLabel.count({ where: { contactId: chat.contactId } }), beforeLabels - 1);
+  assert.equal(await db.contactLabel.findUnique({ where: {
+    contactId_labelId: { contactId: chat.contactId, labelId: source.id },
+  } }), null);
+  const jobs = await db.scheduledJob.findMany({ where: { type: 'WHATSAPP_SET_LABEL' } });
+  const changes = jobs.filter((job) => {
+    const data = job.payload as { contactId?: string; labelId?: string; active?: boolean };
+    return data.contactId === chat.contactId && data.labelId === source.id && data.active === false;
+  });
+  assert.equal(changes.length, 1);
+  const wrongScope = await db.label.create({ data: {
+    id: 'label:transition-other-session', name: 'Outra conexão', sessionId: otherSession,
+  } });
+  for (const labelTransition of [{ fromLabelId: wrongScope.id }, {}]) {
+    await request(app).post(`/api/operations/sessions/${sessionId}/batches`).send({
+      name: 'Inválido', mode: 'SCHEDULE', audience: { conversationIds: [chat.id] },
+      delivery: { kind: 'text', text: 'Não enviar', labelTransition },
+    }).expect(422);
+  }
+});
+
 test('agendamento futuro e cancelamento impedem envios e preservam escopo da conexão', async () => {
   const chat = await makeContact('5511777770003');
   const item = await draft(
@@ -327,6 +371,49 @@ test('Firebase rejeita ausência de token sem usar a liberação do modo local',
   }
 });
 
+test('chaves Gemini permitem cadastrar, editar, ordenar, desativar e excluir sem expor os valores', async () => {
+  const previous = await db.operationRecord.findUnique({ where: { id: 'integration:ai' } });
+  const previousKeyFile = env.WHATSAPP_KEY_FILE;
+  env.WHATSAPP_KEY_FILE = join(dir, 'keys-manager-test.key');
+  const primary = 'test-gemini-primary-not-real-0001';
+  const replacement = 'test-gemini-replacement-not-real-0002';
+  try {
+    await putRecord(db, 'integration:ai', 'INTEGRATION', {
+      provider: 'gemini', model: 'mock-model', instructions: '', knowledge: '', style: '', enabled: false,
+    });
+    await request(app).put('/api/operations/ai/keys/primary').send({ apiKey: primary }).expect(200);
+    const first = await request(app).post('/api/operations/ai/keys').send({ label: 'Chave A', apiKey: primary }).expect(201);
+    const second = await request(app).post('/api/operations/ai/keys').send({ label: 'Chave B', apiKey: replacement }).expect(201);
+    await putRecord(db, `ai-key-quota:${first.body.id}`, 'STATE', { until: Date.now() + 60000 });
+    await request(app).put(`/api/operations/ai/keys/${first.body.id}`).send({ label: 'Chave A editada', apiKey: replacement }).expect(200);
+    assert.equal(await db.operationRecord.findUnique({ where: { id: `ai-key-quota:${first.body.id}` } }), null);
+    await request(app).put('/api/operations/ai/keys/order').send({ ids: [second.body.id, first.body.id] }).expect(200);
+    await request(app).put('/api/operations/ai/keys/order').send({ ids: [first.body.id, first.body.id] }).expect(422);
+    await request(app).patch(`/api/operations/ai/keys/${first.body.id}`).send({ enabled: false }).expect(200);
+    const listing = await request(app).get('/api/operations/ai/keys').expect(200);
+    assert.deepEqual(listing.body.items.map((item: { id: string }) => item.id), [second.body.id, first.body.id]);
+    assert.equal(listing.body.items[1].label, 'Chave A editada');
+    assert.equal(listing.body.items[1].enabled, false);
+    assert.equal(listing.body.primary.configured, true);
+    assert.ok(!JSON.stringify(listing.body).includes(primary));
+    assert.ok(!JSON.stringify(listing.body).includes(replacement));
+    const stored = await db.operationRecord.findUniqueOrThrow({ where: { id: 'integration:ai' } });
+    assert.ok(!JSON.stringify(stored.data).includes(primary));
+    assert.ok(!JSON.stringify(stored.data).includes(replacement));
+    const removal = await request(app).delete('/api/operations/ai/keys/primary').expect(200);
+    assert.equal(removal.body.hasOtherActiveKey, true);
+    for (const keyId of [first.body.id, second.body.id])
+      await request(app).delete(`/api/operations/ai/keys/${keyId}`).expect(200);
+    const empty = await request(app).get('/api/operations/ai/keys').expect(200);
+    assert.equal(empty.body.items.length, 0);
+    assert.equal(empty.body.primary.configured, false);
+  } finally {
+    env.WHATSAPP_KEY_FILE = previousKeyFile;
+    if (previous) await putRecord(db, previous.id, previous.kind, previous.data);
+    else await db.operationRecord.deleteMany({ where: { id: 'integration:ai' } });
+  }
+});
+
 test('credencial de IA fica cifrada, sugestão é supervisionada e automação não repete a resposta', async () => {
   const originalKeyFile = env.WHATSAPP_KEY_FILE;
   const originalFetch = globalThis.fetch;
@@ -450,7 +537,7 @@ test('fixação e atribuição persistem na conversa e o filtro Minhas respeita 
   assert.equal(mine.body.items[0].id, chat.id);
 });
 
-test('distribuição por rodízio usa operadores ativos e respeita departamento', async () => {
+test('distribuição por rodízio usa operadores ativos e online e respeita departamento', async () => {
   await putRecord(db, 'team:ana@example.com', 'TEAM', {
     email: 'ana@example.com',
     active: true,
@@ -461,6 +548,14 @@ test('distribuição por rodízio usa operadores ativos e respeita departamento'
     active: true,
     department: 'Especial',
   });
+  await putRecord(db, 'team:offline@example.com', 'TEAM', {
+    email: 'offline@example.com', active: true, department: 'Especial',
+  });
+  for (const email of ['ana@example.com', 'beto@example.com']) {
+    await putRecord(db, `presence:${email}`, 'TEAM_PRESENCE', {
+      email, seenAt: new Date().toISOString(),
+    });
+  }
   const a = await makeContact('5511777770013');
   const b = await makeContact('5511777770014');
   await db.contact.updateMany({
@@ -471,8 +566,8 @@ test('distribuição por rodízio usa operadores ativos e respeita departamento'
   await new BusinessWorker(db, whatsapp).flush();
   const one = await db.conversation.findUniqueOrThrow({ where: { id: a.id } });
   const two = await db.conversation.findUniqueOrThrow({ where: { id: b.id } });
-  assert.ok(one.assignedTo);
-  assert.ok(two.assignedTo);
+  assert.ok(['ana@example.com', 'beto@example.com'].includes(one.assignedTo));
+  assert.ok(['ana@example.com', 'beto@example.com'].includes(two.assignedTo));
   assert.notEqual(one.assignedTo, two.assignedTo);
   await putRecord(db, 'settings:business', 'SETTINGS', {});
 });

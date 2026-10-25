@@ -1,4 +1,4 @@
-import { BookOpen, ArrowRight, Wifi, Workflow, Send, Users, Library, Settings } from 'lucide-react';
+import { BookOpen, ArrowRight, Wifi, Workflow, Send, Users } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { Dispatch, SetStateAction } from 'react';
 
@@ -8,82 +8,67 @@ const guides: {
   subtitle: string;
   icon: LucideIcon;
   steps: string[];
-  route: 'connections' | 'flows' | 'campaigns' | 'inbox' | 'library' | 'settings';
+  route: 'connections' | 'flows' | 'campaigns' | 'inbox' | 'library' | 'settings' | 'sandbox' | 'personalization';
 }[] = [
   {
     id: 'connections',
-    title: 'Conexões',
-    subtitle: 'Vincule e acompanhe suas sessões do WhatsApp.',
+    title: '1. Conexões',
+    subtitle: 'WhatsApp, QR Code e sessões.',
     icon: Wifi,
     route: 'connections',
     steps: [
-      'Abra Conexões e escolha uma sessão.',
-      'Clique em Conectar e leia o QR Code com o WhatsApp em Aparelhos conectados.',
-      'Aguarde a sincronização terminar antes de começar a enviar.',
+      'Abra Conexões, crie ou selecione a sessão que deseja vincular.',
+      'Clique em Conectar. No celular, abra WhatsApp → Aparelhos conectados → Conectar aparelho e leia o QR Code.',
+      'Mantenha o servidor ativo e aguarde a sincronização de contatos, etiquetas e conversas.',
+      'Use Pausar/Desconectar para encerrar com segurança; não compartilhe arquivos de sessão nem backups.',
     ],
   },
   {
     id: 'automation',
-    title: 'Autoatendimento e IA',
-    subtitle: 'Configure regras e caminhos de atendimento.',
+    title: '2. Autoatendimento e IA',
+    subtitle: 'Fluxos, estilo de atendimento e economia.',
     icon: Workflow,
     route: 'flows',
     steps: [
-      'Crie um fluxo e escolha as palavras que iniciam a conversa.',
-      'Adicione mensagens, esperas e perguntas na ordem desejada.',
-      'Use Simular fluxo para revisar o percurso sem enviar mensagens reais.',
-      'Em Integração de IA, configure o provedor e as regras do vendedor.',
+      'Crie um fluxo, defina o gatilho e organize mensagens, perguntas, condições e esperas.',
+      'Use a simulação antes de publicar; a simulação de IA pode consumir tokens do provedor.',
+      'Configure provedor, modelo, instruções, estilo e conhecimento aprovado nas configurações de IA.',
+      'A clonagem atual usa exemplos aprovados como contexto; não treina nem altera o modelo externo.',
+      'Revise o uso e os limites de IA antes de ativar respostas automáticas.',
+      'Use o Espaço de Teste para praticar sem QR Code e sem enviar mensagens reais.',
+      'A página de economia detalhada de tokens e o cache semântico ainda estão pendentes de implementação.',
+      'O simulador não mostra raciocínio interno do modelo; use as regras e fontes exibidas como contexto verificável.',
     ],
   },
   {
     id: 'campaigns',
-    title: 'Campanhas e remarketing',
-    subtitle: 'Revise o público antes de criar um envio.',
+    title: '3. Campanhas, remarketing e Excel',
+    subtitle: 'Importação, público, conteúdo e revisão antes do envio.',
     icon: Send,
     route: 'campaigns',
     steps: [
-      'Importe uma planilha na área Contatos.',
-      'Escolha listas e etiquetas para filtrar os contatos.',
-      'Clique em Conferir público e revise a quantidade e a amostra.',
-      'Salve como rascunho. Ative o lote somente depois de conferir o conteúdo e os intervalos.',
+      'Importe CSV ou Excel em Contatos e confira a prévia dos nomes e telefones antes de confirmar.',
+      'Escolha listas, etiquetas e inatividade para formar o público e revise a amostra.',
+      'Configure texto/mídia, variações e intervalos; campanhas devem ser revisadas antes de iniciar.',
+      'Salve como rascunho enquanto valida. Intervalos ajudam a cadenciar envios, mas não garantem que um número não seja bloqueado.',
+      'Validação de conta WhatsApp ativa, rotação multi-chip e troca automática de etiqueta ainda não estão implementadas.',
+      'Testes de campanha podem ser simulados no Espaço de Teste sem enviar mensagens reais.',
     ],
   },
   {
     id: 'team',
-    title: 'Atendimento, equipe e tela',
-    subtitle: 'Organize os responsáveis e personalize as ferramentas.',
+    title: '4. Atendimento, equipe e atalhos',
+    subtitle: 'HUD, ferramentas, transferências e mensagens fixadas.',
     icon: Users,
-    route: 'inbox',
     steps: [
-      'Cadastre pessoas e departamentos em Configurações → Equipe.',
-      'Abra uma conversa e use as abas do painel lateral para consultar cliente, notas e transferências.',
-      'Personalize o menu, os atalhos e o tamanho do painel em Configurações.',
-      'As mensagens de teste e as simulações não são enviadas ao WhatsApp.',
+      'Abra Personalização para ajustar o HUD, a ordem dos painéis e os atalhos de atendimento.',
+      'Cadastre atendentes e departamentos nas configurações e teste transferências em conversa fictícia.',
+      'Use a Biblioteca para preparar textos, áudios, mídias e documentos; marque recursos aprovados para encontrar no atendimento.',
+      'Confira o cliente, notas e transferências nas ferramentas laterais; mensagens de teste não são enviadas ao WhatsApp.',
+      'O Espaço de Teste funciona sem conexão e mantém exemplos separados do atendimento real.',
+      'Follow-up individual, resumo prioritário do turno noturno e regras de opt-out estão configuráveis. O resumo noturno usa sinais simples da conversa e deve ser revisado pelo atendente.',
     ],
-  },
-  {
-    id: 'library',
-    title: 'Biblioteca',
-    subtitle: 'Prepare respostas para usar no atendimento.',
-    icon: Library,
-    route: 'library',
-    steps: [
-      'Escolha Textos, Áudios, Mídias ou Documentos.',
-      'Crie respostas rápidas e agrupe os recursos em categorias.',
-      'Clique em um recurso para conferir a prévia ou use Editar, Duplicar e Excluir.',
-    ],
-  },
-  {
-    id: 'settings',
-    title: 'Conta e configurações',
-    subtitle: 'Ajuste aparência, acesso e cópias de segurança.',
-    icon: Settings,
-    route: 'settings',
-    steps: [
-      'Escolha o tema e a cor de destaque na seção Geral.',
-      'Os ajustes da conta são sincronizados pelo servidor.',
-      'Crie uma cópia integral em Backups e acesso antes de mudanças importantes.',
-    ],
+    route: 'personalization',
   },
 ];
 export function HelpCenter({
@@ -102,6 +87,7 @@ export function HelpCenter({
       | 'contacts'
       | 'campaigns'
       | 'schedule'
+      | 'sandbox'
       | 'help'
     >
   >;
@@ -112,7 +98,7 @@ export function HelpCenter({
         <div>
           <p className="eyebrow">CENTRAL DE SUPORTE</p>
           <h1>Ajuda e configurações</h1>
-          <p>Guias rápidos para configurar a operação e testar cada recurso.</p>
+          <p>Quatro guias por etapa, com orientações seguras para configurar e testar a operação.</p>
         </div>
       </div>
       <div className="help-guide-grid">

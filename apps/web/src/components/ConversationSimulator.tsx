@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { RotateCcw, Send, FlaskConical } from 'lucide-react';
+import { RotateCcw, Send, FlaskConical, Pencil, Save, X } from 'lucide-react';
 import { useApi, errorMessage } from '../context/ApiContext';
 import { Modal, Spinner } from './ui';
 import { Select } from './Select';
@@ -8,7 +8,7 @@ import { AssetPreview } from './AssetPreview';
 import type { Asset, Library } from '../types';
 import type { FlowGraph } from '../pages/flows/flow.types';
 
-type Entry = { role: 'user' | 'assistant' | 'event'; text: string; audio?: string; assetId?: string };
+type Entry = { role: 'user' | 'assistant' | 'event'; text: string; audio?: string; assetId?: string; contextSources?: string[] };
 type Trace = { nodeId: string; title: string; action: string; text?: string };
 
 export function ConversationSimulator({ base, graph, onClose, aiOnly = false }: { base?: string; graph?: FlowGraph; onClose: () => void; aiOnly?: boolean }) {
@@ -20,6 +20,9 @@ export function ConversationSimulator({ base, graph, onClose, aiOnly = false }: 
   const [busy, setBusy] = useState(false);
   const [presence, setPresence] = useState('');
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [calibration, setCalibration] = useState<{ question: string; originalReply: string } | null>(null);
+  const [correctedReply, setCorrectedReply] = useState('');
+  const [savingCalibration, setSavingCalibration] = useState(false);
   
   useEffect(() => { if (base) void request<Library>('/attendance/library').then(data => setAssets(data.assets)).catch(e => notify(errorMessage(e), true)); }, [base, request, notify]);
   
@@ -32,7 +35,7 @@ export function ConversationSimulator({ base, graph, onClose, aiOnly = false }: 
   useEffect(() => () => { generation.current++; controller.current?.abort(); }, []);
   useEffect(() => { log.current?.scrollTo({ top: log.current.scrollHeight, behavior: 'smooth' }); }, [entries, presence]);
   
-  const reset = () => { generation.current++; controller.current?.abort(); setEntries([]); setAudio(''); setText(''); setPresence(''); setBusy(false); seen.current = 0; replies.current = []; };
+  const reset = () => { generation.current++; controller.current?.abort(); setEntries([]); setAudio(''); setText(''); setPresence(''); setBusy(false); setCalibration(null); setCorrectedReply(''); seen.current = 0; replies.current = []; };
   
   const send = async () => {
     if (!text.trim() || busy) return;
@@ -40,8 +43,8 @@ export function ConversationSimulator({ base, graph, onClose, aiOnly = false }: 
     setEntries(next); setText(''); setAudio(''); setBusy(true); setPresence('A escrever…'); controller.current = new AbortController();
     try {
       if (mode === 'ai') {
-        const data = await request<{ text: string }>('/operations/simulator/reply', 'POST', { history: next.filter(e => e.role !== 'event').slice(-30).map(e => ({ role: e.role, text: e.text })) }, controller.current.signal);
-        if (token === generation.current) setEntries([...next, { role: 'assistant', text: data.text }]);
+        const data = await request<{ text: string; contextSources: string[] }>('/operations/simulator/reply', 'POST', { history: next.filter(e => e.role !== 'event').slice(-30).map(e => ({ role: e.role, text: e.text })) }, controller.current.signal);
+        if (token === generation.current) setEntries([...next, { role: 'assistant', text: data.text, contextSources: data.contextSources }]);
       } else if (base && graph) {
         replies.current.push(input);
         const data = await request<{ matches: boolean; trace: Trace[] }>(`${base}/simulate`, 'POST', { graph, text: replies.current[0] || '', replies: replies.current.slice(1) }, controller.current.signal);
@@ -75,11 +78,37 @@ export function ConversationSimulator({ base, graph, onClose, aiOnly = false }: 
           <div className={`test-bubble ${entry.role}`} key={index}>
             {entry.audio && <audio controls src={entry.audio} />}
             <p>{entry.text}</p>
+            {entry.contextSources?.length ? <details className="simulator-context"><summary>Contexto enviado à IA</summary><ul>{entry.contextSources.map((source, sourceIndex) => <li key={`${sourceIndex}:${source}`}>{source}</li>)}</ul></details> : null}
             {entry.assetId && <>{assets.filter(asset => asset.id === entry.assetId).map(asset => <AssetPreview key={asset.id} asset={asset} {...({ compact: true } as any)} />)}</>}
+            {mode === 'ai' && entry.role === 'assistant' && index === entries.length - 1 && <button className="button small" onClick={() => {
+              const previousQuestion = [...entries.slice(0, index)].reverse().find(item => item.role === 'user')?.text;
+              if (!previousQuestion) return;
+              setCalibration({ question: previousQuestion, originalReply: entry.text });
+              setCorrectedReply(entry.text);
+            }}><Pencil size={13}/>Corrigir resposta</button>}
           </div>
         ))}
         {presence && <small role="status">{presence}</small>}
       </div>
+
+      {calibration && <form className="simulator-calibration" onSubmit={event => {
+        event.preventDefault();
+        if (!correctedReply.trim() || savingCalibration) return;
+        setSavingCalibration(true);
+        void request<{ saved: boolean }>('/operations/simulator/calibrations', 'POST', { ...calibration, correctedReply: correctedReply.trim() })
+          .then(() => {
+            setEntries(current => [...current, { role: 'event', text: 'Correção salva como exemplo aprovado para orientar respostas futuras.' }]);
+            setCalibration(null);
+            setCorrectedReply('');
+            notify('Calibração salva como exemplo aprovado.');
+          })
+          .catch(error => notify(errorMessage(error), true))
+          .finally(() => setSavingCalibration(false));
+      }}>
+        <label>Resposta que você aprova<textarea rows={3} maxLength={6000} value={correctedReply} onChange={event => setCorrectedReply(event.target.value)} /></label>
+        <div className="modal-actions"><button className="button small" type="button" disabled={savingCalibration} onClick={() => setCalibration(null)}><X size={13}/>Cancelar</button><button className="button primary small" disabled={savingCalibration || !correctedReply.trim()}>{savingCalibration ? <Spinner/> : <Save size={13}/>}Salvar exemplo aprovado</button></div>
+        <small>A correção fica guardada como exemplo para futuras respostas da IA. Ela não altera nem treina o modelo externo.</small>
+      </form>}
       
       {audio && <div className="test-audio-preview"><audio controls src={audio} /><button className="button small" onClick={() => setAudio('')}>Descartar áudio</button><button className="button small" disabled={busy} onClick={() => {
         setBusy(true); void fetch(audio).then(r => r.blob()).then(async blob => {

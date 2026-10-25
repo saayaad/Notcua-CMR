@@ -5,6 +5,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { PrismaClient } from '@prisma/client';
 import { makeEventBuffer, type AnyMessageContent, type WAMessage } from '@whiskeysockets/baileys';
@@ -172,9 +173,43 @@ test('conversão real de WAV produz OGG/Opus; PTT e visualização única chegam
   await assert.rejects(messaging.media(sessionId, conversationId, message.id), /visualização única/);
 });
 
+test('qualquer áudio enviado pelo chat vira mensagem de voz mesmo se o arquivo original era WAV', async () => {
+  const samples = 8000;
+  const pcm = Buffer.alloc(samples * 2);
+  const wav = Buffer.alloc(44 + pcm.length);
+  wav.write('RIFF');
+  wav.writeUInt32LE(36 + pcm.length, 4);
+  wav.write('WAVEfmt ', 8);
+  wav.writeUInt32LE(16, 16);
+  wav.writeUInt16LE(1, 20);
+  wav.writeUInt16LE(1, 22);
+  wav.writeUInt32LE(8000, 24);
+  wav.writeUInt32LE(16000, 28);
+  wav.writeUInt16LE(2, 32);
+  wav.writeUInt16LE(16, 34);
+  wav.write('data', 36);
+  wav.writeUInt32LE(pcm.length, 40);
+  pcm.copy(wav, 44);
+  const file = await media.upload({ base64: wav.toString('base64'), mimeType: 'audio/wav', filename: 'voz.wav' });
+  await messaging.send(sessionId, conversationId, { requestId: 'ptt-auto', kind: 'audio', fileId: file.id, isPtt: false });
+  const sent = socket.sends.at(-1)!.content;
+  assert.ok('audio' in sent);
+  assert.equal(sent.ptt, true);
+  assert.equal(sent.mimetype, 'audio/ogg; codecs=opus');
+  const bytes = Buffer.from(sent.audio as Uint8Array);
+  assert.equal(bytes.subarray(0, 4).toString(), 'OggS');
+  assert.ok(bytes.includes(Buffer.from('OpusHead')));
+});
+
 test('vídeo circular e imagem preservam opções, legenda e formato nativo', async () => {
+  const ffmpeg = createRequire(import.meta.url)('ffmpeg-static') as string;
+  const clip = execFileSync(ffmpeg, [
+    '-nostdin', '-v', 'error', '-f', 'lavfi', '-i', 'color=c=black:s=32x32:d=0.1',
+    '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-f', 'mp4',
+    '-movflags', 'frag_keyframe+empty_moov', 'pipe:1',
+  ], { windowsHide: true });
   const video = await media.upload({
-    base64: Buffer.from('video-de-teste').toString('base64'),
+    base64: clip.toString('base64'),
     filename: 'clip.mp4',
     mimeType: 'video/mp4',
   });

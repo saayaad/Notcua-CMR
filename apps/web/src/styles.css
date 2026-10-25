@@ -1996,6 +1996,18 @@ nav span {
   line-height: 1.7;
   margin: 14px 0;
 }
+
+.ai-key-manager { display: grid; gap: .8rem; margin-top: 1rem; }
+.ai-key-manager h2 { display: flex; align-items: center; gap: .5rem; }
+.ai-key-row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .7rem .8rem; border: 1px solid var(--border); border-radius: .7rem; background: var(--surface-raised, var(--surface)); }
+.ai-key-entry { display: grid; gap: .45rem; }
+.ai-key-row > div:first-child { display: grid; gap: .2rem; }
+.ai-key-row small { color: var(--muted); }
+.ai-key-actions { display: flex; align-items: center; gap: .35rem; }
+.ai-key-add { display: grid; grid-template-columns: minmax(10rem, .7fr) minmax(16rem, 1.5fr) auto; align-items: end; gap: .65rem; padding-top: .3rem; }
+.ai-key-edit { display: grid; grid-template-columns: minmax(10rem, 1fr) minmax(14rem, 1.4fr) auto; align-items: end; gap: .6rem; padding: 0 .2rem .35rem; }
+@media (max-width: 700px) { .ai-key-row { align-items: flex-start; flex-direction: column; } .ai-key-actions { flex-wrap: wrap; } .ai-key-add { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { .ai-key-edit { grid-template-columns: 1fr; } }
 .break-word {
   overflow-wrap: anywhere;
 }

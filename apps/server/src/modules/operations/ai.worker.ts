@@ -5,7 +5,7 @@ import { generateSuggestion } from './ai.service.js';
 import { aiControl, requestsHuman, setAiControl } from './ai-control.js';
 import { preprocessMedia } from './ai-media.js';
 import { AppError } from '../../shared/errors.js';
-import { putRecord, record, type AgentSettings } from './records.js';
+import { hasConfiguredKey, putRecord, record, type AgentSettings } from './records.js';
 export class AiWorker {
   private timer?: ReturnType<typeof setTimeout>;
   private stopped = false;
@@ -37,7 +37,7 @@ export class AiWorker {
     this.flushing = true;
     try {
       const settings = await record<AgentSettings | null>(this.db, 'integration:ai', null);
-      if (!settings?.enabled || !settings.encryptedKey || !settings.enabledAt) return;
+      if (!settings?.enabled || !hasConfiguredKey(settings) || !settings.enabledAt) return;
       const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
       if (
         (await this.db.operationRecord.count({
@@ -110,6 +110,18 @@ export class AiWorker {
               chat.id,
               message.id,
             );
+            if (analysis.receipt?.detected) {
+              await setAiControl(this.db, chat.id, true, 'Comprovante candidato: confirme o pagamento manualmente.');
+              await putRecord(this.db, key, 'AI_RUN', { status: 'HELD', conversationId: chat.id, reason: 'receipt-review' });
+              await putRecord(this.db, `notice:${key}`, 'NOTICE', {
+                title: 'Revise o comprovante recebido',
+                text: `A IA encontrou um possível comprovante. Valor: ${analysis.receipt.amount || 'não identificado'} · Pagador: ${analysis.receipt.payer || 'não identificado'}. Confira a mídia original antes de marcar como pago.`,
+                conversationId: chat.id,
+                read: false,
+                createdAt: new Date().toISOString(),
+              });
+              continue;
+            }
             if (requestsHuman(analysis.text)) {
               await setAiControl(
                 this.db,

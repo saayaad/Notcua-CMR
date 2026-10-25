@@ -4,7 +4,7 @@ import { SerialQueue } from '../../shared/serial-queue.js';
 import { AppError } from '../../shared/errors.js';
 import { CredentialCipher } from '../whatsapp/credential-cipher.js';
 import { env } from '../../config/env.js';
-import { putRecord, type AgentSettings } from './records.js';
+import { putRecord, record, type AgentSettings } from './records.js';
 const budgetQueue = new SerialQueue();
 interface Usage {
   inputTokens: number;
@@ -83,11 +83,55 @@ export async function meteredCall<T>(
     throw error;
   }
 }
-export async function providerKey(settings: AgentSettings) {
-  if (!settings.encryptedKey) throw new AppError(422, 'Configure a chave da IA.');
+export async function providerKey(settings: AgentSettings, encryptedKey = settings.encryptedKey) {
+  if (!encryptedKey) throw new AppError(422, 'Configure a chave da IA.');
   return (await CredentialCipher.load(env.WHATSAPP_KEY_FILE)).decrypt<string>(
-    Buffer.from(settings.encryptedKey, 'base64'),
+    Buffer.from(encryptedKey, 'base64'),
   );
+}
+type GeminiKey = { id: string; label: string; encryptedKey: string; enabled: boolean };
+function dailyQuotaExhausted(status: number, data: any) {
+  if (status !== 429) return false;
+  const details = JSON.stringify(data?.error?.details ?? []);
+  const message = String(data?.error?.message ?? '');
+  return /per.?day|daily|requests_per_day|tokens_per_day/i.test(`${details} ${message}`);
+}
+export async function geminiResponse(db: PrismaClient, settings: AgentSettings, url: string, init: RequestInit) {
+  const candidates: GeminiKey[] = [
+    ...(settings.encryptedKey ? [{ id: 'primary', label: 'Chave principal', encryptedKey: settings.encryptedKey, enabled: true }] : []),
+    ...(settings.fallbackKeys ?? []).filter((key) => key.enabled),
+  ];
+  if (!candidates.length) throw new AppError(422, 'Cadastre uma chave da API Gemini nas configurações de IA.');
+  const cipher = await CredentialCipher.load(env.WHATSAPP_KEY_FILE);
+  const now = Date.now();
+  const available: GeminiKey[] = [];
+  for (const key of candidates) {
+    const exhausted = await record<{ until: number } | null>(db, `ai-key-quota:${key.id}`, null);
+    if (!exhausted || exhausted.until <= now) available.push(key);
+  }
+  if (!available.length) throw new AppError(429, 'A cota diária de todas as chaves Gemini cadastradas foi atingida. Ela será verificada novamente mais tarde.');
+  for (let index = 0; index < available.length; index++) {
+    const key = available[index]!;
+    const secret = cipher.decrypt<string>(Buffer.from(key.encryptedKey, 'base64'));
+    const headers = new Headers(init.headers);
+    headers.set('x-goog-api-key', secret);
+    const response = await fetch(url, { ...init, headers });
+    const data = await response.json().catch(() => ({}));
+    if (response.ok) {
+      await putRecord(db, 'ai-key-last-used', 'AI_KEY_STATE', { id: key.id, label: key.label, usedAt: new Date().toISOString() });
+      return data;
+    }
+    if (dailyQuotaExhausted(response.status, data)) {
+      await putRecord(db, `ai-key-quota:${key.id}`, 'AI_KEY_QUOTA', { until: now + 24 * 60 * 60 * 1000, exhaustedAt: new Date().toISOString() });
+      if (index < available.length - 1) continue;
+      throw new AppError(429, 'A cota diária das chaves Gemini disponíveis foi atingida. Adicione uma chave de outro projeto Google Cloud com cota própria.');
+    }
+    const message = String(data?.error?.message ?? 'Erro desconhecido');
+    if (response.status === 429)
+      throw new AppError(429, `Limite temporário da Gemini atingido para “${key.label}”. Aguarde e tente novamente; a próxima chave só será usada quando a cota diária for esgotada.`);
+    throw new AppError(502, `Gemini não concluiu a solicitação (HTTP ${response.status}): ${message.slice(0, 400)}`);
+  }
+  throw new AppError(429, 'Cota diária Gemini esgotada.');
 }
 export async function providerResponse(response: Response) {
   if (!response.ok)
@@ -103,9 +147,11 @@ export async function textCompletion(
   conversationId: string,
   system: string,
   input: string,
+  route: 'fast' | 'deep' = 'deep',
 ) {
-  const key = await providerKey(settings);
   const provider = settings.provider ?? 'openai';
+  const key = provider === 'gemini' ? '' : await providerKey(settings);
+  const model = route === 'fast' ? settings.fastModel?.trim() || settings.model : settings.reasoningModel?.trim() || settings.model;
   const max = settings.maxOutputTokens ?? 1200;
   return meteredCall(
     db,
@@ -128,7 +174,7 @@ export async function textCompletion(
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: settings.model,
+              model,
               max_tokens: max,
               system,
               messages: [{ role: 'user', content: input }],
@@ -142,9 +188,8 @@ export async function textCompletion(
         inputTokens = result.usage?.input_tokens;
         outputTokens = result.usage?.output_tokens;
       } else if (provider === 'gemini') {
-        const result = await providerResponse(
-          await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(settings.model)}:generateContent`,
+        const result = await geminiResponse(db, settings,
+            `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
             {
               method: 'POST',
               signal: AbortSignal.timeout(60_000),
@@ -154,9 +199,7 @@ export async function textCompletion(
                 contents: [{ role: 'user', parts: [{ text: input }] }],
                 generationConfig: { maxOutputTokens: max },
               }),
-            },
-          ),
-        );
+            });
         text = (result.candidates?.[0]?.content?.parts ?? [])
           .filter((item: { thought?: boolean }) => !item.thought)
           .map((item: { text?: string }) => item.text ?? '')
@@ -172,7 +215,7 @@ export async function textCompletion(
             signal: AbortSignal.timeout(60_000),
             headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              model: settings.model,
+              model,
               store: false,
               max_output_tokens: max,
               instructions: system,

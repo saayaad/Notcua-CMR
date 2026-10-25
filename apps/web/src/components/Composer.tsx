@@ -17,6 +17,70 @@ export async function fileBase64(file: Blob): Promise<string> {
   });
 }
 
+async function optimizeImage(file: File, mark?: { text: string; opacity: number; position: 'bottom-right' | 'center' | 'diagonal'; imageData?: string }): Promise<File> {
+  const hasMark = Boolean(mark && (mark.text.trim() || mark.imageData));
+  if (!hasMark && file.size < 700 * 1024) return file;
+  try {
+    const image = await createImageBitmap(file);
+    const scale = Math.min(1, 2048 / Math.max(image.width, image.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(image.width * scale));
+    canvas.height = Math.max(1, Math.round(image.height * scale));
+    const context = canvas.getContext('2d');
+    if (!context) return file;
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    image.close();
+    if (hasMark && mark) {
+      let logo: HTMLImageElement | null = null;
+      if (mark.imageData) {
+        logo = new Image();
+        logo.src = mark.imageData;
+        await new Promise<void>((resolve, reject) => { logo!.onload = () => resolve(); logo!.onerror = () => reject(new Error('Não foi possível carregar o PNG da marca d’água.')); });
+      }
+      const fontSize = Math.max(14, Math.round(canvas.width * 0.035));
+      const text = mark.text.trim();
+      context.save();
+      context.globalAlpha = Math.max(0.1, Math.min(0.9, mark.opacity / 100));
+      context.font = `700 ${fontSize}px Arial, sans-serif`;
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      const drawMark = (x: number, y: number, angle = 0) => {
+        context.save();
+        context.translate(x, y);
+        context.rotate(angle);
+        if (logo) {
+          const h = fontSize * 1.6;
+          const w = h * (logo.naturalWidth / Math.max(logo.naturalHeight, 1));
+          context.drawImage(logo, -w / 2, -fontSize, w, h);
+        }
+        if (text) {
+          context.lineWidth = Math.max(2, fontSize * 0.12);
+          context.strokeStyle = 'rgba(0,0,0,.72)';
+          context.fillStyle = 'rgba(255,255,255,.95)';
+          context.strokeText(text, 0, fontSize * 0.8);
+          context.fillText(text, 0, fontSize * 0.8);
+        }
+        context.restore();
+      };
+      if (mark.position === 'diagonal') {
+        context.translate(canvas.width / 2, canvas.height / 2);
+        context.rotate(-Math.PI / 6);
+        const stepX = Math.max(180, Math.round(canvas.width * 0.45));
+        const stepY = Math.max(120, Math.round(canvas.height * 0.28));
+        for (let y = -canvas.height; y <= canvas.height; y += stepY) for (let x = -canvas.width; x <= canvas.width; x += stepX) drawMark(x, y);
+      } else drawMark(mark.position === 'center' ? canvas.width / 2 : canvas.width - 24 - canvas.width * 0.22, mark.position === 'center' ? canvas.height / 2 : canvas.height - 24 - fontSize);
+      context.restore();
+    }
+    const type = file.type === 'image/png' ? 'image/png' : file.type === 'image/webp' ? 'image/webp' : 'image/jpeg';
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, type === 'image/jpeg' || type === 'image/webp' ? 0.9 : undefined));
+    if (!blob || (!hasMark && blob.size >= file.size)) return file;
+    const extension = type === 'image/png' ? '.png' : type === 'image/webp' ? '.webp' : '.jpg';
+    return new File([blob], `${file.name.replace(/\.[^.]+$/, '')}${extension}`, { type, lastModified: Date.now() });
+  } catch {
+    return file;
+  }
+}
+
 export function Composer({
   base,
   connected,
@@ -59,6 +123,8 @@ export function Composer({
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [previewUrl, setPreviewUrl] = useState('');
+  const [watermarkSettings, setWatermarkSettings] = useState<{ enabledByDefault?: boolean; activeId?: string; marks?: { id: string; name: string; text: string; opacity: number; position: 'bottom-right' | 'center' | 'diagonal'; imageData?: string }[] }>({});
+  const [applyWatermark, setApplyWatermark] = useState(false);
   const [internalMode, setInternalMode] = useState(Boolean(restored.internal));
   const [slashQuery, setSlashQuery] = useState('');
   const [slashOpen, setSlashOpen] = useState(false);
@@ -119,6 +185,14 @@ export function Composer({
       URL.revokeObjectURL(url);
     };
   }, [file]);
+  useEffect(() => {
+    void request<typeof watermarkSettings>('/operations/settings/watermarks')
+      .then((value) => {
+        setWatermarkSettings(value);
+        setApplyWatermark(Boolean(value.enabledByDefault));
+      })
+      .catch(() => undefined);
+  }, [request]);
   useEffect(() => {
     if (!recording) return;
     const timer = setInterval(
@@ -182,8 +256,9 @@ export function Composer({
     setFile(selected);
     setCaption('');
     setViewOnce(false);
-    setPtt(voice);
+    setPtt(voice || selected.type.startsWith('audio/'));
     setPtv(false);
+    setApplyWatermark(Boolean(watermarkSettings.enabledByDefault));
   };
   const startRecording = async () => {
     try {
@@ -314,10 +389,11 @@ export function Composer({
     if (!file || busy) return;
     setBusy(true);
     try {
+      const sourceFile = kind === 'image' ? await optimizeImage(file, applyWatermark ? watermarkSettings.marks?.find((mark) => mark.id === watermarkSettings.activeId) ?? watermarkSettings.marks?.[0] : undefined) : file;
       const uploaded = await request<{ id: string }>('/attendance/files', 'POST', {
-        base64: await fileBase64(file),
-        filename: file.name,
-        mimeType: file.type || 'application/octet-stream',
+        base64: await fileBase64(sourceFile),
+        filename: sourceFile.name,
+        mimeType: sourceFile.type || 'application/octet-stream',
         voice: kind === 'audio' && ptt,
       });
       await request(`${base}/send`, 'POST', {
@@ -331,6 +407,7 @@ export function Composer({
       });
       setFile(null);
       onSent();
+      if (kind === 'image' && sourceFile.size < file.size) notify(`Imagem otimizada: ${(file.size / 1024 / 1024).toFixed(2)} MiB → ${(sourceFile.size / 1024 / 1024).toFixed(2)} MiB${applyWatermark ? ' com marca d’água' : ''}.`);
     } catch (error) {
       notify(errorMessage(error), true);
     } finally {
@@ -495,10 +572,11 @@ export function Composer({
             </button>
           </div>
           <div>
-            <small>Enter para enviar · Shift + Enter para nova linha</small>
+            <small>{internalMode ? 'Enter para salvar nota' : 'Enter para enviar'} · Shift + Enter para nova linha</small>
             <button
               className="send-button"
-              aria-label="Enviar mensagem"
+              aria-label={internalMode ? 'Salvar nota interna' : 'Enviar mensagem'}
+              title={internalMode ? 'Salvar nota privada, sem enviar ao WhatsApp' : 'Enviar mensagem'}
               disabled={(!connected && !internalMode) || busy || recording || !draft.text.trim()}
               onClick={() => void sendText()}
             >
@@ -555,17 +633,7 @@ export function Composer({
             </label>
           )}
           {kind === 'audio' && (
-            <label className="checkbox">
-              <input
-                type="checkbox"
-                checked={ptt}
-                onChange={(event) => {
-                  setPtt(event.target.checked);
-                  if (!event.target.checked) setViewOnce(false);
-                }}
-              />
-              Enviar como mensagem de voz (OGG/Opus)
-            </label>
+            <p className="muted">Este áudio será convertido para OGG/Opus e enviado como mensagem de voz. Para enviar música como arquivo, escolha Documento.</p>
           )}
           {kind === 'video' && (
             <label className="checkbox">
@@ -573,6 +641,12 @@ export function Composer({
               Enviar como recado circular (MP4)
             </label>
           )}
+          {kind === 'image' && watermarkSettings.marks?.length ? (
+            <label className="checkbox">
+              <input type="checkbox" checked={applyWatermark} onChange={(event) => setApplyWatermark(event.target.checked)} />
+              Aplicar marca d’água de aprovação
+            </label>
+          ) : null}
           {(kind === 'image' || kind === 'video' || (kind === 'audio' && ptt)) && (
             <label className="checkbox">
               <input

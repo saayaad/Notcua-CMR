@@ -32,7 +32,7 @@ O upload de backups grandes também vai diretamente para esse servidor, conforme
 
 ## IA
 
-Cadastre a chave do provedor em Configurações → Integração de IA. Ela é cifrada no servidor e nunca é devolvida pela API. Não use prefixo `VITE_` para segredos. Escolha um modelo disponível em sua conta, informe regras/base de conhecimento e teste sugestões antes de habilitar respostas automáticas. O limite diário conta solicitações automáticas, não valores em reais; cobrança e limites financeiros são controlados no provedor.
+Cadastre a chave do provedor em Configurações → Integração de IA. Ela é cifrada no servidor e nunca é devolvida pela API. Para Gemini, o botão **Configurações de Chaves de API** permite cadastrar chaves adicionais, ativá-las, reordená-las e removê-las; o servidor só tenta a próxima chave quando a resposta identifica cota diária (`PerDay`) esgotada. Limites por minuto, chave inválida e erros de configuração não provocam rotação. Chaves de um mesmo projeto Gemini compartilham a cota, portanto use projetos distintos se precisar de cotas separadas. A assinatura Google AI Pro não equivale a crédito da Gemini API; confira a página de limites e cobrança da API. Não use prefixo `VITE_` para segredos. Escolha modelos disponíveis na conta, informe regras/base de conhecimento e teste sugestões antes de habilitar respostas automáticas. O limite diário interno conta solicitações automáticas, não valores em reais; cobrança e cotas oficiais são controladas pelo provedor.
 
 Não envie chaves privadas pelo chat ou pelo Git. Configure-as diretamente nos campos apropriados da hospedagem e do painel.
 

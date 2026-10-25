@@ -1,6 +1,7 @@
 import { chooseCampaignText } from './campaign-text.js';
 import { safetyRoutes } from './safety.routes.js';
 import { simulatorRoutes } from './simulator.routes.js';
+import { clientAiRoutes } from './client-ai.js';
 import { textCompletion } from './ai-provider.js';
 import { directoryRoutes, teamDirectory } from './team-directory.js';
 import { Router } from 'express';
@@ -17,7 +18,7 @@ import { CredentialCipher } from '../whatsapp/credential-cipher.js';
 import { env } from '../../config/env.js';
 import { json } from '../backups/validation.js';
 import { ContactsService, leadSchema } from './contacts.service.js';
-import { record, putRecord, type AgentSettings } from './records.js';
+import { hasConfiguredKey, record, putRecord, type AgentSettings } from './records.js';
 import { generateSuggestion } from './ai.service.js';
 import { aiControl, setAiControl } from './ai-control.js';
 import { aiUsage } from './ai-provider.js';
@@ -32,6 +33,12 @@ import { standardReplyRoutes } from './standard-replies.js';
 import { nextActionRoutes } from './next-actions.js';
 
 const id = z.string().min(1).max(200);
+function moneyToCents(value?: string) {
+  if (!value) return 0;
+  const normalized = value.replace(/[^\d,.-]/g, '').replace(/\.(?=\d{3}(?:\D|$))/g, '').replace(',', '.');
+  const amount = Number(normalized);
+  return Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) : 0;
+}
 const profile = z.object({
   name: z.string().min(1).max(100).optional(),
   email: z.string().max(200).optional(),
@@ -60,6 +67,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
   const contacts = new ContactsService(db);
   router.use('/safety', safetyRoutes(db, whatsapp));
   router.use('/simulator', simulatorRoutes(db));
+  router.use('/client-ai', clientAiRoutes(db, messaging));
   router.use('/directory', directoryRoutes(db));
   router.use('/macros', macroRoutes(db));
   router.use('/toolbox', toolboxRoutes(db));
@@ -176,7 +184,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     res.json(data);
   });
   router.get('/settings/:key', async (req, res) => {
-    const key = z.enum(['business', 'preferences', 'departments', 'shortcuts']).parse(req.params.key);
+    const key = z.enum(['business', 'preferences', 'departments', 'shortcuts', 'watermarks', 'optout']).parse(req.params.key);
     res.json(
       await record(
         db,
@@ -186,11 +194,11 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     );
   });
   router.put('/settings/:key', async (req, res) => {
-    const key = z.enum(['business', 'preferences', 'departments', 'shortcuts']).parse(req.params.key);
+    const key = z.enum(['business', 'preferences', 'departments', 'shortcuts', 'watermarks', 'optout']).parse(req.params.key);
     if (key !== 'preferences') admin(res.locals.identity.role);
     const data = z.record(z.string().max(100), z.json()).parse(req.body);
     if (key === 'preferences') data.brandingName = 'noctua';
-    if (JSON.stringify(data).length > 30000) throw new AppError(413, 'Configuração muito grande.');
+    if (JSON.stringify(data).length > (key === 'watermarks' ? 2_000_000 : 30000)) throw new AppError(413, 'Configuração muito grande.');
     await putRecord(
       db,
       key === 'preferences' ? `preferences:${res.locals.identity.uid}` : `settings:${key}`,
@@ -557,6 +565,9 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
           assetId: id.optional(),
           funnelId: id.optional(),
           flowId: id.optional(),
+          labelTransition: z.object({ fromLabelId: id.optional(), toLabelId: id.optional() })
+            .refine((value) => Boolean(value.fromLabelId || value.toLabelId), 'Escolha uma etiqueta para adicionar ou remover.')
+            .optional(),
         }),
         minSeconds: z.number().int().min(1).max(86400).default(15),
         maxSeconds: z.number().int().min(1).max(86400).default(45),
@@ -645,6 +656,13 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       }))
     )
       throw new AppError(422, 'Escolha um fluxo publicado e ativo nesta conexão.');
+    if (delivery.labelTransition) {
+      const labels = await db.label.findMany({ where: { isDeleted: false, OR: [{ sessionId }, { sessionId: null }] } });
+      if (
+        (delivery.labelTransition.toLabelId && !labels.some((label) => label.id === delivery.labelTransition!.toLabelId)) ||
+        (delivery.labelTransition.fromLabelId && !labels.some((label) => label.id === delivery.labelTransition!.fromLabelId))
+      ) throw new AppError(422, 'Selecione etiquetas válidas para a troca automática.');
+    }
     const batchId = `batch:${randomUUID()}`;
     const data: Batch = {
       name: input.name,
@@ -696,6 +714,55 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     );
     res.status(201).json({ id: batchId, ...data });
   });
+  router.post('/sessions/:sessionId/conversations/:conversationId/follow-ups', async (req, res) => {
+    const sessionId = id.parse(req.params.sessionId);
+    const conversationId = id.parse(req.params.conversationId);
+    await whatsapp.snapshot(sessionId);
+    const chat = await messaging.chat(sessionId, conversationId);
+    if (chat.status !== 'OPEN' || chat.contact.isGroup || (chat.contact.metadata as { optOut?: boolean }).optOut)
+      throw new AppError(422, 'Follow-up indisponível: confira se a conversa está aberta e se o contato não pediu para sair.');
+    const input = z.object({
+      name: z.string().trim().min(1).max(100).default('Follow-up individual'),
+      steps: z.array(z.object({ waitMinutes: z.number().int().min(1).max(43200), text: z.string().trim().min(1).max(10000) })).min(1).max(5),
+    }).parse(req.body);
+    const lastOutbound = await db.chatMessage.findFirst({ where: { conversationId, direction: 'OUTBOUND', type: { not: 'internalNote' } }, orderBy: [{ sentAt: 'desc' }, { id: 'desc' }] });
+    if (!lastOutbound) throw new AppError(422, 'Envie ou registre um orçamento antes de ativar o follow-up.');
+    const lastMessage = await db.chatMessage.findFirst({ where: { conversationId }, orderBy: [{ sentAt: 'desc' }, { id: 'desc' }] });
+    if (lastMessage?.direction !== 'OUTBOUND' || lastMessage.type === 'internalNote')
+      throw new AppError(409, 'O cliente já respondeu depois da última mensagem. Envie uma mensagem antes de iniciar o follow-up.');
+    const batchId = `follow-up:${randomUUID()}`;
+    const payload: Delivery = {
+      kind: 'sequence',
+      followUp: true,
+      sourceMessageAt: lastOutbound.sentAt.toISOString(),
+      steps: input.steps.map((step) => ({ snapshot: { kind: 'text', text: step.text }, waitSeconds: step.waitMinutes * 60 })),
+    };
+    const now = new Date();
+    const batch: Batch = {
+      name: input.name,
+      sessionId,
+      status: 'ACTIVE',
+      mode: 'SCHEDULE',
+      minSeconds: 1,
+      maxSeconds: 1,
+      count: 1,
+      sentCount: 0,
+      createdAt: now.toISOString(),
+    };
+    await db.$transaction(async (tx) => {
+      await tx.operationRecord.create({ data: { id: batchId, kind: 'BATCH', data: json(batch) } });
+      await tx.deliveryTask.create({
+        data: {
+          batchId,
+          sessionId,
+          conversationId,
+          payload: json(payload),
+          runAt: new Date(now.getTime() + input.steps[0]!.waitMinutes * 60_000),
+        },
+      });
+    });
+    res.status(201).json({ id: batchId, scheduled: input.steps.length, firstRunAt: new Date(now.getTime() + input.steps[0]!.waitMinutes * 60_000).toISOString() });
+  });
   router.put('/sessions/:sessionId/batches/:batchId', async (req, res) => {
     admin(res.locals.identity.role);
     const sessionId = id.parse(req.params.sessionId);
@@ -734,7 +801,12 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       orderBy: { createdAt: 'desc' },
       take: 500,
     });
-    res.json({ items });
+    const chats = await db.conversation.findMany({
+      where: { sessionId, id: { in: [...new Set(items.map((item) => item.conversationId))] } },
+      select: { id: true, contact: { select: { name: true, phoneNumber: true } } },
+    });
+    const contacts = new Map(chats.map((chat) => [chat.id, chat.contact]));
+    res.json({ items: items.map((item) => ({ ...item, contact: contacts.get(item.conversationId) ?? null })) });
   });
   router.get('/ai', async (_req, res) => {
     admin(res.locals.identity.role);
@@ -745,8 +817,150 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       style: '',
       enabled: false,
     });
-    const { encryptedKey, ...safe } = settings;
-    res.json({ ...safe, configured: Boolean(encryptedKey), usage: await aiUsage(db) });
+    const { encryptedKey, fallbackKeys = [], ...safe } = settings;
+    res.json({ ...safe, configured: hasConfiguredKey(settings), primaryConfigured: Boolean(encryptedKey), fallbackKeyCount: fallbackKeys.length, usage: await aiUsage(db) });
+  });
+  router.get('/ai/keys', async (_req, res) => {
+    admin(res.locals.identity.role);
+    const settings = await record<AgentSettings>(db, 'integration:ai', { model: '', instructions: '', knowledge: '', style: '', enabled: false });
+    const last = await record<{ id: string; label: string; usedAt: string } | null>(db, 'ai-key-last-used', null);
+    const items = await Promise.all((settings.fallbackKeys ?? []).map(async ({ id, label, enabled }) => {
+      const quota = await record<{ until: number } | null>(db, `ai-key-quota:${id}`, null);
+      return { id, label, enabled, dailyQuotaExhausted: Boolean(quota && quota.until > Date.now()) };
+    }));
+    const primaryQuota = await record<{ until: number } | null>(db, 'ai-key-quota:primary', null);
+    res.json({ provider: settings.provider ?? 'openai', primary: { configured: Boolean(settings.encryptedKey), dailyQuotaExhausted: Boolean(primaryQuota && primaryQuota.until > Date.now()) }, items, lastUsed: last });
+  });
+  router.post('/ai/keys', async (req, res) => {
+    admin(res.locals.identity.role);
+    const input = z.object({ label: z.string().trim().min(1).max(80), apiKey: z.string().trim().min(20).max(500) }).parse(req.body);
+    const settings = await record<AgentSettings>(db, 'integration:ai', { model: '', instructions: '', knowledge: '', style: '', enabled: false });
+    if ((settings.provider ?? 'openai') !== 'gemini') throw new AppError(422, 'Selecione Google · Gemini e salve a integração antes de adicionar chaves extras.');
+    const fallbacks = settings.fallbackKeys ?? [];
+    if (fallbacks.length >= 20) throw new AppError(422, 'O limite é de 20 chaves adicionais.');
+    const item = { id: randomUUID(), label: input.label, encryptedKey: (await CredentialCipher.load(env.WHATSAPP_KEY_FILE)).encrypt(input.apiKey).toString('base64'), enabled: true, addedAt: new Date().toISOString() };
+    await putRecord(db, 'integration:ai', 'INTEGRATION', { ...settings, fallbackKeys: [...fallbacks, item] });
+    res.status(201).json({ id: item.id, label: item.label, enabled: item.enabled });
+  });
+  router.put('/ai/keys/primary', async (req, res) => {
+    admin(res.locals.identity.role);
+    const { apiKey } = z.object({ apiKey: z.string().trim().min(20).max(500) }).parse(req.body);
+    const settings = await record<AgentSettings>(db, 'integration:ai', { model: '', instructions: '', knowledge: '', style: '', enabled: false });
+    if ((settings.provider ?? 'openai') !== 'gemini') throw new AppError(422, 'Selecione Google · Gemini para editar a chave principal Gemini.');
+    const encryptedKey = (await CredentialCipher.load(env.WHATSAPP_KEY_FILE)).encrypt(apiKey).toString('base64');
+    await putRecord(db, 'integration:ai', 'INTEGRATION', { ...settings, encryptedKey });
+    await db.operationRecord.deleteMany({ where: { id: 'ai-key-quota:primary' } });
+    res.json({ saved: true });
+  });
+  router.delete('/ai/keys/primary', async (_req, res) => {
+    admin(res.locals.identity.role);
+    const settings = await record<AgentSettings>(db, 'integration:ai', { model: '', instructions: '', knowledge: '', style: '', enabled: false });
+    const fallbackKeys = settings.fallbackKeys ?? [];
+    const hasOtherActiveKey = (settings.provider ?? 'openai') === 'gemini' && fallbackKeys.some((key) => key.enabled);
+    await putRecord(db, 'integration:ai', 'INTEGRATION', { ...settings, encryptedKey: undefined, enabled: settings.enabled && hasOtherActiveKey, enabledAt: settings.enabled && hasOtherActiveKey ? settings.enabledAt : undefined });
+    await db.operationRecord.deleteMany({ where: { id: 'ai-key-quota:primary' } });
+    res.json({ deleted: true, hasOtherActiveKey });
+  });
+  router.patch('/ai/keys/:keyId', async (req, res) => {
+    admin(res.locals.identity.role);
+    const { enabled } = z.object({ enabled: z.boolean() }).parse(req.body);
+    const settings = await record<AgentSettings>(db, 'integration:ai', { model: '', instructions: '', knowledge: '', style: '', enabled: false });
+    const keyId = id.parse(req.params.keyId);
+    const items = settings.fallbackKeys ?? [];
+    if (!items.some((item) => item.id === keyId)) throw new AppError(404, 'Chave adicional não encontrada.');
+    await putRecord(db, 'integration:ai', 'INTEGRATION', { ...settings, fallbackKeys: items.map((item) => item.id === keyId ? { ...item, enabled } : item) });
+    res.json({ saved: true });
+  });
+  router.put('/ai/keys/order', async (req, res) => {
+    admin(res.locals.identity.role);
+    const { ids } = z.object({ ids: z.array(id).max(20) }).parse(req.body);
+    const settings = await record<AgentSettings>(db, 'integration:ai', { model: '', instructions: '', knowledge: '', style: '', enabled: false });
+    const items = settings.fallbackKeys ?? [];
+    if (new Set(ids).size !== items.length || ids.length !== items.length || ids.some((keyId) => !items.some((item) => item.id === keyId))) throw new AppError(422, 'A ordem enviada não corresponde às chaves cadastradas.');
+    const ordered = ids.map((keyId) => items.find((item) => item.id === keyId)!);
+    await putRecord(db, 'integration:ai', 'INTEGRATION', { ...settings, fallbackKeys: ordered });
+    res.json({ saved: true });
+  });
+  router.put('/ai/keys/:keyId', async (req, res) => {
+    admin(res.locals.identity.role);
+    const input = z.object({ label: z.string().trim().min(1).max(80), apiKey: z.string().trim().min(20).max(500).optional() }).parse(req.body);
+    const settings = await record<AgentSettings>(db, 'integration:ai', { model: '', instructions: '', knowledge: '', style: '', enabled: false });
+    const keyId = id.parse(req.params.keyId);
+    const items = settings.fallbackKeys ?? [];
+    if (!items.some((item) => item.id === keyId)) throw new AppError(404, 'Chave adicional não encontrada.');
+    const cipher = input.apiKey ? await CredentialCipher.load(env.WHATSAPP_KEY_FILE) : null;
+    const updated = items.map((item) => item.id === keyId ? { ...item, label: input.label, ...(input.apiKey && cipher ? { encryptedKey: cipher.encrypt(input.apiKey).toString('base64') } : {}) } : item);
+    await putRecord(db, 'integration:ai', 'INTEGRATION', { ...settings, fallbackKeys: updated });
+    await db.operationRecord.deleteMany({ where: { id: `ai-key-quota:${keyId}` } });
+    res.json({ saved: true });
+  });
+  router.delete('/ai/keys/:keyId', async (req, res) => {
+    admin(res.locals.identity.role);
+    const settings = await record<AgentSettings>(db, 'integration:ai', { model: '', instructions: '', knowledge: '', style: '', enabled: false });
+    const keyId = id.parse(req.params.keyId);
+    await putRecord(db, 'integration:ai', 'INTEGRATION', { ...settings, fallbackKeys: (settings.fallbackKeys ?? []).filter((item) => item.id !== keyId) });
+    await db.operationRecord.deleteMany({ where: { id: `ai-key-quota:${keyId}` } });
+    res.json({ deleted: true });
+  });
+  router.get('/economy', async (_req, res) => {
+    admin(res.locals.identity.role);
+    const settings = await record(db, 'settings:ai-economy', {
+      enabled: true,
+      semanticCache: true,
+      rag: true,
+      cacheDays: 14,
+      summaryEvery: 10,
+      systems: { autoReply: true, copilot: true, summaries: true, campaigns: true, training: true, receipts: true, dailyDigest: true },
+    });
+    const monthStart = new Date();
+    monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+    const events = await db.operationRecord.findMany({ where: { kind: 'AI_ECONOMY_SAVING', createdAt: { gte: monthStart } }, take: 10000 });
+    const saved = events.reduce((total, row) => { const data = row.data as { tokens?: number; requests?: number }; return { tokens: total.tokens + (data.tokens ?? 0), requests: total.requests + (data.requests ?? 0) }; }, { tokens: 0, requests: 0 });
+    const cacheCount = await db.operationRecord.count({ where: { kind: 'AI_SEMANTIC_CACHE' } });
+    res.json({ settings, saved, cacheCount, usage: await aiUsage(db) });
+  });
+  router.put('/economy', async (req, res) => {
+    admin(res.locals.identity.role);
+    const input = z.object({
+      enabled: z.boolean(), semanticCache: z.boolean(), rag: z.boolean(),
+      cacheDays: z.number().int().min(1).max(365), summaryEvery: z.number().int().min(5).max(100),
+      systems: z.record(z.string().max(40), z.boolean()),
+    }).parse(req.body);
+    await putRecord(db, 'settings:ai-economy', 'AI_ECONOMY_SETTINGS', input);
+    res.json({ saved: true });
+  });
+  router.get('/economy/cache', async (_req, res) => {
+    admin(res.locals.identity.role);
+    const rows = await db.operationRecord.findMany({ where: { kind: 'AI_SEMANTIC_CACHE' }, orderBy: { updatedAt: 'desc' }, take: 1000 });
+    res.json({ items: rows.map((row) => ({ id: row.id, ...(row.data as object) })) });
+  });
+  router.put('/economy/cache/:cacheId', async (req, res) => {
+    admin(res.locals.identity.role);
+    const cacheId = id.parse(req.params.cacheId);
+    const current = await db.operationRecord.findFirst({ where: { id: cacheId, kind: 'AI_SEMANTIC_CACHE' } });
+    if (!current) throw new AppError(404, 'Resposta do cache não encontrada.');
+    const input = z.object({ answer: z.string().trim().min(1).max(4000) }).parse(req.body);
+    await putRecord(db, cacheId, 'AI_SEMANTIC_CACHE', { ...(current.data as object), answer: input.answer, editedAt: new Date().toISOString() });
+    res.json({ saved: true });
+  });
+  router.delete('/economy/cache/:cacheId', async (req, res) => {
+    admin(res.locals.identity.role);
+    await db.operationRecord.deleteMany({ where: { id: id.parse(req.params.cacheId), kind: 'AI_SEMANTIC_CACHE' } });
+    res.json({ deleted: true });
+  });
+  router.delete('/economy/cache', async (_req, res) => {
+    admin(res.locals.identity.role);
+    const result = await db.operationRecord.deleteMany({ where: { kind: 'AI_SEMANTIC_CACHE' } });
+    res.json({ deleted: result.count });
+  });
+  router.post('/economy/optimize-prompts', async (req, res) => {
+    admin(res.locals.identity.role);
+    const config = await record<AgentSettings | null>(db, 'integration:ai', null);
+    if (!hasConfiguredKey(config) || !config?.model) throw new AppError(422, 'Configure a integração de IA antes de otimizar as regras.');
+    const input = z.object({ instructions: z.string().max(12000), style: z.string().max(6000) }).parse(req.body);
+    const result = await textCompletion(db, config, 'economy:prompt-optimization', 'Reescreva regras e estilo em português claro e conciso, preservando toda obrigação, proibição, preço, condição e exceção. Use tópicos Markdown. Não invente regras. Retorne JSON válido com as chaves instructions e style.', JSON.stringify(input));
+    try { res.json(JSON.parse(result.text.replace(/^```(?:json)?\s*|\s*```$/g, '').trim())); }
+    catch { throw new AppError(502, 'A IA retornou um formato inválido; nenhuma regra foi alterada.'); }
   });
   router.put('/ai', async (req, res) => {
     admin(res.locals.identity.role);
@@ -763,6 +977,9 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
         mediaEnabled: z.boolean().default(false),
         mediaModel: z.string().max(100).default(''),
         transcriptionModel: z.string().max(100).default(''),
+        imageModel: z.string().max(100).default(''),
+        fastModel: z.string().max(100).default(''),
+        reasoningModel: z.string().max(100).default(''),
         model: z.string().max(100),
         instructions: z.string().max(12000),
         knowledge: z.string().max(100000),
@@ -786,18 +1003,19 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       encryptedKey = (await CredentialCipher.load(env.WHATSAPP_KEY_FILE))
         .encrypt(apiKey.trim())
         .toString('base64');
-    if (settings.enabled && !encryptedKey)
+    if (settings.enabled && !encryptedKey && !((settings.provider === 'gemini') && previous?.fallbackKeys?.some((key) => key.enabled)))
       throw new AppError(422, 'Salve uma chave válida antes de ativar a IA automática.');
     await putRecord(db, 'integration:ai', 'INTEGRATION', {
       ...settings,
       encryptedKey,
+      fallbackKeys: previous?.fallbackKeys ?? [],
       enabledAt: settings.enabled
         ? previous?.enabled && previous.enabledAt
           ? previous.enabledAt
           : new Date().toISOString()
         : undefined,
     });
-    res.json({ saved: true, configured: Boolean(encryptedKey) });
+    res.json({ saved: true, configured: hasConfiguredKey({ ...settings, encryptedKey, fallbackKeys: previous?.fallbackKeys ?? [] }) });
   });
   router.post('/sessions/:sessionId/contacts/:conversationId/ai', async (req, res) => {
     const { task } = z
@@ -855,6 +1073,54 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
         messageId,
       ),
     );
+  });
+  router.post('/sessions/:sessionId/contacts/:conversationId/confirm-payment', async (req, res) => {
+    const sessionId = id.parse(req.params.sessionId);
+    const conversationId = id.parse(req.params.conversationId);
+    const { messageId } = z.object({ messageId: id }).parse(req.body);
+    const chat = await messaging.chat(sessionId, conversationId);
+    const analysis = await record<{ receipt?: { detected?: boolean; amount?: string; date?: string; payer?: string } } | null>(db, `ai-media:${messageId}`, null);
+    if (!analysis?.receipt?.detected)
+      throw new AppError(422, 'Não há um comprovante candidato analisado para confirmar.');
+    const opportunity = await db.crmOpportunity.findUnique({ where: { conversationId } });
+    await db.crmOpportunity.upsert({
+      where: { conversationId },
+      create: {
+        conversationId,
+        title: 'Pagamento confirmado',
+        status: 'WON',
+        wonAt: new Date(),
+        valueInCents: moneyToCents(analysis.receipt.amount),
+        version: 1,
+      },
+      update: {
+        status: 'WON',
+        wonAt: opportunity?.wonAt ?? new Date(),
+        title: opportunity?.title || 'Pagamento confirmado',
+        valueInCents: opportunity?.valueInCents || moneyToCents(analysis.receipt.amount),
+        version: { increment: 1 },
+      },
+    });
+    const paidLabel = await db.label.findFirst({
+      where: { isDeleted: false, OR: [{ sessionId }, { sessionId: null }], name: { contains: 'pago' } },
+      orderBy: { position: 'asc' },
+    });
+    if (paidLabel)
+      await db.contactLabel.upsert({
+        where: { contactId_labelId: { contactId: chat.contactId, labelId: paidLabel.id } },
+        create: { contactId: chat.contactId, labelId: paidLabel.id },
+        update: {},
+      });
+    await putRecord(db, `ai-receipt-confirmed:${messageId}`, 'AI_RECEIPT_CONFIRMATION', {
+      sessionId,
+      conversationId,
+      amount: analysis.receipt.amount ?? '',
+      payer: analysis.receipt.payer ?? '',
+      date: analysis.receipt.date ?? '',
+      confirmedAt: new Date().toISOString(),
+    });
+    whatsapp.notify(sessionId, 'chats');
+    res.json({ confirmed: true, opportunity: 'WON', labelApplied: paidLabel?.name ?? null });
   });
   router.post('/sessions/:sessionId/contacts/:conversationId/knowledge', async (req, res) => {
     admin(res.locals.identity.role);

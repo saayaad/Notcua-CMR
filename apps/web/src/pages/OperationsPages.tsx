@@ -378,7 +378,7 @@ function LeadImport({
             const chosen = event.target.files?.[0];
             if (chosen && chosen.size <= 10 * 1024 * 1024) {
               setFile(chosen);
-              setListName(chosen.name.replace(/\.(xlsx|csv)$/i, '').slice(0, 100));
+              setListName((current) => current || chosen.name.replace(/\.(xlsx|csv)$/i, '').slice(0, 100));
               setPreview(null);
             } else notify('Escolha um arquivo de até 10 MiB.', true);
           }}
@@ -555,7 +555,7 @@ export function CampaignsPage({
   const [tick, setTick] = useState(0);
   const [create, setCreate] = useState(Boolean(initialConversation));
   const [activate, setActivate] = useState<BatchRow | null>(null);
-  const [tasks, setTasks] = useState<{ status: string; error?: string; runAt: string }[] | null>(null);
+  const [tasks, setTasks] = useState<{ status: string; error?: string; runAt: string; contact?: { name: string; phoneNumber: string } | null }[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState(initialSearch);
   const [financeBatch, setFinanceBatch] = useState('');
@@ -845,6 +845,7 @@ export function CampaignsPage({
           <div className="task-list">
             {tasks.map((task, index) => (
               <div key={index}>
+                {task.contact && <p><b>{task.contact.name}</b> · +{task.contact.phoneNumber}</p>}
                 <strong>
                   {task.status === 'COMPLETED'
                     ? 'Encaminhado'
@@ -1043,6 +1044,9 @@ export function BatchEditor({
                 assetId: data.get('assetId') || undefined,
                 funnelId: data.get('funnelId') || undefined,
                 flowId: data.get('flowId') || undefined,
+                labelTransition: data.get('fromLabelId') || data.get('toLabelId')
+                  ? { fromLabelId: data.get('fromLabelId') || undefined, toLabelId: data.get('toLabelId') || undefined }
+                  : undefined,
               },
               minSeconds: Number(data.get('minSeconds') || 15),
               maxSeconds: Number(data.get('maxSeconds') || 45),
@@ -1476,6 +1480,16 @@ export function BatchEditor({
                 </label>
               </div>
             </>
+          )}
+          {kind !== 'reminder' && labels.length > 0 && (
+            <fieldset className="surface">
+              <legend>Organização automática após o envio</legend>
+              <div className="form-grid">
+                <label>Remover etiqueta (opcional)<Select name="fromLabelId" defaultValue=""><option value="">Manter etiquetas atuais</option>{labels.map((label) => <option key={label.id} value={label.id}>{label.name}</option>)}</Select></label>
+                <label>Adicionar etiqueta ao concluir<Select name="toLabelId" defaultValue=""><option value="">Não alterar etiqueta</option>{labels.map((label) => <option key={label.id} value={label.id}>{label.name}</option>)}</Select></label>
+              </div>
+              <small className="muted">A mudança acontece somente depois que a última mensagem da sequência for enviada.</small>
+            </fieldset>
           )}
           <button
             type="button"

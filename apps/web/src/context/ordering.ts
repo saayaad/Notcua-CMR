@@ -10,6 +10,7 @@ export const menuGroups = [
       ['schedule', 'Agenda'],
       ['library', 'Biblioteca'],
       ['flows', 'Autoatendimento'],
+      ['sandbox', 'Espaço de Teste'],
     ],
   },
   {

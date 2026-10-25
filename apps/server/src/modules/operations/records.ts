@@ -30,6 +30,16 @@ export interface AgentSettings {
   mediaEnabled?: boolean;
   mediaModel?: string;
   transcriptionModel?: string;
+  imageModel?: string;
+  fastModel?: string;
+  reasoningModel?: string;
+  fallbackKeys?: { id: string; label: string; encryptedKey: string; enabled: boolean; addedAt: string }[];
+}
+export function hasConfiguredKey(settings: AgentSettings | null | undefined) {
+  if (!settings) return false;
+  if ((settings.provider ?? 'openai') === 'gemini')
+    return Boolean(settings.encryptedKey || settings.fallbackKeys?.some((key) => key.enabled));
+  return Boolean(settings.encryptedKey);
 }
 export interface BusinessSettings {
   company?: string;
