@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useApi } from './ApiContext';
 export interface Preferences {
   waitingTimer: boolean;
   waitingYellow: number;
@@ -48,6 +49,8 @@ const Context = createContext<{
   updatePreferences: (value: Partial<Preferences>) => void;
 }>({ preferences: defaults, updatePreferences: () => undefined });
 export function PreferencesProvider({ children }: { children: ReactNode }) {
+  const { request } = useApi();
+  const ready = useRef(false);
   const [preferences, setPreferences] = useState<Preferences>(() => {
     try {
       return { ...defaults, ...JSON.parse(localStorage.getItem('noctua-preferences') ?? '{}') };
@@ -69,6 +72,27 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     ] as const)
       document.documentElement.classList.toggle(name, preferences[key]);
   }, [preferences]);
+  useEffect(() => {
+    let active = true;
+    void request<Partial<Preferences>>('/operations/settings/preferences')
+      .then((saved) => {
+        if (active) setPreferences((current) => ({ ...current, ...saved }));
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) ready.current = true;
+      });
+    return () => {
+      active = false;
+    };
+  }, [request]);
+  useEffect(() => {
+    if (!ready.current) return;
+    const timer = window.setTimeout(() => {
+      void request('/operations/settings/preferences', 'PUT', preferences).catch(() => undefined);
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [preferences, request]);
   return (
     <Context.Provider
       value={{

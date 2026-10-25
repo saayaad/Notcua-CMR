@@ -17,6 +17,7 @@ import {
   type RecordData,
 } from './validation.js';
 import { flowSchema, parseGraph } from './flow-validation.js';
+import { convertZapvoice } from './zapvoice.js';
 import { convertSutofly, isSutofly } from './sutofly.js';
 import { importSutoflySettings } from './sutofly-settings.js';
 import { stableDigest } from './validation.js';
@@ -74,7 +75,8 @@ export class BackupService {
     const wrapped = root.ZV_backup;
     const originalData = wrapped === undefined ? root : recordSchema.parse(wrapped);
     const sutofly = isSutofly(originalData) ? convertSutofly(originalData) : undefined;
-    const data = sutofly?.data ?? originalData;
+    const zapvoice = sutofly ? undefined : convertZapvoice(originalData);
+    const data = sutofly?.data ?? zapvoice?.data ?? originalData;
     const hasZv = ['messages', 'audios', 'medias', 'docs', 'labels', 'funnels', 'flows', 'objectsList'].some(
       (key) => key in data,
     );
@@ -120,7 +122,7 @@ export class BackupService {
             format,
             duplicate: false,
             counts: { assets: 0, files: 0, labels: 0, contacts: 0, macros: 0, funnels: 0, flows: 0 },
-            warnings: sutofly?.warnings ?? [],
+            warnings: sutofly?.warnings ?? zapvoice?.warnings ?? [],
           };
           const known = new Set([
             ...Object.keys(collections),
@@ -335,8 +337,8 @@ export class BackupService {
             }
             const fields = {
               name: flow.name,
-              ...(sutofly && options.sessionId ? { sessionId: options.sessionId } : {}),
-              enabled: sutofly ? false : flow.enabled,
+              ...((sutofly || zapvoice) && options.sessionId ? { sessionId: options.sessionId } : {}),
+              enabled: sutofly || zapvoice ? false : flow.enabled,
               enabledAt: null,
               metadata: json(raw),
             };

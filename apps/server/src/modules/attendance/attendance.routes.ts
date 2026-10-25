@@ -82,6 +82,35 @@ export function attendanceRoutes(
     ]);
     res.json({ assets, funnels, macros, pixKeys });
   });
+  router.get('/assets/:id/file', async (req, res) => {
+    const asset = await db.asset.findUnique({
+      where: { id: stringId.parse(req.params.id) },
+      include: { file: true },
+    });
+    if (!asset?.file) throw new AppError(404, 'Arquivo indisponível.');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.attachment(asset.file.filename).type(asset.file.mimeType).send(Buffer.from(asset.file.data));
+  });
+  router.post('/assets/:id/duplicate', async (req, res) => {
+    const source = await db.asset.findUnique({ where: { id: stringId.parse(req.params.id) } });
+    if (!source) throw new AppError(404, 'Resposta não encontrada.');
+    const copy = await db.asset.create({
+      data: {
+        id: `asset:${randomUUID()}`,
+        kind: source.kind,
+        name: `${source.name} · cópia`,
+        text: source.text,
+        caption: source.caption,
+        fileId: source.fileId,
+        isFavorite: false,
+        isPtt: source.isPtt,
+        isPtv: source.isPtv,
+        asViewOnce: source.asViewOnce,
+        metadata: source.metadata ?? {},
+      },
+    });
+    res.status(201).json({ id: copy.id, name: copy.name });
+  });
   router.post('/files', async (req, res) => {
     const input = z
       .object({
@@ -185,7 +214,7 @@ export function attendanceRoutes(
       .object({
         search: z.string().max(100).default(''),
         labelId: z.string().optional(),
-        filter: z.enum(['all', 'unread', 'closed', 'mine']).default('all'),
+        filter: z.enum(['all', 'unread', 'closed', 'archived', 'mine']).default('all'),
       })
       .parse(req.query);
     const where: Prisma.ConversationWhereInput = {
@@ -194,7 +223,7 @@ export function attendanceRoutes(
         ? { assignedTo: res.locals.identity?.email || res.locals.identity?.uid || 'local' }
         : {}),
       ...(input.filter === 'unread' ? { unreadCount: { gt: 0 } } : {}),
-      status: input.filter === 'closed' ? 'CLOSED' : 'OPEN',
+      status: input.filter === 'closed' || input.filter === 'archived' ? 'CLOSED' : 'OPEN',
       contact: {
         ...(input.search
           ? { OR: [{ name: { contains: input.search } }, { phoneNumber: { contains: input.search } }] }
@@ -315,6 +344,29 @@ export function attendanceRoutes(
     await messaging.chat(sessionId, conversationId);
     await setAiControl(db, conversationId, true, 'Atendimento assumido por envio manual.');
     res.status(201).json(await messaging.sendAsset(sessionId, conversationId, body.assetId, body.requestId));
+  });
+  router.post('/sessions/:sessionId/conversations/:conversationId/unread', async (req, res) => {
+    const { sessionId, conversationId } = ids(req);
+    await messaging.chat(sessionId, conversationId);
+    await db.conversation.update({ where: { id: conversationId }, data: { unreadCount: 1 } });
+    whatsapp.notify(sessionId, 'chats');
+    res.json({ saved: true });
+  });
+  router.post('/sessions/:sessionId/conversations/:conversationId/block', async (req, res) => {
+    const { sessionId, conversationId } = ids(req);
+    const chat = await messaging.chat(sessionId, conversationId);
+    if (chat.contact.isGroup)
+      throw new AppError(422, 'Bloqueio disponível apenas para contatos individuais.');
+    const { blocked } = z.object({ blocked: z.boolean() }).parse(req.body);
+    const socket = whatsapp.connectedSocket(sessionId);
+    if (!socket.updateBlockStatus) throw new AppError(503, 'Bloqueio indisponível nesta conexão.');
+    await socket.updateBlockStatus(chat.jid, blocked ? 'block' : 'unblock');
+    await db.contact.update({
+      where: { id: chat.contactId },
+      data: { metadata: json({ ...(chat.contact.metadata as object), blocked }) },
+    });
+    whatsapp.notify(sessionId, 'chats');
+    res.json({ saved: true });
   });
   router.post('/sessions/:sessionId/conversations/:conversationId/read', async (req, res) => {
     const { sessionId, conversationId } = ids(req);

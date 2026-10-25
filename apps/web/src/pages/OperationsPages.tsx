@@ -712,9 +712,11 @@ function BatchEditor({
   const [flows, setFlows] = useState<FlowSummary[]>([]);
   const [labels, setLabels] = useState<Label[]>([]);
   const [people, setPeople] = useState<Conversation[]>(initialConversation ? [initialConversation] : []);
+  const [labelIds, setLabelIds] = useState<string[]>([]);
   const [labelId, setLabelId] = useState('');
   const [match, setMatch] = useState('AND');
   const [extraAssets, setExtraAssets] = useState<Asset[]>([]);
+  const [listIds, setListIds] = useState<string[]>([]);
   const [listId, setListId] = useState('');
   const [lists, setLists] = useState<{ id: string; name: string; count: number }[]>([]);
   const [steps, setSteps] = useState<
@@ -722,6 +724,7 @@ function BatchEditor({
   >([{ id: crypto.randomUUID(), kind: 'text', text: '', assetId: '', waitSeconds: 1 }]);
   const [days, setDays] = useState(0);
   const [conversationId, setConversationId] = useState(initialConversation?.id ?? '');
+  const [contactQuery, setContactQuery] = useState('');
   const [kind, setKind] = useState('text');
   const [preview, setPreview] = useState<{
     count: number;
@@ -745,8 +748,10 @@ function BatchEditor({
   }, [sessionId, schedule, initialConversation, request, notify]);
   const audience = {
     labelId,
+    labelIds,
     match,
     listId,
+    listIds,
     inactiveDays: days,
     conversationIds: schedule && conversationId ? [conversationId] : [],
   };
@@ -803,44 +808,107 @@ function BatchEditor({
           />
         </label>
         {schedule ? (
-          <label>
+          <label className="contact-combobox-label">
             Contato
-            <select
-              required
-              value={conversationId}
+            <input type="hidden" name="conversationId" value={conversationId} />
+            <input
+              autoComplete="off"
+              role="combobox"
+              aria-expanded={Boolean(contactQuery)}
+              aria-controls="scheduled-contact-options"
+              placeholder="Busque por nome ou telefone"
+              value={contactQuery || people.find((item) => item.id === conversationId)?.contact.name || ''}
               onChange={(event) => {
-                setConversationId(event.target.value);
+                setContactQuery(event.target.value);
+                setConversationId('');
                 setPreview(null);
               }}
-            >
-              <option value="">Selecione uma conversa</option>
-              {people.map((chat) => (
-                <option key={chat.id} value={chat.id}>
-                  {chat.contact.name} · +{chat.contact.phoneNumber}
-                </option>
-              ))}
-            </select>
-            <small className="muted">Para outros contatos, abra a conversa e use Agendar.</small>
+              onFocus={() =>
+                setContactQuery(people.find((item) => item.id === conversationId)?.contact.name ?? '')
+              }
+            />
+            {contactQuery && (
+              <div id="scheduled-contact-options" className="contact-combobox-options" role="listbox">
+                {people
+                  .filter((item) => {
+                    const q = contactQuery.toLocaleLowerCase();
+                    const digits = q.replace(/\D/g, '').replace(/^55/, '');
+                    return (
+                      item.contact.name.toLocaleLowerCase().includes(q) ||
+                      item.contact.phoneNumber.includes(q.replace(/\D/g, '')) ||
+                      item.contact.phoneNumber.endsWith(digits)
+                    );
+                  })
+                  .slice(0, 25)
+                  .map((item) => (
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={conversationId === item.id}
+                      key={item.id}
+                      onClick={() => {
+                        setConversationId(item.id);
+                        setContactQuery('');
+                        setPreview(null);
+                      }}
+                    >
+                      <span className="schedule-avatar">
+                        {item.contact.profilePicture ? (
+                          <img src={item.contact.profilePicture} alt="" />
+                        ) : (
+                          item.contact.name
+                            .trim()
+                            .split(/\s+/)
+                            .slice(0, 2)
+                            .map((part) => part[0])
+                            .join('')
+                            .toUpperCase()
+                        )}
+                      </span>
+                      <span>
+                        <strong>{item.contact.name}</strong>
+                        <small>
+                          +
+                          {item.contact.phoneNumber.replace(
+                            /^(\d{2})(\d{2})(\d{4,5})(\d{4})$/,
+                            '+$1 ($2) $3-$4',
+                          )}
+                        </small>
+                      </span>
+                    </button>
+                  ))}
+                {!people.some((item) => {
+                  const q = contactQuery.toLocaleLowerCase();
+                  return (
+                    item.contact.name.toLocaleLowerCase().includes(q) ||
+                    item.contact.phoneNumber.includes(q.replace(/\D/g, ''))
+                  );
+                }) && <p>Nenhum contato encontrado nesta conexão.</p>}
+              </div>
+            )}
+            <small className="muted">Busque por nome ou por qualquer parte do telefone.</small>
           </label>
         ) : (
           <div className="form-grid">
-            <label>
-              Lista importada
-              <select
-                value={listId}
-                onChange={(event) => {
-                  setListId(event.target.value);
-                  setPreview(null);
-                }}
-              >
-                <option value="">Todas as listas e contatos</option>
-                {lists.map((list) => (
-                  <option key={list.id} value={list.id}>
-                    {list.name} · {list.count}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <fieldset className="audience-multiselect">
+              <legend>Listas importadas</legend>
+              <p className="muted">Nenhuma selecionada inclui todos os contatos compatíveis.</p>
+              {lists.map((list) => (
+                <label key={list.id}>
+                  <input
+                    type="checkbox"
+                    checked={listIds.includes(list.id)}
+                    onChange={(event) => {
+                      setListIds((current) =>
+                        event.target.checked ? [...current, list.id] : current.filter((id) => id !== list.id),
+                      );
+                      setPreview(null);
+                    }}
+                  />
+                  {list.name} · {list.count}
+                </label>
+              ))}
+            </fieldset>
             <label>
               Combinar etiqueta e inatividade
               <select
@@ -854,23 +922,28 @@ function BatchEditor({
                 <option value="OR">OU · atender a qualquer filtro</option>
               </select>
             </label>
-            <label>
-              Etiqueta
-              <select
-                value={labelId}
-                onChange={(event) => {
-                  setLabelId(event.target.value);
-                  setPreview(null);
-                }}
-              >
-                <option value="">Todos os contatos individuais</option>
-                {labels.map((label) => (
-                  <option value={label.id} key={label.id}>
-                    {label.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <fieldset className="audience-multiselect">
+              <legend>Etiquetas</legend>
+              <p className="muted">Contatos com qualquer etiqueta selecionada.</p>
+              {labels.map((label) => (
+                <label key={label.id}>
+                  <input
+                    type="checkbox"
+                    checked={labelIds.includes(label.id)}
+                    onChange={(event) => {
+                      setLabelIds((current) =>
+                        event.target.checked
+                          ? [...current, label.id]
+                          : current.filter((id) => id !== label.id),
+                      );
+                      setPreview(null);
+                    }}
+                  />
+                  <i style={{ background: label.color }} />
+                  {label.name}
+                </label>
+              ))}
+            </fieldset>
             <label>
               Sem interação há pelo menos (dias)
               <input

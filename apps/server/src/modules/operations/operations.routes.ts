@@ -19,6 +19,7 @@ import { aiUsage } from './ai-provider.js';
 import { preprocessMedia } from './ai-media.js';
 import { exportHistory } from './history-export.js';
 import type { Batch, Delivery } from './delivery.worker.js';
+import { toolboxRoutes } from './toolbox.routes.js';
 import { macroRoutes } from './macros.routes.js';
 import { createSystemBackup, type SystemBackup } from './system-backups.js';
 import { inactivityRoutes } from './inactivity.js';
@@ -39,6 +40,7 @@ const profile = z.object({
   company: z.string().max(150).optional(),
   jobTitle: z.string().max(100).optional(),
   interests: z.string().max(1000).optional(),
+  dealValue: z.string().max(24).optional(),
   observation: z.string().max(5000).optional(),
   optIn: z.boolean().optional(),
   optOut: z.boolean().optional(),
@@ -50,6 +52,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
   const router = Router();
   const contacts = new ContactsService(db);
   router.use('/macros', macroRoutes(db));
+  router.use('/toolbox', toolboxRoutes(db));
   router.use('/sessions/:sessionId/inactivity-rules', inactivityRoutes(db, whatsapp));
   const admin = (role: string) => {
     if (role !== 'ADMIN') throw new AppError(403, 'Esta ação exige acesso de administrador.');
@@ -310,18 +313,28 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     const input = z
       .object({
         labelId: z.string().max(200).default(''),
+        labelIds: z.array(id).max(200).default([]),
         match: z.enum(['AND', 'OR']).default('AND'),
         listId: z.string().max(200).default(''),
+        listIds: z.array(id).max(200).default([]),
         inactiveDays: z.coerce.number().min(0).max(3650).default(0),
         conversationIds: z.array(id).max(5000).default([]),
       })
       .parse(raw);
     await whatsapp.snapshot(sessionId);
-    const list = input.listId
-      ? await record<{ sessionId: string; conversationIds: string[] } | null>(db, input.listId, null)
-      : null;
-    if (input.listId && (!list || list.sessionId !== sessionId || !input.listId.startsWith('lead-list:')))
-      throw new AppError(404, 'Lista não encontrada nesta conexão.');
+    const selectedListIds = [...new Set([...input.listIds, ...(input.listId ? [input.listId] : [])])];
+    const lists = await Promise.all(
+      selectedListIds.map((listId) =>
+        record<{ sessionId: string; conversationIds: string[] } | null>(db, listId, null),
+      ),
+    );
+    if (
+      lists.some(
+        (list, index) =>
+          !list || list.sessionId !== sessionId || !selectedListIds[index]!.startsWith('lead-list:'),
+      )
+    )
+      throw new AppError(404, 'Uma lista não foi encontrada nesta conexão.');
     const criteria: Prisma.ConversationWhereInput[] = [];
     if (input.inactiveDays)
       criteria.push({
@@ -330,12 +343,13 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
           { lastMessageAt: null },
         ],
       });
-    if (input.labelId)
+    const selectedLabels = [...new Set([...input.labelIds, ...(input.labelId ? [input.labelId] : [])])];
+    if (selectedLabels.length)
       criteria.push({
         contact: {
           labels: {
             some: {
-              labelId: input.labelId,
+              labelId: { in: selectedLabels },
               label: { isDeleted: false, OR: [{ sessionId }, { sessionId: null }] },
             },
           },
@@ -345,7 +359,9 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       sessionId,
       ...(input.conversationIds.length ? { id: { in: input.conversationIds } } : {}),
       AND: [
-        ...(list ? [{ id: { in: list.conversationIds } }] : []),
+        ...(lists.length
+          ? [{ id: { in: [...new Set(lists.flatMap((list) => list!.conversationIds))] } }]
+          : []),
         ...(criteria.length ? [{ [input.match]: criteria }] : []),
       ],
       contact: {

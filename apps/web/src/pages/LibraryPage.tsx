@@ -1,3 +1,5 @@
+import { AssetPreview } from '../components/AssetPreview';
+import { LibraryCategories, useLibraryOrganization } from '../components/LibraryCategories';
 import { MacroEditor } from '../components/MacroEditor';
 import { usePreferences } from '../context/PreferencesContext';
 import { orderItems } from '../context/ordering';
@@ -9,6 +11,7 @@ import {
   Star,
   Pencil,
   Trash2,
+  Copy,
   MessageSquare,
   Mic,
   Image,
@@ -41,6 +44,10 @@ export function LibraryPage({
   const [search, setSearch] = useState('');
   const [editor, setEditor] = useState<Asset | 'new' | null>(null);
   const [funnel, setFunnel] = useState<Funnel | 'new' | null>(null);
+  const [preview, setPreview] = useState<Asset | null>(null);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [category, setCategory] = useState('');
+  const organization = useLibraryOrganization();
   const [pix, setPix] = useState(false);
   const tabs = [
     { id: 'MESSAGE', name: 'Textos', icon: MessageSquare },
@@ -52,7 +59,13 @@ export function LibraryPage({
     { id: 'PIX', name: 'PIX', icon: Wallet },
   ];
   const assets = library.assets.filter(
-    (asset) => asset.kind === tab && asset.name.toLowerCase().includes(search.toLowerCase()),
+    (asset) =>
+      asset.kind === tab &&
+      asset.name.toLowerCase().includes(search.toLowerCase()) &&
+      (!category ||
+        (category === '__none'
+          ? !organization.assignments[asset.id]
+          : organization.assignments[asset.id] === category)),
   );
   const favorite = async (asset: Asset) => {
     try {
@@ -124,6 +137,42 @@ export function LibraryPage({
           onChange={(e) => setSearch(e.target.value)}
         />
       </label>
+      <div className="library-category-bar">
+        <select
+          aria-label="Categoria da biblioteca"
+          value={category}
+          onChange={(event) => setCategory(event.target.value)}
+        >
+          <option value="">Todas as categorias</option>
+          <option value="__none">Sem categoria</option>
+          {organization.categories.map((name) => (
+            <option key={name}>{name}</option>
+          ))}
+        </select>
+        <button className="button" onClick={() => setCategoriesOpen(true)}>
+          Organizar categorias
+        </button>
+      </div>
+      {categoriesOpen && <LibraryCategories library={library} onClose={() => setCategoriesOpen(false)} />}
+      {preview && (
+        <Modal title={preview.name} onClose={() => setPreview(null)}>
+          <AssetPreview asset={preview} />
+          <div className="modal-actions">
+            <button
+              className="button"
+              onClick={() => {
+                setEditor(preview);
+                setPreview(null);
+              }}
+            >
+              Editar resposta
+            </button>
+            <button className="button primary" onClick={() => setPreview(null)}>
+              Fechar
+            </button>
+          </div>
+        </Modal>
+      )}
       <div className="library-grid">
         {['MESSAGE', 'AUDIO', 'MEDIA', 'DOCUMENT'].includes(tab) &&
           assets.map((asset) => (
@@ -146,7 +195,11 @@ export function LibraryPage({
                   <Star size={17} fill={asset.isFavorite ? 'currentColor' : 'none'} />
                 </button>
               </div>
-              <h2>{asset.name}</h2>
+              <h2>
+                <button className="tool-resource-title" onClick={() => setPreview(asset)}>
+                  {asset.name}
+                </button>
+              </h2>
               <p>{asset.text || asset.caption || asset.file?.filename}</p>
               <div className="resource-footer">
                 <span>
@@ -165,6 +218,22 @@ export function LibraryPage({
                     onClick={() => setEditor(asset)}
                   >
                     <Pencil size={15} />
+                  </button>
+                  <button
+                    className="icon-button"
+                    aria-label={`Duplicar ${asset.name}`}
+                    title="Duplicar resposta"
+                    onClick={async () => {
+                      try {
+                        await request(`/attendance/assets/${encodeURIComponent(asset.id)}/duplicate`, 'POST');
+                        await refresh();
+                        notify('Resposta duplicada.');
+                      } catch (error) {
+                        notify(errorMessage(error), true);
+                      }
+                    }}
+                  >
+                    <Copy size={15} />
                   </button>
                   <button
                     className="icon-button"

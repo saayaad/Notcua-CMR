@@ -8,13 +8,15 @@ export function ContactWorkspace({
   chat,
   sessionId,
   onRefresh,
+  initialTab = 'profile',
 }: {
   chat: Conversation;
   sessionId: string;
   onRefresh: () => void;
+  initialTab?: string;
 }) {
   const { request, blob, notify } = useApi();
-  const [tab, setTab] = useState('profile');
+  const [tab, setTab] = useState(initialTab);
   const [busy, setBusy] = useState(false);
   const meta = chat.contact.metadata as Record<string, unknown>;
   const base = `/operations/sessions/${sessionId}/contacts/${chat.id}`;
@@ -133,6 +135,18 @@ export function ContactWorkspace({
                 Fixar conversa nesta operação
               </label>
             </>
+          )}
+          {tab === 'business' && (
+            <label>
+              Valor do negócio (R$)
+              <input
+                name="dealValue"
+                inputMode="decimal"
+                placeholder="0,00"
+                maxLength={24}
+                defaultValue={String(meta.dealValue ?? '')}
+              />
+            </label>
           )}
           {tab === 'business' && (
             <label>

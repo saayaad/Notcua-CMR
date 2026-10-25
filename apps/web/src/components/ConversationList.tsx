@@ -59,7 +59,7 @@ export function ConversationList(p: Props) {
           ['all', 'Todas'],
           ['unread', 'Não lidas'],
           ['mine', 'Minhas'],
-          ['closed', 'Encerradas'],
+          ['archived', 'Arquivadas'],
         ].map(([value, label]) => (
           <button
             key={value}

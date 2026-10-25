@@ -18,7 +18,12 @@ export type WhatsappSocket = Pick<
   Partial<
     Pick<
       WASocket,
-      'sendMessage' | 'sendPresenceUpdate' | 'readMessages' | 'updateMediaMessage' | 'removeChatLabel'
+      | 'updateBlockStatus'
+      | 'sendMessage'
+      | 'sendPresenceUpdate'
+      | 'readMessages'
+      | 'updateMediaMessage'
+      | 'removeChatLabel'
     >
   >;
 export type SocketFactory = (auth: AuthenticationState, sessionId: string) => WhatsappSocket;

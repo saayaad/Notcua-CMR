@@ -1,6 +1,6 @@
 # Contrato de backups — v1
 
-O importador reconhece o contrato Noctua/ZV e o formato Sutofly, validado com o backup real fornecido pelo proprietário (89.881.588 bytes). Campos não convertidos são preservados no JSON original. Tipos e referências inválidos interrompem a transação, sem gravação parcial.
+O importador reconhece o contrato Noctua/ZV, backups ZapVoice 3 e o formato Sutofly. Os campos não convertidos são preservados no JSON original. Tipos e referências inválidos interrompem a transação, sem gravação parcial.
 
 ## Formatos de entrada
 
@@ -8,7 +8,8 @@ O importador reconhece o contrato Noctua/ZV e o formato Sutofly, validado com o 
 2. Envelope `{ "ZV_backup": { ...coleções } }`.
 3. Objeto `{ "respostasRapidasAcao": [ ...macros ] }` ou lista de macros diretamente.
 4. Macros podem coexistir com coleções ZV no mesmo objeto. O relatório identifica esse conjunto como `ZV_backup`.
-5. Sutofly: `respostasRapidas` e demais seções cifradas são lidas com o formato de compatibilidade da extensão oficial. As ações em `propriedades` são normalizadas, incluindo texto, áudio, imagens, vídeos, figurinha, PIX e etiquetas. Identificadores repetidos de ações em macros diferentes são preservados com referências internas distintas. Nomes dos scripts vêm de `respostasRapidas`.
+5. ZapVoice 3 (`type: partial` ou `full`): textos e arquivos binários compartilham `objectsList`; mensagens são associadas aos títulos em `messages` pelo ID, e Data URLs de áudio e mídia são decodificadas normalmente. O nó `start` e seus gatilhos, guardados fora de `draft.nodes`/`published.nodes`, são incorporados aos gráficos. Etiquetas que armazenam números em objetos e fluxos publicados ou de rascunho são normalizados; fluxos são importados desativados para revisão.
+6. Sutofly: `respostasRapidas` e demais seções cifradas são lidas com o formato de compatibilidade da extensão oficial. As ações em `propriedades` são normalizadas, incluindo texto, áudio, imagens, vídeos, figurinha, PIX e etiquetas. Identificadores repetidos de ações em macros diferentes são preservados com referências internas distintas. Nomes dos scripts vêm de `respostasRapidas`.
 
 ## Arquivos grandes e importação pelo painel
 

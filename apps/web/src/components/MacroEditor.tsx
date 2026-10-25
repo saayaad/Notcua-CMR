@@ -132,6 +132,74 @@ export function MacroEditor({
                 </button>
               </span>
             </header>
+            <div className="macro-action-chooser" aria-label="Adicionar ação por categoria">
+              <details>
+                <summary>Enviar mensagem</summary>
+                <button type="button" onClick={() => update(index, { type: 'TEXT' })}>
+                  Texto
+                </button>
+                <button type="button" onClick={() => update(index, { type: 'ASSET' })}>
+                  Imagem, vídeo, áudio ou documento
+                </button>
+                <button type="button" onClick={() => update(index, { type: 'ASSET' })}>
+                  PIX ou figurinha da biblioteca
+                </button>
+              </details>
+              <details>
+                <summary>Aba do CRM</summary>
+                <button type="button" onClick={() => update(index, { type: 'ADD_LABEL' })}>
+                  Adicionar etapa ou etiqueta
+                </button>
+                <button type="button" onClick={() => update(index, { type: 'REMOVE_LABEL' })}>
+                  Remover etapa ou etiqueta
+                </button>
+              </details>
+              <details>
+                <summary>Etiquetas</summary>
+                <button type="button" onClick={() => update(index, { type: 'ADD_LABEL' })}>
+                  Adicionar etiqueta
+                </button>
+                <button type="button" onClick={() => update(index, { type: 'REMOVE_LABEL' })}>
+                  Remover etiqueta
+                </button>
+                <button
+                  type="button"
+                  onClick={() => update(index, { type: 'UTILITY', command: 'CLEAR_LABELS' })}
+                >
+                  Remover todas as etiquetas
+                </button>
+              </details>
+              <details>
+                <summary>Temporizadores</summary>
+                <button type="button" onClick={() => update(index, { type: 'UTILITY', command: 'WAIT' })}>
+                  Esperar e mostrar presença
+                </button>
+              </details>
+              <details>
+                <summary>Utilitários e transferência</summary>
+                <button type="button" onClick={() => update(index, { type: 'UTILITY', command: 'ARCHIVE' })}>
+                  Arquivar conversa
+                </button>
+                <button
+                  type="button"
+                  onClick={() => update(index, { type: 'UTILITY', command: 'UNARCHIVE' })}
+                >
+                  Reabrir conversa
+                </button>
+                <button type="button" onClick={() => update(index, { type: 'UTILITY', command: 'PIN' })}>
+                  Fixar conversa
+                </button>
+                <button
+                  type="button"
+                  onClick={() => update(index, { type: 'UTILITY', command: 'MARK_UNREAD' })}
+                >
+                  Marcar como não lida
+                </button>
+                <button type="button" onClick={() => update(index, { type: 'UTILITY', command: 'TRANSFER' })}>
+                  Transferir atendimento
+                </button>
+              </details>
+            </div>
             <label>
               Tipo de ação
               <select

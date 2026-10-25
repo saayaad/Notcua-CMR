@@ -8,6 +8,7 @@ import './layout.css';
 import './components/tools.css';
 import './components/tools-compact.css';
 import './overlays.css';
+import './components/toolbox.css';
 
 createRoot(document.getElementById('root')!).render(
   <ApiProvider>
