@@ -5,6 +5,10 @@ export interface Preferences {
   waitingYellow: number;
   waitingRed: number;
   theme: string;
+  brandingName: string;
+  brandingLogo: string;
+  accentColor: string;
+  menuLabels: Record<string, string>;
   compactNav: boolean;
   hideNames: boolean;
   hidePhotos: boolean;
@@ -27,6 +31,10 @@ const defaults: Preferences = {
   waitingYellow: 5,
   waitingRed: 15,
   theme: localStorage.getItem('noctua-theme') ?? 'dark',
+  brandingName: 'noctua',
+  brandingLogo: '',
+  accentColor: '#a68bfa',
+  menuLabels: {},
   compactNav: false,
   hideNames: false,
   hidePhotos: false,
@@ -62,6 +70,11 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('noctua-preferences', JSON.stringify(preferences));
     localStorage.setItem('noctua-theme', preferences.theme);
     document.documentElement.dataset.theme = preferences.theme;
+    document.documentElement.style.setProperty('--accent', preferences.accentColor);
+    document.documentElement.style.setProperty(
+      '--accent-bg',
+      `color-mix(in srgb, ${preferences.accentColor} 20%, var(--surface))`,
+    );
     for (const [key, name] of [
       ['hideNames', 'private-names'],
       ['hidePhotos', 'private-photos'],

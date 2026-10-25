@@ -37,6 +37,7 @@ import { CrmPage } from './pages/CrmPage';
 import { WorkspaceSettings } from './pages/WorkspaceSettings';
 import { OverviewPage, ContactsPage, CampaignsPage } from './pages/OperationsPages';
 import { usePreferences } from './context/PreferencesContext';
+import { HelpCenter } from './pages/HelpCenter';
 
 type View =
   | 'inbox'
@@ -48,7 +49,8 @@ type View =
   | 'overview'
   | 'contacts'
   | 'campaigns'
-  | 'schedule';
+  | 'schedule'
+  | 'help';
 export default function App() {
   const workspace = useWorkspace();
   const { request, notify } = useApi();
@@ -174,7 +176,7 @@ export default function App() {
     { id: 'crm' as const, name: 'CRM e negócios', icon: KanbanSquare },
     { id: 'connections' as const, name: 'Conexões', icon: Wifi },
     { id: 'settings' as const, name: 'Configurações', icon: Settings },
-  ];
+  ].map((item) => ({ ...item, name: preferences.menuLabels[item.id] || item.name }));
   const session = workspace.session;
   const connected = workspace.serverConnected && session?.status === 'CONNECTED';
   return (
@@ -188,22 +190,40 @@ export default function App() {
             setView('inbox');
           }}
         >
-          <span className="owl-mark">
-            <i />
-            <i />
-          </span>
-          noctua<span className="brand-dot">.</span>
+          {preferences.brandingLogo ? (
+            <img className="branding-mark" src={preferences.brandingLogo} alt="" />
+          ) : (
+            <span className="owl-mark">
+              <i />
+              <i />
+            </span>
+          )}
+          {preferences.brandingName || 'noctua'}
+          <span className="brand-dot">.</span>
         </a>
         <div className="workspace-name">
-          <span className="workspace-avatar">N</span>
+          {preferences.brandingLogo ? (
+            <img className="workspace-avatar branding-mark" src={preferences.brandingLogo} alt="" />
+          ) : (
+            <span className="workspace-avatar">
+              {(preferences.brandingName || 'N').slice(0, 1).toUpperCase()}
+            </span>
+          )}
           <div>
-            <strong>Meu workspace</strong>
+            <strong>{preferences.brandingName || 'Meu workspace'}</strong>
             <small>Atendimento & relacionamento</small>
           </div>
         </div>
         <p className="nav-group-label">WORKSPACE</p>
         <nav>
-          {orderItems(menuGroups, preferences.menuGroupOrder, (group) => group.id).map((group) => (
+          {orderItems(
+            menuGroups.map((group) => ({
+              ...group,
+              name: preferences.menuLabels['group:' + group.id] || group.name,
+            })),
+            preferences.menuGroupOrder,
+            (group) => group.id,
+          ).map((group) => (
             <Fragment key={group.id}>
               <small className="nav-section-label">{group.name.toLocaleUpperCase('pt-BR')}</small>
               {orderItems(
@@ -450,6 +470,8 @@ export default function App() {
             refresh={workspace.loadSessions}
             labels={labels}
           />
+        ) : view === 'help' ? (
+          <HelpCenter onNavigate={setView} />
         ) : (
           <WorkspaceSettings
             sessionId={workspace.sessionId}

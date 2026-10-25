@@ -131,6 +131,103 @@ export function WorkspaceSettings({
         <section className="settings-content">
           {tab === 'general' && (
             <div className="surface">
+              <h2>Identidade visual</h2>
+              <label>
+                Nome da plataforma
+                <input
+                  maxLength={40}
+                  value={preferences.brandingName}
+                  onChange={(event) => updatePreferences({ brandingName: event.target.value })}
+                />
+              </label>
+              <div className="form-grid">
+                <label>
+                  Cor de destaque
+                  <div className="accent-picker">
+                    <input
+                      aria-label="Cor de destaque"
+                      type="color"
+                      value={preferences.accentColor}
+                      onChange={(event) => updatePreferences({ accentColor: event.target.value })}
+                    />
+                    <input
+                      aria-label="Código da cor de destaque"
+                      value={preferences.accentColor}
+                      maxLength={7}
+                      onChange={(event) => {
+                        if (/^#[\da-fA-F]{0,6}$/.test(event.target.value))
+                          updatePreferences({ accentColor: event.target.value });
+                      }}
+                    />
+                  </div>
+                </label>
+                <label className="brand-logo-upload">
+                  Logotipo
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (!file) return;
+                      const image = new Image();
+                      const url = URL.createObjectURL(file);
+                      image.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 128;
+                        canvas.height = 128;
+                        const context = canvas.getContext('2d');
+                        if (context) {
+                          const scale = Math.min(128 / image.width, 128 / image.height);
+                          const width = image.width * scale;
+                          const height = image.height * scale;
+                          context.drawImage(image, (128 - width) / 2, (128 - height) / 2, width, height);
+                          updatePreferences({ brandingLogo: canvas.toDataURL('image/webp', 0.78) });
+                        }
+                        URL.revokeObjectURL(url);
+                      };
+                      image.onerror = () => URL.revokeObjectURL(url);
+                      image.src = url;
+                    }}
+                  />
+                  {preferences.brandingLogo && (
+                    <button
+                      type="button"
+                      className="button small"
+                      onClick={() => updatePreferences({ brandingLogo: '' })}
+                    >
+                      Remover logotipo
+                    </button>
+                  )}
+                </label>
+              </div>
+              <h3>Nome dos itens do menu</h3>
+              <div className="form-grid">
+                {[
+                  ['overview', 'Visão geral'],
+                  ['inbox', 'Atendimento'],
+                  ['campaigns', 'Campanhas'],
+                  ['schedule', 'Agenda'],
+                  ['library', 'Biblioteca'],
+                  ['flows', 'Autoatendimento'],
+                  ['contacts', 'Contatos'],
+                  ['crm', 'CRM e negócios'],
+                  ['connections', 'Conexões'],
+                  ['settings', 'Configurações'],
+                ].map(([id, title]) => (
+                  <label key={id}>
+                    {title}
+                    <input
+                      maxLength={50}
+                      value={preferences.menuLabels[id!] ?? title}
+                      onChange={(event) =>
+                        updatePreferences({
+                          menuLabels: { ...preferences.menuLabels, [id!]: event.target.value },
+                        })
+                      }
+                    />
+                  </label>
+                ))}
+              </div>
               <h2>Aparência</h2>
               <label>
                 Tema
@@ -147,6 +244,10 @@ export function WorkspaceSettings({
                 'Menu lateral compacto',
                 'Mostra ícones e libera espaço para as conversas.',
               )}
+              <p>
+                O nome, o logotipo, a cor e os nomes do menu são salvos na conta e sincronizados entre
+                dispositivos.
+              </p>
               <p>
                 Idioma: Português (Brasil). Os dados desta instalação pertencem a uma única operação privada.
               </p>

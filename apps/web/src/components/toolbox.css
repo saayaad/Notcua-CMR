@@ -433,3 +433,63 @@
     grid-template-columns: 1fr;
   }
 }
+.branding-mark {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 7px;
+}
+.wordmark .branding-mark {
+  width: 30px;
+  height: 30px;
+}
+.help-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr));
+  gap: 16px;
+}
+.help-guide {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.help-guide header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.help-guide h2 {
+  margin: 0;
+  font-size: 16px;
+}
+.help-guide header p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.help-guide ol {
+  flex: 1;
+  padding-left: 22px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.help-guide li {
+  padding: 3px 0;
+}
+.help-guide .button {
+  align-self: flex-start;
+}
+.accent-picker {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 8px;
+}
+.accent-picker input[type='color'] {
+  min-height: 42px;
+  padding: 4px;
+}
+.brand-logo-upload input[type='file'] {
+  font-size: 12px;
+}
