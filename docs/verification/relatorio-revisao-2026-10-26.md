@@ -2,7 +2,7 @@
 
 ## Limites desta rodada
 
-Nenhuma mensagem nova enviada pelo WhatsApp após o pedido de pausa dos envios. A fila do contato autorizado foi conferida e estava vazia. Nenhum faturamento foi ativado, nenhuma credencial foi substituída e nenhum reset foi executado na instalação real. A etapa anterior foi publicada no commit 5377f3c. As alterações de números, receita e microfone estão em preparação para a próxima publicação.
+A pausa foi respeitada até a nova autorização. Após a retomada, um texto e um áudio capturado pelo microfone foram entregues exclusivamente ao número de teste. A fila do contato autorizado foi conferida e estava vazia. Nenhum faturamento foi ativado, nenhuma credencial foi substituída e nenhum reset foi executado na instalação real. A etapa anterior foi publicada no commit 5377f3c. As alterações de números, receita e microfone estão em preparação para a próxima publicação.
 
 ## Etapas concluídas
 
@@ -35,7 +35,7 @@ A geração foi recusada pelo Google com **HTTP 403: nível gratuito da API indi
 
 ## Pendências para conclusão total
 
-- [ ] Gravação pelo microfone e conferência do balão no telefone destinatário, somente quando os testes de envio forem retomados.
+- [ ] Conferência do balão no telefone destinatário. Captura pelo microfone, conversão OGG/Opus, PTT e entrega confirmados em 26/10.
 - [ ] Geração real de texto/mídia com Gemini disponível e rotação de cotas entre projetos distintos.
 - [x] Exportação com pré-processamento das mídias selecionadas: autorização explícita, progresso, cancelamento, cache e interrupção por recusa do provedor. Validada com provedor simulado; geração real continua dependente do Gemini.
 - [x] Leitura de `.xls` binário legado, além de CSV e XLSX. Validada em teste automatizado e pela interface, sem confirmar a importação real.
@@ -73,7 +73,7 @@ Evidências: prévia XLS conferida localmente (captura com contato de teste mant
 - Campanhas permitem escolher receita manual ou vendas ganhas vinculadas. Uma negociação só pode ser vinculada a uma campanha; remover o vínculo anterior é necessário para reatribuir. Valor alterado atualiza o total; venda reaberta/perdida deixa de contar. Custos e origem da receita ficam separados do registro de execução, para um envio não sobrescrever o financeiro.
 - A Visão Geral resume campanhas que usam receita do CRM, em todo o histórico. Investimento é declarado pelo usuário; produção, impostos e outras despesas não entram no cálculo, que não representa lucro líquido. Receita/ROI por etiqueta permanece pendente de definição e integração de custos.
 - Nenhuma venda, valor ou vínculo financeiro real foi alterado durante a revisão da interface. A validação dos cálculos e mudanças de estado usou banco descartável.
-- A tentativa fictícia no simulador Gemini continua retornando HTTP 403 por indisponibilidade do nível gratuito. Não houve ativação de faturamento. O usuário autorizou novamente texto e áudio exclusivamente para o contato de teste. A sessão do navegador expirou ao recarregar, e o novo login foi solicitado para retomar a validação do microfone.
+- A tentativa fictícia no simulador Gemini continua retornando HTTP 403 por indisponibilidade do nível gratuito. Não houve ativação de faturamento. O usuário autorizou novamente texto e áudio exclusivamente para o contato de teste. A sessão foi restabelecida e os testes de texto e microfone foram retomados com entrega confirmada.
 
 Validação: suíte completa com **123 testes aprovados e nenhuma falha**, seguida de reteste aprovado dos números e do resumo financeiro após o ajuste da Visão Geral. Compilação e verificação de tipos aprovadas.
 
@@ -82,6 +82,13 @@ Evidências: [consulta sem envio](validacao-whatsapp-sem-envio-2026-10-26.png) e
 
 ## Etapa — gravação pelo microfone
 
-Corrigida a espera indefinida no medidor de áudio: a retomada do AudioContext não bloqueia mais o MediaRecorder. O atendimento e o simulador mostram permissão pendente, encerram a espera após 20 segundos e liberam capturas autorizadas depois de sair da tela. Três testes cobrem permissão negada, autorização tardia e tela encerrada. A gravação real e a conferência do balão no destinatário continuam pendentes; nenhum novo envio foi realizado nesta etapa.
+Corrigida a espera indefinida no medidor de áudio: a retomada do AudioContext não bloqueia mais o MediaRecorder. O atendimento e o simulador mostram permissão pendente, encerram a espera após 20 segundos e liberam capturas autorizadas depois de sair da tela. Três testes cobrem permissão negada, autorização tardia e tela encerrada. A gravação real foi retomada após liberar a permissão do navegador. Um erro de Data URL com parâmetro codecs foi identificado e corrigido; texto e áudio foram entregues ao contato autorizado. A conferência visual do balão pelo destinatário continua pendente.
 
 Suíte completa: **126 testes aprovados, nenhuma falha**. Verificação de tipos aprovada. O projeto Gemini recusa geração com HTTP 403; assinatura Google AI Pro não equivale à cota de API de um projeto externo. Nenhum faturamento foi habilitado.
+
+### Resultado real da gravação
+
+Em 26/10 às 16:22 (Brasília), o servidor confirmou entrega do áudio capturado pelo microfone: tipo audio, isPtt=true, MIME audio/ogg; codecs=opus e 36.267 bytes. Não foi enviado como documento. A mensagem de texto anterior também foi entregue. A prévia está em [microfone-previa-2026-10-26.png](microfone-previa-2026-10-26.png). O usuário foi consultado sobre a aparência no telefone; não presumimos essa confirmação.
+
+O decodificador agora aceita o parâmetro codecs emitido pelo MediaRecorder, preserva a validação estrita do conteúdo Base64 e rejeita parâmetros inesperados. Erros de anexo permanecem visíveis na própria prévia. Teste de regressão adicionado. A etapa anterior b18200a teve publicação Vercel concluída; esta correção final de áudio segue na próxima atualização.
+Reteste final isolado: 16 testes de backup, captura e codec aprovados, nenhuma falha. Compilação de produção aprovada. A primeira execução isolada não carregou setup-env.mjs e recebeu recusas de autenticação; repetida com a configuração oficial de testes, passou integralmente.

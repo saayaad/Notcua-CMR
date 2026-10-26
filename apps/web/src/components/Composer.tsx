@@ -62,6 +62,7 @@ export function Composer({
   const [seconds, setSeconds] = useState(0);
   const [microphonePending, setMicrophonePending] = useState(false);
   const [microphoneError, setMicrophoneError] = useState('');
+  const [attachmentError, setAttachmentError] = useState('');
   const [previewUrl, setPreviewUrl] = useState('');
   const [watermarkSettings, setWatermarkSettings] = useState<{
     enabledByDefault?: boolean;
@@ -200,6 +201,7 @@ export function Composer({
     }
   };
   const choose = (selected: File, voice = false) => {
+    setAttachmentError('');
     if (selected.size > 20 * 1024 * 1024) {
       notify('Escolha um arquivo de até 20 MiB.', true);
       return;
@@ -372,6 +374,7 @@ export function Composer({
   })();
   const sendFile = async () => {
     if (!file || busy) return;
+    setAttachmentError('');
     setBusy(true);
     try {
       const mark = applyWatermark
@@ -405,6 +408,7 @@ export function Composer({
           `Imagem otimizada: ${(file.size / 1024 / 1024).toFixed(2)} MiB → ${(sourceFile.size / 1024 / 1024).toFixed(2)} MiB${applyWatermark ? ' com marca d’água' : ''}.`,
         );
     } catch (error) {
+      setAttachmentError(errorMessage(error));
       notify(errorMessage(error), true);
     } finally {
       setBusy(false);
@@ -679,6 +683,7 @@ export function Composer({
               Visualização única
             </label>
           )}
+          {attachmentError && <p className="notice" role="alert">{attachmentError}</p>}
           <div className="modal-actions">
             <button className="button" disabled={busy} onClick={() => setFile(null)}>
               <Trash2 size={15} />

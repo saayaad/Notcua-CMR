@@ -32,7 +32,7 @@ Atualizado em 26/10/2026. Importe este Markdown no Notion para transformar os it
 - [ ] ✅ Gravação de áudio no compositor, com indicador visual de gravação.
 - [ ] ✅ Anexos de áudio, biblioteca e sequências são convertidos para OGG/Opus e enviados como nota de voz PTT; áudio musical deve ser enviado como documento.
 - [ ] ✅ Anexo WAV enviado para o número de teste autorizado na conexão Teste: convertido para OGG/Opus, `isPtt=true`, sem erro e com confirmação `READ` do WhatsApp em 25/10/2026.
-- [ ] 🔌 Conferir gravação pelo microfone e aparência do balão no dispositivo destinatário; biblioteca/funil já tiveram envio PTT confirmado como lido.
+- [ ] 🔌 Conferir aparência do balão no dispositivo destinatário; gravação pelo microfone entregue como PTT em 26/10, biblioteca/funil já tiveram envio confirmado como lido.
 - [ ] ✅ Ação de transcrever áudio recebida, com resultado exibido na conversa; depende do provedor/modelo configurado.
 - [ ] ✅ Presença de “digitando/gravando” em envios diretos e sequências compatíveis.
 - [ ] 🟡 Mensagens apagadas pelo cliente podem receber indicação, dependendo dos dados/eventos fornecidos pelo WhatsApp.
@@ -111,4 +111,4 @@ Atualizado em 26/10/2026. Importe este Markdown no Notion para transformar os it
 - [ ] Confirmei backup e restauração em uma cópia descartável; não resetei a instalação real.
 - [ ] Enviei a especificação da Parte 8, se ela ainda fizer parte do projeto.
 
-Revisão de 26/10/2026: [relatório atualizado, resultados e bloqueios](verification/relatorio-revisao-2026-10-26.md). Suíte completa com 126 testes aprovados, nenhuma falha; etapa XLS e pré-processamento concluída no código e em testes isolados. Nenhum envio real novo após o pedido de pausa.
+Revisão de 26/10/2026: [relatório atualizado, resultados e bloqueios](verification/relatorio-revisao-2026-10-26.md). Suíte completa com 126 testes aprovados, nenhuma falha; etapa XLS e pré-processamento concluída no código e em testes isolados. Após nova autorização, texto e gravação pelo microfone entregues somente ao contato de teste; conferência visual do balão no telefone solicitada.

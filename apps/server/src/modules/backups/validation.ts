@@ -142,7 +142,7 @@ export function list(value: unknown, field: string): RecordData[] {
 }
 
 export function decodeBase64(value: string, suppliedMime?: string, maxBytes = 20 * 1024 * 1024) {
-  const dataUrl = /^data:([\w.+-]+\/[\w.+-]+);base64,([\s\S]*)$/.exec(value);
+  const dataUrl = /^data:([\w.+-]+\/[\w.+-]+)(?:;[ \t]*codecs=(?:[\w.+-]+|"[\w., +\-]+"))?;base64,([\s\S]*)$/.exec(value);
   if (value.startsWith('data:') && !dataUrl) throw new AppError(422, 'Data URL inválida.');
   const encoded = (dataUrl?.[2] ?? value).replace(/\s/g, '');
   if (!encoded || encoded.length % 4 === 1 || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) {
