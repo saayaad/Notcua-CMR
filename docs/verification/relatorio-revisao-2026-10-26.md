@@ -100,3 +100,8 @@ O usuário confirmou o balão de voz, mas relatou falha ao baixar somente áudio
 Foi acrescentada uma normalização de compatibilidade: primeira faixa de áudio, remoção de metadados e capítulos, aplicação Opus voip, quadros de 20 ms e normalização de timestamps. É hipótese de compatibilidade, não causa confirmada: o arquivo anterior não apresentava capítulos. Um novo áudio de microfone foi entregue às 16h36 em 26/10, exclusivamente ao contato autorizado. A confirmação de reprodução desse novo áudio foi solicitada.
 
 Validação: 17 testes de atendimento e Data URL aprovados, incluindo geração real de Opus e descarte de tags de capítulos/título. Compilação de produção aprovada. O status de entrega não é usado como prova de download ou reprodução no dispositivo.
+
+
+### Confirmação do destinatário
+
+O usuário confirmou: o novo áudio enviado às 16h36 baixa e reproduz normalmente no iPhone. O teste completo de gravação, envio PTT, download e reprodução está aprovado para esta amostra e dispositivo. Isso valida o resultado da normalização; não isola qual parâmetro causava a incompatibilidade anterior e não representa teste de todos os modelos de telefone.
