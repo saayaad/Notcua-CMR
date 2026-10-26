@@ -92,3 +92,11 @@ Em 26/10 às 16:22 (Brasília), o servidor confirmou entrega do áudio capturado
 
 O decodificador agora aceita o parâmetro codecs emitido pelo MediaRecorder, preserva a validação estrita do conteúdo Base64 e rejeita parâmetros inesperados. Erros de anexo permanecem visíveis na própria prévia. Teste de regressão adicionado. A etapa anterior b18200a teve publicação Vercel concluída; esta correção final de áudio segue na próxima atualização.
 Reteste final isolado: 16 testes de backup, captura e codec aprovados, nenhuma falha. Compilação de produção aprovada. A primeira execução isolada não carregou setup-env.mjs e recebeu recusas de autenticação; repetida com a configuração oficial de testes, passou integralmente.
+
+## Reteste — reprodução no iPhone
+
+O usuário confirmou o balão de voz, mas relatou falha ao baixar somente áudios do Noctua no iPhone. A aprovação de reprodução permanece aberta. O arquivo de 16h22 foi baixado diretamente do servidor WhatsApp com a própria chave da mensagem: 36.267 bytes, conteúdo e SHA-256 iguais ao arquivo local. FFmpeg decodificou os 9,97 segundos sem erros, Opus 48 kHz mono. Nenhum endereço privado ou chave de mídia foi incluído no relatório.
+
+Foi acrescentada uma normalização de compatibilidade: primeira faixa de áudio, remoção de metadados e capítulos, aplicação Opus voip, quadros de 20 ms e normalização de timestamps. É hipótese de compatibilidade, não causa confirmada: o arquivo anterior não apresentava capítulos. Um novo áudio de microfone foi entregue às 16h36 em 26/10, exclusivamente ao contato autorizado. A confirmação de reprodução desse novo áudio foi solicitada.
+
+Validação: 17 testes de atendimento e Data URL aprovados, incluindo geração real de Opus e descarte de tags de capítulos/título. Compilação de produção aprovada. O status de entrega não é usado como prova de download ou reprodução no dispositivo.

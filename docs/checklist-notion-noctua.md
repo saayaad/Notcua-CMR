@@ -32,7 +32,7 @@ Atualizado em 26/10/2026. Importe este Markdown no Notion para transformar os it
 - [ ] ✅ Gravação de áudio no compositor, com indicador visual de gravação.
 - [ ] ✅ Anexos de áudio, biblioteca e sequências são convertidos para OGG/Opus e enviados como nota de voz PTT; áudio musical deve ser enviado como documento.
 - [ ] ✅ Anexo WAV enviado para o número de teste autorizado na conexão Teste: convertido para OGG/Opus, `isPtt=true`, sem erro e com confirmação `READ` do WhatsApp em 25/10/2026.
-- [ ] 🔌 Conferir aparência do balão no dispositivo destinatário; gravação pelo microfone entregue como PTT em 26/10, biblioteca/funil já tiveram envio confirmado como lido.
+- [ ] 🔌 Conferir download e reprodução no iPhone: o balão PTT foi confirmado, mas o usuário relatou falha ao baixar. Conversão normalizada enviada para reteste em 26/10 às 16h36; entrega/READ não comprovam reprodução.
 - [ ] ✅ Ação de transcrever áudio recebida, com resultado exibido na conversa; depende do provedor/modelo configurado.
 - [ ] ✅ Presença de “digitando/gravando” em envios diretos e sequências compatíveis.
 - [ ] 🟡 Mensagens apagadas pelo cliente podem receber indicação, dependendo dos dados/eventos fornecidos pelo WhatsApp.

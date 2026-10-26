@@ -173,6 +173,26 @@ test('conversão real de WAV produz OGG/Opus; PTT e visualização única chegam
   await assert.rejects(messaging.media(sessionId, conversationId, message.id), /visualização única/);
 });
 
+test('conversão de voz remove capítulos e metadados da origem para compatibilidade móvel', async () => {
+  const ffmpeg = createRequire(import.meta.url)('ffmpeg-static') as string;
+  const original = execFileSync(ffmpeg, [
+    '-nostdin', '-v', 'error', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=0.3',
+    '-metadata', 'CHAPTER000=00:00:00.000', '-metadata', 'CHAPTER000NAME=CAPITULO_TESTE',
+    '-metadata', 'title=TITULO_PRIVADO_TESTE', '-c:a', 'libopus', '-f', 'ogg', 'pipe:1',
+  ], { windowsHide: true });
+  assert.ok(original.includes(Buffer.from('CAPITULO_TESTE')));
+  const normalized = Buffer.from(await media.transcodeVoice(original));
+  assert.ok(normalized.includes(Buffer.from('OpusHead')));
+  assert.equal(normalized.includes(Buffer.from('CHAPTER000')), false);
+  assert.equal(normalized.includes(Buffer.from('TITULO_PRIVADO_TESTE')), false);
+  const head = normalized.indexOf(Buffer.from('OpusHead'));
+  assert.equal(normalized[head + 9], 1);
+  assert.equal(normalized.readUInt32LE(head + 12), 48000);
+  const decoded = execFileSync(ffmpeg, ['-nostdin', '-v', 'error', '-f', 'ogg', '-i', 'pipe:0', '-f', 's16le', 'pipe:1'],
+    { input: normalized, windowsHide: true });
+  assert.ok(decoded.length > 0);
+});
+
 test('qualquer áudio enviado pelo chat vira mensagem de voz mesmo se o arquivo original era WAV', async () => {
   const samples = 8000;
   const pcm = Buffer.alloc(samples * 2);
