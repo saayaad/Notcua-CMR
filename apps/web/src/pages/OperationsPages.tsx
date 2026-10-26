@@ -369,16 +369,16 @@ function LeadImport({
       </p>
       <label className="file-upload">
         <Upload size={22} />
-        {file?.name ?? 'Escolher .xlsx ou .csv de até 10 MiB'}
+        {file?.name ?? 'Escolher .xls, .xlsx ou .csv de até 10 MiB'}
         <input
           type="file"
-          accept=".xlsx,.csv"
+          accept=".xls,.xlsx,.csv"
           disabled={busy}
           onChange={(event) => {
             const chosen = event.target.files?.[0];
             if (chosen && chosen.size <= 10 * 1024 * 1024) {
               setFile(chosen);
-              setListName((current) => current || chosen.name.replace(/\.(xlsx|csv)$/i, '').slice(0, 100));
+              setListName((current) => current || chosen.name.replace(/\.(xls|xlsx|csv)$/i, '').slice(0, 100));
               setPreview(null);
             } else notify('Escolha um arquivo de até 10 MiB.', true);
           }}
@@ -824,11 +824,15 @@ export function CampaignsPage({
       {activate && (
         <Modal title="Confirmar ativação" onClose={() => setActivate(null)}>
           <p>
-            <strong>{activate.name}</strong> será ativado para {activate.count} contatos. Os envios vencidos
-            começam assim que o WhatsApp estiver conectado.
+            <strong>{activate.name}</strong>{' '}
+            {activate.mode === 'REMINDER'
+              ? `gerará ${activate.count} lembrete(s) interno(s). Nenhuma mensagem será enviada ao WhatsApp.`
+              : `será ativado para ${activate.count} contatos. Os envios vencidos começam assim que o WhatsApp estiver conectado.`}
           </p>
           <p className="muted">
-            Pausar ou cancelar impede as próximas etapas. Um envio que já começou pode terminar.
+            {activate.mode === 'REMINDER'
+              ? 'Pausar ou cancelar impede os próximos lembretes.'
+              : 'Pausar ou cancelar impede as próximas etapas. Um envio que já começou pode terminar.'}
           </p>
           <div className="modal-actions">
             <button className="button" onClick={() => setActivate(null)}>

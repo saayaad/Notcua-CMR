@@ -1,6 +1,7 @@
 import { createServer } from 'node:http';
 import { createApp } from './app.js';
 import { prisma } from './database/client.js';
+import { initializeSqliteClient } from './database/sqlite-client.js';
 import { env } from './config/env.js';
 import { RealtimeHub } from './realtime/socket.js';
 import { WhatsappService } from './modules/whatsapp/whatsapp.service.js';
@@ -15,7 +16,7 @@ import { BackupWorker } from './modules/operations/system-backups.js';
 import { InactivityWorker } from './modules/operations/inactivity.js';
 
 async function main() {
-  await prisma.$connect();
+  await initializeSqliteClient(prisma);
   await prisma.$queryRaw`SELECT COUNT(*) FROM ImportBatch`;
   const cipher = await CredentialCipher.load(env.WHATSAPP_KEY_FILE);
   const hub = new RealtimeHub();

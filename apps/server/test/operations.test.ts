@@ -7,10 +7,12 @@ import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { PrismaClient } from '@prisma/client';
+import { createSqliteClient } from '../src/database/sqlite-client.js';
 import { makeEventBuffer, type AnyMessageContent, type WAMessage } from '@whiskeysockets/baileys';
 import { pino } from 'pino';
 import request from 'supertest';
 import ExcelJS from 'exceljs';
+import * as XLSX from 'xlsx';
 import { createApp } from '../src/app.js';
 import type { WhatsappSocket } from '../src/modules/whatsapp/socket-factory.js';
 import { WhatsappService } from '../src/modules/whatsapp/whatsapp.service.js';
@@ -31,7 +33,7 @@ import { FlowService } from '../src/modules/flows/flow.service.js';
 import { InactivityWorker } from '../src/modules/operations/inactivity.js';
 import { aiControl, requestsHuman, setAiControl } from '../src/modules/operations/ai-control.js';
 import { generateSuggestion } from '../src/modules/operations/ai.service.js';
-import { aiUsage } from '../src/modules/operations/ai-provider.js';
+import { aiUsage, meteredCall, providerResponse } from '../src/modules/operations/ai-provider.js';
 import { preprocessMedia } from '../src/modules/operations/ai-media.js';
 import { SyncService } from '../src/modules/whatsapp/sync.service.js';
 import { inflateRawSync } from 'node:zlib';
@@ -61,7 +63,7 @@ class FakeSocket implements WhatsappSocket {
 }
 const dir = await mkdtemp(join(tmpdir(), 'noctua-operations-'));
 const url = `file:${join(dir, 'test.db').replace(/\\/g, '/')}`;
-const db = new PrismaClient({ datasourceUrl: url });
+const db = createSqliteClient(url);
 const socket = new FakeSocket();
 const whatsapp = new WhatsappService(
   db,
@@ -132,6 +134,33 @@ test('CSV detecta colunas, normaliza DDI, informa duplicados e não grava durant
   assert.equal(result.rejected.length, 2);
   assert.equal(await db.contact.count(), 0);
 });
+test('XLS binário legado preserva nome acentuado, telefone numérico e linha de duplicata', async () => {
+  const book = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet([
+    ['Exportação antiga'], [], ['Telefone', 'Nome'],
+    [5511999991234, 'João de teste'], ['+55 11 99999-1234', 'Duplicado'],
+  ]), 'Contatos');
+  const bytes = XLSX.write(book, { type: 'buffer', bookType: 'biff8' }) as Buffer;
+  assert.equal(bytes.subarray(0, 4).toString('hex'), 'd0cf11e0');
+  const preview = await contacts.preview({ filename: 'contatos.xls', base64: bytes.toString('base64') });
+  assert.equal(preview.items.length, 1);
+  assert.equal(preview.items[0]!.name, 'João de teste');
+  assert.equal(preview.items[0]!.phoneNumber, '5511999991234');
+  assert.equal(preview.rejected[0]!.row, 5);
+});
+
+test('CSV reconhece separador após título, ignora vírgulas entre aspas e informa linha original', async () => {
+  const csv = 'Relatório de teste\nNome;Telefone;Observações\n"Cliente, teste";+55 11 99999-1234;Primeiro\nDuplicado;5511999991234;Segundo\n';
+  const preview = await contacts.preview({ filename: 'irregular.csv', base64: Buffer.from(csv).toString('base64') });
+  assert.equal(preview.items.length, 1);
+  assert.equal(preview.items[0]!.name, 'Cliente, teste');
+  assert.equal(preview.rejected[0]!.row, 4);
+  const book = new ExcelJS.Workbook();
+  book.addWorksheet('Vazia');
+  const bytes = await book.xlsx.writeBuffer();
+  await assert.rejects(() => contacts.preview({ filename: 'vazia.xlsx', base64: Buffer.from(bytes).toString('base64') }), /planilha está vazia/);
+});
+
 test('Excel com título antes do cabeçalho é reconhecido e a importação é idempotente', async () => {
   const book = new ExcelJS.Workbook();
   const sheet = book.addWorksheet('Leads');
@@ -410,6 +439,53 @@ test('chaves Gemini permitem cadastrar, editar, ordenar, desativar e excluir sem
   } finally {
     env.WHATSAPP_KEY_FILE = previousKeyFile;
     if (previous) await putRecord(db, previous.id, previous.kind, previous.data);
+    else await db.operationRecord.deleteMany({ where: { id: 'integration:ai' } });
+  }
+});
+
+test('modelos de marca d’água validam tamanho, posição, selo local e modelo ativo', async () => {
+  const value = { enabledByDefault: false, activeId: 'marca-teste', marks: [{ id: 'marca-teste', name: 'Teste', text: 'Amostra', opacity: 42, position: 'center' }] };
+  const result = await request(app).put('/api/operations/settings/watermarks').send(value).expect(200);
+  assert.equal(result.body.marks[0].size, 100);
+  await request(app).put('/api/operations/settings/watermarks').send({ ...value, activeId: 'inexistente' }).expect(422);
+  await request(app).put('/api/operations/settings/watermarks').send({ ...value, marks: [{ ...value.marks[0], size: 999 }] }).expect(422);
+  await request(app).put('/api/operations/settings/watermarks').send({ ...value, marks: [{ ...value.marks[0], imageData: 'https://externo.example/selo.png' }] }).expect(422);
+});
+
+test('catálogo Gemini pagina, filtra modelos de geração e rejeita número de projeto como modelo', async () => {
+  const originalKeyFile = env.WHATSAPP_KEY_FILE;
+  const originalFetch = globalThis.fetch;
+  const previous = await db.operationRecord.findUnique({ where: { id: 'integration:ai' } });
+  env.WHATSAPP_KEY_FILE = join(dir, 'models-test.key');
+  try {
+    const body = { provider: 'gemini', apiKey: 'fake-catalog-key', model: 'models/gemini-test', instructions: '', knowledge: '', style: '', enabled: false };
+    await request(app).put('/api/operations/ai').send({ ...body, model: '1355654808' }).expect(422);
+    await request(app).put('/api/operations/ai').send(body).expect(200);
+    const saved = await request(app).get('/api/operations/ai').expect(200);
+    assert.equal(saved.body.model, 'gemini-test');
+    let calls = 0;
+    globalThis.fetch = async (input, options) => {
+      const url = new URL(String(input));
+      assert.equal(url.hostname, 'generativelanguage.googleapis.com');
+      assert.equal(new Headers(options?.headers).get('x-goog-api-key'), 'fake-catalog-key');
+      calls++;
+      const data = calls === 1 ? {
+        models: [
+          { name: 'models/gemini-test', displayName: 'Gemini teste', supportedGenerationMethods: ['generateContent'] },
+          { name: 'models/embedding-test', supportedGenerationMethods: ['embedContent'] },
+        ], nextPageToken: 'pagina2',
+      } : { models: [{ name: 'models/gemini-test-fast', supportedGenerationMethods: ['generateContent'] }] };
+      if (calls === 2) assert.equal(url.searchParams.get('pageToken'), 'pagina2');
+      return new Response(JSON.stringify(data), { status: 200 });
+    };
+    const result = await request(app).get('/api/operations/ai/models').expect(200);
+    assert.equal(calls, 2);
+    assert.deepEqual(result.body.models.map((model: { id: string }) => model.id), ['gemini-test', 'gemini-test-fast']);
+    assert.ok(!JSON.stringify(result.body).includes('fake-catalog-key'));
+  } finally {
+    globalThis.fetch = originalFetch;
+    env.WHATSAPP_KEY_FILE = originalKeyFile;
+    if (previous) await db.operationRecord.upsert({ where: { id: previous.id }, create: { ...previous, data: previous.data! }, update: { data: previous.data! } });
     else await db.operationRecord.deleteMany({ where: { id: 'integration:ai' } });
   }
 });
@@ -1005,6 +1081,30 @@ test('análise de mídia usa conteúdo explícito, cache e impede visualização
     assert.equal(calls, 1);
   }));
 
+test('recusa explícita do provedor libera reserva; falha incerta mantém estimativa conservadora', async () => {
+  const settings = { enabled: false, model: 'teste', instructions: '', knowledge: '', style: '', dailyLimit: 100, maxOutputTokens: 100, inputPrice: 1, outputPrice: 1 };
+  const id = 'budget-rejection-test';
+  const before = await aiUsage(db);
+  await assert.rejects(() => meteredCall(db, settings, id, 'reply', 50, async () => {
+    await providerResponse(new Response('{}', { status: 403 }));
+    return { result: '' };
+  }), /HTTP 403/);
+  const rejected = await db.operationRecord.findFirstOrThrow({ where: { kind: 'AI_USAGE', data: { path: '$.conversationId', equals: id } } });
+  assert.equal((rejected.data as any).status, 'REJECTED');
+  assert.equal((rejected.data as any).estimatedCost, 0);
+  const after = await aiUsage(db);
+  assert.equal(after.todayTokens, before.todayTokens);
+  assert.equal(after.unconfirmed, before.unconfirmed);
+  const uncertainId = 'budget-timeout-test';
+  await assert.rejects(() => meteredCall(db, settings, uncertainId, 'reply', 50, async () => {
+    throw new Error('Timeout simulado');
+  }), /Timeout/);
+  const uncertain = await db.operationRecord.findFirstOrThrow({ where: { kind: 'AI_USAGE', data: { path: '$.conversationId', equals: uncertainId } } });
+  assert.equal((uncertain.data as any).status, 'UNCONFIRMED');
+  assert.equal((uncertain.data as any).inputTokens, 50);
+  assert.equal((uncertain.data as any).outputTokens, 100);
+});
+
 test('falha da geração envia contingência uma vez, pausa e avisa atendente', async () =>
   aiTest(async () => {
     const chat = await makeContact('5511777770037');
@@ -1071,6 +1171,53 @@ function unzipEntries(bytes: Buffer) {
   }
   return files;
 }
+test('pré-processamento de histórico exige consentimento, isola conexão, reutiliza cache e respeita snapshot', async () => {
+  const chat = await makeContact('5511777770048');
+  const file = await db.storedFile.create({ data: { sha256: 'b'.repeat(64), filename: 'teste.png', mimeType: 'image/png', data: Buffer.from('png'), byteLength: 3 } });
+  const first = await db.chatMessage.create({ data: { id: 'preprocess-a', direction: 'INBOUND', conversationId: chat.id, type: 'imageMessage', fileId: file.id } });
+  await db.chatMessage.create({ data: { id: 'preprocess-b-private', direction: 'INBOUND', conversationId: chat.id, type: 'audioMessage', asViewOnce: true } });
+  await putRecord(db, `ai-media:${first.id}`, 'AI_MEDIA', { text: 'Descrição salva para exportação.' });
+  const url = `/api/operations/sessions/${sessionId}/history-preprocessing`;
+  await request(app).post(url).send({ conversationIds: [chat.id] }).expect(422);
+  await request(app).post(`/api/operations/sessions/${otherSession}/history-preprocessing`).send({ conversationIds: [chat.id], consent: true }).expect(404);
+  const page = await request(app).post(url).send({ conversationIds: [chat.id], consent: true }).expect(200);
+  assert.equal(page.body.total, 1);
+  assert.equal(page.body.item.status, 'CACHED');
+  assert.equal(page.body.nextCursor, first.id);
+  await db.chatMessage.create({ data: { id: 'preprocess-z-new', direction: 'INBOUND', conversationId: chat.id, type: 'imageMessage', sentAt: new Date(new Date(page.body.snapshot).getTime() + 1000) } });
+  const end = await request(app).post(url).send({ conversationIds: [chat.id], consent: true, cursor: page.body.nextCursor, snapshot: page.body.snapshot }).expect(200);
+  assert.equal(end.body.done, true);
+  assert.equal(end.body.total, 1);
+});
+
+test('pré-processamento gera análise, reaproveita resultado e interrompe após recusa do provedor', async () => aiTest(async () => {
+  const chat = await makeContact('5511777770049');
+  const file = await db.storedFile.create({ data: { sha256: 'c'.repeat(64), filename: 'imagem.png', mimeType: 'image/png', data: Buffer.from('png'), byteLength: 3 } });
+  const first = await db.chatMessage.create({ data: { id: 'preprocess-real-a', direction: 'INBOUND', conversationId: chat.id, type: 'imageMessage', fileId: file.id } });
+  const second = await db.chatMessage.create({ data: { id: 'preprocess-real-b', direction: 'INBOUND', conversationId: chat.id, type: 'imageMessage', fileId: file.id } });
+  await configureAi({ provider: 'gemini', mediaModel: 'modelo-ficticio' });
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'Descrição visual de teste.' }] } }], usageMetadata: { promptTokenCount: 8, candidatesTokenCount: 5 } }));
+  };
+  const url = `/api/operations/sessions/${sessionId}/history-preprocessing`;
+  const body = { conversationIds: [chat.id], consent: true };
+  const analyzed = await request(app).post(url).send(body).expect(200);
+  assert.equal(analyzed.body.item.id, first.id);
+  assert.equal(analyzed.body.item.status, 'ANALYZED');
+  assert.equal((await record<any>(db, `ai-media:${first.id}`, null)).text, 'Descrição visual de teste.');
+  const cached = await request(app).post(url).send(body).expect(200);
+  assert.equal(cached.body.item.status, 'CACHED');
+  assert.equal(calls, 1);
+  globalThis.fetch = async () => { calls++; return new Response(JSON.stringify({ error: { message: 'Projeto indisponível' } }), { status: 403 }); };
+  const refused = await request(app).post(url).send({ ...body, cursor: first.id }).expect(200);
+  assert.equal(refused.body.item.id, second.id);
+  assert.equal(refused.body.fatal, true);
+  assert.equal(refused.body.item.status, 'UNAVAILABLE');
+  assert.equal(calls, 2);
+}));
+
 test('exportação estruturada ordena por horário, separa papéis e protege CSV', async () => {
   const chat = await makeContact('5511777770038');
   await db.chatMessage.createMany({

@@ -19,6 +19,7 @@ export function ConversationSimulator({ base, graph, onClose, aiOnly = false }: 
   const [audio, setAudio] = useState('');
   const [busy, setBusy] = useState(false);
   const [presence, setPresence] = useState('');
+  const [sendError, setSendError] = useState('');
   const [assets, setAssets] = useState<Asset[]>([]);
   const [calibration, setCalibration] = useState<{ question: string; originalReply: string } | null>(null);
   const [correctedReply, setCorrectedReply] = useState('');
@@ -35,12 +36,12 @@ export function ConversationSimulator({ base, graph, onClose, aiOnly = false }: 
   useEffect(() => () => { generation.current++; controller.current?.abort(); }, []);
   useEffect(() => { log.current?.scrollTo({ top: log.current.scrollHeight, behavior: 'smooth' }); }, [entries, presence]);
   
-  const reset = () => { generation.current++; controller.current?.abort(); setEntries([]); setAudio(''); setText(''); setPresence(''); setBusy(false); setCalibration(null); setCorrectedReply(''); seen.current = 0; replies.current = []; };
+  const reset = () => { generation.current++; controller.current?.abort(); setEntries([]); setAudio(''); setText(''); setPresence(''); setSendError(''); setBusy(false); setCalibration(null); setCorrectedReply(''); seen.current = 0; replies.current = []; };
   
   const send = async () => {
     if (!text.trim() || busy) return;
     const input = text.trim(); const token = generation.current; const next = [...entries, { role: 'user' as const, text: input, audio: audio || undefined }];
-    setEntries(next); setText(''); setAudio(''); setBusy(true); setPresence('A escrever…'); controller.current = new AbortController();
+    setEntries(next); setText(''); setAudio(''); setSendError(''); setBusy(true); setPresence('A escrever…'); controller.current = new AbortController();
     try {
       if (mode === 'ai') {
         const data = await request<{ text: string; contextSources: string[] }>('/operations/simulator/reply', 'POST', { history: next.filter(e => e.role !== 'event').slice(-30).map(e => ({ role: e.role, text: e.text })) }, controller.current.signal);
@@ -60,7 +61,13 @@ export function ConversationSimulator({ base, graph, onClose, aiOnly = false }: 
         }
         seen.current = trace.length;
       }
-    } catch (e) { if (token === generation.current) notify(errorMessage(e), true); } finally { if (token === generation.current) { setBusy(false); setPresence(''); } }
+    } catch (e) {
+      if (token === generation.current) {
+        setSendError(errorMessage(e));
+        setText(input);
+        setEntries(entries);
+      }
+    } finally { if (token === generation.current) { setBusy(false); setPresence(''); } }
   };
   
   return (
@@ -116,6 +123,7 @@ export function ConversationSimulator({ base, graph, onClose, aiOnly = false }: 
           return request<{ text: string }>('/operations/simulator/transcribe', 'POST', { data, mime: blob.type.split(';')[0] || '' });
         }).then(result => setText(result.text)).catch(e => notify(errorMessage(e), true)).finally(() => setBusy(false));
       }}>Transcrever com IA</button><small>Escreva a transcrição abaixo ou use IA. O áudio só sai deste navegador ao escolher Transcrever.</small></div>}
+      {sendError && <p className="notice" role="alert">{sendError} Sua mensagem foi mantida para tentar novamente.</p>}
       <AudioTestInput onAudio={setAudio} />
       <form className="test-composer" onSubmit={e => { e.preventDefault(); void send(); }}>
         <textarea aria-label="Mensagem do cliente fictício" value={text} onChange={e => setText(e.target.value)} maxLength={1000} placeholder={audio ? 'Transcrição do áudio para testar o gatilho…' : 'Mensagem do cliente…'} rows={2} />

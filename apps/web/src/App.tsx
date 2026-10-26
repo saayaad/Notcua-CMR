@@ -432,10 +432,7 @@ export default function App() {
           <button
             aria-label="Ajuda e configurações"
             title="Ajuda e configurações"
-            onClick={() => {
-              setView('settings');
-              notify('O guia completo está na pasta docs do projeto.');
-            }}
+            onClick={() => { setView('help'); setMobileNavOpen(false); }}
           >
             <CircleHelp size={18} />
             <span>Ajuda e configurações</span>

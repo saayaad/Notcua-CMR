@@ -36,6 +36,7 @@ export async function exportHistory(
       text: string | null;
       caption: string | null;
       analysis?: string;
+      analysisStatus: string;
       type: string;
       sentAt: Date;
       media?: string;
@@ -78,6 +79,7 @@ export async function exportHistory(
           text: message.asViewOnce ? null : message.text,
           caption: message.asViewOnce ? null : message.caption,
           analysis: analysis.text,
+          analysisStatus: message.asViewOnce ? 'Visualização única: análise não permitida.' : analysis.text ? 'Análise salva incluída.' : 'Sem análise salva; consulte o pré-processamento de mídias.',
           type: message.type,
           sentAt: message.sentAt,
           media,

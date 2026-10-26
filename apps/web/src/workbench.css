@@ -1920,6 +1920,7 @@ dialog.modal.hud-editor-modal > .modal-header {
 }
 .hud-editor-modal > .modal-body {
   display: flex;
+  flex: 1;
   flex-direction: column;
   padding: 0.8rem 1rem;
   min-height: 0;
@@ -2629,15 +2630,49 @@ dialog.modal.asset-fullscreen {
 .asset-preview-modal .asset-preview audio {
   width: 100%;
 }
-dialog.modal.hud-editor-modal,
 dialog.modal.workbench-function-modal {
   height: 88dvh;
   max-height: 88dvh;
+}
+@media (max-width: 760px) {
+  .hud-editor-modal .hud-editor-footer {
+    flex-direction: row;
+    align-items: center;
+    padding-top: 0.4rem;
+    gap: 0.4rem;
+  }
+  .hud-editor-footer .button {
+    padding: 0.45rem 0.55rem;
+    min-height: 2rem;
+    font-size: 0.7rem;
+  }
+  .hud-editor > .hud-editor-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 0.2rem;
+  }
+  .hud-editor-tabs button { white-space: nowrap; flex-shrink: 0; }
+  .hud-editor-layout,
+  .hud-editor-layout.config-only {
+    grid-template-rows: minmax(12rem, 1fr) minmax(8rem, 1fr);
+    gap: 0.4rem;
+  }
+  .hud-editor-modal .modal-header { padding: 0.5rem 0.7rem; }
+  .hud-sample-messages { min-height: 0; overflow-y: auto; padding: 0.35rem; gap: 0.3rem; }
+  .hud-sample-messages > p { padding: 0.3rem; font-size: 0.65rem; }
+  .hud-sample-chat-header { padding: 0.35rem; }
+  .hud-sample-composer { flex-shrink: 0; margin: 0.25rem; padding: 0.35rem; }
 }
 .custom-select.label-filter,
 .custom-select.workbench-category-select {
   padding: 0;
 }
+.hud-editor-layout.preview-expanded {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+.hud-editor-layout.preview-expanded > .hud-editor-controls { display: none; }
+.hud-editor-layout.preview-expanded > .hud-editor-preview-section { grid-row: 1; }
 .custom-select.label-filter .select-trigger {
   font-size: 0.75rem;
 }

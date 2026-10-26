@@ -6,14 +6,15 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
-import { PrismaClient } from '@prisma/client';
 import { SyncService } from '../src/modules/whatsapp/sync.service.js';
 import { silentPublisher } from '../src/modules/whatsapp/whatsapp.types.js';
+import { createSqliteClient, initializeSqliteClient } from '../src/database/sqlite-client.js';
+import { putRecord } from '../src/modules/operations/records.js';
 
 test('histórico aguarda uma gravação longa de autenticação sem perder o lote', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'noctua-contention-'));
   const url = `file:${join(directory, 'test.db').replace(/\\/g, '/')}`;
-  const db = new PrismaClient({ datasourceUrl: url });
+  const db = createSqliteClient(url);
   try {
     execFileSync(
       process.execPath,
@@ -26,6 +27,9 @@ test('histórico aguarda uma gravação longa de autenticação sem perder o lot
       ],
       { env: { ...process.env, RUST_LOG: 'info', DATABASE_URL: url }, stdio: 'pipe' },
     );
+    await initializeSqliteClient(db);
+    const journal = await db.$queryRawUnsafe<{ journal_mode: string }[]>('PRAGMA journal_mode');
+    assert.equal(journal[0]?.journal_mode, 'wal');
     const session = await db.whatsappSession.create({ data: { name: 'Concorrência' } });
     let entered!: () => void;
     const started = new Promise<void>((resolve) => {
@@ -44,6 +48,7 @@ test('histórico aguarda uma gravação longa de autenticação sem perder o lot
     const results = await Promise.allSettled([
       writer,
       sync.chatsUpsert(session.id, [{ id: '5511999912345@s.whatsapp.net' }], true),
+      putRecord(db, 'test:pending-send', 'STATE', { completed: 0 }),
     ]);
     const failure = results.find((result) => result.status === 'rejected');
     if (failure?.status === 'rejected') {
@@ -51,6 +56,7 @@ test('histórico aguarda uma gravação longa de autenticação sem perder o lot
       assert.fail(`Gravações concorrentes falharam: ${error.name ?? 'Erro'} ${error.code ?? ''}`);
     }
     assert.equal(await db.conversation.count(), 1);
+    assert.ok(await db.operationRecord.findUnique({ where: { id: 'test:pending-send' } }));
   } finally {
     await db.$disconnect();
     await rm(directory, { recursive: true, force: true });

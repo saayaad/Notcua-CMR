@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { PrismaClient } from '@prisma/client';
+import { createSqliteClient } from '../src/database/sqlite-client.js';
 import { makeEventBuffer, type AnyMessageContent, type WAMessage } from '@whiskeysockets/baileys';
 import { pino } from 'pino';
 import request from 'supertest';
@@ -57,7 +57,7 @@ class FakeSocket implements WhatsappSocket {
 }
 const directory = await mkdtemp(join(tmpdir(), 'noctua-flows-'));
 const databaseUrl = `file:${join(directory, 'flows.db').replace(/\\/g, '/')}`;
-const db = new PrismaClient({ datasourceUrl: databaseUrl });
+const db = createSqliteClient(databaseUrl);
 const socket = new FakeSocket();
 const wa = new WhatsappService(db, new CredentialCipher(randomBytes(32)), silentPublisher, () => socket);
 const messaging = new MessagingService(db, wa);

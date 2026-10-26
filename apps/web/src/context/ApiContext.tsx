@@ -1,4 +1,6 @@
 import { API_BASE } from '../config';
+import { firebaseAuth } from '../auth/firebase';
+import { authenticatedFetch } from './authenticated-request';
 import {
   createContext,
   useCallback,
@@ -63,15 +65,14 @@ export function ApiProvider({ children }: { children: ReactNode }) {
   }, [toast]);
   const request = useCallback(
     async <T,>(path: string, method = 'GET', body?: unknown, signal?: AbortSignal): Promise<T> => {
-      const response = await fetch(`${API_BASE}/api${path}`, {
+      const response = await authenticatedFetch(`${API_BASE}/api${path}`, {
         method,
         signal,
         headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
           ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
         },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      });
+      }, { token, user: token ? firebaseAuth?.currentUser : null });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error?.message ?? 'Não foi possível concluir a operação.');
       return data as T;
@@ -80,8 +81,8 @@ export function ApiProvider({ children }: { children: ReactNode }) {
   );
   const blob = useCallback(
     async (path: string) => {
-      const response = await fetch(`${API_BASE}/api${path}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      const response = await authenticatedFetch(`${API_BASE}/api${path}`, {}, {
+        token, user: token ? firebaseAuth?.currentUser : null,
       });
       if (!response.ok) {
         const data = await response.json();

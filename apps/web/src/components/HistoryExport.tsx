@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useApi, errorMessage } from '../context/ApiContext';
 import type { Conversation } from '../types';
 import { Modal, Spinner } from './ui';
+import { HistoryPreprocessing } from './HistoryPreprocessing';
 export function HistoryExport({ sessionId, onClose }: { sessionId: string; onClose: () => void }) {
   const { request, blob, notify } = useApi();
   const [rows, setRows] = useState<Conversation[]>([]);
@@ -50,6 +51,7 @@ export function HistoryExport({ sessionId, onClose }: { sessionId: string; onClo
         <label>
           Buscar contato
           <input
+            disabled={busy}
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);
@@ -60,6 +62,7 @@ export function HistoryExport({ sessionId, onClose }: { sessionId: string; onClo
         <label>
           Responsável atual · e-mail ou identificador
           <input
+            disabled={busy}
             value={owner}
             placeholder="Opcional"
             onChange={(event) => {
@@ -75,6 +78,7 @@ export function HistoryExport({ sessionId, onClose }: { sessionId: string; onClo
       <button
         type="button"
         className="button"
+        disabled={busy}
         onClick={() =>
           setSelected((current) => [...new Set([...current, ...rows.map((row) => row.id)])].slice(0, 100))
         }
@@ -87,7 +91,7 @@ export function HistoryExport({ sessionId, onClose }: { sessionId: string; onClo
             <input
               type="checkbox"
               checked={selected.includes(row.id)}
-              disabled={!selected.includes(row.id) && selected.length >= 100}
+              disabled={busy || (!selected.includes(row.id) && selected.length >= 100)}
               onChange={(event) =>
                 setSelected((current) =>
                   event.target.checked ? [...current, row.id] : current.filter((id) => id !== row.id),
@@ -99,14 +103,14 @@ export function HistoryExport({ sessionId, onClose }: { sessionId: string; onClo
         ))}
       </div>
       <div className="operation-actions">
-        <button type="button" className="button" disabled={page === 1} onClick={() => setPage(page - 1)}>
+        <button type="button" className="button" disabled={busy || page === 1} onClick={() => setPage(page - 1)}>
           Anterior
         </button>
         <span>Página {page}</span>
         <button
           type="button"
           className="button"
-          disabled={page * 100 >= total}
+          disabled={busy || page * 100 >= total}
           onClick={() => setPage(page + 1)}
         >
           Próxima
@@ -117,9 +121,10 @@ export function HistoryExport({ sessionId, onClose }: { sessionId: string; onClo
         Incluir arquivos de áudio, imagem e vídeo disponíveis
       </label>
       <p className="muted">
-        Mídias expiradas ou de visualização única são identificadas como indisponíveis. Esta exportação não
-        envia dados a provedores de IA.
+        Mídias expiradas ou de visualização única são identificadas como indisponíveis. O download do ZIP
+        não envia dados à IA. A análise opcional abaixo exige autorização separada.
       </p>
+      <HistoryPreprocessing sessionId={sessionId} conversationIds={selected} disabled={busy} onBusyChange={setBusy}/>
       <div className="modal-actions">
         <button type="button" className="button" disabled={busy} onClick={onClose}>
           Fechar

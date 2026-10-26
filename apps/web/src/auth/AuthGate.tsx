@@ -1,5 +1,5 @@
 import {Select} from '../components/Select';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -38,6 +38,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<'loading' | 'local' | 'firebase' | 'error'>('loading');
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(false);
+  const activeUserId = useRef<string | null>(null);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [signup, setSignup] = useState(false);
@@ -63,7 +65,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
     const unsubscribe = onIdTokenChanged(firebaseAuth, (current) => {
       const pending = ++generation;
       setUser(current);
-      setReady(false);
+      if (!current || current.uid !== activeUserId.current) setReady(false);
+      activeUserId.current = current?.uid ?? null;
+      setCheckingAccess(Boolean(current?.emailVerified));
       setMessage('');
       if (!current) setToken('');
       if (current?.emailVerified)
@@ -78,10 +82,15 @@ export function AuthGate({ children }: { children: ReactNode }) {
             if (pending === generation) {
               setToken(token);
               setReady(true);
+              setCheckingAccess(false);
             }
           })
           .catch((error) => {
-            if (pending === generation) setMessage(errorMessage(error));
+            if (pending === generation) {
+              setReady(false);
+              setCheckingAccess(false);
+              setMessage(errorMessage(error));
+            }
           });
     });
     return () => {
@@ -138,6 +147,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
               habilitar o login.
             </p>
           </>
+        ) : user && checkingAccess ? (
+          <div className="access-wait"><Spinner />Verificando seu acesso…</div>
         ) : user ? (
           <>
             <h2>{user.emailVerified ? 'Acesso à operação' : 'Confirme seu e-mail'}</h2>

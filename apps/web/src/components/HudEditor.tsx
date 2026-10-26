@@ -13,6 +13,8 @@ import {
   Archive,
   Workflow,
   Sparkles,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import { usePreferences, type Preferences } from '../context/PreferencesContext';
 import { completeOrder, hudActions, hudPanels, hudTools, hudGrid, panelOrder } from '../context/hud';
@@ -118,6 +120,7 @@ export function HudEditor({
   const [tab, setTab] = useState(initialTab);
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [mobileView, setMobileView] = useState('chat');
+  const [previewExpanded, setPreviewExpanded] = useState(false);
   const [dragging, setDragging] = useState('');
   const [busy, setBusy] = useState(false);
   const change = (value: Partial<HudDraft>) => setDraft((current) => ({ ...current, ...value }));
@@ -229,12 +232,12 @@ export function HudEditor({
               ['free', 'Posição livre'],
             ] as const
           ).map(([id, name]) => (
-            <button role="tab" key={id} aria-selected={tab === id} onClick={() => setTab(id)}>
+            <button role="tab" key={id} aria-selected={tab === id} onClick={() => { setTab(id); setPreviewExpanded(false); }}>
               {name}
             </button>
           ))}
         </div>
-        <div className="hud-editor-layout">
+      <div className={`hud-editor-layout ${previewExpanded ? 'preview-expanded' : ''}`}>
           <aside className="hud-editor-controls">
             {tab === 'shortcuts' && (
               <ShortcutSettings value={allValue} onChange={(value) => change(value)} disabled={busy} />
@@ -425,6 +428,10 @@ export function HudEditor({
             <div className="hud-preview-toolbar">
               <span>Prévia do layout</span>
               <div role="group" aria-label="Dispositivo da prévia">
+                <button aria-pressed={previewExpanded} onClick={() => setPreviewExpanded(value => !value)}>
+                  {previewExpanded ? <Minimize2 size={15}/> : <Maximize2 size={15}/>}
+                  {previewExpanded ? 'Voltar aos ajustes' : 'Ampliar prévia'}
+                </button>
                 <button aria-pressed={device === 'desktop'} onClick={() => setDevice('desktop')}>
                   <Monitor size={15} />
                   Computador

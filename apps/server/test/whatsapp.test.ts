@@ -11,7 +11,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { makeEventBuffer, type AuthenticationState, type WAMessage } from '@whiskeysockets/baileys';
 import { LabelAssociationType } from '@whiskeysockets/baileys/lib/Types/LabelAssociation.js';
 import { pino } from 'pino';
-import { PrismaClient } from '@prisma/client';
+import { createSqliteClient } from '../src/database/sqlite-client.js';
 import request from 'supertest';
 import { io as clientIo } from 'socket.io-client';
 import { CredentialCipher } from '../src/modules/whatsapp/credential-cipher.js';
@@ -50,7 +50,7 @@ class FakeSocket implements WhatsappSocket {
 
 const directory = await mkdtemp(join(tmpdir(), 'noctua-wa-'));
 const databaseUrl = `file:${join(directory, 'whatsapp.db').replace(/\\/g, '/')}`;
-const db = new PrismaClient({ datasourceUrl: databaseUrl });
+const db = createSqliteClient(databaseUrl);
 const cipher = new CredentialCipher(randomBytes(32));
 const sockets: FakeSocket[] = [];
 const authStates: AuthenticationState[] = [];

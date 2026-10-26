@@ -4,6 +4,7 @@ import { Download, Sparkles, Copy, Save, CalendarDays } from 'lucide-react';
 import type { Conversation } from '../types';
 import { useApi, errorMessage } from '../context/ApiContext';
 import { Modal, Spinner } from './ui';
+import { HistoryPreprocessing } from './HistoryPreprocessing';
 export function ContactWorkspace({
   chat,
   sessionId,
@@ -211,6 +212,7 @@ export function ContactWorkspace({
             Exporte textos e mídias disponíveis para arquivo ou revisão. O ZIP informa quais mídias não
             puderam ser obtidas. Visualização única fica fora da exportação.
           </p>
+          <HistoryPreprocessing sessionId={sessionId} conversationIds={[chat.id]} disabled={busy} onBusyChange={setBusy}/>
           <div className="contact-tools-row">
             <button className="button" disabled={busy} onClick={() => void download(false)}>
               <Download size={15} />

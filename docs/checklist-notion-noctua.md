@@ -1,132 +1,114 @@
-# Noctua CRM — checklist de testes
+# Noctua — meu checklist de revisão
 
-> **Como usar no Notion:** importe este arquivo Markdown. Cada item `- [ ]` deve aparecer como uma caixa de tarefa marcável. Marque somente depois de testar no site.
->
-> **Estados do código:** ✅ implementado; 🟡 parcial; ⬜ pendente. “Implementado” quer dizer que encontrei código para a função, não que ela já foi validada no seu computador.
+Atualizado em 26/10/2026. Importe este Markdown no Notion para transformar os itens em caixas marcáveis. As caixas abaixo são para a SUA revisão; os testes já executados estão no relatório de verificação.
 
-## Parte 1 — Estrutura, personalização e CRM
+✅ Encontrado no código · 🟡 Parcial · ⬜ Não implementado · 🔌 Depende de serviço/configuração externa. Implementação não significa aprovação visual.
 
-- [ ] 🟡 Testar o layout em diferentes tamanhos de tela, zoom do navegador e resoluções. **Código:** app shell fluido existe; ainda há alguns tamanhos fixos.
-- [ ] 🟡 Conferir alinhamento e tipografia entre navegadores. **Código:** reset global está parcialmente coberto pelo Tailwind; falta o reset explícito solicitado.
-- [ ] ✅ Alterar tema, cor e densidade; salvar, atualizar a página e conferir se permanece.
-- [ ] ✅ Confirmar que as preferências visuais são salvas na conta e aparecem em outro navegador/dispositivo.
-- [ ] ✅ Confirmar que o nome do sistema permanece “noctua”.
-- [ ] 🟡 Reordenar etiquetas e conferir a ordem nos filtros e no Kanban.
-- [ ] ✅ Abrir a busca global com `Ctrl + K`, pesquisar conversa/campanha e navegar para o resultado.
-- [ ] ✅ Criar/editar oportunidade no CRM e preencher valor em R$.
-- [ ] 🟡 Conferir os indicadores de receita/ROI por etiqueta e campanha. **Limite:** atribuição automática ainda é parcial.
-- [ ] 🟡 Testar tema claro/escuro, animações, notificações e aparência das telas principais.
-- [ ] 🟡 Testar no celular: lista de conversas → conversa em tela cheia → ferramentas/drawer.
+**Antes dos testes de IA:** o Google recusou a geração com HTTP 403: nível gratuito indisponível neste projeto. A chave consulta modelos, mas isso não comprova cota de geração. Nenhum faturamento foi ativado.
+**Envios reais:** pausados a pedido do usuário. Pratique no Espaço de Teste; não dispare campanhas para clientes durante a revisão.
 
+## Parte 1 — Estrutura global, personalização e CRM
+
+- [ ] 🟡 App shell usa `100vw`, `100dvh`, flex e colunas fluidas; ainda há larguras e espaçamentos fixos em alguns pontos.
+- [ ] ✅ Reset explícito em styles.css: box-sizing/margens/padding, raiz de 16px, text-size-adjust e suavização de fonte. Compatibilidade visual ainda exige conferência nos navegadores.
+- [ ] ✅ Personalização de tema, cores, densidade, dimensões/posição do HUD e opções do menu.
+- [ ] ✅ Preferências visuais são salvas pelo servidor para a conta; confirme em outro navegador/dispositivo.
+- [ ] ✅ Nome do produto permanece fixo como “noctua” na configuração atual.
+- [ ] 🟡 Gestão/ordenação de etiquetas e renomeação de menus existe; confira cores/ícones e a ordem em filtros e Kanban.
+- [ ] ✅ Command Palette com `Ctrl + K`, busca de conversas e campanhas e navegação para áreas do sistema.
+- [ ] ✅ CRM com quadro/funil e valores de oportunidade em R$.
+- [ ] 🟡 Indicadores financeiros existem, mas o retorno por campanha/etiqueta não está totalmente atribuído automaticamente.
+- [ ] 🟡 Tema premium, animações, estados de hover e toasts existem em parte da interface; consistência visual ainda requer revisão tela a tela.
+- [ ] 🟡 Há comportamento responsivo/mobile; validar navegação lista → conversa → ferramentas em celular e tablet.
 ## Parte 2 — Atendimento e HUD
 
-- [ ] ✅ Abrir Personalizar Atendimento, mudar ordem/visibilidade do HUD e confirmar as alterações.
-- [ ] ✅ Reabrir a tela e conferir se a personalização foi mantida.
-- [ ] ✅ Pesquisar conversas, alternar filtros e selecionar etiquetas.
-- [ ] ✅ Conferir a prioridade visual/SLA das conversas.
-- [ ] ✅ Criar uma nota interna e confirmar que ela não aparece como mensagem enviada ao cliente.
-- [ ] ✅ Gerar o resumo da conversa e conferir se apresenta três pontos.
-- [ ] ✅ Usar o Copiloto para melhorar um texto e sugerir resposta a uma objeção. **Requer:** provedor de IA configurado.
-- [ ] ✅ Digitar `/` no compositor e localizar um recurso da biblioteca.
-- [ ] ✅ Gravar áudio, ouvir/revisar e enviar em conversa de teste.
-- [ ] ✅ Solicitar transcrição de áudio recebido. **Requer:** provedor/modelo configurado.
-- [ ] ✅ Conferir presença “digitando/gravando” em envio ou fluxo compatível.
-- [ ] 🟡 Conferir indicação de mensagem apagada pelo cliente. **Depende:** evento disponível pela conexão WhatsApp.
+- [ ] ✅ Painel de ferramentas do atendimento, preferências do HUD, ordem e visibilidade dos blocos.
+- [ ] ✅ Personalizar Atendimento com prévia em todas as abas, botão Ampliar prévia, controles compactos e confirmação das alterações.
+- [ ] ✅ Lista de conversas com abas/filtros, etiquetas e ordenação por SLA/urgência.
+- [ ] ✅ Notas internas em modo privado.
+- [ ] ✅ Resumo de conversa em três pontos.
+- [ ] ✅ Copiloto para melhorar texto e apoiar objeções, sujeito às credenciais/configuração do provedor de IA.
+- [ ] ✅ Atalho `/` para localizar recursos da biblioteca.
+- [ ] ✅ Gravação de áudio no compositor, com indicador visual de gravação.
+- [ ] ✅ Anexos de áudio, biblioteca e sequências são convertidos para OGG/Opus e enviados como nota de voz PTT; áudio musical deve ser enviado como documento.
+- [ ] ✅ Anexo WAV enviado para o número de teste autorizado na conexão Teste: convertido para OGG/Opus, `isPtt=true`, sem erro e com confirmação `READ` do WhatsApp em 25/10/2026.
+- [ ] 🔌 Conferir gravação pelo microfone e aparência do balão no dispositivo destinatário; biblioteca/funil já tiveram envio PTT confirmado como lido.
+- [ ] ✅ Ação de transcrever áudio recebida, com resultado exibido na conversa; depende do provedor/modelo configurado.
+- [ ] ✅ Presença de “digitando/gravando” em envios diretos e sequências compatíveis.
+- [ ] 🟡 Mensagens apagadas pelo cliente podem receber indicação, dependendo dos dados/eventos fornecidos pelo WhatsApp.
+## Parte 3 — Exportação, Excel, campanhas, agenda, biblioteca e modais
 
-## Parte 3 — Exportação, contatos, campanhas e biblioteca
+- [ ] 🟡 Exportação de histórico em formatos estruturados e opção de incluir mídia; mídias antigas podem não estar mais disponíveis.
+- [ ] 🟡 Pré-processamento antes de exportar percorre mídias com autorização explícita, progresso, cancelamento, cache e avisos. Interrompe em recusa do provedor. Validado com IA simulada; geração real depende de projeto disponível.
+- [ ] 🟡 IA usa conhecimento aprovado e exemplos de conversas; isso é orientação por contexto, não treinamento/fine-tuning de modelo.
+- [ ] 🟡 Importação CSV/XLSX com limpeza e prévia. Testados título antes do cabeçalho, colunas trocadas, duplicatas, CSV com ponto e vírgula e nome entre aspas. Linhas ignoradas mantêm o número original; planilha vazia tem erro claro. XLS binário legado validado, incluindo acentos, telefone numérico e linha original da duplicata.
+- [ ] ✅ Campanhas com listas/etiquetas, inatividade, conteúdo, intervalos/pausas, prévia e monitoramento.
+- [ ] 🟡 Intervalos variáveis ajudam a espaçar envios, mas não garantem prevenção de bloqueios.
+- [ ] ✅ Agenda com busca/autocomplete de contato e criação de lembretes/envios agendados.
+- [ ] ✅ Biblioteca com categorias e recursos de texto, áudio, mídia, documento, funil/fluxo e operações de gestão.
+- [ ] ✅ Modais de transferência, mensagens fixadas e conexão de sessão/QR disponíveis no fluxo da aplicação.
+- [ ] 🟡 Testar no WhatsApp de teste seleção do responsável, nota interna, categorias de fixados e ciclo conectar/desconectar QR.
+## Parte 4 — Simulador, Sandbox, ajuda e reset seguro
 
-- [ ] 🟡 Exportar histórico de uma conversa e abrir o arquivo resultante.
-- [ ] 🟡 Exportar incluindo mídias e conferir arquivos disponíveis. **Limite:** mídia antiga pode não estar mais no WhatsApp; transcrição/descrição não é gerada automaticamente para todo o histórico.
-- [ ] 🟡 Conferir exemplos de conversa aprovados usados pela IA. **Limite:** isso orienta a resposta; não treina nem altera o modelo base.
-- [ ] 🟡 Importar um CSV/XLSX pequeno, conferir a prévia, nomes e telefones limpos.
-- [ ] 🟡 Importar planilha com colunas fora de ordem e dados misturados; revisar o resultado antes de salvar.
-- [ ] 🟡 Conferir importação de arquivo `.xls` antigo.
-- [ ] ✅ Criar campanha de teste com lista/etiqueta e filtro de inatividade; revisar o público antes de salvar.
-- [ ] ✅ Conferir mídia, intervalos, pausas e painel de monitoramento da campanha.
-- [ ] 🟡 Salvar campanha como rascunho e validar os intervalos. **Limite:** intervalos não garantem que o WhatsApp nunca bloqueará um número.
-- [ ] ✅ Criar lembrete e mensagem agendada; testar a busca/autocomplete de contato.
-- [ ] ✅ Na Biblioteca, criar um texto, áudio ou mídia, atribuir categoria e abrir a prévia.
-- [ ] ✅ Usar favorito, busca, edição, duplicação e exclusão em um recurso de teste.
-- [ ] ✅ Testar transferência de conversa com responsável e nota interna.
-- [ ] ✅ Testar mensagens fixadas por categoria.
-- [ ] ✅ Conectar/desconectar uma sessão de teste pelo QR Code.
+- [ ] 🟡 Simulador de fluxo e conversa com IA; agora mostra quais fontes de contexto foram enviadas e permite salvar uma resposta corrigida como exemplo aprovado. Não mostra raciocínio interno do modelo.
+- [ ] ✅ Espaço de Teste integrado ao menu, com dados fictícios locais, recursos, conversas, CRM de exemplo, agenda, campanhas simuladas, equipe e fluxo virtual.
+- [ ] 🟡 O Sandbox tem conversas, cenários e controles fictícios; não valida automaticamente todas as funções reais do sistema.
+- [ ] ✅ Central de Ajuda acessível pelo botão corrigido do menu e organizada em quatro guias: Conexões; Autoatendimento e IA; Campanhas/Excel; Atendimento/equipe/atalhos.
+- [ ] ✅ Zona de segurança com backup JSON, confirmação em duas etapas e trava digitando `EXCLUIR`.
+- [ ] ✅ Reset exige papel administrador e bloqueia quando há sessão conectada ou tarefa de envio ativa. **Não testar apagamento na instalação real.**
+- [ ] 🟡 O backup inclui cópia do banco e chave de recuperação; guardar o JSON em local privado e validar restauração em cópia separada antes de confiar nele.
+## Parte 5 — Gemini, criação visual, mídia e auditoria
 
-## Parte 4 — Simulador, Sandbox, ajuda e backup
+- [ ] ✅ Gemini aceita modelos rápido e de raciocínio por tarefa; botão Consultar modelos disponíveis usa catálogo paginado da API e rejeita número de projeto como modelo. Geração real bloqueada por HTTP 403 no projeto atual.
+- [ ] ✅ Gerenciador de chaves Gemini no menu de IA: a principal pode ser substituída/excluída; extras podem ser renomeadas, ter o segredo substituído, ativadas/desativadas, reordenadas e removidas. Segredos cifrados e nunca exibidos.
+- [ ] ✅ A troca automática ocorre quando a API informa cota diária esgotada (`PerDay`); limite por minuto, chave inválida ou erro de modelo não fazem rotação.
+- [ ] 🔌 Confirmar rotação com dois projetos Gemini distintos e verificar estado/última chave usada; não esgote deliberadamente uma chave de produção para testar.
+- [ ] ✅ Histórico do estúdio de IA persistente e separado por conversa/cliente (`client_ai_thread`).
+- [ ] ✅ Gerador no atendimento com três modelos de prompt, proporções 1:1/9:16 e referência por arquivo, colagem ou imagem da conversa; requer Gemini com geração de imagem habilitada.
+- [ ] 🟡 Modelos de marca d’água com PNG/texto, tamanho, opacidade, posição/mosaico e prévia Canvas. Imagens e vídeos anexados recebem a marca; falha bloqueia o envio. Vídeo validado por pixels em teste isolado. Imagem do estúdio pode ser preparada como anexo com revisão, legenda e marca; validação com geração real ainda bloqueada pelo provedor.
+- [ ] ✅ Upload de imagens e vídeos pela conversa e biblioteca passa pelo otimizador FFmpeg do servidor; imagens também são otimizadas no compositor. Se a otimização não reduzir o tamanho, o original é mantido.
+- [ ] 🟡 Imagens/PDFs podem retornar candidato com valor/data/pagador. A confirmação exige ação humana, marca oportunidade como ganha e aplica etiqueta com “pago” no nome se existir. Exige provedor/modelo visual compatível.
+- [ ] ✅ Player de áudio com 1x/1,5x/2x e opção de pular pausas longas, depende do suporte de áudio do navegador.
+- [ ] ✅ Ao encerrar conversa, tenta salvar nota de 0–10 e feedback de IA; depende de IA ativa, credencial e conversa com histórico.
+- [ ] 🟡 Análise/transcrição sob demanda e processamento automático de mídia pela IA ativa; PDFs são aceitos com Gemini. Confirmar tipos e disponibilidade de mídia na sessão real.
+## Parte 6 — Follow-up, distribuição, anúncios e proteção de envios
 
-- [ ] 🟡 Simular um fluxo e reiniciar a conversa simulada. **Limite:** identificação da regra/memória usada e calibração inline estão incompletas.
-- [ ] ⬜ Abrir o Espaço de Teste pelo menu e carregar dados fictícios. **Código:** a página existe, mas ainda não está ligada ao menu.
-- [ ] 🟡 No Sandbox, testar mensagens, etiquetas, transferências e dados de exemplo sem alterar conversas reais.
-- [ ] 🟡 Abrir a Central de Ajuda e conferir os guias. **Limite:** faltam as pastas e tutoriais detalhados pedidos.
-- [ ] ✅ Gerar um backup JSON e confirmar que o arquivo foi baixado.
-- [ ] 🟡 Validar restauração do backup somente em uma cópia separada da instalação.
-- [ ] ⬜ **Não testar em dados reais:** reset geral apaga informações. Só testar em ambiente descartável, com backup confirmado.
-
-## Parte 5 — Gemini, mídia e auditoria
-
-- [ ] 🟡 Configurar Gemini como provedor e validar uma tarefa simples. **Limite:** os motores Flash/Pro/Imagem ainda não estão separados por função.
-- [ ] ⬜ Conferir histórico persistente de criação de IA separado para cada cliente.
-- [ ] ⬜ Conferir geração de imagem pelo atendimento, com referência e proporções.
-- [ ] ⬜ Conferir marca d’água configurável e sua prévia.
-- [ ] ⬜ Conferir compressão automática de imagem e vídeo no envio e na biblioteca.
-- [ ] ⬜ Conferir identificação de comprovante e ação de mover para “Pago”.
-- [ ] ⬜ Conferir velocidades 1x/1,5x/2x e pulo de silêncio no player.
-- [ ] ⬜ Encerrar conversa de teste e conferir nota/feedback de auditoria da IA.
-- [ ] 🟡 Fazer análise/transcrição de mídia manual e conferir o resultado. **Requer:** chave/modelo configurado.
-
-## Parte 6 — Follow-up, distribuição e opt-out
-
-- [ ] ⬜ Configurar sequência de follow-up individual e confirmar que uma resposta do cliente cancela os próximos envios.
-- [ ] ⬜ Conferir troca automática de etiqueta após campanha, remarketing ou agendamento.
-- [ ] ⬜ Conferir identificação de anúncio CTWA/referral e etiqueta automática.
-- [ ] ⬜ Conferir resumo prioritário dos contatos atendidos durante a noite às 08:00.
-- [ ] 🟡 Ativar round-robin e conferir distribuição. **Limite:** validar se considera somente atendentes online.
-- [ ] ⬜ Conferir validação de conta WhatsApp real dos números importados. **A limpeza de formato não comprova que o número tem WhatsApp.**
-- [ ] ⬜ Conferir rotação entre chips, failover e aquecimento.
-- [ ] 🟡 Marcar contato manualmente como opt-out e confirmar exclusão de campanhas futuras.
-- [ ] ⬜ Enviar uma resposta de teste como “Parar” e conferir aplicação automática da blacklist/etiqueta opt-out.
-
+- [ ] ✅ Follow-up individual de até 5 mensagens de texto, cancelado imediatamente ao receber resposta e novamente conferido antes do envio.
+- [ ] ✅ Campanha/agendamento pode remover uma etiqueta e aplicar outra depois do envio final, com mensagens/mídias em sequência.
+- [ ] 🟡 Captura de metadados CTWA/referral, cartão de origem na conversa e aplica etiqueta existente com “anúncio” no nome. Testar formatos reais de anúncio e miniatura não disponível em todas as versões Baileys.
+- [ ] 🟡 Resumo prioritário heurístico às 08:00 com contatos noturnos aguardando retorno ou menções de intenção de compra; não usa IA e precisa validar fuso horário e qualidade dos sinais.
+- [ ] ✅ Rodízio entre atendentes ativos e com presença online recente (até 90 segundos).
+- [ ] ⬜ Consulta silenciosa para provar se números têm WhatsApp ativo. O pré-processamento atual pode normalizar números, mas não confirma conta ativa.
+- [ ] ⬜ Rotação de múltiplos chips e aquecimento em conversas artificiais não foram adicionados. Não automatizo conversas falsas nem mecanismos para contornar os controles antispam do WhatsApp.
+- [ ] ✅ Regras configuráveis de opt-out; ao receber termo no começo da mensagem ou frase configurada, marca contato, aplica etiqueta compatível e cancela envios futuros.
 ## Parte 7 — Economia de IA e contexto
 
-- [ ] 🟡 Conferir registro de uso de IA. **Limite:** ainda não há painel completo de economia com chaves individuais.
-- [ ] ⬜ Configurar e testar cache semântico; editar/remover uma resposta guardada.
-- [ ] 🟡 Fazer uma pergunta que exista no conhecimento aprovado e conferir o contexto recuperado. **Limite:** busca atual é simples, sem índice vetorial e sem garantia dos 2–3 trechos.
-- [ ] ⬜ Deixar conversa longa e conferir resumo automático configurável + últimas mensagens.
-- [ ] 🟡 Solicitar análise de áudio/imagem e repetir para conferir reutilização de resultado armazenado.
-- [ ] ⬜ Usar botão para otimizar regras/prompts e conferir antes/depois.
-- [ ] ⬜ Testar roteamento automático entre modelo econômico e modelo de raciocínio.
+- [ ] 🟡 Aba “Economia de Tokens”, controles globais e por sistema, estimativa de tokens/chamadas poupados e estimativa de uso; validar quais módulos usam cada controle.
+- [ ] 🟡 Cache local com similaridade lexical/sinônimos, validade configurável, edição e limpeza; limitado a respostas automáticas de texto sem valores/números. Não usa embeddings vetoriais.
+- [ ] 🟡 Busca lexical recupera até três trechos curtos da base aprovada e três exemplos; não há indexador vetorial.
+- [ ] ✅ Resumo periódico ajustável; ao responder, usa resumo salvo e últimas três mensagens. Se a síntese falha, recua para as dez mensagens recentes.
+- [ ] ✅ Com IA e análise de mídia autorizadas, mensagens novas são transcritas/descritas e ficam salvas; PDFs via Gemini. Alguns formatos precisam ser validados na conexão real.
+- [ ] ✅ Otimizador de regras com prévia e aplicação explícita, e seleção rápida/profunda por tarefa usando os modelos configurados. O provedor precisa suportar ambos os identificadores.
+## Sistemas gerais presentes no site
 
-## Sistemas principais do site
+- [ ] ✅ Acesso por conta e separação de sessão/workspace.
+- [ ] ✅ Conexões WhatsApp e leitura de QR Code.
+- [ ] ✅ Caixa de entrada: lista, pesquisa, filtros e seleção de conversa.
+- [ ] ✅ Envio de texto/mídia, respostas padrão, biblioteca e notas internas.
+- [ ] ✅ Contatos, etiquetas, campos de cliente e oportunidades/CRM.
+- [ ] ✅ Campanhas, listas importadas, agendamentos e fluxos.
+- [ ] ✅ Equipe, departamentos e transferência de atendimento.
+- [ ] ✅ Personalização visual e de HUD.
+- [ ] ✅ Backup operacional e configurações de acesso.
+- [ ] 🟡 Notificações, integrações e dependências de serviços externos precisam de credenciais e validação na conta real.
 
-- [ ] ✅ Entrar na conta e conferir o workspace/sessão selecionados.
-- [ ] ✅ Conectar WhatsApp e confirmar sincronização de conversas.
-- [ ] ✅ Pesquisar, filtrar e abrir conversas na caixa de entrada.
-- [ ] ✅ Enviar texto e mídia em conversa de teste.
-- [ ] ✅ Usar respostas padrão e confirmar envio pelo fluxo esperado.
-- [ ] ✅ Criar/editar contato, etiqueta e dados do cliente.
-- [ ] ✅ Criar oportunidade de CRM e conferir etapa/valor.
-- [ ] ✅ Criar e simular fluxo sem enviar mensagens reais.
-- [ ] ✅ Criar lembrete e conferir a Agenda.
-- [ ] ✅ Cadastrar atendente/departamento e testar transferência em conversa de teste.
-- [ ] ✅ Alterar a personalização do HUD e conferir no Atendimento.
-- [ ] 🟡 Conferir notificações e integrações. **Requer:** serviços e credenciais da conta configurados.
-- [ ] 🟡 Conferir site publicado na Vercel e rotas internas após atualizar/recarregar a página.
+## Aprovação final
 
-## Registro do teste
+- [ ] Conferi minhas preferências e o HUD no computador.
+- [ ] Conferi no celular e em outro navegador.
+- [ ] Resolvi a disponibilidade do projeto Gemini e testei o simulador.
+- [ ] Revisei as limitações e pendências, sem considerar tudo pronto apenas por compilar.
+- [ ] Confirmei backup e restauração em uma cópia descartável; não resetei a instalação real.
+- [ ] Enviei a especificação da Parte 8, se ela ainda fizer parte do projeto.
 
-- Data: ____________________
-- Navegador/dispositivo: ____________________
-- Conversa/sessão de teste usada: ____________________
-- Problemas encontrados: ____________________
-- Próximo item para testar: ____________________
-
-## Pendências de desenvolvimento identificadas
-
-- [ ] Integrar o Sandbox ao menu e completar a calibração do simulador.
-- [ ] Completar os recursos avançados de mídia/auditoria da Parte 5.
-- [ ] Implementar follow-up, origem de anúncios, validador, rotação e opt-out automático da Parte 6.
-- [ ] Implementar painel de Economia de Tokens e otimizações da Parte 7.
-- [ ] Fechar lacunas de exportação multimídia e importação `.xls` da Parte 3.
-- [ ] Revisar visual e responsividade manualmente nos dispositivos usados.
-- [ ] Enviar a especificação da Parte 8 para incluí-la nesta lista.
-
-> **Segurança:** não use campanhas para clientes reais durante os testes; não execute o reset geral na instalação com dados que deseja manter; guarde backups e chaves em local privado.
+Revisão de 26/10/2026: [relatório atualizado, resultados e bloqueios](verification/relatorio-revisao-2026-10-26.md). Suíte final completa com 121 testes aprovados, nenhuma falha; etapa XLS e pré-processamento concluída no código e em testes isolados. Nenhum envio real novo após o pedido de pausa.

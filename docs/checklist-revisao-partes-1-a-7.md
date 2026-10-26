@@ -10,9 +10,11 @@
 - Marque **Teste feito** somente depois de conferir no site. Os quadrinhos começam vazios de propósito.
 - Funções que enviam mensagens ou apagam dados devem ser testadas somente em sessão de teste e com dados fictícios.
 
+> **Atualização de 26/10/2026:** nenhum novo envio real enquanto o usuário descansa. Catálogo Gemini consultado com sucesso, mas geração recusada com HTTP 403: nível gratuito indisponível para o projeto. Nenhum faturamento foi ativado. As caixas de teste pessoal continuam separadas do relatório de verificações executadas.
+
 ## Resumo da revisão
 
-- Parte 1: base visual, personalização, command palette, CRM/Kanban e responsividade existem; há diferenças em relação ao reset CSS e à atribuição automática de ROI.
+- Parte 1: base visual, reset explícito, personalização, command palette, CRM/Kanban e responsividade existem; atribuição automática de ROI e validação entre navegadores seguem parciais.
 - Parte 2: HUD, ferramentas, respostas, notas internas, Copiloto, gravação, transcrição e alertas de conversa existem em boa parte. Alguns comportamentos precisam de validação real.
 - Parte 3: biblioteca, exportação, campanhas, agenda e modais principais existem; exportação multimídia e alguns formatos/automatizações são parciais.
 - Parte 4: simulador, Sandbox integrado ao menu, quatro guias da Central de Ajuda e zona de segurança estão no código; calibração e isolamento ainda precisam de teste manual.
@@ -28,7 +30,7 @@
 | Estado no código | Recurso | Teste feito |
 |---|---|---|
 | Parcial | App shell usa `100vw`, `100dvh`, flex e colunas fluidas; ainda há larguras e espaçamentos fixos em alguns pontos. | [ ] |
-| Parcial | CSS global/Tailwind já normaliza parte dos estilos, mas não encontrei o reset explícito completo nem a raiz tipográfica exatamente como especificados. | [ ] |
+| Implementado | Reset explícito em styles.css: box-sizing/margens/padding, raiz de 16px, text-size-adjust e suavização de fonte. Compatibilidade visual ainda exige conferência nos navegadores. | [ ] |
 | Implementado | Personalização de tema, cores, densidade, dimensões/posição do HUD e opções do menu. | [ ] |
 | Implementado | Preferências visuais são salvas pelo servidor para a conta; confirme em outro navegador/dispositivo. | [ ] |
 | Implementado | Nome do produto permanece fixo como “noctua” na configuração atual. | [ ] |
@@ -44,7 +46,7 @@
 | Estado no código | Recurso | Teste feito |
 |---|---|---|
 | Implementado | Painel de ferramentas do atendimento, preferências do HUD, ordem e visibilidade dos blocos. | [ ] |
-| Implementado | Personalizar Atendimento com prévia e confirmação das alterações. | [ ] |
+| Implementado | Personalizar Atendimento com prévia em todas as abas, botão Ampliar prévia, controles compactos e confirmação das alterações. | [ ] |
 | Implementado | Lista de conversas com abas/filtros, etiquetas e ordenação por SLA/urgência. | [ ] |
 | Implementado | Notas internas em modo privado. | [ ] |
 | Implementado | Resumo de conversa em três pontos. | [ ] |
@@ -53,7 +55,7 @@
 | Implementado | Gravação de áudio no compositor, com indicador visual de gravação. | [ ] |
 | Implementado | Anexos de áudio, biblioteca e sequências são convertidos para OGG/Opus e enviados como nota de voz PTT; áudio musical deve ser enviado como documento. | [ ] |
 | Validado no teste real | Anexo WAV enviado para o número de teste autorizado na conexão Teste: convertido para OGG/Opus, `isPtt=true`, sem erro e com confirmação `READ` do WhatsApp em 25/10/2026. | [x] |
-| Pendente de teste real | Conferir também uma gravação feita pelo microfone e os áudios de biblioteca/sequências no dispositivo destinatário. | [ ] |
+| Pendente de teste real | Conferir gravação pelo microfone e aparência do balão no dispositivo destinatário; biblioteca/funil já tiveram envio PTT confirmado como lido. | [ ] |
 | Implementado | Ação de transcrever áudio recebida, com resultado exibido na conversa; depende do provedor/modelo configurado. | [ ] |
 | Implementado | Presença de “digitando/gravando” em envios diretos e sequências compatíveis. | [ ] |
 | Parcial | Mensagens apagadas pelo cliente podem receber indicação, dependendo dos dados/eventos fornecidos pelo WhatsApp. | [ ] |
@@ -63,9 +65,9 @@
 | Estado no código | Recurso | Teste feito |
 |---|---|---|
 | Parcial | Exportação de histórico em formatos estruturados e opção de incluir mídia; mídias antigas podem não estar mais disponíveis. | [ ] |
-| Parcial | Transcrição/descrição de mídia é usada quando já foi gerada e salva; não encontrei pré-processamento automático de todo o histórico antes da exportação. | [ ] |
+| Parcial | Pré-processamento antes de exportar percorre mídias com autorização explícita, progresso, cancelamento, cache e avisos. Interrompe em recusa do provedor. Validado com IA simulada; geração real depende de projeto disponível. | [ ] |
 | Parcial | IA usa conhecimento aprovado e exemplos de conversas; isso é orientação por contexto, não treinamento/fine-tuning de modelo. | [ ] |
-| Parcial | Importação de contatos de CSV/Excel com limpeza e prévia; validar cabeçalhos embaralhados, números misturados e comportamento com `.xls` legado. | [ ] |
+| Parcial | Importação CSV/XLSX com limpeza e prévia. Testados título antes do cabeçalho, colunas trocadas, duplicatas, CSV com ponto e vírgula e nome entre aspas. Linhas ignoradas mantêm o número original; planilha vazia tem erro claro. XLS binário legado validado, incluindo acentos, telefone numérico e linha original da duplicata. | [ ] |
 | Implementado | Campanhas com listas/etiquetas, inatividade, conteúdo, intervalos/pausas, prévia e monitoramento. | [ ] |
 | Parcial | Intervalos variáveis ajudam a espaçar envios, mas não garantem prevenção de bloqueios. | [ ] |
 | Implementado | Agenda com busca/autocomplete de contato e criação de lembretes/envios agendados. | [ ] |
@@ -80,7 +82,7 @@
 | Parcial | Simulador de fluxo e conversa com IA; agora mostra quais fontes de contexto foram enviadas e permite salvar uma resposta corrigida como exemplo aprovado. Não mostra raciocínio interno do modelo. | [ ] |
 | Implementado | Espaço de Teste integrado ao menu, com dados fictícios locais, recursos, conversas, CRM de exemplo, agenda, campanhas simuladas, equipe e fluxo virtual. | [ ] |
 | Parcial | O Sandbox tem conversas, cenários e controles fictícios; não valida automaticamente todas as funções reais do sistema. | [ ] |
-| Implementado | Central de Ajuda reorganizada em quatro guias: Conexões; Autoatendimento e IA; Campanhas/Excel; Atendimento/equipe/atalhos. | [ ] |
+| Implementado | Central de Ajuda acessível pelo botão corrigido do menu e organizada em quatro guias: Conexões; Autoatendimento e IA; Campanhas/Excel; Atendimento/equipe/atalhos. | [ ] |
 | Implementado | Zona de segurança com backup JSON, confirmação em duas etapas e trava digitando `EXCLUIR`. | [ ] |
 | Implementado | Reset exige papel administrador e bloqueia quando há sessão conectada ou tarefa de envio ativa. **Não testar apagamento na instalação real.** | [ ] |
 | Parcial | O backup inclui cópia do banco e chave de recuperação; guardar o JSON em local privado e validar restauração em cópia separada antes de confiar nele. | [ ] |
@@ -89,13 +91,13 @@
 
 | Estado no código | Recurso | Teste feito |
 |---|---|---|
-| Implementado | Gemini aceita modelo rápido e de raciocínio configuráveis por tarefa; confirme que ambos estão disponíveis na conta. | [ ] |
+| Implementado | Gemini aceita modelos rápido e de raciocínio por tarefa; botão Consultar modelos disponíveis usa catálogo paginado da API e rejeita número de projeto como modelo. Geração real bloqueada por HTTP 403 no projeto atual. | [ ] |
 | Implementado | Gerenciador de chaves Gemini no menu de IA: a principal pode ser substituída/excluída; extras podem ser renomeadas, ter o segredo substituído, ativadas/desativadas, reordenadas e removidas. Segredos cifrados e nunca exibidos. | [ ] |
 | Implementado | A troca automática ocorre quando a API informa cota diária esgotada (`PerDay`); limite por minuto, chave inválida ou erro de modelo não fazem rotação. | [ ] |
 | Pendente de teste real | Confirmar rotação com dois projetos Gemini distintos e verificar estado/última chave usada; não esgote deliberadamente uma chave de produção para testar. | [ ] |
 | Implementado | Histórico do estúdio de IA persistente e separado por conversa/cliente (`client_ai_thread`). | [ ] |
 | Implementado | Gerador no atendimento com três modelos de prompt, proporções 1:1/9:16 e referência por arquivo, colagem ou imagem da conversa; requer Gemini com geração de imagem habilitada. | [ ] |
-| Parcial | Modelos de marca d’água, PNG, opacidade, posição/mosaico e prévia; envio de imagem aplica a marca. Vídeos e envio direto da imagem gerada ainda não passam pelo mesmo processamento. | [ ] |
+| Parcial | Modelos de marca d’água com PNG/texto, tamanho, opacidade, posição/mosaico e prévia Canvas. Imagens e vídeos anexados recebem a marca; falha bloqueia o envio. Vídeo validado por pixels em teste isolado. Imagem do estúdio pode ser preparada como anexo com revisão, legenda e marca; validação com geração real ainda bloqueada pelo provedor. | [ ] |
 | Implementado | Upload de imagens e vídeos pela conversa e biblioteca passa pelo otimizador FFmpeg do servidor; imagens também são otimizadas no compositor. Se a otimização não reduzir o tamanho, o original é mantido. | [ ] |
 | Parcial | Imagens/PDFs podem retornar candidato com valor/data/pagador. A confirmação exige ação humana, marca oportunidade como ganha e aplica etiqueta com “pago” no nome se existir. Exige provedor/modelo visual compatível. | [ ] |
 | Implementado | Player de áudio com 1x/1,5x/2x e opção de pular pausas longas, depende do suporte de áudio do navegador. | [ ] |
@@ -155,13 +157,15 @@
 
 ## Pendências que precisam de prioridade antes de chamar de pronto
 
-1. Complementar o teste de áudio anexado já aprovado com gravação pelo microfone e envios de biblioteca/sequências no dispositivo destinatário.
+1. Complementar os envios de voz anexada e de biblioteca/funil já lidos com gravação pelo microfone e conferência visual no dispositivo destinatário.
 2. Validar a troca de chave Gemini com dois projetos distintos sem consumir de propósito toda a cota de produção.
-3. Fechar as lacunas da Parte 3: planilhas legadas/despadronizadas e exportação multimídia com processamento prévio quando a mídia ainda estiver acessível.
+3. Fechar as lacunas da Parte 3: geração real das análises de mídia do exportador, após disponibilizar o projeto Gemini. XLS legado e preparação sequencial já foram implementados e testados.
 4. Validar a Parte 5 com credenciais/modelos reais; vídeo com marca d’água e envio direto da imagem gerada permanecem parciais.
 5. Testar CTWA/referral, virada de turno e opt-out com eventos reais de teste; consulta silenciosa de números e aquecimento/rotação de chips não foram implementados.
 6. Conferir a cobertura por módulo da Economia de Tokens; o RAG atual é lexical, não um índice vetorial/embeddings.
 7. Revisar escala, mobile e acabamento visual manualmente nos navegadores e dispositivos usados.
 8. Receber a especificação da Parte 8 para incluí-la nesta auditoria.
 
-**Nota sobre validação (25/10/2026):** as verificações de tipos do servidor e da interface e suas compilações passaram na revisão anterior. Após restabelecer o controle da aba autenticada, a conexão Teste foi confirmada como conectada. Um áudio sintético de 2 segundos foi anexado pelo atendimento e enviado ao número autorizado: o banco registrou OGG/Opus, `isPtt=true`, nenhum erro e estado `READ` retornado pelo WhatsApp. A evidência visual está em `verification/audio-voice-test-2026-10-25.png`. Os dois testes automatizados específicos de áudio passaram. A suíte anterior carregava a configuração Firebase do site, causando falhas 401; o comando de testes agora usa configuração isolada, sem alterar a autenticação do servidor em uso. Também foi corrigida a expressão de escala do conversor de vídeo; seu teste com clipe MP4 válido passou. A nova execução completa será registrada ao terminar.
+**Nota sobre validação (25/10/2026):** as verificações de tipos do servidor e da interface e suas compilações passaram na revisão anterior. Após restabelecer o controle da aba autenticada, a conexão Teste foi confirmada como conectada. Um áudio sintético de 2 segundos foi anexado pelo atendimento e enviado ao número autorizado: o banco registrou OGG/Opus, `isPtt=true`, nenhum erro e estado `READ` retornado pelo WhatsApp. A evidência visual está em `verification/audio-voice-test-2026-10-25.png`. Os dois testes automatizados específicos de áudio passaram. A suíte anterior carregava a configuração Firebase do site, causando falhas 401; o comando de testes agora usa configuração isolada, sem alterar a autenticação do servidor em uso. Também foi corrigida a expressão de escala do conversor de vídeo; seu teste com clipe MP4 válido passou. A execução completa mais recente passou com 110 testes e nenhuma falha. Também foram confirmados envios reais de texto, imagem, vídeo, documento, voz por biblioteca/funil, macro, resposta padrão, campanha, agenda, lembrete privado e cancelamento automático de follow-up: a resposta recebida às 22h15min11s cancelou o retorno das 22h21min51s antes de qualquer envio. Consulte o relatório em verification/relatorio-testes-2026-10-25.md para distinguir as confirmações das pendências.
+
+Revisão de 26/10/2026: [relatório atualizado, resultados e bloqueios](verification/relatorio-revisao-2026-10-26.md). Suíte final completa com 121 testes aprovados, nenhuma falha; etapa XLS e pré-processamento concluída no código e em testes isolados. Nenhum envio real novo após o pedido de pausa.

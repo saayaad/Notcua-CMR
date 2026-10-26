@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import * as XLSX from 'xlsx';
 import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { z } from 'zod';
@@ -7,6 +8,24 @@ import { AppError } from '../../shared/errors.js';
 import { json } from '../backups/validation.js';
 import { retryDatabaseOperation } from '../../database/retry.js';
 import { putRecord } from './records.js';
+function csvDelimiter(text: string) {
+  const candidates = [',', ';', '\t'];
+  const counts = candidates.map(() => 0);
+  let quoted = false;
+  let records = 0;
+  for (let index = 0; index < text.length && records < 20; index++) {
+    const char = text[index];
+    if (char === '"') {
+      if (quoted && text[index + 1] === '"') { index++; continue; }
+      quoted = !quoted;
+    }
+    if (quoted) continue;
+    if (char === '\n') records++;
+    const candidate = candidates.indexOf(char!);
+    if (candidate >= 0) counts[candidate] = (counts[candidate] ?? 0) + 1;
+  }
+  return candidates[counts.indexOf(Math.max(...counts))]!;
+}
 export function normalizeLeadPhone(value: string, countryCode = '55', areaCode = '') {
   const matches = value.match(/\+?\d[\d\s().-]{6,}\d/g) ?? [];
   if (matches.length !== 1) return '';
@@ -122,23 +141,44 @@ export class ContactsService {
     try {
       if (/\.csv$/i.test(input.filename)) {
         const text = bytes.toString('utf8').replace(/^\uFEFF/, '');
-        const delimiter = text.split('\n')[0]!.includes(';') ? ';' : ',';
+        const delimiter = csvDelimiter(text);
         await book.csv.read(Readable.from([text]), { parserOptions: { delimiter, trim: true } });
       } else if (/\.xlsx$/i.test(input.filename)) await book.xlsx.load(bytes as never);
+      else if (/\.xls$/i.test(input.filename)) {
+        const legacy = XLSX.read(bytes, { type: 'buffer', cellFormula: false, cellHTML: false, sheetRows: 5002 });
+        const source = legacy.Sheets[legacy.SheetNames[0] ?? ''];
+        if (!source?.['!ref']) throw new AppError(422, 'A planilha está vazia.');
+        const range = XLSX.utils.decode_range(source['!fullref'] ?? source['!ref']);
+        if (range.e.r >= 5001 || range.e.c >= 100)
+          throw new AppError(422, 'Divida a planilha em arquivos de até 5.000 linhas e 100 colunas.');
+        const target = book.addWorksheet('Contatos');
+        for (let row = range.s.r; row <= range.e.r; row++) {
+          for (let col = range.s.c; col <= range.e.c; col++) {
+            const cell = source[XLSX.utils.encode_cell({ r: row, c: col })];
+            if (!cell || cell.v === undefined || cell.v === null) continue;
+            target.getCell(row + 1, col + 1).value = typeof cell.v === 'number' && Number.isSafeInteger(cell.v)
+              ? String(cell.v) : XLSX.utils.format_cell(cell);
+          }
+        }
+      }
       else throw new Error();
-    } catch {
-      throw new AppError(422, 'Não foi possível ler. Use .xlsx ou .csv válido.');
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError(422, 'Não foi possível ler. Use .xls, .xlsx ou .csv válido e sem senha.');
     }
     const sheet = book.worksheets[0];
     if (!sheet) throw new AppError(422, 'A planilha está vazia.');
     if (sheet.rowCount > 5001 || sheet.columnCount > 100)
       throw new AppError(422, 'Divida a planilha em arquivos de até 5.000 linhas e 100 colunas.');
     const rows: string[][] = [];
+    const rowNumbers: number[] = [];
     sheet.eachRow((row) => {
       const values: string[] = [];
       row.eachCell({ includeEmpty: true }, (cell, col) => (values[col - 1] = cell.text.trim()));
       rows.push(values);
+      rowNumbers.push(row.number);
     });
+    if (!rows.length) throw new AppError(422, 'A planilha está vazia.');
     const headerIndex = rows
       .slice(0, 15)
       .findIndex((row) =>
@@ -169,16 +209,17 @@ export class ContactsService {
     const rejected: { row: number; reason: string }[] = [];
     const seen = new Set<string>();
     for (const [index, row] of candidate.entries()) {
+      const sourceRow = rowNumbers[index + Math.max(0, headerIndex + 1)]!;
       const phone = normalizeLeadPhone(row[phoneColumn] ?? '', input.countryCode, input.areaCode);
       if (!phone) {
         rejected.push({
-          row: index + Math.max(0, headerIndex + 1) + 1,
+          row: sourceRow,
           reason: 'Telefone ausente, ambíguo ou inválido. Para números locais, informe o DDD padrão.',
         });
         continue;
       }
       if (seen.has(phone)) {
-        rejected.push({ row: index + 1, reason: 'Telefone repetido no arquivo.' });
+        rejected.push({ row: sourceRow, reason: 'Telefone repetido no arquivo.' });
         continue;
       }
       seen.add(phone);

@@ -2,7 +2,7 @@ import { chooseCampaignText } from './campaign-text.js';
 import { safetyRoutes } from './safety.routes.js';
 import { simulatorRoutes } from './simulator.routes.js';
 import { clientAiRoutes } from './client-ai.js';
-import { textCompletion } from './ai-provider.js';
+import { textCompletion, listGeminiModels } from './ai-provider.js';
 import { directoryRoutes, teamDirectory } from './team-directory.js';
 import { Router } from 'express';
 import { retryDatabaseOperation } from '../../database/retry.js';
@@ -24,6 +24,7 @@ import { aiControl, setAiControl } from './ai-control.js';
 import { aiUsage } from './ai-provider.js';
 import { preprocessMedia } from './ai-media.js';
 import { exportHistory } from './history-export.js';
+import { historyPreprocessingRoutes } from './history-preprocessing.js';
 import type { Batch, Delivery } from './delivery.worker.js';
 import { toolboxRoutes } from './toolbox.routes.js';
 import { macroRoutes } from './macros.routes.js';
@@ -64,6 +65,7 @@ const profile = z.object({
 });
 export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, messaging: MessagingService) {
   const router = Router();
+  router.use(historyPreprocessingRoutes(db, messaging));
   const contacts = new ContactsService(db);
   router.use('/safety', safetyRoutes(db, whatsapp));
   router.use('/simulator', simulatorRoutes(db));
@@ -196,7 +198,20 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
   router.put('/settings/:key', async (req, res) => {
     const key = z.enum(['business', 'preferences', 'departments', 'shortcuts', 'watermarks', 'optout']).parse(req.params.key);
     if (key !== 'preferences') admin(res.locals.identity.role);
-    const data = z.record(z.string().max(100), z.json()).parse(req.body);
+    let data = z.record(z.string().max(100), z.json()).parse(req.body);
+    if (key === 'watermarks') {
+      const mark = z.object({
+        id: z.string().min(1).max(100), name: z.string().trim().min(1).max(80),
+        text: z.string().trim().max(120), opacity: z.number().min(10).max(90),
+        size: z.number().min(50).max(200).default(100),
+        position: z.enum(['bottom-right', 'center', 'diagonal']),
+        imageData: z.string().max(1_400_000).refine(value => !value || /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(value), 'Use um selo PNG local.').optional(),
+      }).refine(value => Boolean(value.text || value.imageData), 'Informe o texto ou o selo da marca d’água.');
+      const settings = z.object({ enabledByDefault: z.boolean(), activeId: z.string().max(100), marks: z.array(mark).min(1).max(20) })
+        .refine(value => new Set(value.marks.map(item => item.id)).size === value.marks.length, 'Os modelos devem ter identificadores distintos.')
+        .refine(value => !value.activeId || value.marks.some(item => item.id === value.activeId), 'Selecione um modelo existente.').parse(data);
+      data = settings;
+    }
     if (key === 'preferences') data.brandingName = 'noctua';
     if (JSON.stringify(data).length > (key === 'watermarks' ? 2_000_000 : 30000)) throw new AppError(413, 'Configuração muito grande.');
     await putRecord(
@@ -962,6 +977,13 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     try { res.json(JSON.parse(result.text.replace(/^```(?:json)?\s*|\s*```$/g, '').trim())); }
     catch { throw new AppError(502, 'A IA retornou um formato inválido; nenhuma regra foi alterada.'); }
   });
+  router.get('/ai/models', async (_req, res) => {
+    admin(res.locals.identity.role);
+    const settings = await record<AgentSettings | null>(db, 'integration:ai', null);
+    if (settings?.provider !== 'gemini' || !hasConfiguredKey(settings))
+      throw new AppError(422, 'Salve uma chave Google Gemini antes de consultar os modelos disponíveis.');
+    res.json({ models: await listGeminiModels(db, settings) });
+  });
   router.put('/ai', async (req, res) => {
     admin(res.locals.identity.role);
     const input = z
@@ -989,6 +1011,14 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       })
       .parse(req.body);
     const previous = await record<AgentSettings | null>(db, 'integration:ai', null);
+    if (input.provider === 'gemini') {
+      for (const field of ['model', 'fastModel', 'reasoningModel', 'mediaModel', 'imageModel'] as const) {
+        input[field] = input[field].trim().replace(/^models\//, '');
+        if (input[field] && !/^[a-zA-Z][a-zA-Z0-9._-]*$/.test(input[field]))
+          throw new AppError(422, 'Use o identificador do modelo Gemini, não o número do projeto. Consulte os modelos disponíveis na integração de IA.');
+      }
+      if (!input.model) throw new AppError(422, 'Escolha um modelo de atendimento Gemini.');
+    }
     const { apiKey, ...settings } = input;
     let encryptedKey =
       settings.provider === (previous?.provider ?? 'openai') ? previous?.encryptedKey : undefined;

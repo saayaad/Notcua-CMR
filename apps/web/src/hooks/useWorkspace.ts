@@ -5,12 +5,21 @@ import { io } from 'socket.io-client';
 import { useApi, errorMessage } from '../context/ApiContext';
 import type { Library, Session } from '../types';
 import { usePreferences } from '../context/PreferencesContext';
+import { firebaseAuth } from '../auth/firebase';
 
 export function useWorkspace() {
   const { request, token, notify } = useApi();
   const { preferences } = usePreferences();
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [sessionId, setSessionId] = useState('');
+  const selectionKey = `noctua-active-session:${firebaseAuth?.currentUser?.uid ?? 'local'}`;
+  const [sessionId, setSessionId] = useState(() => {
+    try { return localStorage.getItem(selectionKey) ?? ''; } catch { return ''; }
+  });
+  useEffect(() => {
+    if (sessionId) {
+      try { localStorage.setItem(selectionKey, sessionId); } catch { /* Storage can be unavailable in private browsing. */ }
+    }
+  }, [sessionId, selectionKey]);
   const [revision, setRevision] = useState(0);
   const [library, setLibrary] = useState<Library>({ assets: [], funnels: [], macros: [], pixKeys: [] });
   const [loading, setLoading] = useState(true);

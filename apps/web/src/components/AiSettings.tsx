@@ -14,6 +14,9 @@ export function AiSettings() {
   const [provider, setProvider] = useState('openai');
   const [revision, setRevision] = useState(0);
   const [showKeySettings, setShowKeySettings] = useState(true);
+  const [models, setModels] = useState<{ id: string; name: string }[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [modelsError, setModelsError] = useState('');
   useEffect(() => {
     void request<Record<string, unknown>>('/operations/ai')
       .then((result) => {
@@ -52,6 +55,20 @@ export function AiSettings() {
         Defina as regras, escolha o provedor e acompanhe o consumo. Cada conversa tem seu próprio controle de
         pausa.
       </p>
+      {provider === 'gemini' && <section className="notice">
+        <strong>Modelos disponíveis na sua chave</strong>
+        <p>Consulte o catálogo Google antes de escolher. O identificador do modelo é diferente do número do projeto. A consulta não gera conteúdo nem ativa respostas automáticas.</p>
+        <button type="button" className="button small" disabled={loadingModels} onClick={() => {
+          setLoadingModels(true); setModelsError('');
+          void request<{ models: { id: string; name: string }[] }>('/operations/ai/models')
+            .then(result => setModels(result.models))
+            .catch(error => setModelsError(errorMessage(error)))
+            .finally(() => setLoadingModels(false));
+        }}>{loadingModels ? <Spinner/> : null}Consultar modelos disponíveis</button>
+        {modelsError && <p role="alert">{modelsError}</p>}
+        {models.length > 0 && <p role="status">{models.length} modelos encontrados. Digite no campo de modelo para ver as sugestões. Estar no catálogo não garante cota para geração.</p>}
+        <datalist id="gemini-model-catalog">{models.map(model => <option key={model.id} value={model.id}>{model.name}</option>)}</datalist>
+      </section>}
       <div className="form-grid">
         <div className="notice">
           <strong>{usage?.todayTokens.toLocaleString('pt-BR') ?? 0}</strong> tokens hoje ·{' '}
@@ -121,6 +138,7 @@ export function AiSettings() {
             Modelo de atendimento
             <input
               name="model"
+              list={provider === 'gemini' ? 'gemini-model-catalog' : undefined}
               required
               maxLength={100}
               defaultValue={String(data.model ?? '')}
@@ -206,13 +224,13 @@ export function AiSettings() {
         {provider === 'gemini' && (
           <>
             <div className="form-grid">
-              <label>Modelo rápido · tarefas simples<input name="fastModel" maxLength={100} defaultValue={String(data.fastModel ?? '')} placeholder="Ex.: identificador Gemini Flash habilitado" /></label>
-              <label>Modelo de raciocínio · tarefas complexas<input name="reasoningModel" maxLength={100} defaultValue={String(data.reasoningModel ?? '')} placeholder="Ex.: identificador Gemini Pro habilitado" /></label>
+              <label>Modelo rápido · tarefas simples<input name="fastModel" list="gemini-model-catalog" maxLength={100} defaultValue={String(data.fastModel ?? '')} placeholder="Ex.: identificador Gemini Flash habilitado" /></label>
+              <label>Modelo de raciocínio · tarefas complexas<input name="reasoningModel" list="gemini-model-catalog" maxLength={100} defaultValue={String(data.reasoningModel ?? '')} placeholder="Ex.: identificador Gemini Pro habilitado" /></label>
             </div>
             <small className="muted">O classificador usa o motor rápido por padrão e o de raciocínio para negociação, auditoria e tarefas complexas. A disponibilidade depende dos modelos habilitados na sua conta Google AI.</small>
             <label>
               Modelo de geração de imagens
-              <input name="imageModel" maxLength={100} defaultValue={String(data.imageModel ?? '')} placeholder="Identificador de modelo Gemini com geração de imagens" />
+              <input name="imageModel" list="gemini-model-catalog" maxLength={100} defaultValue={String(data.imageModel ?? '')} placeholder="Identificador de modelo Gemini com geração de imagens" />
               <small>A geração pode ter consumo e limites próprios na conta Google.</small>
             </label>
           </>
@@ -221,6 +239,7 @@ export function AiSettings() {
           Modelo de análise de mídia
           <input
             name="mediaModel"
+            list={provider === 'gemini' ? 'gemini-model-catalog' : undefined}
             maxLength={100}
             defaultValue={String(data.mediaModel ?? '')}
             placeholder="Modelo com suporte às mídias escolhidas"

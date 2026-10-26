@@ -4,6 +4,7 @@ import type { Conversation, Message } from '../types';
 import { useApi, errorMessage } from '../context/ApiContext';
 import { Modal, Spinner } from './ui';
 import { Select } from './Select';
+import { prepareAttachment } from '../context/attendance';
 
 type ThreadEntry = { id: string; role: 'user' | 'assistant'; kind: 'text' | 'image'; text: string; fileId?: string; createdAt: string };
 type ReferenceImage = { data: string; mimeType: 'image/png' | 'image/jpeg' | 'image/webp'; name: string; url: string };
@@ -113,7 +114,10 @@ export function ClientAiStudio({ chat, sessionId, messages, onClose }: { chat: C
       {tab === 'chat' ? (
         <>
           <div className="client-ai-log" ref={log} aria-live="polite">
-            {loading ? <Spinner/> : entries.length ? entries.map((entry) => <ThreadBubble key={entry.id} entry={entry}/>) : <p className="empty-text">Nenhuma criação ainda. Este espaço é exclusivo para este cliente.</p>}
+            {loading ? <Spinner/> : entries.length ? entries.map((entry) => <ThreadBubble key={entry.id} entry={entry} onUseImage={(file) => {
+              if (prepareAttachment({ sessionId, conversationId: chat.id, file })) onClose();
+              else notify('Não foi possível preparar o anexo. Volte à conversa, feche outro anexo ou saia do modo Nota interna e tente novamente.', true);
+            }}/>) : <p className="empty-text">Nenhuma criação ainda. Este espaço é exclusivo para este cliente.</p>}
           </div>
           <form className="client-ai-composer" onSubmit={sendText}>
             <textarea rows={2} maxLength={6000} value={text} onChange={(event) => setText(event.target.value)} placeholder="Converse com a IA sobre este cliente…" />
@@ -158,18 +162,19 @@ export function ClientAiStudio({ chat, sessionId, messages, onClose }: { chat: C
   );
 }
 
-function ThreadBubble({ entry }: { entry: ThreadEntry }) {
+function ThreadBubble({ entry, onUseImage }: { entry: ThreadEntry; onUseImage: (file: File) => void }) {
   const { blob, notify } = useApi();
   const [url, setUrl] = useState('');
+  const [imageFile, setImageFile] = useState<Blob | null>(null);
   const urlRef = useRef('');
   useEffect(() => {
     if (!entry.fileId) return;
     let active = true;
     void blob(`/files/${encodeURIComponent(entry.fileId)}`).then((file) => {
       const objectUrl = URL.createObjectURL(file);
-      if (active) { urlRef.current = objectUrl; setUrl(objectUrl); } else URL.revokeObjectURL(objectUrl);
+      if (active) { urlRef.current = objectUrl; setUrl(objectUrl); setImageFile(file); } else URL.revokeObjectURL(objectUrl);
     }).catch((error) => { if (active) notify(errorMessage(error), true); });
     return () => { active = false; if (urlRef.current) URL.revokeObjectURL(urlRef.current); };
   }, [blob, entry.fileId, notify]);
-  return <article className={`client-ai-bubble ${entry.role}`}><small>{entry.role === 'user' ? 'Você' : 'Assistente'}</small><p>{entry.text}</p>{entry.fileId && (url ? <img src={url} alt="Imagem gerada para este cliente"/> : <Spinner/>)}</article>;
+  return <article className={`client-ai-bubble ${entry.role}`}><small>{entry.role === 'user' ? 'Você' : 'Assistente'}</small><p>{entry.text}</p>{entry.fileId && (url ? <><img src={url} alt="Imagem gerada para este cliente"/>{imageFile && <><button type="button" className="button small" onClick={() => onUseImage(new File([imageFile], `criacao-noctua-${entry.id}.png`, { type: imageFile.type || 'image/png' }))}><Send size={14}/>Preparar envio ao cliente</button><small>Abre a prévia do anexo para legenda e marca d’água. O envio exige confirmação na conversa.</small></>}</> : <Spinner/>)}</article>;
 }

@@ -14,6 +14,7 @@ firebase-admin*.json
 *.sqlite
 *.sqlite-*
 coverage/
+/docs/verification/importacao-xls-2026-10-26.png
 /backups/
 /apps/server/backups/
 *.log

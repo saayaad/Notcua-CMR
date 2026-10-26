@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { PrismaClient } from '@prisma/client';
+import { createSqliteClient } from '../src/database/sqlite-client.js';
 import request from 'supertest';
 import { BackupService } from '../src/modules/backups/backup.service.js';
 import { createApp } from '../src/app.js';
@@ -15,7 +16,7 @@ import { stableDigest, stableStringify, digest } from '../src/modules/backups/va
 import { setTimeout as delay } from 'node:timers/promises';
 
 const directory = await mkdtemp(join(tmpdir(), 'noctua-test-'));
-const db = new PrismaClient({ datasourceUrl: `file:${join(directory, 'test.db').replace(/\\/g, '/')}` });
+const db = createSqliteClient(`file:${join(directory, 'test.db').replace(/\\/g, '/')}`);
 const copyDb = new PrismaClient({ datasourceUrl: `file:${join(directory, 'copy.db').replace(/\\/g, '/')}` });
 const service = new BackupService(db);
 const fixture = JSON.parse(

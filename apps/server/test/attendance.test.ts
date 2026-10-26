@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { PrismaClient } from '@prisma/client';
+import { createSqliteClient } from '../src/database/sqlite-client.js';
 import { makeEventBuffer, type AnyMessageContent, type WAMessage } from '@whiskeysockets/baileys';
 import { pino } from 'pino';
 import request from 'supertest';
@@ -59,7 +59,7 @@ class OutboundSocket implements WhatsappSocket {
 }
 const directory = await mkdtemp(join(tmpdir(), 'noctua-attendance-'));
 const url = `file:${join(directory, 'test.db').replace(/\\/g, '/')}`;
-const db = new PrismaClient({ datasourceUrl: url });
+const db = createSqliteClient(url);
 const socket = new OutboundSocket();
 const whatsapp = new WhatsappService(
   db,
@@ -230,6 +230,28 @@ test('vídeo circular e imagem preservam opções, legenda e formato nativo', as
     messaging.send(sessionId, conversationId, { requestId: 'wrong-file', kind: 'image', fileId: video.id }),
     /tipo do arquivo/,
   );
+});
+
+test('marca d’água é incorporada ao vídeo e GIF mantém os bytes originais', async () => {
+  const ffmpeg = createRequire(import.meta.url)('ffmpeg-static') as string;
+  const clip = execFileSync(ffmpeg, [
+    '-nostdin', '-v', 'error', '-f', 'lavfi', '-i', 'color=c=black:s=32x32:d=0.1',
+    '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-f', 'mp4', '-movflags', 'frag_keyframe+empty_moov', 'pipe:1',
+  ], { windowsHide: true });
+  const overlay = execFileSync(ffmpeg, [
+    '-nostdin', '-v', 'error', '-f', 'lavfi', '-i', 'color=c=red:s=32x32',
+    '-frames:v', '1', '-c:v', 'png', '-f', 'image2pipe', 'pipe:1',
+  ], { windowsHide: true });
+  const marked = await media.upload({ base64: clip.toString('base64'), mimeType: 'video/mp4', filename: 'amostra.mp4', watermark: overlay.toString('base64') });
+  const stored = await db.storedFile.findUniqueOrThrow({ where: { id: marked.id } });
+  const frame = execFileSync(ffmpeg, ['-nostdin', '-v', 'error', '-i', 'pipe:0', '-frames:v', '1', '-pix_fmt', 'rgb24', '-f', 'rawvideo', 'pipe:1'], { input: Buffer.from(stored.data), windowsHide: true });
+  assert.ok(frame[0]! > 200 && frame[1]! < 50 && frame[2]! < 50, 'o primeiro pixel deve conter a camada vermelha, não o vídeo preto original');
+  await assert.rejects(() => media.upload({ base64: clip.toString('base64'), mimeType: 'video/mp4', watermark: Buffer.from('png inválido').toString('base64') }), /marca d’água/);
+  const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+  const preserved = await media.upload({ base64: gif.toString('base64'), mimeType: 'image/gif', filename: 'animacao.gif' });
+  const original = await db.storedFile.findUniqueOrThrow({ where: { id: preserved.id } });
+  assert.equal(preserved.mimeType, 'image/gif');
+  assert.deepEqual(Buffer.from(original.data), gif);
 });
 
 test('PIX usa TLV, moeda BRL e CRC16; chave aleatória deve existir no banco do recebedor', () => {

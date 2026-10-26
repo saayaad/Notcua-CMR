@@ -6,6 +6,8 @@ import { CredentialCipher } from '../whatsapp/credential-cipher.js';
 import { env } from '../../config/env.js';
 import { putRecord, record, type AgentSettings } from './records.js';
 const budgetQueue = new SerialQueue();
+class ProviderRejection extends AppError {}
+const rejectedBeforeGeneration = (status: number) => [400, 401, 403, 404, 413, 422, 429].includes(status);
 interface Usage {
   inputTokens: number;
   outputTokens: number;
@@ -28,7 +30,7 @@ export async function aiUsage(db: PrismaClient) {
         total.todayTokens += usage.inputTokens + usage.outputTokens;
         total.todayRequests++;
       }
-      if (usage.status !== 'COMPLETED') total.unconfirmed++;
+      if (usage.status === 'RESERVED' || usage.status === 'UNCONFIRMED') total.unconfirmed++;
       return total;
     },
     { todayTokens: 0, todayRequests: 0, monthCost: 0, unconfirmed: 0 },
@@ -78,6 +80,12 @@ export async function meteredCall<T>(
     });
     return response.result;
   } catch (error) {
+    if (error instanceof ProviderRejection) {
+      await putRecord(db, id, 'AI_USAGE', {
+        ...reserved, inputTokens: 0, outputTokens: 0, estimatedCost: 0, status: 'REJECTED',
+      });
+      throw error;
+    }
     // A timeout does not prove that the provider did not charge; retain the reservation.
     await putRecord(db, id, 'AI_USAGE', { ...reserved, status: 'UNCONFIRMED' });
     throw error;
@@ -90,6 +98,26 @@ export async function providerKey(settings: AgentSettings, encryptedKey = settin
   );
 }
 type GeminiKey = { id: string; label: string; encryptedKey: string; enabled: boolean };
+export async function listGeminiModels(db: PrismaClient, settings: AgentSettings) {
+  const models = new Map<string, { id: string; name: string; description: string }>();
+  let pageToken: string | undefined;
+  for (let page = 0; page < 20; page++) {
+    const url = new URL('https://generativelanguage.googleapis.com/v1beta/models');
+    url.searchParams.set('pageSize', '100');
+    if (pageToken) url.searchParams.set('pageToken', pageToken);
+    const data = await geminiResponse(db, settings, url.toString(), {
+      method: 'GET', signal: AbortSignal.timeout(30_000),
+    });
+    for (const model of data.models ?? []) {
+      if (typeof model.name !== 'string' || !model.supportedGenerationMethods?.includes('generateContent')) continue;
+      const id = model.name.replace(/^models\//, '');
+      models.set(id, { id, name: String(model.displayName ?? id), description: String(model.description ?? '').slice(0, 500) });
+    }
+    pageToken = typeof data.nextPageToken === 'string' ? data.nextPageToken : undefined;
+    if (!pageToken) return [...models.values()].sort((a, b) => a.id.localeCompare(b.id));
+  }
+  throw new AppError(502, 'O catálogo de modelos excedeu o limite de páginas. Tente novamente mais tarde.');
+}
 function dailyQuotaExhausted(status: number, data: any) {
   if (status !== 429) return false;
   const details = JSON.stringify(data?.error?.details ?? []);
@@ -101,7 +129,7 @@ export async function geminiResponse(db: PrismaClient, settings: AgentSettings, 
     ...(settings.encryptedKey ? [{ id: 'primary', label: 'Chave principal', encryptedKey: settings.encryptedKey, enabled: true }] : []),
     ...(settings.fallbackKeys ?? []).filter((key) => key.enabled),
   ];
-  if (!candidates.length) throw new AppError(422, 'Cadastre uma chave da API Gemini nas configurações de IA.');
+  if (!candidates.length) throw new ProviderRejection(422, 'Cadastre uma chave da API Gemini nas configurações de IA.');
   const cipher = await CredentialCipher.load(env.WHATSAPP_KEY_FILE);
   const now = Date.now();
   const available: GeminiKey[] = [];
@@ -109,7 +137,7 @@ export async function geminiResponse(db: PrismaClient, settings: AgentSettings, 
     const exhausted = await record<{ until: number } | null>(db, `ai-key-quota:${key.id}`, null);
     if (!exhausted || exhausted.until <= now) available.push(key);
   }
-  if (!available.length) throw new AppError(429, 'A cota diária de todas as chaves Gemini cadastradas foi atingida. Ela será verificada novamente mais tarde.');
+  if (!available.length) throw new ProviderRejection(429, 'A cota diária de todas as chaves Gemini cadastradas foi atingida. Ela será verificada novamente mais tarde.');
   for (let index = 0; index < available.length; index++) {
     const key = available[index]!;
     const secret = cipher.decrypt<string>(Buffer.from(key.encryptedKey, 'base64'));
@@ -124,21 +152,24 @@ export async function geminiResponse(db: PrismaClient, settings: AgentSettings, 
     if (dailyQuotaExhausted(response.status, data)) {
       await putRecord(db, `ai-key-quota:${key.id}`, 'AI_KEY_QUOTA', { until: now + 24 * 60 * 60 * 1000, exhaustedAt: new Date().toISOString() });
       if (index < available.length - 1) continue;
-      throw new AppError(429, 'A cota diária das chaves Gemini disponíveis foi atingida. Adicione uma chave de outro projeto Google Cloud com cota própria.');
+      throw new ProviderRejection(429, 'A cota diária das chaves Gemini disponíveis foi atingida. Adicione uma chave de outro projeto Google Cloud com cota própria.');
     }
     const message = String(data?.error?.message ?? 'Erro desconhecido');
     if (response.status === 429)
-      throw new AppError(429, `Limite temporário da Gemini atingido para “${key.label}”. Aguarde e tente novamente; a próxima chave só será usada quando a cota diária for esgotada.`);
-    throw new AppError(502, `Gemini não concluiu a solicitação (HTTP ${response.status}): ${message.slice(0, 400)}`);
+      throw new ProviderRejection(429, `Limite temporário da Gemini atingido para “${key.label}”. Aguarde e tente novamente; a próxima chave só será usada quando a cota diária for esgotada.`);
+    const ErrorType = rejectedBeforeGeneration(response.status) ? ProviderRejection : AppError;
+    throw new ErrorType(502, `Gemini não concluiu a solicitação (HTTP ${response.status}): ${message.slice(0, 400)}`);
   }
   throw new AppError(429, 'Cota diária Gemini esgotada.');
 }
 export async function providerResponse(response: Response) {
-  if (!response.ok)
-    throw new AppError(
+  if (!response.ok) {
+    const ErrorType = rejectedBeforeGeneration(response.status) ? ProviderRejection : AppError;
+    throw new ErrorType(
       502,
       `O provedor de IA não concluiu a solicitação (HTTP ${response.status}). Confira a chave, o modelo e os limites.`,
     );
+  }
   return response.json();
 }
 export async function textCompletion(

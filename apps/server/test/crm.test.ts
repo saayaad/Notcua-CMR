@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { PrismaClient } from '@prisma/client';
+import { createSqliteClient } from '../src/database/sqlite-client.js';
 import { makeEventBuffer } from '@whiskeysockets/baileys';
 import { LabelAssociationType } from '@whiskeysockets/baileys/lib/Types/LabelAssociation.js';
 import { pino } from 'pino';
@@ -42,7 +42,7 @@ class CrmSocket implements WhatsappSocket {
 }
 const directory = await mkdtemp(join(tmpdir(), 'noctua-crm-'));
 const url = `file:${join(directory, 'crm.db').replace(/\\/g, '/')}`;
-const db = new PrismaClient({ datasourceUrl: url });
+const db = createSqliteClient(url);
 const socket = new CrmSocket();
 const whatsapp = new WhatsappService(
   db,

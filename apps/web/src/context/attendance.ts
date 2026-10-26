@@ -8,6 +8,16 @@ export interface DraftInsert {
   conversationId: string;
   text: string;
 }
+export interface AttachmentDraftInsert {
+  sessionId: string;
+  conversationId: string;
+  file: File;
+}
+export function prepareAttachment(detail: AttachmentDraftInsert) {
+  const event = new CustomEvent<AttachmentDraftInsert>('noctua:prepare-attachment', { detail, cancelable: true });
+  window.dispatchEvent(event);
+  return event.defaultPrevented;
+}
 export const shortcutOptions = [
   { id: 'faq', name: 'Respostas padrão', key: 'Alt+1' },
   { id: 'MESSAGE', name: 'Textos', key: 'Alt+2' },

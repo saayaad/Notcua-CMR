@@ -17,13 +17,17 @@ Conexão: **Teste**. Envios reais limitados ao contato autorizado com final **35
 - [x] Importação: lista com um único contato e etiqueta de teste, sem disparo ao importar.
 - [x] Etiqueta no cliente: aplicação de Importante sem remover os vínculos anteriores.
 - [x] Recuperação após reinicialização: integridade SQLite `quick_check=ok`, dados preservados e WhatsApp reconectado sem novo QR Code.
+- [x] Campanha individual: fila revisada com um único telefone, execução COMPLETED e mensagem lida.
+- [x] Reteste da remoção independente de etiqueta: envio lido, Importante removida e demais vínculos preservados.
+- [x] Lembrete interno: execução COMPLETED e aviso privado criado, sem mensagem ao WhatsApp.
+- [x] Atualização da página preserva a conexão Teste selecionada.
 
 ## Em conferência
 
-- [ ] Campanha individual: rascunho e fila revisados com um único telefone; ativação em verificação após a reinicialização.
-- [ ] Reteste real da remoção de etiqueta após o envio, agora independente da adição de outra etiqueta.
-- [ ] Follow-up e lembrete interno no contato de teste.
-- [ ] Resposta padrão, macros, transferência e encerramento no contato de teste.
+- [x] Follow-up: resposta real às 22h15min11s cancelou a tarefa prevista para 22h21min51s; nenhuma mensagem dessa tarefa foi enviada.
+- [x] Resposta padrão: prévia personalizada e envio único confirmado como lido.
+- [x] Macro: duas mensagens na ordem configurada, execução COMPLETED e ambas lidas.
+- [ ] Transferência e encerramento no contato de teste.
 - [ ] Copiloto, transcrição e simulador com o provedor de IA configurado.
 - [ ] Personalização/HUD, busca global, CRM, Sandbox e Central de Ajuda pela interface.
 
@@ -36,11 +40,22 @@ Conexão: **Teste**. Envios reais limitados ao contato autorizado com final **35
 - A escolha de uma planilha preserva o nome da lista que já foi digitado.
 - A remoção automática de etiqueta agora pode ser usada sozinha e agenda sincronização com o WhatsApp quando a etiqueta possui vínculo remoto.
 - “Ver envios” mostra nome e telefone de cada destinatário; a consulta preserva o isolamento por conexão.
+- Requisições usam o token atual do Firebase e renovam uma vez em caso de rejeição 401. Falhas de rede/500 não repetem envios incertos.
+- A renovação de token do mesmo usuário preserva o aplicativo montado; a validação inicial mostra “Verificando seu acesso”.
+- A conexão selecionada é lembrada por usuário no navegador e validada contra as conexões disponíveis.
+- A confirmação de lembrete informa que não envia mensagens ao WhatsApp.
+
+- O SQLite agora utiliza WAL, conexão única e espera de até 30 segundos; gravações idempotentes de registros têm repetição limitada para falhas transitórias. Envios de mensagens não são repetidos por essa correção.
 
 ## Verificação automatizada
 
-A execução completa anterior concluiu **103 testes aprovados, sem falhas**. O novo teste da remoção independente de etiqueta também passou isoladamente. A execução completa com esse novo caso foi interrompida pela queda do PC e está sendo repetida; seu resultado final será registrado aqui.
+A execução completa mais recente concluiu **110 testes aprovados, sem falhas**, incluindo gerenciamento de chaves Gemini, renovação de autenticação, proteção contra repetição de envios e concorrência do SQLite. A configuração de banco utiliza WAL, uma conexão e espera limitada para reduzir conflitos entre sincronização e gravações. O teste de concorrência preservou as gravações simultâneas.
 
 Teste automatizado não equivale a aprovação visual de todas as telas ou a validação de todos os serviços externos. Reset geral, exclusão de credenciais reais e envio a outros clientes não fazem parte dos testes na operação real.
 
 Evidência de áudio: [captura do envio](audio-voice-test-2026-10-25.png).
+
+
+Compilação final desta rodada: servidor e interface aprovados. O Vite apontou apenas aviso de pacote principal acima de 500 kB; isso permanece como oportunidade de otimização do carregamento. Esta rodada não publicou uma nova versão na Vercel.
+
+Revisão seguinte: [26/10/2026 — correções e testes sem novos envios](relatorio-revisao-2026-10-26.md).

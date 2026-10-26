@@ -120,6 +120,7 @@ export function attendanceRoutes(
         filename: z.string().max(200).optional(),
         mimeType: z.string().optional(),
         voice: z.boolean().optional(),
+        watermark: z.string().max(6_000_000).optional(),
       })
       .parse(req.body);
     res.status(201).json(await media.upload(input));

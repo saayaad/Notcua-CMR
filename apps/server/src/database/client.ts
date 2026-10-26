@@ -1,4 +1,4 @@
-import '../config/env.js';
-import { PrismaClient } from '@prisma/client';
+import { env } from '../config/env.js';
+import { createSqliteClient } from './sqlite-client.js';
 
-export const prisma = new PrismaClient();
+export const prisma = createSqliteClient(env.DATABASE_URL);

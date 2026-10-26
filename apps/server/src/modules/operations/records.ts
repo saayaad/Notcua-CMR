@@ -1,15 +1,16 @@
 import type { PrismaClient } from '@prisma/client';
 import { json } from '../backups/validation.js';
+import { retryDatabaseOperation } from '../../database/retry.js';
 export async function record<T>(db: PrismaClient, id: string, fallback: T): Promise<T> {
   const value = await db.operationRecord.findUnique({ where: { id } });
   return value ? (value.data as T) : fallback;
 }
 export async function putRecord(db: PrismaClient, id: string, kind: string, data: unknown) {
-  return db.operationRecord.upsert({
+  return retryDatabaseOperation(() => db.operationRecord.upsert({
     where: { id },
     create: { id, kind, data: json(data) },
     update: { data: json(data) },
-  });
+  }));
 }
 export interface AgentSettings {
   provider?: 'openai' | 'anthropic' | 'gemini';
