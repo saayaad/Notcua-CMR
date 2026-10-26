@@ -118,3 +118,8 @@ Interface conferida: abertura da biblioteca, agrupamento por botão, painel flut
 A tentativa automatizada de arrastar uma aba não mudou a disposição. O recurso está implementado pela biblioteca, mas sua conferência manual entre navegadores continua na checklist. Nenhuma mensagem foi enviada nesta etapa. A captura visual ficou somente na pasta temporária local, sem publicação de conteúdo da conta no GitHub.
 
 Validação: suíte completa com **132 testes aprovados, nenhuma falha**, seguida de **5 testes aprovados** de layout/rota após acrescentar a regressão da Vercel. Guia e checklist: [paineis-atendimento.md](../paineis-atendimento.md).
+
+
+### Confirmação manual do arraste de abas
+
+Em 26/10/2026, o usuário confirmou que consegue arrastar a aba Biblioteca e fixados e encaixá-la em outro painel. O gesto está aprovado no navegador em uso. A cobertura específica de Chrome, Edge, Firefox e Safari permanece separada na revisão entre navegadores.

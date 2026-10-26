@@ -33,4 +33,5 @@ Fechar uma aba oculta o painel, sem apagar a conversa ou a biblioteca. Reabra-o 
 - [x] Salvamento e recuperação da disposição ao reativar o modo.
 - [x] Rascunho de teste preservado ao flutuar e reencaixar; um único compositor; nenhum envio realizado.
 - [x] Testes isolados de recuperação, limites de monitor, rejeição de componentes desconhecidos e descarte de dados de conversa do layout.
-- [ ] Conferência manual do arraste de abas em Chrome, Edge, Firefox e Safari. A automação confirmou o arraste de divisórias; a tentativa de arraste de aba não mudou a disposição no navegador de testes.
+- [x] Arraste e encaixe de abas confirmados manualmente pelo usuário no navegador em uso em 26/10/2026. A automação confirmou o arraste de divisórias.
+- [ ] Conferência específica em outros navegadores: Chrome, Edge, Firefox e Safari.
