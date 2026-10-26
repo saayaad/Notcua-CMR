@@ -38,6 +38,13 @@ import { preprocessMedia } from '../src/modules/operations/ai-media.js';
 import { SyncService } from '../src/modules/whatsapp/sync.service.js';
 import { inflateRawSync } from 'node:zlib';
 class FakeSocket implements WhatsappSocket {
+  lookupCalls = 0;
+  lookupFails = false;
+  async onWhatsApp(...numbers: string[]) {
+    this.lookupCalls++;
+    if (this.lookupFails) throw new Error('Consulta indisponível');
+    return numbers.filter(phone => phone.endsWith('1')).map(phone => ({ jid: `${phone}@s.whatsapp.net`, exists: true }));
+  }
   ev = makeEventBuffer(pino({ level: 'silent' }));
   user = { id: '5511000000000@s.whatsapp.net' };
   sends: AnyMessageContent[] = [];
@@ -134,6 +141,28 @@ test('CSV detecta colunas, normaliza DDI, informa duplicados e não grava durant
   assert.equal(result.rejected.length, 2);
   assert.equal(await db.contact.count(), 0);
 });
+test('validação consulta sem enviar, reutiliza cache, separa ausência de falha e isola conexão', async () => {
+  const url = `/api/operations/sessions/${sessionId}/validate-numbers`;
+  const sends = socket.sends.length;
+  const before = socket.lookupCalls;
+  const result = await request(app).post(url).send({ phoneNumbers: ['5511999990001', '5511999990002'] }).expect(200);
+  assert.deepEqual(result.body.items.map((item: any) => item.status), ['REGISTERED', 'NOT_REGISTERED']);
+  assert.equal(socket.lookupCalls, before + 2);
+  const cached = await request(app).post(url).send({ phoneNumbers: ['5511999990001'] }).expect(200);
+  assert.equal(cached.body.items[0].cached, true);
+  assert.equal(socket.lookupCalls, before + 2);
+  socket.lookupFails = true;
+  try {
+    const failed = await request(app).post(url).send({ phoneNumbers: ['5511999990003', '5511999990004'] }).expect(200);
+    assert.equal(failed.body.items.length, 1);
+    assert.equal(failed.body.items[0].status, 'UNKNOWN');
+    assert.equal(failed.body.inconclusive, true);
+  } finally { socket.lookupFails = false; }
+  await request(app).post(`/api/operations/sessions/${otherSession}/validate-numbers`).send({ phoneNumbers: ['5511999990001'] }).expect(409);
+  await request(app).post(url).send({ phoneNumbers: ['número inválido'] }).expect(422);
+  assert.equal(socket.sends.length, sends);
+});
+
 test('XLS binário legado preserva nome acentuado, telefone numérico e linha de duplicata', async () => {
   const book = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet([
@@ -1152,6 +1181,46 @@ test('ordem das etiquetas persiste, aparece no CRM e rejeita outra conexão sem 
     .send({ ids: [a.id, a.id] })
     .expect(422);
   assert.equal((await db.label.findUniqueOrThrow({ where: { id: b.id } })).position, 0);
+});
+
+test('receita do CRM conta somente vendas ganhas, não duplica campanhas e preserva investimento', async () => {
+  const chat = await makeContact('5511888877791', 'Venda fictícia');
+  const before = socket.sends.length;
+  await db.crmOpportunity.create({ data: { conversationId: chat.id, title: 'Venda de teste', valueInCents: 10000, status: 'WON', wonAt: new Date(), version: 1 } });
+  const first = await draft([chat.id], { kind: 'text', text: 'Não ativar: teste financeiro' });
+  const second = await draft([chat.id], { kind: 'text', text: 'Não ativar: segunda campanha' });
+  const base = `/api/operations/sessions/${sessionId}/batches`;
+  await request(app).put(`${base}/${first.id}`).send({ investmentInCents: 2000, attributedRevenueInCents: 99999 }).expect(200);
+  await request(app).put(`${base}/${first.id}/revenue`).send({ conversationIds: [chat.id] }).expect(200);
+  await request(app).put(`${base}/${first.id}/revenue`).send({ conversationIds: [chat.id] }).expect(200);
+  const readFirst = async () => (await request(app).get(base).expect(200)).body.items.find((item: any) => item.id === first.id);
+  let financial = await readFirst();
+  assert.equal(financial.attributedRevenueInCents, 10000);
+  assert.equal(financial.manualRevenueInCents, 99999);
+  assert.equal(financial.revenueSource, 'CRM');
+  assert.equal(financial.crmSales, 1);
+  assert.equal(financial.investmentInCents, 2000);
+  const overview = await request(app).get(`/api/operations/sessions/${sessionId}/overview`).expect(200);
+  assert.equal(overview.body.campaignFinance.revenueInCents, 10000);
+  assert.equal(overview.body.campaignFinance.investmentInCents, 2000);
+  assert.equal(overview.body.campaignFinance.roiPercent, 400);
+  assert.equal(overview.body.campaignFinance.sales, 1);
+  await request(app).put(`${base}/${second.id}/revenue`).send({ conversationIds: [chat.id] }).expect(409);
+  await request(app).get(`/api/operations/sessions/${otherSession}/batches/${first.id}/revenue`).expect(404);
+  await db.crmOpportunity.update({ where: { conversationId: chat.id }, data: { valueInCents: 15000 } });
+  assert.equal((await readFirst()).attributedRevenueInCents, 15000);
+  await db.crmOpportunity.update({ where: { conversationId: chat.id }, data: { status: 'OPEN' } });
+  assert.equal((await readFirst()).attributedRevenueInCents, 0);
+  await request(app).put(`${base}/${second.id}/revenue`).send({ conversationIds: [chat.id] }).expect(422);
+  await putRecord(db, first.id, 'BATCH', { ...first, investmentInCents: 0 });
+  financial = await readFirst();
+  assert.equal(financial.investmentInCents, 2000, 'a execução não pode sobrescrever o financeiro');
+  await request(app).put(`${base}/${first.id}/revenue`).send({ conversationIds: [] }).expect(200);
+  await db.crmOpportunity.update({ where: { conversationId: chat.id }, data: { status: 'WON' } });
+  await request(app).put(`${base}/${second.id}/revenue`).send({ conversationIds: [chat.id] }).expect(200);
+  await request(app).put(`${base}/${first.id}`).send({ revenueSource: 'MANUAL' }).expect(200);
+  assert.equal((await readFirst()).attributedRevenueInCents, 99999);
+  assert.equal(socket.sends.length, before);
 });
 
 function unzipEntries(bytes: Buffer) {

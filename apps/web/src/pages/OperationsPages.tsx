@@ -1,4 +1,6 @@
 import { CampaignPhonePreview } from '../components/CampaignPhonePreview';
+import { NumberValidation } from '../components/NumberValidation';
+import { CampaignRevenue } from '../components/CampaignRevenue';
 import { usePreferences } from '../context/PreferencesContext';
 import { formatContactPhone, cleanContactName, cleanPhone } from '../context/contact-search';
 import { ContactCombobox } from '../components/ContactCombobox';
@@ -42,6 +44,7 @@ export function OverviewPage({
     waiting: number;
     ai: { todayTokens: number };
     batches: { status: string; _count: number }[];
+    campaignFinance?: { revenueInCents: number; investmentInCents: number; sales: number; campaigns: number; roiPercent: number | null };
   } | null>(null);
   const [crmMoney, setCrmMoney] = useState<{ openValueInCents: number; wonValueInCents: number } | null>(
     null,
@@ -110,6 +113,12 @@ export function OverviewPage({
           </article>
         ))}
       </div>
+      {metrics?.campaignFinance && <section className="surface">
+        <h2>Campanhas com vendas vinculadas · histórico completo</h2>
+        <p>{metrics.campaignFinance.sales} vendas ganhas em {metrics.campaignFinance.campaigns} campanhas · Receita: {(metrics.campaignFinance.revenueInCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} · Investimento informado: {(metrics.campaignFinance.investmentInCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+        <strong>{metrics.campaignFinance.roiPercent === null ? 'Informe investimento no financeiro para calcular o retorno.' : `Retorno estimado: ${metrics.campaignFinance.roiPercent.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`}</strong>
+        <small className="muted">Somente campanhas usando receita do CRM. Não representa lucro líquido e não inclui custos de produção, impostos ou outras despesas.</small>
+      </section>}
       <div className="operation-launchers">
         {[
           {
@@ -487,6 +496,11 @@ function LeadImport({
               placeholder="Ex.: Leads outubro"
             />
           </label>
+          <NumberValidation sessionId={sessionId} phoneNumbers={preview.items.map(item => item.phoneNumber)} disabled={busy} onBusyChange={setBusy} onRemove={numbers => {
+            const excluded = new Set(numbers);
+            setPreview(current => current ? { ...current, items: current.items.filter(item => !excluded.has(item.phoneNumber)) } : null);
+            notify(`${numbers.length} número(s) sem conta removido(s) da prévia. Nenhum contato existente foi apagado.`);
+          }}/>
         </>
       )}
       <div className="modal-actions">
@@ -527,6 +541,9 @@ interface BatchRow {
   counts: { status: string; _count: number }[];
   investmentInCents?: number;
   attributedRevenueInCents?: number;
+  manualRevenueInCents?: number;
+  revenueSource?: 'MANUAL' | 'CRM';
+  crmSales?: number;
 }
 const batchStatus: Record<string, string> = {
   DRAFT: 'Rascunho',
@@ -559,7 +576,8 @@ export function CampaignsPage({
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState(initialSearch);
   const [financeBatch, setFinanceBatch] = useState('');
-  const [finance, setFinance] = useState({ investment: '0.00', revenue: '0.00' });
+  const [finance, setFinance] = useState({ investment: '0.00', revenue: '0.00', revenueSource: 'MANUAL' as 'MANUAL' | 'CRM' });
+  const [revenueBatch, setRevenueBatch] = useState('');
   useEffect(() => setSearch(initialSearch), [initialSearch]);
   useEffect(() => {
     if (!sessionId) return;
@@ -659,6 +677,7 @@ export function CampaignsPage({
                   <small>{new Date(item.createdAt).toLocaleString('pt-BR')}</small>
                   {!schedule && (
                     <div className="campaign-financial-summary">
+                      <small>{item.revenueSource === 'CRM' ? `${item.crmSales ?? 0} vendas ganhas vinculadas · CRM` : 'Receita informada manualmente'}</small>
                       <strong>
                         Receita atribuída:{' '}
                         {(Number(item.attributedRevenueInCents ?? 0) / 100).toLocaleString('pt-BR', {
@@ -689,13 +708,15 @@ export function CampaignsPage({
                         setFinanceBatch(financeBatch === item.id ? '' : item.id);
                         setFinance({
                           investment: ((item.investmentInCents ?? 0) / 100).toFixed(2),
-                          revenue: ((item.attributedRevenueInCents ?? 0) / 100).toFixed(2),
+                          revenue: ((item.manualRevenueInCents ?? item.attributedRevenueInCents ?? 0) / 100).toFixed(2),
+                          revenueSource: item.revenueSource ?? 'MANUAL',
                         });
                       }}
                     >
                       Financeiro
                     </button>
                   )}
+                  {!schedule && <button className="button" onClick={() => setRevenueBatch(item.id)}>Vincular vendas do CRM</button>}
                   <button
                     className="button"
                     onClick={() =>
@@ -738,6 +759,7 @@ export function CampaignsPage({
                     void request(`/operations/sessions/${sessionId}/batches/${item.id}`, 'PUT', {
                       investmentInCents: Math.round(Number(finance.investment.replace(',', '.')) * 100),
                       attributedRevenueInCents: Math.round(Number(finance.revenue.replace(',', '.')) * 100),
+                      revenueSource: finance.revenueSource,
                     })
                       .then(() => {
                         setItems((current) =>
@@ -756,6 +778,7 @@ export function CampaignsPage({
                           ),
                         );
                         setFinanceBatch('');
+                        setTick(value => value + 1);
                         notify('Valores da campanha salvos.');
                       })
                       .catch((error) => notify(errorMessage(error), true))
@@ -775,19 +798,26 @@ export function CampaignsPage({
                     />
                   </label>
                   <label>
+                    Origem da receita
+                    <Select value={finance.revenueSource} onChange={event => setFinance(current => ({ ...current, revenueSource: event.target.value as 'MANUAL' | 'CRM' }))}>
+                      <option value="MANUAL">Valor informado manualmente</option><option value="CRM">Vendas ganhas vinculadas no CRM</option>
+                    </Select>
+                  </label>
+                  <label>
                     Receita atribuída (R$)
                     <input
                       type="number"
                       min="0"
                       step="0.01"
                       value={finance.revenue}
+                      disabled={finance.revenueSource === 'CRM'}
                       onChange={(event) =>
                         setFinance((current) => ({ ...current, revenue: event.target.value }))
                       }
                     />
                   </label>
                   <small className="muted">
-                    Informe manualmente a receita atribuída a esta campanha para calcular o ROI.
+                    O retorno compara receita atribuída e investimento informado. Não representa lucro líquido: custos de produção, impostos e outras despesas não estão incluídos.
                   </small>
                   <button className="button primary" disabled={busy}>
                     Salvar valores
@@ -802,6 +832,7 @@ export function CampaignsPage({
             item.name.toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')),
           ) && <p className="muted">Nenhuma campanha corresponde a “{search}”.</p>}
       </div>
+      {revenueBatch && <CampaignRevenue sessionId={sessionId} campaignId={revenueBatch} onClose={() => setRevenueBatch('')} onSaved={() => { setRevenueBatch(''); setTick(value => value + 1); }}/>}
       {!items.length && (
         <div className="operation-empty">
           <Send size={36} />
@@ -1575,6 +1606,12 @@ export function BatchEditor({
               </>
             )}
           </div>
+          {!schedule && preview && <NumberValidation sessionId={sessionId} phoneNumbers={preview.items.filter(item => selectedLeads.includes(item.id)).map(item => item.phoneNumber)} disabled={busy} onBusyChange={setBusy} onRemove={numbers => {
+            const absent = new Set(numbers);
+            const excluded = new Set(preview.items.filter(item => absent.has(item.phoneNumber)).map(item => item.id));
+            setSelectedLeads(current => current.filter(id => !excluded.has(id)));
+            notify('Números sem conta foram desmarcados. Confira o público antes de salvar.');
+          }}/>}
           <div className="modal-actions">
             <button type="button" className="button" onClick={onClose}>
               Cancelar

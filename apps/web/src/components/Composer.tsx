@@ -1,4 +1,5 @@
 import { optimizeImage, createVideoWatermark, type Watermark } from '../image-processing';
+import { captureMicrophone } from '../microphone';
 import { usePreferences } from '../context/PreferencesContext';
 import { useEffect, useRef, useState } from 'react';
 import { Send, Paperclip, Mic, Square, Trash2, Zap, Smile, Eye, FileText, MessageSquare } from 'lucide-react';
@@ -59,8 +60,14 @@ export function Composer({
   const [ptv, setPtv] = useState(false);
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
+  const [microphonePending, setMicrophonePending] = useState(false);
+  const [microphoneError, setMicrophoneError] = useState('');
   const [previewUrl, setPreviewUrl] = useState('');
-  const [watermarkSettings, setWatermarkSettings] = useState<{ enabledByDefault?: boolean; activeId?: string; marks?: (Watermark & { id: string; name: string })[] }>({});
+  const [watermarkSettings, setWatermarkSettings] = useState<{
+    enabledByDefault?: boolean;
+    activeId?: string;
+    marks?: (Watermark & { id: string; name: string })[];
+  }>({});
   const [applyWatermark, setApplyWatermark] = useState(false);
   const [internalMode, setInternalMode] = useState(Boolean(restored.internal));
   const [slashQuery, setSlashQuery] = useState('');
@@ -79,6 +86,7 @@ export function Composer({
   const audioContext = useRef<AudioContext | null>(null);
   const waveTimer = useRef<number | null>(null);
   const alive = useRef(true);
+  const recordingGeneration = useRef(0);
   useEffect(() => {
     try {
       if (draft.text) localStorage.setItem(draftKey, JSON.stringify({ ...draft, internal: internalMode }));
@@ -104,16 +112,22 @@ export function Composer({
     window.addEventListener('noctua:insert-draft', receive);
     return () => window.removeEventListener('noctua:insert-draft', receive);
   }, [conversationId, internalMode, notify]);
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    alive.current = true;
+    setMicrophonePending(false);
+    setRecording(false);
+    return () => {
       alive.current = false;
-      if (recorder.current?.state === 'recording') recorder.current.stop();
+      recordingGeneration.current++;
+      if (recorder.current?.state === 'recording') {
+        recorder.current.onstop = null;
+        recorder.current.stop();
+      }
       stream.current?.getTracks().forEach((track) => track.stop());
       if (waveTimer.current) window.clearInterval(waveTimer.current);
       void audioContext.current?.close();
-    },
-    [],
-  );
+    };
+  }, []);
   useEffect(() => {
     if (!file) return;
     const url = URL.createObjectURL(file);
@@ -200,23 +214,41 @@ export function Composer({
   useEffect(() => {
     const receive = (event: Event) => {
       const detail = (event as CustomEvent<AttachmentDraftInsert>).detail;
-      if (detail?.sessionId !== sessionId || detail.conversationId !== conversationId ||
-          file || busy || recording || internalMode || detail.file.size > 20 * 1024 * 1024) return;
+      if (
+        detail?.sessionId !== sessionId ||
+        detail.conversationId !== conversationId ||
+        file ||
+        busy ||
+        recording ||
+        internalMode ||
+        detail.file.size > 20 * 1024 * 1024
+      )
+        return;
       event.preventDefault();
-      setFile(detail.file); setCaption(''); setViewOnce(false); setPtt(false); setPtv(false);
+      setFile(detail.file);
+      setCaption('');
+      setViewOnce(false);
+      setPtt(false);
+      setPtv(false);
       setApplyWatermark(Boolean(watermarkSettings.enabledByDefault));
     };
     window.addEventListener('noctua:prepare-attachment', receive);
     return () => window.removeEventListener('noctua:prepare-attachment', receive);
   }, [sessionId, conversationId, file, busy, recording, internalMode, watermarkSettings.enabledByDefault]);
   const startRecording = async () => {
+    if (microphonePending || recording || busy) return;
+    const generation = recordingGeneration.current;
+    setMicrophonePending(true);
+    setMicrophoneError('');
     try {
       if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder)
         throw new Error(
           'Este navegador não oferece gravação de áudio. Você pode anexar um arquivo de áudio.',
         );
-      const media = await navigator.mediaDevices.getUserMedia({ audio: true });
-      if (!alive.current) {
+      const media = await captureMicrophone({
+        isActive: () => alive.current && generation === recordingGeneration.current,
+      });
+      if (!alive.current || generation !== recordingGeneration.current) {
         media.getTracks().forEach((track) => track.stop());
         return;
       }
@@ -226,7 +258,7 @@ export function Composer({
       );
       const instance = new MediaRecorder(media, mimeType ? { mimeType } : undefined);
       const context = new AudioContext();
-      await context.resume();
+      void context.resume().catch(() => undefined);
       const meter = context.createAnalyser();
       meter.fftSize = 64;
       context.createMediaStreamSource(media).connect(meter);
@@ -246,7 +278,7 @@ export function Composer({
         media.getTracks().forEach((track) => track.stop());
         if (waveTimer.current) window.clearInterval(waveTimer.current);
         void context.close();
-        if (!alive.current) return;
+        if (!alive.current || generation !== recordingGeneration.current) return;
         setRecording(false);
         const audio = new File(chunks, 'gravacao.webm', { type: instance.mimeType || 'audio/webm' });
         if (audio.size) choose(audio, true);
@@ -256,12 +288,16 @@ export function Composer({
       setRecording(true);
       instance.start(250);
     } catch (error) {
+      if (!alive.current || generation !== recordingGeneration.current) return;
       stream.current?.getTracks().forEach((track) => track.stop());
       stream.current = null;
       if (waveTimer.current) window.clearInterval(waveTimer.current);
       void audioContext.current?.close();
       setRecording(false);
+      setMicrophoneError(errorMessage(error));
       notify(errorMessage(error), true);
+    } finally {
+      if (alive.current && generation === recordingGeneration.current) setMicrophonePending(false);
     }
   };
   const kind = file?.type.startsWith('image/')
@@ -338,8 +374,12 @@ export function Composer({
     if (!file || busy) return;
     setBusy(true);
     try {
-      const mark = applyWatermark ? watermarkSettings.marks?.find((item) => item.id === watermarkSettings.activeId) ?? watermarkSettings.marks?.[0] : undefined;
-      if ((kind === 'image' || kind === 'video') && applyWatermark && !mark) throw new Error('Configure um modelo de marca d’água antes de enviar a amostra.');
+      const mark = applyWatermark
+        ? (watermarkSettings.marks?.find((item) => item.id === watermarkSettings.activeId) ??
+          watermarkSettings.marks?.[0])
+        : undefined;
+      if ((kind === 'image' || kind === 'video') && applyWatermark && !mark)
+        throw new Error('Configure um modelo de marca d’água antes de enviar a amostra.');
       const sourceFile = kind === 'image' ? await optimizeImage(file, mark) : file;
       const watermark = kind === 'video' && mark ? await createVideoWatermark(file, mark) : undefined;
       const uploaded = await request<{ id: string }>('/attendance/files', 'POST', {
@@ -360,7 +400,10 @@ export function Composer({
       });
       setFile(null);
       onSent();
-      if (kind === 'image' && sourceFile.size < file.size) notify(`Imagem otimizada: ${(file.size / 1024 / 1024).toFixed(2)} MiB → ${(sourceFile.size / 1024 / 1024).toFixed(2)} MiB${applyWatermark ? ' com marca d’água' : ''}.`);
+      if (kind === 'image' && sourceFile.size < file.size)
+        notify(
+          `Imagem otimizada: ${(file.size / 1024 / 1024).toFixed(2)} MiB → ${(sourceFile.size / 1024 / 1024).toFixed(2)} MiB${applyWatermark ? ' com marca d’água' : ''}.`,
+        );
     } catch (error) {
       notify(errorMessage(error), true);
     } finally {
@@ -369,6 +412,16 @@ export function Composer({
   };
   return (
     <div className="composer-wrap">
+      {microphonePending && (
+        <p className="muted" role="status">
+          Aguardando permissão do microfone no navegador…
+        </p>
+      )}
+      {microphoneError && (
+        <p className="notice" role="alert">
+          {microphoneError}
+        </p>
+      )}
       <div className="composer-shortcuts">
         <button onClick={onQuick}>
           <Zap size={14} />
@@ -517,15 +570,23 @@ export function Composer({
             </button>
             <button
               className={`icon-button ${recording ? 'text-danger' : ''}`}
-              aria-label={recording ? 'Parar gravação' : 'Gravar áudio'}
-              disabled={!connected || busy}
+              aria-label={
+                microphonePending
+                  ? 'Aguardando acesso ao microfone'
+                  : recording
+                    ? 'Parar gravação'
+                    : 'Gravar áudio'
+              }
+              disabled={!connected || busy || microphonePending}
               onClick={() => (recording ? recorder.current?.stop() : void startRecording())}
             >
               {recording ? <Square size={19} /> : <Mic size={20} />}
             </button>
           </div>
           <div>
-            <small>{internalMode ? 'Enter para salvar nota' : 'Enter para enviar'} · Shift + Enter para nova linha</small>
+            <small>
+              {internalMode ? 'Enter para salvar nota' : 'Enter para enviar'} · Shift + Enter para nova linha
+            </small>
             <button
               className="send-button"
               aria-label={internalMode ? 'Salvar nota interna' : 'Enviar mensagem'}
@@ -586,7 +647,10 @@ export function Composer({
             </label>
           )}
           {kind === 'audio' && (
-            <p className="muted">Este áudio será convertido para OGG/Opus e enviado como mensagem de voz. Para enviar música como arquivo, escolha Documento.</p>
+            <p className="muted">
+              Este áudio será convertido para OGG/Opus e enviado como mensagem de voz. Para enviar música como
+              arquivo, escolha Documento.
+            </p>
           )}
           {kind === 'video' && (
             <label className="checkbox">
@@ -596,7 +660,11 @@ export function Composer({
           )}
           {(kind === 'image' || kind === 'video') && watermarkSettings.marks?.length ? (
             <label className="checkbox">
-              <input type="checkbox" checked={applyWatermark} onChange={(event) => setApplyWatermark(event.target.checked)} />
+              <input
+                type="checkbox"
+                checked={applyWatermark}
+                onChange={(event) => setApplyWatermark(event.target.checked)}
+              />
               Aplicar marca d’água de aprovação
             </label>
           ) : null}

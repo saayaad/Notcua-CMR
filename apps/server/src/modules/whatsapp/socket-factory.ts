@@ -24,6 +24,7 @@ export type WhatsappSocket = Pick<
       | 'readMessages'
       | 'updateMediaMessage'
       | 'removeChatLabel'
+      | 'onWhatsApp'
     >
   >;
 export type SocketFactory = (auth: AuthenticationState, sessionId: string) => WhatsappSocket;

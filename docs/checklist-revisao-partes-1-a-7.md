@@ -37,7 +37,7 @@
 | Parcial | Gestão/ordenação de etiquetas e renomeação de menus existe; confira cores/ícones e a ordem em filtros e Kanban. | [ ] |
 | Implementado | Command Palette com `Ctrl + K`, busca de conversas e campanhas e navegação para áreas do sistema. | [ ] |
 | Implementado | CRM com quadro/funil e valores de oportunidade em R$. | [ ] |
-| Parcial | Indicadores financeiros existem, mas o retorno por campanha/etiqueta não está totalmente atribuído automaticamente. | [ ] |
+| Parcial | Campanhas usam receita manual ou vendas ganhas vinculadas no CRM, sem dupla atribuição, com recálculo e resumo na Visão Geral. Investimento é informado; não representa lucro líquido. Receita/ROI por etiqueta ainda é parcial. | [ ] |
 | Parcial | Tema premium, animações, estados de hover e toasts existem em parte da interface; consistência visual ainda requer revisão tela a tela. | [ ] |
 | Parcial | Há comportamento responsivo/mobile; validar navegação lista → conversa → ferramentas em celular e tablet. | [ ] |
 
@@ -113,7 +113,7 @@
 | Parcial | Captura de metadados CTWA/referral, cartão de origem na conversa e aplica etiqueta existente com “anúncio” no nome. Testar formatos reais de anúncio e miniatura não disponível em todas as versões Baileys. | [ ] |
 | Parcial | Resumo prioritário heurístico às 08:00 com contatos noturnos aguardando retorno ou menções de intenção de compra; não usa IA e precisa validar fuso horário e qualidade dos sinais. | [ ] |
 | Implementado | Rodízio entre atendentes ativos e com presença online recente (até 90 segundos). | [ ] |
-| Pendente | Consulta silenciosa para provar se números têm WhatsApp ativo. O pré-processamento atual pode normalizar números, mas não confirma conta ativa. | [ ] |
+| Implementado | Consulta sem envio disponível antes da importação/campanha: conta encontrada, não encontrada ou inconclusiva. Cache por conexão e remoção explícita da prévia; não comprova presença online ou consentimento. | [ ] |
 | Pendente | Rotação de múltiplos chips e aquecimento em conversas artificiais não foram adicionados. Não automatizo conversas falsas nem mecanismos para contornar os controles antispam do WhatsApp. | [ ] |
 | Implementado | Regras configuráveis de opt-out; ao receber termo no começo da mensagem ou frase configurada, marca contato, aplica etiqueta compatível e cancela envios futuros. | [ ] |
 
@@ -168,4 +168,4 @@
 
 **Nota sobre validação (25/10/2026):** as verificações de tipos do servidor e da interface e suas compilações passaram na revisão anterior. Após restabelecer o controle da aba autenticada, a conexão Teste foi confirmada como conectada. Um áudio sintético de 2 segundos foi anexado pelo atendimento e enviado ao número autorizado: o banco registrou OGG/Opus, `isPtt=true`, nenhum erro e estado `READ` retornado pelo WhatsApp. A evidência visual está em `verification/audio-voice-test-2026-10-25.png`. Os dois testes automatizados específicos de áudio passaram. A suíte anterior carregava a configuração Firebase do site, causando falhas 401; o comando de testes agora usa configuração isolada, sem alterar a autenticação do servidor em uso. Também foi corrigida a expressão de escala do conversor de vídeo; seu teste com clipe MP4 válido passou. A execução completa mais recente passou com 110 testes e nenhuma falha. Também foram confirmados envios reais de texto, imagem, vídeo, documento, voz por biblioteca/funil, macro, resposta padrão, campanha, agenda, lembrete privado e cancelamento automático de follow-up: a resposta recebida às 22h15min11s cancelou o retorno das 22h21min51s antes de qualquer envio. Consulte o relatório em verification/relatorio-testes-2026-10-25.md para distinguir as confirmações das pendências.
 
-Revisão de 26/10/2026: [relatório atualizado, resultados e bloqueios](verification/relatorio-revisao-2026-10-26.md). Suíte final completa com 121 testes aprovados, nenhuma falha; etapa XLS e pré-processamento concluída no código e em testes isolados. Nenhum envio real novo após o pedido de pausa.
+Revisão de 26/10/2026: [relatório atualizado, resultados e bloqueios](verification/relatorio-revisao-2026-10-26.md). Suíte completa com 126 testes aprovados, nenhuma falha; etapa XLS e pré-processamento concluída no código e em testes isolados. Nenhum envio real novo após o pedido de pausa.

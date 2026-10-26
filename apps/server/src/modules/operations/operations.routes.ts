@@ -25,6 +25,8 @@ import { aiUsage } from './ai-provider.js';
 import { preprocessMedia } from './ai-media.js';
 import { exportHistory } from './history-export.js';
 import { historyPreprocessingRoutes } from './history-preprocessing.js';
+import { numberValidationRoutes } from './number-validation.js';
+import { campaignRevenueRoutes, campaignRevenue, financeKey, defaultFinance } from './campaign-revenue.js';
 import type { Batch, Delivery } from './delivery.worker.js';
 import { toolboxRoutes } from './toolbox.routes.js';
 import { macroRoutes } from './macros.routes.js';
@@ -66,6 +68,8 @@ const profile = z.object({
 export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, messaging: MessagingService) {
   const router = Router();
   router.use(historyPreprocessingRoutes(db, messaging));
+  router.use(numberValidationRoutes(db, whatsapp));
+  router.use(campaignRevenueRoutes(db));
   const contacts = new ContactsService(db);
   router.use('/safety', safetyRoutes(db, whatsapp));
   router.use('/simulator', simulatorRoutes(db));
@@ -275,7 +279,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       db.deliveryTask.groupBy({ by: ['status'], where: { sessionId }, _count: true }),
       db.conversation.count({ where: { sessionId, status: 'OPEN', unreadCount: { gt: 0 } } }),
     ]);
-    res.json({ people, messages, batches, waiting, ai: await aiUsage(db) });
+    res.json({ people, messages, batches, waiting, ai: await aiUsage(db), campaignFinance: (await campaignRevenue(db, sessionId)).summary });
   });
   router.get('/sessions/:sessionId/contact-search', async (req, res) => {
     const sessionId = id.parse(req.params.sessionId);
@@ -492,8 +496,9 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
   router.get('/sessions/:sessionId/batches', async (req, res) => {
     const sessionId = id.parse(req.params.sessionId);
     await whatsapp.snapshot(sessionId);
+    const financials = await campaignRevenue(db, sessionId);
     const rows = await db.operationRecord.findMany({
-      where: { kind: 'BATCH' },
+      where: { kind: 'BATCH', data: { path: '$.sessionId', equals: sessionId } },
       orderBy: { createdAt: 'desc' },
       take: 200,
     });
@@ -511,7 +516,10 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
         orderBy: { runAt: 'asc' },
         select: { runAt: true },
       });
-      items.push({ id: row.id, ...data, counts, nextTaskAt: next?.runAt?.toISOString() ?? null });
+      const finance = financials.configurations.get(financeKey(row.id)) ?? defaultFinance(data);
+      const sales = financials.totals.get(row.id) ?? { revenue: 0, sales: 0 };
+      items.push({ id: row.id, ...data, ...finance, attributedRevenueInCents: finance.revenueSource === 'CRM' ? sales.revenue : finance.manualRevenueInCents,
+        crmRevenueInCents: sales.revenue, crmSales: sales.sales, counts, nextTaskAt: next?.runAt?.toISOString() ?? null });
     }
     res.json({ items });
   });
@@ -789,6 +797,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
         status: z.enum(['ACTIVE', 'PAUSED', 'CANCELLED']).optional(),
         investmentInCents: z.number().int().min(0).max(2_000_000_000).optional(),
         attributedRevenueInCents: z.number().int().min(0).max(2_000_000_000).optional(),
+        revenueSource: z.enum(['MANUAL', 'CRM']).optional(),
       })
       .refine((value) => Object.values(value).some((item) => item !== undefined))
       .parse(req.body);
@@ -798,7 +807,12 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     if (status) {
       await putRecord(db, batchId, 'BATCH', { ...data, status });
     } else {
-      await putRecord(db, batchId, 'BATCH', { ...data, ...update });
+      const previous = await record(db, financeKey(batchId), defaultFinance(data));
+      await putRecord(db, financeKey(batchId), 'CAMPAIGN_FINANCE', { ...previous,
+        ...(update.investmentInCents === undefined ? {} : { investmentInCents: update.investmentInCents }),
+        ...(update.attributedRevenueInCents === undefined ? {} : { manualRevenueInCents: update.attributedRevenueInCents }),
+        ...(update.revenueSource ? { revenueSource: update.revenueSource } : {}),
+      });
       res.json({ saved: true });
       return;
     }

@@ -2,7 +2,7 @@
 
 ## Limites desta rodada
 
-Nenhuma mensagem nova enviada pelo WhatsApp após o pedido de pausa dos envios. A fila do contato autorizado foi conferida e estava vazia. Nenhum faturamento foi ativado, nenhuma credencial foi substituída e nenhum reset foi executado na instalação real. As mudanças permanecem locais; não houve publicação na Vercel.
+Nenhuma mensagem nova enviada pelo WhatsApp após o pedido de pausa dos envios. A fila do contato autorizado foi conferida e estava vazia. Nenhum faturamento foi ativado, nenhuma credencial foi substituída e nenhum reset foi executado na instalação real. A etapa anterior foi publicada no commit 5377f3c. As alterações de números, receita e microfone estão em preparação para a próxima publicação.
 
 ## Etapas concluídas
 
@@ -23,7 +23,7 @@ Nenhuma mensagem nova enviada pelo WhatsApp após o pedido de pausa dos envios. 
 
 ## Verificação automatizada
 
-Última suíte completa: **121 testes aprovados, nenhuma falha**, incluindo marca em vídeo, falha segura de imagem, validação dos modelos, preparação de anexo do estúdio, XLS legado e pré-processamento de histórico. Verificação de tipos do servidor, interface e testes passou. Compilação final do servidor e da interface aprovada; permanece aviso de pacote principal acima de 500 kB como oportunidade de otimização do carregamento.
+Última suíte completa: **126 testes aprovados, nenhuma falha**, incluindo marca em vídeo, falha segura de imagem, validação dos modelos, preparação de anexo do estúdio, XLS legado e pré-processamento de histórico. Verificação de tipos do servidor, interface e testes passou. Compilação final do servidor e da interface aprovada; permanece aviso de pacote principal acima de 500 kB como oportunidade de otimização do carregamento.
 
 As mídias dos testes são sintéticas e os bancos usados pelos testes são descartáveis. Testes não executam cobranças nem enviam mensagens usando a conexão real.
 
@@ -40,8 +40,8 @@ A geração foi recusada pelo Google com **HTTP 403: nível gratuito da API indi
 - [x] Exportação com pré-processamento das mídias selecionadas: autorização explícita, progresso, cancelamento, cache e interrupção por recusa do provedor. Validada com provedor simulado; geração real continua dependente do Gemini.
 - [x] Leitura de `.xls` binário legado, além de CSV e XLSX. Validada em teste automatizado e pela interface, sem confirmar a importação real.
 - [ ] Validar a preparação de imagem recém-gerada pelo estúdio até a prévia do anexo, quando a geração Gemini estiver disponível. O código de integração já existe.
-- [ ] Consulta de conta WhatsApp ativa antes da importação/disparo; normalização não comprova conta ativa.
-- [ ] Atribuição completa de ROI por campanha; validar dados de conversão, não inferir lucro apenas pelo valor de um lead.
+- [x] Consulta de existência de conta antes da importação e na prévia da campanha. Teste real confirmou uma conta sem enviar mensagem; falhas ficam inconclusivas. A consulta não comprova presença online nem consentimento.
+- [x] Receita da campanha vinculada explicitamente a vendas ganhas no CRM, com recálculo por valor/estado, bloqueio de dupla atribuição e investimento separado. Resumo na Visão Geral; retorno estimado não é lucro líquido.
 - [ ] Revisão de eventos reais de anúncios, turno noturno e opt-out. Rodízio entre chips não implementado; aquecimento por conversas artificiais não integra esta entrega.
 - [ ] Índice vetorial/embeddings; recuperação atual usa similaridade lexical.
 - [ ] Revisão visual em Chrome, Edge, Firefox, Safari e dispositivos reais, além da prévia responsiva.
@@ -65,3 +65,23 @@ Em Contatos → Exportar históricos e em Cliente → Histórico, **Analisar mí
 Antes de analisar, aguarde a sincronização da conexão terminar. Mensagens posteriores à data de início não entram no percurso; uma nova execução pode aproveitar o cache e preparar mídias adicionadas ao histórico depois. Cancelar impede o próximo arquivo; uma requisição já enviada ao provedor pode terminar e ficar salva.
 
 Evidências: prévia XLS conferida localmente (captura com contato de teste mantida fora do repositório) e [autorização de pré-processamento](exportacao-preprocessamento-2026-10-26.png).
+
+## Etapa — números e atribuição financeira
+
+- Consulta autenticada em lotes de até 20 números, sequencial, com cache por conexão: até 24 horas para conta encontrada e uma hora para ausência. Resultado inconclusivo não é salvo como ausência e interrompe a fila. A remoção depende do botão do usuário e afeta somente a prévia/seleção.
+- Consulta real feita exclusivamente sobre a lista de um contato de teste: uma conta encontrada, nenhuma mensagem enviada e nenhum rascunho salvo.
+- Campanhas permitem escolher receita manual ou vendas ganhas vinculadas. Uma negociação só pode ser vinculada a uma campanha; remover o vínculo anterior é necessário para reatribuir. Valor alterado atualiza o total; venda reaberta/perdida deixa de contar. Custos e origem da receita ficam separados do registro de execução, para um envio não sobrescrever o financeiro.
+- A Visão Geral resume campanhas que usam receita do CRM, em todo o histórico. Investimento é declarado pelo usuário; produção, impostos e outras despesas não entram no cálculo, que não representa lucro líquido. Receita/ROI por etiqueta permanece pendente de definição e integração de custos.
+- Nenhuma venda, valor ou vínculo financeiro real foi alterado durante a revisão da interface. A validação dos cálculos e mudanças de estado usou banco descartável.
+- A tentativa fictícia no simulador Gemini continua retornando HTTP 403 por indisponibilidade do nível gratuito. Não houve ativação de faturamento. O usuário autorizou novamente texto e áudio exclusivamente para o contato de teste. A sessão do navegador expirou ao recarregar, e o novo login foi solicitado para retomar a validação do microfone.
+
+Validação: suíte completa com **123 testes aprovados e nenhuma falha**, seguida de reteste aprovado dos números e do resumo financeiro após o ajuste da Visão Geral. Compilação e verificação de tipos aprovadas.
+
+Evidências: [consulta sem envio](validacao-whatsapp-sem-envio-2026-10-26.png) e [interface de vínculos CRM](receita-crm-interface-2026-10-26.png).
+
+
+## Etapa — gravação pelo microfone
+
+Corrigida a espera indefinida no medidor de áudio: a retomada do AudioContext não bloqueia mais o MediaRecorder. O atendimento e o simulador mostram permissão pendente, encerram a espera após 20 segundos e liberam capturas autorizadas depois de sair da tela. Três testes cobrem permissão negada, autorização tardia e tela encerrada. A gravação real e a conferência do balão no destinatário continuam pendentes; nenhum novo envio foi realizado nesta etapa.
+
+Suíte completa: **126 testes aprovados, nenhuma falha**. Verificação de tipos aprovada. O projeto Gemini recusa geração com HTTP 403; assinatura Google AI Pro não equivale à cota de API de um projeto externo. Nenhum faturamento foi habilitado.

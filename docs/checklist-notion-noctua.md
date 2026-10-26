@@ -5,7 +5,7 @@ Atualizado em 26/10/2026. Importe este Markdown no Notion para transformar os it
 ✅ Encontrado no código · 🟡 Parcial · ⬜ Não implementado · 🔌 Depende de serviço/configuração externa. Implementação não significa aprovação visual.
 
 **Antes dos testes de IA:** o Google recusou a geração com HTTP 403: nível gratuito indisponível neste projeto. A chave consulta modelos, mas isso não comprova cota de geração. Nenhum faturamento foi ativado.
-**Envios reais:** pausados a pedido do usuário. Pratique no Espaço de Teste; não dispare campanhas para clientes durante a revisão.
+**Envios reais:** texto e áudio autorizados novamente somente para o contato de teste. Não envie para outros clientes durante a revisão.
 
 ## Parte 1 — Estrutura global, personalização e CRM
 
@@ -17,7 +17,7 @@ Atualizado em 26/10/2026. Importe este Markdown no Notion para transformar os it
 - [ ] 🟡 Gestão/ordenação de etiquetas e renomeação de menus existe; confira cores/ícones e a ordem em filtros e Kanban.
 - [ ] ✅ Command Palette com `Ctrl + K`, busca de conversas e campanhas e navegação para áreas do sistema.
 - [ ] ✅ CRM com quadro/funil e valores de oportunidade em R$.
-- [ ] 🟡 Indicadores financeiros existem, mas o retorno por campanha/etiqueta não está totalmente atribuído automaticamente.
+- [ ] 🟡 Campanhas usam receita manual ou vendas ganhas vinculadas no CRM, sem dupla atribuição, com recálculo e resumo na Visão Geral. Investimento é informado; não representa lucro líquido. Receita/ROI por etiqueta ainda é parcial.
 - [ ] 🟡 Tema premium, animações, estados de hover e toasts existem em parte da interface; consistência visual ainda requer revisão tela a tela.
 - [ ] 🟡 Há comportamento responsivo/mobile; validar navegação lista → conversa → ferramentas em celular e tablet.
 ## Parte 2 — Atendimento e HUD
@@ -78,7 +78,7 @@ Atualizado em 26/10/2026. Importe este Markdown no Notion para transformar os it
 - [ ] 🟡 Captura de metadados CTWA/referral, cartão de origem na conversa e aplica etiqueta existente com “anúncio” no nome. Testar formatos reais de anúncio e miniatura não disponível em todas as versões Baileys.
 - [ ] 🟡 Resumo prioritário heurístico às 08:00 com contatos noturnos aguardando retorno ou menções de intenção de compra; não usa IA e precisa validar fuso horário e qualidade dos sinais.
 - [ ] ✅ Rodízio entre atendentes ativos e com presença online recente (até 90 segundos).
-- [ ] ⬜ Consulta silenciosa para provar se números têm WhatsApp ativo. O pré-processamento atual pode normalizar números, mas não confirma conta ativa.
+- [ ] ✅ Consulta sem envio disponível antes da importação/campanha: conta encontrada, não encontrada ou inconclusiva. Cache por conexão e remoção explícita da prévia; não comprova presença online ou consentimento.
 - [ ] ⬜ Rotação de múltiplos chips e aquecimento em conversas artificiais não foram adicionados. Não automatizo conversas falsas nem mecanismos para contornar os controles antispam do WhatsApp.
 - [ ] ✅ Regras configuráveis de opt-out; ao receber termo no começo da mensagem ou frase configurada, marca contato, aplica etiqueta compatível e cancela envios futuros.
 ## Parte 7 — Economia de IA e contexto
@@ -111,4 +111,4 @@ Atualizado em 26/10/2026. Importe este Markdown no Notion para transformar os it
 - [ ] Confirmei backup e restauração em uma cópia descartável; não resetei a instalação real.
 - [ ] Enviei a especificação da Parte 8, se ela ainda fizer parte do projeto.
 
-Revisão de 26/10/2026: [relatório atualizado, resultados e bloqueios](verification/relatorio-revisao-2026-10-26.md). Suíte final completa com 121 testes aprovados, nenhuma falha; etapa XLS e pré-processamento concluída no código e em testes isolados. Nenhum envio real novo após o pedido de pausa.
+Revisão de 26/10/2026: [relatório atualizado, resultados e bloqueios](verification/relatorio-revisao-2026-10-26.md). Suíte completa com 126 testes aprovados, nenhuma falha; etapa XLS e pré-processamento concluída no código e em testes isolados. Nenhum envio real novo após o pedido de pausa.
