@@ -32,6 +32,7 @@ import { shortcutOptions } from '../context/attendance';
 
 type HudDraft = Pick<
   Preferences,
+  | 'dockingEnabled'
   | 'attendanceShortcutOrder'
   | 'attendanceHiddenShortcuts'
   | 'shortcutLabels'
@@ -58,6 +59,7 @@ type HudDraft = Pick<
 >;
 function draftFrom(value: Preferences): HudDraft {
   return {
+    dockingEnabled: value.dockingEnabled,
     attendanceShortcutOrder: value.attendanceShortcutOrder,
     attendanceHiddenShortcuts: value.attendanceHiddenShortcuts,
     shortcutLabels: value.shortcutLabels,
@@ -259,6 +261,11 @@ export function HudEditor({
             {tab === 'free' && <FreePlacementSettings value={allValue} onChange={(value) => change(value)} />}
             {tab === 'panels' && (
               <div className="hud-control-section">
+                <label className="checkbox">
+                  <input type="checkbox" checked={draft.dockingEnabled} onChange={event => change({ dockingEnabled: event.target.checked })}/>
+                  Usar abas e painéis encaixáveis
+                </label>
+                <p className="muted">No computador, arraste as abas, redimensione as divisões ou destaque janelas. A disposição é ajustada diretamente no Atendimento e confirmada em Salvar layout. A prévia abaixo e as posições livres desta tela representam o layout clássico.</p>
                 <label>
                   Tamanho dos controles
                   <Select

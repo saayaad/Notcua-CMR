@@ -13,6 +13,8 @@ export interface PinnedButtonSettings {
   preview?: 'inherit' | 'always' | 'never';
 }
 export interface Preferences {
+  dockingEnabled: boolean;
+  dockingLayout: string;
   attendanceCustomizationVersion: number;
   shortcutLabels: Record<string, string>;
   shortcutKeys: Record<string, string>;
@@ -71,6 +73,8 @@ export interface Preferences {
   resourceOrder: Record<string, string[]>;
 }
 const defaults: Preferences = {
+  dockingEnabled: false,
+  dockingLayout: '',
   attendanceCustomizationVersion: 3,
   shortcutLabels: {},
   shortcutKeys: {},

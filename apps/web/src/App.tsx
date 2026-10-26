@@ -1,4 +1,5 @@
 import { CampaignMonitor } from './components/CampaignMonitor';
+import { AttendanceLayout } from './components/AttendanceLayout';
 import { Select } from './components/Select';
 import { toolTarget } from './context/attendance';
 import { Fragment, lazy, Suspense, useEffect, useState, type CSSProperties } from 'react';
@@ -464,6 +465,17 @@ export default function App() {
           <div className="topbar-right">
             {view === 'inbox' && (
               <button
+                className={`tools-toggle ${preferences.dockingEnabled ? 'active' : ''}`}
+                aria-label="Painéis encaixáveis"
+                aria-pressed={preferences.dockingEnabled}
+                onClick={() => updatePreferences({ dockingEnabled: !preferences.dockingEnabled })}
+                title="Ativar abas arrastáveis, divisões, painéis flutuantes e janelas externas"
+              >
+                <PanelLeftClose size={16}/><span>Painéis encaixáveis</span>
+              </button>
+            )}
+            {view === 'inbox' && (
+              <button
                 className="tools-toggle hud-open-button"
                 onClick={() => setHudOpen(true)}
                 title="Personalizar Atendimento com prévia"
@@ -533,7 +545,11 @@ export default function App() {
           </div>
         </header>
         {view === 'inbox' ? (
-          <div
+          <AttendanceLayout
+            enabled={preferences.dockingEnabled && viewportWidth > 480}
+            toolsOpen={toolsOpen}
+            onToolsChange={setToolsOpen}
+            onClassic={() => updatePreferences({ dockingEnabled: false })}
             style={hudStyle}
             className={`inbox-layout hud-layout-${preferences.hudPanelLayout} ${selected ? 'chat-selected' : ''} ${toolsOpen ? 'tools-visible' : 'tools-hidden'} ${preferences.toolsDocked ? 'tools-docked' : 'tools-floating'} ${compactTools ? 'tools-compact' : 'tools-comfortable'} ${preferences.panelPosition === 'left' ? 'tools-left' : ''}`}
           >
@@ -544,6 +560,7 @@ export default function App() {
               onSelect={(chat) => {
                 setSelected(chat);
                 setDetailsOpen(false);
+                window.dispatchEvent(new CustomEvent('noctua:dock-focus', { detail: 'chat' }));
               }}
               search={search}
               setSearch={setSearch}
@@ -601,7 +618,7 @@ export default function App() {
                 onClick={() => setToolsOpen(false)}
               />
             )}
-          </div>
+          </AttendanceLayout>
         ) : view === 'overview' ? (
           <OverviewPage sessionId={workspace.sessionId} onNavigate={setView} />
         ) : view === 'campaigns' || view === 'schedule' ? (

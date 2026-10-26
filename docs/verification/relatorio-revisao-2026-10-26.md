@@ -23,7 +23,7 @@ A pausa foi respeitada até a nova autorização. Após a retomada, um texto e u
 
 ## Verificação automatizada
 
-Última suíte completa: **126 testes aprovados, nenhuma falha**, incluindo marca em vídeo, falha segura de imagem, validação dos modelos, preparação de anexo do estúdio, XLS legado e pré-processamento de histórico. Verificação de tipos do servidor, interface e testes passou. Compilação final do servidor e da interface aprovada; permanece aviso de pacote principal acima de 500 kB como oportunidade de otimização do carregamento.
+Última suíte completa: **132 testes aprovados, nenhuma falha**, incluindo marca em vídeo, falha segura de imagem, validação dos modelos, preparação de anexo do estúdio, XLS legado e pré-processamento de histórico. Verificação de tipos do servidor, interface e testes passou. Compilação final do servidor e da interface aprovada; permanece aviso de pacote principal acima de 500 kB como oportunidade de otimização do carregamento.
 
 As mídias dos testes são sintéticas e os bancos usados pelos testes são descartáveis. Testes não executam cobranças nem enviam mensagens usando a conexão real.
 
@@ -105,3 +105,16 @@ Validação: 17 testes de atendimento e Data URL aprovados, incluindo geração 
 ### Confirmação do destinatário
 
 O usuário confirmou: o novo áudio enviado às 16h36 baixa e reproduz normalmente no iPhone. O teste completo de gravação, envio PTT, download e reprodução está aprovado para esta amostra e dispositivo. Isso valida o resultado da normalização; não isola qual parâmetro causava a incompatibilidade anterior e não representa teste de todos os modelos de telefone.
+
+
+## Etapa — abas e painéis encaixáveis
+
+Integrado Dockview React 8.6.1, gratuito sob licença MIT, para divisão e redimensionamento, grupos de abas, painéis flutuantes e janelas externas. Modo opcional no cabeçalho e em Personalizar Atendimento. As posições livres do HUD clássico ficam desativadas dentro do gerenciador para não disputar o mesmo painel.
+
+A disposição é guardada nas preferências da conta mediante Salvar layout; Cancelar recupera o estado salvo. A recuperação valida os componentes permitidos, remove parâmetros de conteúdo e transforma janelas externas em painéis flutuantes locais, sem abertura automática de URLs. Tema, densidade e classes de privacidade acompanham janelas externas. Carregamento de código/CSS acontece sob demanda; a página popout.html foi excluída da reescrita SPA da Vercel.
+
+Interface conferida: abertura da biblioteca, agrupamento por botão, painel flutuante, redimensionamento por arraste da divisória, maximização, restauração, salvamento e recuperação ao reativar o modo clássico/encaixável. O usuário confirmou que a janela externa apareceu com conteúdo correto. Um rascunho temporário permaneceu intacto ao flutuar e reencaixar, com um único compositor, e foi limpo sem envio.
+
+A tentativa automatizada de arrastar uma aba não mudou a disposição. O recurso está implementado pela biblioteca, mas sua conferência manual entre navegadores continua na checklist. Nenhuma mensagem foi enviada nesta etapa. A captura visual ficou somente na pasta temporária local, sem publicação de conteúdo da conta no GitHub.
+
+Validação: suíte completa com **132 testes aprovados, nenhuma falha**, seguida de **5 testes aprovados** de layout/rota após acrescentar a regressão da Vercel. Guia e checklist: [paineis-atendimento.md](../paineis-atendimento.md).

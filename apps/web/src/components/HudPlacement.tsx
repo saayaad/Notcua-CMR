@@ -1,7 +1,9 @@
-import { useRef, useState, useEffect, type CSSProperties, type PointerEvent } from 'react';
+import { useContext, useRef, useState, useEffect, type CSSProperties, type PointerEvent } from 'react';
+import { DockingContext } from '../context/docking';
 import { Move } from 'lucide-react';
 import { usePreferences, type HudBlockPosition } from '../context/PreferencesContext';
 export function useHudPlacement(id: string) {
+  const docking = useContext(DockingContext);
   const { preferences, updatePreferences } = usePreferences();
   const [desktop, setDesktop] = useState(() => window.innerWidth > 760);
   useEffect(() => {
@@ -13,7 +15,7 @@ export function useHudPlacement(id: string) {
   const origin = useRef<{ x: number; y: number; position: HudBlockPosition } | null>(null);
   const saved = preferences.hudBlockPositions[id];
   const position = draft ?? saved;
-  const floating = position?.mode === 'floating' && desktop;
+  const floating = !docking && position?.mode === 'floating' && desktop;
   const style: CSSProperties = floating
     ? {
         position: 'fixed',

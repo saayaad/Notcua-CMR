@@ -111,4 +111,18 @@ Atualizado em 26/10/2026. Importe este Markdown no Notion para transformar os it
 - [ ] Confirmei backup e restauração em uma cópia descartável; não resetei a instalação real.
 - [ ] Enviei a especificação da Parte 8, se ela ainda fizer parte do projeto.
 
-Revisão de 26/10/2026: [relatório atualizado, resultados e bloqueios](verification/relatorio-revisao-2026-10-26.md). Suíte completa com 126 testes aprovados, nenhuma falha; etapa XLS e pré-processamento concluída no código e em testes isolados. Após nova autorização, texto e gravação pelo microfone entregues somente ao contato de teste; conferência visual do balão no telefone solicitada.
+Revisão de 26/10/2026: [relatório atualizado, resultados e bloqueios](verification/relatorio-revisao-2026-10-26.md). Suíte completa com 132 testes aprovados, nenhuma falha; etapa XLS e pré-processamento concluída no código e em testes isolados. Após nova autorização, texto e gravação pelo microfone entregues somente ao contato de teste; conferência visual do balão no telefone solicitada.
+
+
+## Painéis encaixáveis do Atendimento
+
+Implementação e testes desta etapa: [guia de uso e evidências](paineis-atendimento.md). Os itens abaixo ficam disponíveis para sua revisão pessoal.
+
+- [ ] Ativar Painéis encaixáveis e voltar ao Layout clássico.
+- [ ] Organizar por abas e pelos botões Esquerda, Direita, Em cima e Embaixo.
+- [ ] Arrastar uma aba para outro grupo em seu navegador.
+- [ ] Arrastar divisórias e ajustar tamanhos.
+- [ ] Flutuar, maximizar e restaurar um painel.
+- [ ] Abrir outra janela e trazê-la de volta ao Atendimento.
+- [ ] Salvar, cancelar alterações e recuperar o layout ao reabrir.
+- [ ] Conferir rascunho e único compositor ao mover a conversa, sem enviar mensagem.
