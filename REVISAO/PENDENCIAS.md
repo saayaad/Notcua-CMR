@@ -1,5 +1,7 @@
 # Pendências — Noctua CRM
 
+Publicação de 27/10/2026 concluída por pedido explícito: https://notcua.vercel.app/atendimento, projeto noctua-crm, versão READY `dpl_9ZQXmBsz8AwGtaBYd1veR3Ajcimo`. Operação autenticada conferida no domínio principal; IA desligada e API protegida com 401 sem login. Servidor real e túnel autorizado estão ativos neste PC. Isso atende ao pedido de acesso online; a auditoria funcional abaixo continua com pendências próprias. Não declarar homologação integral do aplicativo.
+
 Atualização: 27/10/2026. Fase 2 autorizada e em execução. O novo módulo de chaves foi aprovado separadamente durante a revisão. **Este ainda não é o relatório final da Fase 3.**
 
 Prioridade seguinte autorizada pelo usuário: menu de botão direito global implementado localmente, com handlers existentes e edição de texto. Conferência e limites em [MENU-CONTEXTO.md](MENU-CONTEXTO.md) e [checklist do menu](MENU-CONTEXTO.md#testes-e-checklist). 60 testes selecionados passaram nesta rodada; a auditoria individual restante continua aberta. Essa autorização substitui a parada anterior somente para o menu, sem aprovar alterações indiscriminadas de outros módulos.

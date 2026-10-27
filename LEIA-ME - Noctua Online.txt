@@ -15,7 +15,7 @@ NAS PRÓXIMAS VEZES
 5. Para encerrar, volte à janela preta e pressione Ctrl+C.
 
 O atalho inicia o servidor, abre o túnel, atualiza a conexão na Vercel e publica o site.
-O endereço atual do sistema é https://noctua-crm.vercel.app/atendimento.
+O endereço principal do sistema é https://notcua.vercel.app/atendimento.
 Cada reinício cria um endereço temporário novo e faz uma publicação nova na Vercel.
 Por isso, a conexão depende de o computador ficar ligado, conectado à internet e com a janela aberta.
 

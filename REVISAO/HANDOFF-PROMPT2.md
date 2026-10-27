@@ -1,5 +1,7 @@
 # Handoff para o Prompt 2 — provisório
 
+Publicação solicitada e concluída em 27/10/2026: projeto Vercel `noctua-crm`, domínio https://notcua.vercel.app/atendimento, deploy `dpl_9ZQXmBsz8AwGtaBYd1veR3Ajcimo` READY a partir de `cd79405`. Servidor real iniciado em 3333 com Firebase; túnel Cloudflare autorizado explicitamente pelo usuário após revisão automática. Saúde pública OK, endpoint protegido sem token retornou 401 e origem principal validada. Aba de produção carregou operação autenticada; IA confirmada desabilitada. Configurações privadas e backups excluídos do pacote. Backend/túnel dependem de PC ligado e internet. Branch revisao-completa sincronizada no GitHub; publicação não significa conclusão dos requisitos restantes. Registro local de processos em `.npm-cache/online-runtime.json`, sem segredos. O teste fictício em 5187 deve ser encerrado ao concluir a publicação.
+
 27/10/2026. **Fase 2 em andamento. O usuário autorizou posteriormente a implementação do menu contextual; ela está disponível localmente. Redesign e correções gerais ainda dependem do plano de auditoria.**
 
 Atualização mais recente: ContextMenuProvider global, ações de mensagens/lista/biblioteca, descoberta de botões nos demais cards, edição nativa de texto e navegação geral. Ver MENU-CONTEXTO.md e MENU-CONTEXTO.md (seção Testes e checklist). 60 testes selecionados aprovados, sem envios reais. Checkpoint anterior 15d2559. Não declarar os 699 requisitos aprovados com base nessa regressão. As referências ao menu como pendente abaixo representam o estado anterior à autorização atual.
