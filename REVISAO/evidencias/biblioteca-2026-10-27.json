@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-27",
+  "requirements": [
+    "REQ-039",
+    "REQ-043",
+    "REQ-183",
+    "REQ-180",
+    "REQ-181",
+    "REQ-182"
+  ],
+  "counts": {
+    "⬜ A VERIFICAR": 475,
+    "✅ COMPLETO": 74,
+    "🟡 PARCIAL": 85,
+    "⛔ NÃO TESTADO": 8,
+    "🔁 SUBSTITUÍDO OU CANCELADO": 50,
+    "⚠️ PRECISA DE DECISÃO": 4,
+    "🔌 DESCONECTADO": 4,
+    "🐞 COM DEFEITO": 2,
+    "❌ AUSENTE": 1
+  },
+  "ui": {
+    "environment": "5187, banco temporário, sem WhatsApp",
+    "created": "Revisão · Prazo",
+    "edited": "2 dias para 3 dias",
+    "favoritePersistedAfterReload": true,
+    "duplicateConfirmed": true,
+    "duplicateDeletedOnly": true,
+    "originalPreserved": true,
+    "category": "Prazo e produção",
+    "categoryFilterCount": 1,
+    "previewStrongText": "3 dias úteis"
+  },
+  "productionFix": "AssetPreview: formatação e limpeza de estado anterior",
+  "externalSends": 0,
+  "build": "aprovado",
+  "appComplete": false
+}

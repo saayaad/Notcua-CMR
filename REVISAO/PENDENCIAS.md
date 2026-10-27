@@ -6,7 +6,7 @@ Prioridade seguinte autorizada pelo usuário: menu de botão direito global impl
 
 ## Situação
 
-O livro [REQUISITOS.md](REQUISITOS.md) contém 703 registros: 481 ⬜ A VERIFICAR; 71 ✅ COMPLETO; 82 🟡 PARCIAL; 8 ⛔ NÃO TESTADO; 50 🔁 SUBSTITUÍDO OU CANCELADO; 4 ⚠️ PRECISA DE DECISÃO; 4 🔌 DESCONECTADO; 2 🐞 COM DEFEITO; 1 ❌ AUSENTE. Repetições de pedidos não são funções distintas; ainda não há percentual de completude comprovado.
+O livro [REQUISITOS.md](REQUISITOS.md) contém 703 registros: 471 ⬜ A VERIFICAR; 78 ✅ COMPLETO; 85 🟡 PARCIAL; 8 ⛔ NÃO TESTADO; 50 🔁 SUBSTITUÍDO OU CANCELADO; 4 ⚠️ PRECISA DE DECISÃO; 4 🔌 DESCONECTADO; 2 🐞 COM DEFEITO; 1 ❌ AUSENTE. Repetições de pedidos não são funções distintas; ainda não há percentual de completude comprovado.
 A verificação individual, prioridade, esforço e lotes serão preenchidos depois da aprovação do escopo, sem reutilizar “implementado” de um relatório antigo como prova.
 
 | ID / conjunto | Status | O que decidir ou completar | Prioridade/esforço |
@@ -96,3 +96,15 @@ A preparação inicial de transfers.test.ts falhou no schema engine sem RUST_LOG
 Faltam percursos visuais parciais e classificação dos requisitos ainda a verificar; esta rodada não prova conclusão dos 703 registros. Ver evidencias/conclusao-parcial-sem-ia-2026-10-27.json.
 
 Retomada: não parar por lote; continuar funções manuais. Geração real de IA, dispositivos/navegadores indisponíveis, ativação com cliente real e publicação continuam sem homologação nesta rodada. Não afirmar app totalmente finalizado.
+
+## Biblioteca — continuação em 27/10/2026
+
+CRUD de texto, favorito, duplicação, confirmação, exclusão somente da cópia, categoria e filtro conferidos na interface fictícia. Texto e favorito permaneceram após reload. Corrigida a prévia que mostrava marcadores de formatação literalmente (BUG-005); FormattedText confirmou negrito no DOM. Arquivos/mídias da Biblioteca ainda têm passos visuais pendentes. Evidência: evidencias/biblioteca-2026-10-27.json e biblioteca-categoria-2026-10-27.png.
+
+## Reset seguro — continuação em 27/10/2026
+
+BUG-006 corrigido: o reset limpava apenas chaves noctua: e deixava noctua-preferences:uid, permitindo que a personalização antiga voltasse após recarregar. A limpeza agora considera as chaves exatas da conta e seus rascunhos; outras contas e autenticação ficam preservadas. O servidor também passou a bloquear fluxos, macros e funis RUNNING, além dos trabalhos já protegidos.
+
+Quatro testes de segurança e um de cache local aprovados; confirmação visual de duas etapas, texto incorreto bloqueado, EXCLUIR exato liberado e cancelamento sem exclusão. O JSON do backup foi reaberto como banco, conferindo contato, recurso, bytes de arquivo, preferência e exemplo local. Nenhum dado real foi apagado. A primeira fixture do teste precisava de id obrigatório no Asset; corrigida antes dos testes finais.
+
+Acumulado desta continuação: 141 testes distintos aprovados (136 anteriores + 4 de segurança + 1 de limpeza local); sem novas gerações de IA. Build e tipagem aprovados. Evidências em evidencias/reset-seguro-2026-10-27.json. A auditoria geral ainda não concluiu os registros a verificar.

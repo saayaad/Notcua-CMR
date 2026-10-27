@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-27",
+  "requirements": [
+    "REQ-192",
+    "REQ-357",
+    "REQ-358",
+    "REQ-359"
+  ],
+  "counts": {
+    "⬜ A VERIFICAR": 471,
+    "✅ COMPLETO": 78,
+    "🟡 PARCIAL": 85,
+    "⛔ NÃO TESTADO": 8,
+    "🔁 SUBSTITUÍDO OU CANCELADO": 50,
+    "⚠️ PRECISA DE DECISÃO": 4,
+    "🔌 DESCONECTADO": 4,
+    "🐞 COM DEFEITO": 2,
+    "❌ AUSENTE": 1
+  },
+  "tests": {
+    "safetyPassed": 4,
+    "localStatePassed": 1,
+    "totalDistinctInContinuation": 141,
+    "realDataDeleted": false
+  },
+  "verified": [
+    "papel administrativo",
+    "EXCLUIR exato",
+    "escolha explícita de backup",
+    "recusa de conexão ativa",
+    "recusa de fluxo/macro/funil ativo",
+    "JSON reaberto como SQLite",
+    "contato/texto/arquivo/preferência/exemplo preservados na cópia",
+    "registro de backup e acesso preservados após reset fictício",
+    "limpeza de cache só da conta atual"
+  ],
+  "ui": {
+    "steps": 2,
+    "lowercaseBlocked": true,
+    "uppercaseEnabled": true,
+    "finalAction": "cancelado",
+    "screenshot": "reset-trava-2026-10-27.png"
+  },
+  "productionCodeChanged": [
+    "SafetyZone.tsx",
+    "reset-local-state.ts",
+    "safety.routes.ts"
+  ],
+  "published": false,
+  "appComplete": false
+}

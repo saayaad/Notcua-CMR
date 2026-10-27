@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Asset } from '../types';
 import { useApi, errorMessage } from '../context/ApiContext';
-import { Spinner } from './ui';
+import { FormattedText, Spinner } from './ui';
 
 export function AssetPreview({
   asset,
@@ -18,6 +18,8 @@ export function AssetPreview({
   useEffect(() => {
     let alive = true;
     let objectUrl = '';
+    setError('');
+    setUrl('');
     if (asset.fileId)
       void blob(`/attendance/assets/${encodeURIComponent(asset.id)}/file`)
         .then((file) => {
@@ -37,7 +39,9 @@ export function AssetPreview({
   return (
     <div className="asset-preview resource-preview">
       {asset.kind === 'MESSAGE' ? (
-        <p>{name ? asset.text?.replaceAll('#nome', name) : asset.text}</p>
+        <p>
+          <FormattedText text={(name ? asset.text?.replaceAll('#nome', name) : asset.text) ?? ''} />
+        </p>
       ) : (
         <>
           {error ? (
@@ -64,7 +68,11 @@ export function AssetPreview({
           )}
         </>
       )}
-      {asset.caption && <p>{asset.caption}</p>}
+      {asset.caption && (
+        <p>
+          <FormattedText text={asset.caption} />
+        </p>
+      )}
       {(asset.isPtt || asset.isPtv || asset.asViewOnce) && (
         <small>
           {[

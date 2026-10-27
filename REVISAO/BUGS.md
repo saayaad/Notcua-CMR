@@ -64,3 +64,11 @@ Arquivo: apps/web/src/context/PreferencesContext.tsx:245. O PUT automático desc
 - **LAC-002 corrigida:** sugestões da agenda mostram as etiquetas recebidas no contato. UI mostrou nome, telefone, iniciais e RM1.
 - **BUG-004 corrigido:** no tema claro, balões do Sandbox usavam fallback escuro porque --panel/--border não existem no tema global. sandbox.css agora usa --surface2/--line. Capturas claro/escuro conferidas, com texto legível.
 - BUG-002/003 e INT-001 continuam abertos e com testes funcionais de IA adiados por solicitação do usuário. Os textos anteriores descrevem o estado histórico antes deste lote.
+
+## BUG-005 — Prévia de texto mostrava marcadores literalmente — corrigido
+
+AssetPreview.tsx usava um parágrafo de texto simples, embora o chat aplicasse FormattedText. Corrigido para a mesma renderização segura em texto/legenda; não usa HTML arbitrário. UI conferiu strong em “3 dias úteis”. O estado de URL/erro também é limpo ao trocar de recurso para impedir prévia anterior durante carregamento. Build da interface aprovado; não alterada a lógica de envio.
+
+## BUG-006 — Reset recuperava preferências locais antigas — corrigido
+
+SafetyZone apagava apenas chaves com prefixo noctua:, mas as preferências usam noctua-preferences:uid e a seleção usa noctua-active-session:uid. Corrigido com clearOperationLocalState: limpa a conta corrente, tema e estado das ferramentas, preserva outras contas e Firebase. Teste com duas contas aprovado. Reset também bloqueia fluxos/macros/funis RUNNING; quatro casos safety.test.ts aprovados, com recuperação de snapshot. Modal de confirmação vermelho e EXCLUIR exato conferidos; reset real somente em banco descartável.

@@ -2429,6 +2429,14 @@ dialog.modal.batch-editor-modal {
   white-space: normal;
   overflow-wrap: anywhere;
 }
+.safety-reset-modal .button.danger {
+  background: #b42335;
+  border-color: #b42335;
+  color: #fff;
+}
+.safety-reset-modal .button.danger:disabled {
+  opacity: 0.45;
+}
 .contact-picker-options small {
   color: var(--muted);
   font-size: 0.7rem;

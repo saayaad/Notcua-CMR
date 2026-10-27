@@ -14,6 +14,9 @@ export async function assertResetIdle(db: PrismaClient) {
     db.deliveryTask.count({ where: { status: 'RUNNING' } }),
     db.sequenceRun.count({ where: { status: 'RUNNING' } }),
     db.scheduledJob.count({ where: { status: 'RUNNING' } }),
+    db.flowExecution.count({ where: { status: 'RUNNING' } }),
+    db.macroExecution.count({ where: { status: 'RUNNING' } }),
+    db.funnelExecution.count({ where: { status: 'RUNNING' } }),
   ]);
   if (running.some(Boolean)) throw new AppError(409, 'Aguarde os envios em andamento terminarem antes de resetar.');
 }
