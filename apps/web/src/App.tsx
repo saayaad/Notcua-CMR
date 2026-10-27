@@ -463,7 +463,7 @@ export default function App() {
             <strong>{navigation.find((item) => item.id === view)?.name}</strong>
           </div>
           <div className="topbar-right">
-            {view === 'inbox' && (
+            {view === 'inbox' && !preferences.dockingEnabled && (
               <button
                 className={`tools-toggle ${preferences.dockingEnabled ? 'active' : ''}`}
                 aria-label="Painéis encaixáveis"
@@ -477,8 +477,9 @@ export default function App() {
             {view === 'inbox' && (
               <button
                 className="tools-toggle hud-open-button"
-                onClick={() => setHudOpen(true)}
-                title="Personalizar Atendimento com prévia"
+                onClick={() => preferences.dockingEnabled && viewportWidth > 480
+                  ? window.dispatchEvent(new Event('noctua:dock-edit')) : setHudOpen(true)}
+                title={preferences.dockingEnabled ? 'Organizar Atendimento' : 'Personalizar Atendimento com prévia'}
               >
                 <SlidersHorizontal size={16} />
                 <span>Personalizar</span>

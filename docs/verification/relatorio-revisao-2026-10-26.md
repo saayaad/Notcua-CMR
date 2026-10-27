@@ -123,3 +123,14 @@ Validação: suíte completa com **132 testes aprovados, nenhuma falha**, seguid
 ### Confirmação manual do arraste de abas
 
 Em 26/10/2026, o usuário confirmou que consegue arrastar a aba Biblioteca e fixados e encaixá-la em outro painel. O gesto está aprovado no navegador em uso. A cobertura específica de Chrome, Edge, Firefox e Safari permanece separada na revisão entre navegadores.
+
+
+## Revisão visual — organização sob demanda
+
+Após o relato de excesso de botões e falhas de organização, os controles foram concentrados em Personalizar. O uso normal não mostra a barra de layout, ações dos grupos ou fechamento de abas. Arraste, divisórias e alças ficam desativados fora do modo de edição. A edição usa seletores de painel e posição, Confirmar layout, Cancelar e Mais opções, com recuperação e retorno ao clássico.
+
+Aplicados limites de painel flutuante dentro da área visível e confirmação tardia de remoção da biblioteca, para não tratar um deslocamento como fechamento. A inscrição dos eventos agora acompanha a instância do gerenciador, incluindo atualização de desenvolvimento. Foi adicionado limite de erro com recuperação para o layout clássico, preservando os dados de conversas e biblioteca.
+
+Uma tentativa de separar a conversa automaticamente durante a reconstrução gerou Invalid grid element no teste e foi removida. Não foi mantida reorganização automática durante encaixes. O erro foi identificado antes da publicação desta revisão.
+
+Conferido pela interface: modo normal com zero ações de layout expostas, abertura por Personalizar, Cancelar e confirmação do layout retornando ao modo limpo. Cinco testes de persistência/rota aprovados. Esta revisão não representa validação de todas as sequências de arraste em todos os navegadores; a nova experiência deve ser revista pelo usuário.

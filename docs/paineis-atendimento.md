@@ -6,13 +6,15 @@ O recurso usa Dockview gratuito, com licença MIT. Dockview, FlexLayout e Golden
 
 ## Organizar o espaço
 
+Clique em **Personalizar** no cabeçalho para entrar no modo de organização. Fora dele, a barra de alterações, os botões de fechar abas e os controles dos grupos ficam ocultos; arraste e divisórias ficam protegidos contra mudanças acidentais.
+
 1. Arraste o título de uma aba para a borda de outro painel para dividir a área, ou para sua faixa de abas para agrupá-los.
 2. Arraste as divisórias para alterar a largura e a altura.
 3. Se preferir botões, selecione um painel e use **Esquerda**, **Direita**, **Em cima**, **Embaixo** ou **Juntar em abas**.
 4. No cabeçalho de cada grupo, use **Painel flutuante**, **Abrir em outra janela** ou **Maximizar**. **Restaurar tamanho** desfaz a maximização.
-5. Clique em **Salvar layout** para guardar a disposição na sua conta. **Cancelar** recupera a última disposição salva. O botão de seta circular recupera a disposição padrão; salve para mantê-la.
+5. Clique em **Confirmar layout** para guardar a disposição na sua conta. **Cancelar** recupera a última disposição salva. Em **Mais opções → Recuperar painéis**, volte à disposição padrão; confirme para mantê-la.
 
-Fechar uma aba oculta o painel, sem apagar a conversa ou a biblioteca. Reabra-o pelos botões **Conversas**, **Conversa** e **Biblioteca e fixados** da barra superior.
+Fechar uma aba oculta o painel, sem apagar a conversa ou a biblioteca. Reabra-o em **Personalizar → Painel**, escolhendo Conversas, Conversa ou Biblioteca e fixados.
 
 ## Janelas e tamanhos de tela
 
@@ -20,7 +22,7 @@ Fechar uma aba oculta o painel, sem apagar a conversa ou a biblioteca. Reabra-o 
 - Ao restaurar um layout salvo, janelas externas voltam como painéis flutuantes dentro do Atendimento. Outra janela só abre depois de um clique; isso evita pop-ups inesperados ao entrar.
 - O navegador pode bloquear novas janelas; nesse caso o sistema informa o bloqueio.
 - Telas estreitas começam com abas agrupadas. Em áreas médias, biblioteca e lista compartilham um grupo para preservar a conversa. Abaixo de 481 pixels, permanece a navegação clássica de celular.
-- **Layout clássico** retorna à organização anterior. As configurações anteriores de HUD e atalhos continuam disponíveis.
+- **Personalizar → Mais opções → Voltar ao layout clássico** retorna à organização anterior. As configurações anteriores de HUD e atalhos continuam disponíveis.
 
 ## Validação desta entrega
 
