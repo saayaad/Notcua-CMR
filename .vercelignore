@@ -5,6 +5,13 @@ node_modules
 backups
 apps/server/backups
 apps/server/.secrets
+**/.secrets/**
+**/*.key
+**/*-firebase-adminsdk-*.json
+**/firebase-admin*.json
+**/service-account*.json
+.git
+REVISAO
 apps/server/.env*
 .env
 .env.*
