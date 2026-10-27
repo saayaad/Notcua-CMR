@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useApi } from './ApiContext';
+import { firebaseAuth } from '../auth/firebase';
 export interface HudBlockPosition {
   mode: 'dock' | 'floating';
   x: number;
@@ -180,17 +181,18 @@ const Context = createContext<{
   savePreferences: (value: Partial<Preferences>) => Promise<void>;
 }>({ preferences: defaults, updatePreferences: () => undefined, savePreferences: async () => undefined });
 export function PreferencesProvider({ children }: { children: ReactNode }) {
+  const storageKey = `noctua-preferences:${firebaseAuth?.currentUser?.uid ?? 'local'}`;
   const { request } = useApi();
   const ready = useRef(false);
   const [preferences, setPreferences] = useState<Preferences>(() => {
     try {
-      return normalizeAttendancePreferences(JSON.parse(localStorage.getItem('noctua-preferences') ?? '{}'));
+      return normalizeAttendancePreferences(JSON.parse(localStorage.getItem(storageKey) ?? '{}'));
     } catch {
       return defaults;
     }
   });
   useEffect(() => {
-    localStorage.setItem('noctua-preferences', JSON.stringify(preferences));
+    localStorage.setItem(storageKey, JSON.stringify(preferences));
     localStorage.setItem('noctua-theme', preferences.theme);
     document.documentElement.dataset.theme = preferences.theme;
     document.documentElement.style.setProperty('--accent', preferences.accentColor);

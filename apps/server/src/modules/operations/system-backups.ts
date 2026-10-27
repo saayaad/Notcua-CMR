@@ -6,6 +6,7 @@ import type { PrismaClient } from '@prisma/client';
 import { env } from '../../config/env.js';
 import { putRecord, record } from './records.js';
 import { CredentialCipher } from '../whatsapp/credential-cipher.js';
+import { databasePaths } from '../../database/paths.js';
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 export interface SystemBackup {
   id: string;
@@ -14,15 +15,15 @@ export interface SystemBackup {
   key: string;
   createdAt: string;
 }
-export async function createSystemBackup(db: PrismaClient, directory = resolve(root, env.BACKUP_DIR)) {
+export async function createSystemBackup(db: PrismaClient, directory = databasePaths(db).backupDir) {
   await mkdir(directory, { recursive: true });
-  await CredentialCipher.load(env.WHATSAPP_KEY_FILE);
+  await CredentialCipher.load(databasePaths(db).keyFile);
   const id = `system-backup:${randomUUID()}`;
   const filename = `noctua-${new Date().toISOString().replace(/[:.]/g, '-')}-${id.slice(-8)}`;
   const database = resolve(directory, `${filename}.db`);
   const key = resolve(directory, `${filename}.key`);
   await db.$executeRawUnsafe('VACUUM INTO ?', database);
-  await copyFile(resolve(root, env.WHATSAPP_KEY_FILE), key);
+  await copyFile(databasePaths(db).keyFile, key);
   const data: SystemBackup = { id, filename, database, key, createdAt: new Date().toISOString() };
   await putRecord(db, id, 'SYSTEM_BACKUP', data);
   return data;

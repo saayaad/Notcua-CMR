@@ -17,6 +17,8 @@ import type { WhatsappService } from '../whatsapp/whatsapp.service.js';
 import type { MessagingService } from '../attendance/messaging.service.js';
 import { CredentialCipher } from '../whatsapp/credential-cipher.js';
 import { env } from '../../config/env.js';
+import { databasePaths } from '../../database/paths.js';
+import { synchronizeTeamAccess } from '../../http/auth.js';
 import { json } from '../backups/validation.js';
 import { ContactsService, leadSchema } from './contacts.service.js';
 import { hasConfiguredKey, record, putRecord, type AgentSettings } from './records.js';
@@ -253,6 +255,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       .parse(req.body);
     if (data.email === env.OWNER_EMAIL.toLowerCase())
       throw new AppError(409, 'O administrador principal é definido no servidor.');
+    await synchronizeTeamAccess(res.locals.identity.workspaceId, data);
     await putRecord(db, `team:${data.email}`, 'TEAM', data);
     res.json({ saved: true });
   });
@@ -869,7 +872,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     if ((settings.provider ?? 'openai') !== 'gemini') throw new AppError(422, 'Selecione Google · Gemini e salve a integração antes de adicionar chaves extras.');
     const fallbacks = settings.fallbackKeys ?? [];
     if (fallbacks.length >= 20) throw new AppError(422, 'O limite é de 20 chaves adicionais.');
-    const item = { id: randomUUID(), label: input.label, encryptedKey: (await CredentialCipher.load(env.WHATSAPP_KEY_FILE)).encrypt(input.apiKey).toString('base64'), enabled: true, addedAt: new Date().toISOString() };
+    const item = { id: randomUUID(), label: input.label, encryptedKey: (await CredentialCipher.load(databasePaths(db).keyFile)).encrypt(input.apiKey).toString('base64'), enabled: true, addedAt: new Date().toISOString() };
     await putRecord(db, 'integration:ai', 'INTEGRATION', { ...settings, fallbackKeys: [...fallbacks, item] });
     res.status(201).json({ id: item.id, label: item.label, enabled: item.enabled });
   });
@@ -878,7 +881,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     const { apiKey } = z.object({ apiKey: z.string().trim().min(20).max(500) }).parse(req.body);
     const settings = await record<AgentSettings>(db, 'integration:ai', { model: '', instructions: '', knowledge: '', style: '', enabled: false });
     if ((settings.provider ?? 'openai') !== 'gemini') throw new AppError(422, 'Selecione Google · Gemini para editar a chave principal Gemini.');
-    const encryptedKey = (await CredentialCipher.load(env.WHATSAPP_KEY_FILE)).encrypt(apiKey).toString('base64');
+    const encryptedKey = (await CredentialCipher.load(databasePaths(db).keyFile)).encrypt(apiKey).toString('base64');
     await putRecord(db, 'integration:ai', 'INTEGRATION', { ...settings, encryptedKey });
     await db.operationRecord.deleteMany({ where: { id: 'ai-key-quota:primary' } });
     res.json({ saved: true });
@@ -919,7 +922,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     const keyId = id.parse(req.params.keyId);
     const items = settings.fallbackKeys ?? [];
     if (!items.some((item) => item.id === keyId)) throw new AppError(404, 'Chave adicional não encontrada.');
-    const cipher = input.apiKey ? await CredentialCipher.load(env.WHATSAPP_KEY_FILE) : null;
+    const cipher = input.apiKey ? await CredentialCipher.load(databasePaths(db).keyFile) : null;
     const updated = items.map((item) => item.id === keyId ? { ...item, label: input.label, ...(input.apiKey && cipher ? { encryptedKey: cipher.encrypt(input.apiKey).toString('base64') } : {}) } : item);
     await putRecord(db, 'integration:ai', 'INTEGRATION', { ...settings, fallbackKeys: updated });
     await db.operationRecord.deleteMany({ where: { id: `ai-key-quota:${keyId}` } });
@@ -1046,7 +1049,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     if (settings.mediaEnabled && !settings.mediaModel)
       throw new AppError(422, 'Informe o modelo de análise antes de ativar mídias.');
     if (apiKey?.trim())
-      encryptedKey = (await CredentialCipher.load(env.WHATSAPP_KEY_FILE))
+      encryptedKey = (await CredentialCipher.load(databasePaths(db).keyFile))
         .encrypt(apiKey.trim())
         .toString('base64');
     if (settings.enabled && !encryptedKey && !((settings.provider === 'gemini') && previous?.fallbackKeys?.some((key) => key.enabled)))

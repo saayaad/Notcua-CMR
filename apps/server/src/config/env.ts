@@ -13,6 +13,7 @@ const schema = z.object({
   FIREBASE_PROJECT_ID: z.string().default(''),
   OWNER_EMAIL: z.string().default(''),
   BACKUP_DIR: z.string().default('backups/system'),
+  PLATFORM_DATA_DIR: z.string().min(1).default('.secrets'),
   BODY_LIMIT_MB: z.coerce.number().int().min(1).max(100).default(40),
   WHATSAPP_KEY_FILE: z.string().min(1).default('.secrets/whatsapp.key'),
   WHATSAPP_LOG_LEVEL: z.enum(['silent', 'fatal', 'error', 'warn']).default('silent'),

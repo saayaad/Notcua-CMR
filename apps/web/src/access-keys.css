@@ -1,0 +1,125 @@
+.access-keys-page {
+  min-height: 100dvh;
+  padding: clamp(1rem, 3vw, 2.5rem);
+  max-width: 78rem;
+  margin-inline: auto;
+  overflow-wrap: anywhere;
+}
+.access-keys-header,
+.access-keys-title,
+.access-keys-list-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.access-keys-header > span {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.access-keys-title {
+  justify-content: flex-start;
+}
+.access-keys-title h1 {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  margin: 0;
+}
+.access-keys-title p,
+.access-keys-form > p,
+.activation-form > p {
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+.access-keys-symbol {
+  padding: 0.8rem;
+  border-radius: 1rem;
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+.access-keys-page > .surface {
+  margin-bottom: 1.2rem;
+}
+.access-keys-form h2,
+.access-keys-form label {
+  display: flex;
+  gap: 0.45rem;
+}
+.access-keys-form form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-block: 1rem;
+}
+.access-keys-form label {
+  flex-direction: column;
+  font-size: 0.85rem;
+}
+.access-keys-form form > .button {
+  justify-self: start;
+  align-self: end;
+}
+.access-keys-list {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 1rem;
+}
+.access-key-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+}
+.access-key-card > div {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+.access-key-card span,
+.access-key-card small {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.access-keys-empty {
+  padding-block: 1.5rem;
+  color: var(--muted);
+}
+.access-key-secret {
+  display: block;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  font-family: monospace;
+  user-select: all;
+  margin-block: 1rem;
+  overflow-wrap: anywhere;
+}
+.activation-form {
+  display: grid;
+  gap: 0.8rem;
+  margin-block: 1rem;
+}
+.activation-form label {
+  display: grid;
+  gap: 0.5rem;
+}
+@media (max-width: 40rem) {
+  .access-keys-form form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .access-keys-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .access-key-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

@@ -25,7 +25,7 @@ export function SystemBackups() {
   return (
     <div className="surface">
       <h2>
-        <ShieldCheck size={18} /> Backup integral do sistema
+        <ShieldCheck size={18} /> Backup integral da operação
       </h2>
       <p>
         Inclui banco de dados e chave das sessões em um ZIP privado. Guarde o arquivo em local seguro. A

@@ -15,13 +15,19 @@ import './sandbox.css';
 import './client-ai.css';
 import './watermark.css';
 import './usability.css';
+import { AccessKeysPage } from './pages/AccessKeysPage';
+import './access-keys.css';
 
 createRoot(document.getElementById('root')!).render(
   <ApiProvider>
-    <PreferencesProvider>
-      <AuthGate>
-        <App />
-      </AuthGate>
-    </PreferencesProvider>
+    <AuthGate>
+      {window.location.pathname.replace(/\/+$/, '') === '/chaves' ? (
+        <AccessKeysPage />
+      ) : (
+        <PreferencesProvider>
+          <App />
+        </PreferencesProvider>
+      )}
+    </AuthGate>
   </ApiProvider>,
 );

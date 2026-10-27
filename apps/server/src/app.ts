@@ -26,9 +26,14 @@ export function createApp(
   sequences?: SequenceService,
   outbound?: MessagingService,
   flows?: FlowEngine,
+  options: { workspaceId?: string; configureAuth?: boolean } = {},
 ) {
   const app = express();
-  configureAuthorization(db);
+  if (options.configureAuth !== false) configureAuthorization(db);
+  app.use((_req, res, next) => {
+    res.locals.workspaceId = options.workspaceId ?? 'owner';
+    next();
+  });
   app.disable('x-powered-by');
   app.use(
     helmet({
@@ -69,6 +74,10 @@ export function createApp(
     if (existsSync(`${webRoot}/index.html`)) res.sendFile(`${webRoot}/index.html`);
     else res.redirect('http://127.0.0.1:5173/atendimento');
   });
+  app.get('/chaves', (_req, res) => {
+    if (existsSync(`${webRoot}/index.html`)) res.sendFile(`${webRoot}/index.html`);
+    else res.redirect('http://127.0.0.1:5173/chaves');
+  });
   app.use('/assets', express.static(`${webRoot}/assets`));
   app.get('/health', async (_req, res) => {
     await db.$queryRaw`SELECT 1`;
@@ -82,6 +91,20 @@ export function createApp(
     },
     authenticate,
   );
+  app.use('/api', async (_req, res, next) => {
+    const identity = res.locals.identity;
+    if (options.workspaceId && options.workspaceId !== 'owner' && !identity.workspaceOwner) {
+      const member = await db.operationRecord.findUnique({ where: { id: `team:${identity.email}` } });
+      const data = member?.data as { active?: boolean; role?: string } | undefined;
+      if (!data?.active) throw new AppError(403, 'Seu acesso à equipe foi desativado.');
+      if (identity.role !== (data.role === 'ADMIN' ? 'ADMIN' : 'MEMBER'))
+        throw new AppError(
+          403,
+          'O acesso da equipe está sendo atualizado. Peça ao administrador para salvar o cadastro novamente.',
+        );
+    }
+    next();
+  });
   app.use('/api/backups', backupRoutes(db));
   app.use(express.json({ limit: `${env.BODY_LIMIT_MB}mb` }));
   if (whatsapp) app.use('/api/whatsapp', whatsappRoutes(db, whatsapp));

@@ -150,6 +150,7 @@ export function WorkspaceSettings({
                 Personalizar Atendimento com prévia
               </button>
               <p>Idioma: Português (Brasil).</p>{me?.role==='ADMIN'&&<SafetyZone/>}
+              {me?.email?.toLowerCase() === 'gustavohenriquee011@gmail.com' && <a className="button" href="/chaves">Gerenciar chaves de acesso</a>}
             </div>
           )}
           {tab === 'personalization' && (

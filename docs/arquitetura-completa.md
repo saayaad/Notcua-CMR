@@ -229,3 +229,7 @@ flowchart LR
 - A Parte 8 ainda precisa ser especificada para entrar nesta arquitetura.
 
 **Base do diagrama:** estrutura e arquivos atuais do repositório. Os blocos planejados estão marcados explicitamente e não indicam implementação concluída.
+
+## Atualização de 27/10/2026 — licenças e operações independentes
+
+A API agora possui uma porta de entrada que valida a conta e seleciona o banco da operação. O registro privado de licenças é separado da operação original. Cada cliente recebe SQLite, cifra e backups próprios; o Socket.IO publica em salas por operação. O proprietário acessa /chaves; clientes ativam uma chave após autenticar. Nenhuma cobrança automática foi integrada. Consulte [Chaves de acesso](chaves-de-acesso.md) para caminhos, limites, testes e recuperação da plataforma.

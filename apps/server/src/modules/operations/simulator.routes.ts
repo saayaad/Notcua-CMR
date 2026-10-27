@@ -54,7 +54,7 @@ export function simulatorRoutes(db: PrismaClient) {
     if(bytes.length>2*1024*1024)throw new AppError(413,'Use um áudio de até 2 MiB.');
     const config=await settings();
     if(config.provider==='anthropic')throw new AppError(422,'A transcrição exige OpenAI ou Gemini. Você também pode escrever a transcrição manualmente.');
-    const key=config.provider==='gemini'?'':await providerKey(config);
+    const key=config.provider==='gemini'?'':await providerKey(config,undefined,db);
     const result=await meteredCall(db,config,`simulator:${randomUUID()}`,'media',100000,async()=>{
       if(config.provider==='gemini'){
         if(!config.mediaModel)throw new AppError(422,'Configure o modelo de análise de mídia.');

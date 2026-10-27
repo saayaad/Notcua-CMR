@@ -24,7 +24,7 @@ export async function clearSystem(db: PrismaClient) {
     // Static table names; never accept an identifier supplied by the client.
     for (const table of ['ScheduledJob','FlowInboxEvent','FlowExecution','SequenceRun','DeliveryTask','MacroExecution','FunnelExecution','ChatMessage','CrmOpportunity','Deal','Conversation','ContactLabel','WhatsappIdentity','Contact','SessionSettings','WhatsappAuthEntry','FlowNode','FlowVersion','Flow','FunnelItem','Funnel','MacroAction','Macro','Asset','StoredFile','Label','PixKey','ImportBatch','WhatsappSession'])
       await tx.$executeRawUnsafe(`DELETE FROM "${table}"`);
-    await tx.operationRecord.deleteMany({ where: { kind: { not: 'SYSTEM_BACKUP' } } });
+    await tx.operationRecord.deleteMany({ where: { kind: { notIn: ['SYSTEM_BACKUP', 'ACCESS_KEY', 'ACCESS_WORKSPACE', 'ACCESS_ACCOUNT', 'ACCESS_MEMBER'] } } });
   }, { timeout: 60000 });
 }
 export function safetyRoutes(db: PrismaClient, whatsapp: WhatsappService) {

@@ -1,7 +1,7 @@
 import type { Server as HttpServer } from 'node:http';
 import { Server } from 'socket.io';
 import { env } from '../config/env.js';
-import { authorizeToken } from '../http/auth.js';
+import { authorizeToken, type Identity } from '../http/auth.js';
 import { allowedOrigins, trustedOrigin } from '../config/origins.js';
 import type { SessionSnapshot, SyncNotice, WhatsappPublisher } from '../modules/whatsapp/whatsapp.types.js';
 
@@ -12,7 +12,10 @@ interface ServerEvents {
   'whatsapp:error': (payload: { sessionId: string; message: string }) => void;
 }
 
-export function attachRealtime(httpServer: HttpServer, snapshots?: () => Promise<SessionSnapshot[]>) {
+export function attachRealtime(
+  httpServer: HttpServer,
+  snapshots?: (identity: Identity) => Promise<SessionSnapshot[]>,
+) {
   const io = new Server<Record<string, never>, ServerEvents>(httpServer, {
     cors: { origin: allowedOrigins, methods: ['GET', 'POST'] },
     allowRequest: (req, done) => done(null, trustedOrigin(req.headers.origin)),
@@ -20,10 +23,15 @@ export function attachRealtime(httpServer: HttpServer, snapshots?: () => Promise
   });
   io.use((socket, next) => {
     void authorizeToken(socket.handshake.auth.token)
-      .then(() => next())
+      .then((identity) => {
+        socket.data.identity = identity;
+        next();
+      })
       .catch(() => next(new Error('Token de acesso inválido.')));
   });
   io.on('connection', (socket) => {
+    const identity = socket.data.identity as Identity;
+    void socket.join(`workspace:${identity.workspaceId ?? 'owner'}`);
     const refreshAccess =
       env.AUTH_MODE === 'firebase'
         ? setInterval(() => {
@@ -35,7 +43,7 @@ export function attachRealtime(httpServer: HttpServer, snapshots?: () => Promise
     });
     socket.emit('server:ready', { service: 'noctua-server', stage: 5 });
     if (snapshots)
-      void snapshots()
+      void snapshots(identity)
         .then((states) => {
           for (const state of states) if (socket.connected) socket.emit('whatsapp:state', state);
         })
@@ -46,17 +54,34 @@ export function attachRealtime(httpServer: HttpServer, snapshots?: () => Promise
 
 export class RealtimeHub implements WhatsappPublisher {
   private io?: ReturnType<typeof attachRealtime>;
-  attach(http: HttpServer, snapshots: () => Promise<SessionSnapshot[]>) {
+  attach(http: HttpServer, snapshots: (identity: Identity) => Promise<SessionSnapshot[]>) {
     this.io = attachRealtime(http, snapshots);
     return this.io;
   }
   state(snapshot: SessionSnapshot) {
-    this.io?.emit('whatsapp:state', snapshot);
+    this.io?.to('workspace:owner').emit('whatsapp:state', snapshot);
   }
   sync(notice: SyncNotice) {
-    this.io?.emit('whatsapp:sync', notice);
+    this.io?.to('workspace:owner').emit('whatsapp:sync', notice);
   }
   error(payload: { sessionId: string; message: string }) {
-    this.io?.emit('whatsapp:error', payload);
+    this.io?.to('workspace:owner').emit('whatsapp:error', payload);
+  }
+  scope(workspaceId: string): WhatsappPublisher {
+    const room = `workspace:${workspaceId}`;
+    return {
+      state: (value) => {
+        this.io?.to(room).emit('whatsapp:state', value);
+      },
+      sync: (value) => {
+        this.io?.to(room).emit('whatsapp:sync', value);
+      },
+      error: (value) => {
+        this.io?.to(room).emit('whatsapp:error', value);
+      },
+    };
+  }
+  disconnectWorkspace(id: string) {
+    this.io?.in(`workspace:${id}`).disconnectSockets(true);
   }
 }

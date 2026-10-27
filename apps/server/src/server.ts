@@ -1,51 +1,65 @@
 import { createServer } from 'node:http';
-import { createApp } from './app.js';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { mkdir } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { prisma } from './database/client.js';
-import { initializeSqliteClient } from './database/sqlite-client.js';
+import { createSqliteClient, initializeSqliteClient } from './database/sqlite-client.js';
 import { env } from './config/env.js';
+import { configureAuthorization } from './http/auth.js';
 import { RealtimeHub } from './realtime/socket.js';
-import { WhatsappService } from './modules/whatsapp/whatsapp.service.js';
-import { CredentialCipher } from './modules/whatsapp/credential-cipher.js';
-import { MessagingService } from './modules/attendance/messaging.service.js';
-import { FlowEngine } from './modules/flows/flow.engine.js';
-import { SequenceService } from './modules/attendance/sequence.service.js';
-import { DeliveryWorker } from './modules/operations/delivery.worker.js';
-import { BusinessWorker } from './modules/operations/business.worker.js';
-import { AiWorker } from './modules/operations/ai.worker.js';
-import { BackupWorker } from './modules/operations/system-backups.js';
-import { InactivityWorker } from './modules/operations/inactivity.js';
+import {
+  buildWorkspaceRuntime,
+  createWorkspaceGateway,
+  WorkspaceManager,
+} from './modules/access/workspaces.js';
 
 async function main() {
   await initializeSqliteClient(prisma);
   await prisma.$queryRaw`SELECT COUNT(*) FROM ImportBatch`;
-  const cipher = await CredentialCipher.load(env.WHATSAPP_KEY_FILE);
+  const serverRoot = fileURLToPath(new URL('../', import.meta.url));
+  const platformDir = resolve(serverRoot, env.PLATFORM_DATA_DIR, 'platform');
+  await mkdir(platformDir, { recursive: true, mode: 0o700 });
+  const registryUrl = `file:${resolve(platformDir, 'access.db').replace(/\\/g, '/')}`;
+  await promisify(execFile)(
+    process.execPath,
+    [
+      resolve(serverRoot, '../../node_modules/prisma/build/index.js'),
+      'migrate',
+      'deploy',
+      '--schema',
+      resolve(serverRoot, 'prisma/schema.prisma'),
+    ],
+    { env: { ...process.env, DATABASE_URL: registryUrl, RUST_LOG: 'info' }, timeout: 120000 },
+  );
+  const registry = createSqliteClient(registryUrl);
+  await initializeSqliteClient(registry);
+  configureAuthorization(prisma, registry);
   const hub = new RealtimeHub();
-  const whatsapp = new WhatsappService(prisma, cipher, hub);
-  const messaging = new MessagingService(prisma, whatsapp);
-  const sequences = new SequenceService(prisma, whatsapp, messaging);
-  const flows = new FlowEngine(prisma, whatsapp, messaging);
-  const deliveries = new DeliveryWorker(prisma, whatsapp, messaging, sequences, flows);
-  const business = new BusinessWorker(prisma, whatsapp);
-  const ai = new AiWorker(prisma, whatsapp, messaging);
-  const backups = new BackupWorker(prisma);
-  const inactivity = new InactivityWorker(prisma, flows, whatsapp);
-  const http = createServer(createApp(prisma, whatsapp, sequences, messaging, flows));
-  const io = hub.attach(http, () => whatsapp.list());
+  const owner = await buildWorkspaceRuntime(prisma, 'owner', hub, async () => {}, env.WHATSAPP_KEY_FILE);
+  const workspaces = new WorkspaceManager(registry, owner, hub);
+  const app = createWorkspaceGateway(
+    registry,
+    owner.app,
+    (id) => workspaces.get(id),
+    () => workspaces.reconcile(),
+    undefined,
+    prisma,
+  );
+  const http = createServer(app);
+  const io = hub.attach(http, async (identity) =>
+    (await workspaces.get(identity.workspaceId ?? 'owner')).whatsapp.list(),
+  );
   let stopping = false;
   const stop = async () => {
     if (stopping) return;
     stopping = true;
-    const deadline = setTimeout(() => process.exit(1), 45_000).unref();
-    await flows.stop();
-    await deliveries.stop();
-    await business.stop();
-    await ai.stop();
-    await backups.stop();
-    await inactivity.stop();
-    await sequences.stop();
-    await whatsapp.shutdown();
+    const deadline = setTimeout(() => process.exit(1), 45000).unref();
+    await workspaces.stop();
+    await owner.stop();
     await new Promise<void>((resolve) => io.close(() => resolve()));
-    await prisma.$disconnect();
+    await Promise.all([registry.$disconnect(), prisma.$disconnect()]);
     clearTimeout(deadline);
   };
   process.once('SIGINT', () => {
@@ -60,28 +74,20 @@ async function main() {
       process.exitCode = 1;
     });
   });
-  await sequences.start();
-  await flows.start();
-  await deliveries.start();
-  business.start();
-  ai.start();
-  backups.start();
-  inactivity.start();
   http.listen(env.PORT, env.HOST, () => {
-    console.log(`Noctua: http://${env.HOST}:${env.PORT}/atendimento | Etapa 5`);
-    void whatsapp.restore().catch((error: unknown) => {
-      console.error(
-        'Não foi possível restaurar as sessões WhatsApp.',
-        error instanceof Error ? error.name : 'Erro',
-      );
-    });
+    console.log(`Noctua: http://${env.HOST}:${env.PORT}/atendimento · Chaves: /chaves`);
+    void owner.whatsapp
+      .restore()
+      .catch(() => console.error('Não foi possível restaurar as sessões WhatsApp da operação original.'));
+    void workspaces
+      .start()
+      .catch(() => console.error('Não foi possível iniciar a revisão das operações licenciadas.'));
   });
 }
-
-main().catch(async (error: unknown) => {
+main().catch(async (error) => {
   console.error(
-    'Não foi possível iniciar. Execute npm run db:deploy e confira .env.',
-    error instanceof Error ? error.message : error,
+    'Não foi possível iniciar. Confira as migrações e a configuração do servidor.',
+    error instanceof Error ? error.message : 'Erro interno',
   );
   await prisma.$disconnect();
   process.exitCode = 1;

@@ -4,6 +4,7 @@ import { SerialQueue } from '../../shared/serial-queue.js';
 import { AppError } from '../../shared/errors.js';
 import { CredentialCipher } from '../whatsapp/credential-cipher.js';
 import { env } from '../../config/env.js';
+import { databasePaths } from '../../database/paths.js';
 import { putRecord, record, type AgentSettings } from './records.js';
 const budgetQueue = new SerialQueue();
 class ProviderRejection extends AppError {}
@@ -91,9 +92,9 @@ export async function meteredCall<T>(
     throw error;
   }
 }
-export async function providerKey(settings: AgentSettings, encryptedKey = settings.encryptedKey) {
+export async function providerKey(settings: AgentSettings, encryptedKey = settings.encryptedKey, db?: PrismaClient) {
   if (!encryptedKey) throw new AppError(422, 'Configure a chave da IA.');
-  return (await CredentialCipher.load(env.WHATSAPP_KEY_FILE)).decrypt<string>(
+  return (await CredentialCipher.load(db ? databasePaths(db).keyFile : env.WHATSAPP_KEY_FILE)).decrypt<string>(
     Buffer.from(encryptedKey, 'base64'),
   );
 }
@@ -130,7 +131,7 @@ export async function geminiResponse(db: PrismaClient, settings: AgentSettings, 
     ...(settings.fallbackKeys ?? []).filter((key) => key.enabled),
   ];
   if (!candidates.length) throw new ProviderRejection(422, 'Cadastre uma chave da API Gemini nas configurações de IA.');
-  const cipher = await CredentialCipher.load(env.WHATSAPP_KEY_FILE);
+  const cipher = await CredentialCipher.load(databasePaths(db).keyFile);
   const now = Date.now();
   const available: GeminiKey[] = [];
   for (const key of candidates) {
@@ -181,7 +182,7 @@ export async function textCompletion(
   route: 'fast' | 'deep' = 'deep',
 ) {
   const provider = settings.provider ?? 'openai';
-  const key = provider === 'gemini' ? '' : await providerKey(settings);
+  const key = provider === 'gemini' ? '' : await providerKey(settings, undefined, db);
   const model = route === 'fast' ? settings.fastModel?.trim() || settings.model : settings.reasoningModel?.trim() || settings.model;
   const max = settings.maxOutputTokens ?? 1200;
   return meteredCall(

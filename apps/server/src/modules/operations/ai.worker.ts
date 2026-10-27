@@ -15,6 +15,7 @@ export class AiWorker {
     private db: PrismaClient,
     private whatsapp: WhatsappService,
     private messaging: MessagingService,
+    private readonly assertAccess: () => Promise<void> = async () => {},
   ) {}
   start() {
     this.schedule();
@@ -36,6 +37,7 @@ export class AiWorker {
     if (this.flushing || this.stopped) return;
     this.flushing = true;
     try {
+      await this.assertAccess();
       const settings = await record<AgentSettings | null>(this.db, 'integration:ai', null);
       if (!settings?.enabled || !hasConfiguredKey(settings) || !settings.enabledAt) return;
       const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());

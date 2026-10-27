@@ -74,6 +74,7 @@ export function ApiProvider({ children }: { children: ReactNode }) {
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       }, { token, user: token ? firebaseAuth?.currentUser : null });
       const data = await response.json();
+      if (response.status === 402) window.dispatchEvent(new Event('noctua:access-required'));
       if (!response.ok) throw new Error(data.error?.message ?? 'Não foi possível concluir a operação.');
       return data as T;
     },

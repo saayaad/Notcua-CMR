@@ -1,4 +1,4 @@
-import {Select} from '../components/Select';
+import { Select } from '../components/Select';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   GoogleAuthProvider,
@@ -17,6 +17,7 @@ import { API_BASE } from '../config';
 import { useApi, errorMessage } from '../context/ApiContext';
 import { Spinner } from '../components/ui';
 import './access.css';
+import { ActivationPanel } from './ActivationPanel';
 function authError(error: unknown) {
   const code = (error as { code?: string })?.code;
   return code === 'auth/popup-closed-by-user'
@@ -74,14 +75,14 @@ export function AuthGate({ children }: { children: ReactNode }) {
         void current
           .getIdToken()
           .then(async (token) => {
-            const response = await fetch(`${API_BASE}/api/operations/me`, {
+            const response = await fetch(`${API_BASE}/api/access/me`, {
               headers: { Authorization: `Bearer ${token}` },
             });
             const body = await response.json();
             if (!response.ok) throw new Error(body.error?.message ?? 'Acesso não autorizado.');
             if (pending === generation) {
               setToken(token);
-              setReady(true);
+              setReady(Boolean(body.allowed));
               setCheckingAccess(false);
             }
           })
@@ -98,6 +99,16 @@ export function AuthGate({ children }: { children: ReactNode }) {
       unsubscribe();
     };
   }, [mode, setToken, tick]);
+  useEffect(() => {
+    if (!user || mode !== 'firebase') return;
+    const refresh = () => setTick((value) => value + 1);
+    const timer = window.setInterval(refresh, 60000);
+    window.addEventListener('noctua:access-required', refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('noctua:access-required', refresh);
+    };
+  }, [user, mode]);
   const act = async (work: () => Promise<unknown>) => {
     setBusy(true);
     setMessage('');
@@ -109,7 +120,12 @@ export function AuthGate({ children }: { children: ReactNode }) {
       setBusy(false);
     }
   };
-  if (mode === 'local' || ready) return <OnboardingGate>{children}</OnboardingGate>;
+  if (mode === 'local' || ready)
+    return window.location.pathname.replace(/\/+$/, '') === '/chaves' ? (
+      <>{children}</>
+    ) : (
+      <OnboardingGate>{children}</OnboardingGate>
+    );
   return (
     <main className="access-page">
       <div className="access-brand">
@@ -148,15 +164,19 @@ export function AuthGate({ children }: { children: ReactNode }) {
             </p>
           </>
         ) : user && checkingAccess ? (
-          <div className="access-wait"><Spinner />Verificando seu acesso…</div>
+          <div className="access-wait">
+            <Spinner />
+            Verificando seu acesso…
+          </div>
         ) : user ? (
           <>
-            <h2>{user.emailVerified ? 'Acesso à operação' : 'Confirme seu e-mail'}</h2>
+            <h2>{user.emailVerified ? 'Ative seu acesso ao Noctua' : 'Confirme seu e-mail'}</h2>
             <p>
               {user.emailVerified
-                ? 'Seu administrador precisa autorizar esta conta na equipe.'
+                ? `Conta: ${user.email}. Sua operação fica separada dos outros clientes.`
                 : `Enviamos uma verificação para ${user.email}. Abra o link recebido para continuar.`}
             </p>
+            {user.emailVerified && <ActivationPanel onActivated={() => setTick((value) => value + 1)} />}
             <button
               className="button primary"
               disabled={busy}
@@ -274,7 +294,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
                 {signup ? 'Criar minha conta' : 'Entrar no Noctua'}
               </button>
             </form>
-            <small>Contas novas precisam de convite para acessar os dados da operação.</small>
+            <small>Depois do cadastro, ative a chave recebida para liberar sua operação.</small>
           </>
         )}
         {message && (
