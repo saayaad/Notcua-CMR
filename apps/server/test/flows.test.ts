@@ -423,7 +423,16 @@ test('reinício mantém a espera por resposta e retoma o caminho uma única vez'
     await restarted.flush();
     assert.equal(socket.sends.length, before);
     await incoming(chat.id, 'sim');
-    for (let i = 0; i < 4; i++) await restarted.flush();
+    // start() also schedules flushes: a manual flush can return while that work is active.
+    // Observe the persisted result rather than treating a fixed number of calls as completion.
+    const deadline = Date.now() + 10_000;
+    do {
+      await restarted.flush();
+      if ((await db.flowExecution.findUniqueOrThrow({ where: { id: run.id } })).status === 'COMPLETED')
+        break;
+      await new Promise<void>((resolve) => setTimeout(resolve, 20));
+    } while (Date.now() < deadline);
+    await restarted.stop();
     assert.equal(socket.sends.length, before + 1);
     assert.equal((await db.flowExecution.findUniqueOrThrow({ where: { id: run.id } })).status, 'COMPLETED');
     assert.deepEqual(socket.sends.at(-1), { text: 'Resposta aceita.' });

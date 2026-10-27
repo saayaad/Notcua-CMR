@@ -36,6 +36,22 @@ Prioridade alta; esforço G. Verificação estática: `EconomySettings.tsx:9,60�
 
 `ai.service.ts:8–17,79–92` usa tokens de palavras, sinônimos e interseção lexical; não foi localizado código de embeddings/índice vetorial em `apps/server/src` ou `apps/web/src`. REQ-430 ausente; REQ-425 parcial. `operations.routes.ts:949–954` calcula acumulado do mês, e `EconomySettings.tsx:55–58` mostra somente esse acumulado, sem visão diária; REQ-423 parcial. Não ativar serviço pago para preencher a lacuna sem autorização.
 
+## TST-001 — Teste de retomada concorria com o agendador
+
+Corrigido e retestado em 27/10/2026. `apps/server/test/flows.test.ts:412–439`: o teste chamava `flush()` quatro vezes e esperava que isso equivalesse ao término do trabalho. `FlowEngine.start()` inicia também um agendador, e `flush()` retorna imediatamente se já há trabalho em execução. A execução completa inicial teve 14 aprovações e 1 falha (contagem 13 em vez de 14); o mesmo cenário isolado passou, consistente com a corrida observada no código.
+
+O teste agora observa `COMPLETED` no banco, com prazo máximo de 10 segundos, e mantém as mesmas exigências de exatamente um envio simulado, conteúdo correto e estado final. Não foi alterado o código do motor, do serviço de Mensagens ou a contagem esperada. Nova suíte completa: 15/15 aprovados. Não é evidência de defeito confirmado no fluxo de produção. Esta mudança torna a prova da retomada menos dependente do tempo de execução do computador.
+
+## LAC-002 — Busca da agenda não mostra etiqueta do contato
+
+Esta lacuna é de apresentação; a implementação não foi alterada nesta fase de classificação.
+
+Prioridade média; esforço P. Verificação estática de `apps/web/src/components/ContactCombobox.tsx:112–124`: cada opção renderiza avatar, nome e telefone, mas não renderiza `contact.labels`. O pedido REQ-319 inclui a etiqueta atual. Busca, normalização e criação de número novo existem; o requisito completo continua parcial até incluir a etiqueta e conferir visualmente uma opção com etiquetas. Nenhuma alteração do cadastro ou da agenda foi feita neste lote.
+
+## TST-002 — Extensão de importação no teste do menu
+
+Corrigido e retestado. A checagem completa do servidor encontrou TS2835 em `test/context-menu.test.ts:3`: o import relativo não incluía a extensão exigida por NodeNext. O executor tsx aceitava esse caminho, mas isso não bastava para aprovar a tipagem do projeto inteiro. Corrigido para `context-menu-utils.js`, seguindo os demais testes que importam auxiliares da interface. Os dois casos do menu passaram novamente e `npm run typecheck` passou nas duas aplicações. Nenhum código do menu em produção foi alterado por esta correção.
+
 
 ## BUG-001 — Salvamento silencioso de preferências
 

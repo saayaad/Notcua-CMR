@@ -6,7 +6,7 @@ Prioridade seguinte autorizada pelo usuário: menu de botão direito global impl
 
 ## Situação
 
-O livro [REQUISITOS.md](REQUISITOS.md) contém 699 registros: 568 ⬜ A VERIFICAR; 40 ✅ COMPLETO; 24 🟡 PARCIAL; 6 ⛔ NÃO TESTADO; 50 🔁 SUBSTITUÍDO OU CANCELADO; 4 ⚠️ PRECISA DE DECISÃO; 4 🔌 DESCONECTADO; 2 🐞 COM DEFEITO; 1 ❌ AUSENTE. Repetições de pedidos não são funções distintas; ainda não há percentual de completude comprovado.
+O livro [REQUISITOS.md](REQUISITOS.md) contém 699 registros: 529 ⬜ A VERIFICAR; 40 ✅ COMPLETO; 61 🟡 PARCIAL; 8 ⛔ NÃO TESTADO; 50 🔁 SUBSTITUÍDO OU CANCELADO; 4 ⚠️ PRECISA DE DECISÃO; 4 🔌 DESCONECTADO; 2 🐞 COM DEFEITO; 1 ❌ AUSENTE. Repetições de pedidos não são funções distintas; ainda não há percentual de completude comprovado.
 A verificação individual, prioridade, esforço e lotes serão preenchidos depois da aprovação do escopo, sem reutilizar “implementado” de um relatório antigo como prova.
 
 | ID / conjunto | Status | O que decidir ou completar | Prioridade/esforço |
@@ -63,3 +63,12 @@ Decisão de escopo em 27/10/2026: produção de vídeos/Drive permanece no Creat
 - LAC-001: embeddings/índice vetorial ausentes e estimativa diária não exposta. Prioridade Média, esforço G para índice e M para métricas, sem contratação/ativação de cobrança.
 - Backups e CRM têm testes de API/persistência aprovados, mas foram mantidos como parciais até completar a interface de cada cenário. Fixture de áudio ZV com bytes de texto não comprova reprodução; mídias vazias não comprovam importação de vídeo.
 - A revisão automática bloqueou uma compilação por limite temporário de uso; após o horário informado, a nova aprovação funcionou e a compilação final passou. Não é defeito do aplicativo.
+
+## Lote de verificação — fluxos, campanhas e agenda
+
+- 39 requisitos classificados com rastreio de tela/handler e resultado dos testes. Não foram promovidos a completos sem percurso visual.
+- Fluxos: 15/15 aprovados após corrigir somente a sincronização do teste TST-001. Rascunhos inválidos, horários, espera, expiração, pausa, retomada e não duplicação cobertos com socket fictício.
+- Campanhas/agenda: 8/8 aprovados; salvar não envia, horário futuro impede antecipação, cancelamento bloqueia, lembrete fica interno e sequência preserva snapshot/pausa.
+- LAC-002: etiqueta não aparece nas sugestões da agenda. Prioridade Média, esforço P, depende de renderizar os vínculos já fornecidos e testar cliente com etiquetas.
+- Sem alteração de motor, Mensagens, banco de produção, chaves ou dados reais. Ainda falta revisão visual individual do canvas, monitor e formulário.
+- Evidência consolidada: evidencias/fluxos-agenda-2026-10-27.json. Dois testes do menu passaram após corrigir a extensão do import em teste; tipagem completa de servidor e interface passou. Não foi necessária nova compilação de produção, pois somente testes e documentos mudaram.

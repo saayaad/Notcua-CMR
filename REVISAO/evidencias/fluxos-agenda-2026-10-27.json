@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-27",
+  "environment": "isolated temporary databases and fake sockets",
+  "realWhatsappSends": 0,
+  "realAiCalls": 0,
+  "productionCodeChanged": false,
+  "initialFlowSuite": { "passed": 14, "failed": 1 },
+  "isolatedRestartCase": { "passed": 1, "failed": 0 },
+  "testCorrection": "wait for persisted COMPLETED with a bounded deadline; retain exact send count and message content assertions",
+  "finalFlowSuite": { "passed": 15, "failed": 0 },
+  "selectedCampaignScheduleSuite": { "passed": 8, "failed": 0 },
+  "contextMenuRetest": { "passed": 2, "failed": 0 },
+  "typecheck": { "server": "passed", "web": "passed" },
+  "visualAuditThisBatch": "not executed; requirements retained as partial or not tested",
+  "requirementsClassified": 39
+}

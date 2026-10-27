@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { menuPosition, safeMenuUrl } from '../../web/src/context/context-menu-utils';
+import { menuPosition, safeMenuUrl } from '../../web/src/context/context-menu-utils.js';
 
 test('menu permanece dentro da tela nas quatro bordas e em viewport estreita', () => {
   assert.deepEqual(menuPosition(1000, 700, 240, 300, 1024, 720), { left: 776, top: 412 });
