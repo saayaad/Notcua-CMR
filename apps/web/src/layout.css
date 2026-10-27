@@ -83,7 +83,7 @@ body,
 .nav-group-label {
   font-size: 10px;
 }
-nav button {
+.navigation nav button {
   font-size: 13px;
   min-height: 44px;
 }
@@ -367,16 +367,16 @@ nav button {
   .nav-tip,
   .local-account,
   .nav-bottom > button > span,
-  nav button > span,
-  nav button > b {
+  .navigation nav button > span,
+  .navigation nav button > b {
     display: none;
   }
-  nav {
+  .navigation nav {
     margin-top: 38px;
     width: 100%;
     gap: 9px;
   }
-  nav button {
+  .navigation nav button {
     justify-content: center;
     padding: 14px;
   }
@@ -435,7 +435,7 @@ nav button {
     flex-basis: 3.75rem;
     padding: 20px 6px 12px;
   }
-  nav button {
+  .navigation nav button {
     padding: 12px;
   }
   .topbar {
@@ -545,12 +545,12 @@ nav button {
 .tools-heading,
 .modal-header { backdrop-filter: blur(12px); }
 .button,
-nav button,
+.navigation nav button,
 .icon-button,
 .operation-launcher,
 .kanban-card { transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease; }
 .button:hover:not(:disabled),
-nav button:hover,
+.navigation nav button:hover,
 .icon-button:hover:not(:disabled),
 .operation-launcher:hover,
 .kanban-card:hover { transform: translateY(-1px); box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 12%, transparent); }

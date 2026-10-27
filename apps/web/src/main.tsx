@@ -14,6 +14,7 @@ import './workbench.css';
 import './sandbox.css';
 import './client-ai.css';
 import './watermark.css';
+import './usability.css';
 
 createRoot(document.getElementById('root')!).render(
   <ApiProvider>

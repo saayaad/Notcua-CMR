@@ -430,13 +430,13 @@
 .compact-navigation .brand-dot,
 .compact-navigation .workspace-name,
 .compact-navigation .nav-section-label,
-.compact-navigation nav button > span,
-.compact-navigation nav button > b,
+.compact-navigation .navigation nav button > span,
+.compact-navigation .navigation nav button > b,
 .compact-navigation .nav-bottom > button > span,
 .compact-navigation .local-account {
   display: none;
 }
-.compact-navigation nav button {
+.compact-navigation .navigation nav button {
   justify-content: center;
   padding: 12px;
 }

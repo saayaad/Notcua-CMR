@@ -1,8 +1,8 @@
-ℹ tests 132
+ℹ tests 136
 ℹ suites 0
-ℹ pass 132
+ℹ pass 136
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 416002.8667
+ℹ duration_ms 225687.4701

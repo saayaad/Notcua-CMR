@@ -1,4 +1,5 @@
 import {Select} from '../components/Select';
+import { useLabelActions, LabelRulesButton } from '../components/LabelActions';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { DragDropContext, Draggable, Droppable, type DropResult } from '@hello-pangea/dnd';
@@ -59,6 +60,7 @@ export function CrmPage({
   labelStyles: Record<string, { color: string; icon: string }>;
 }) {
   const { request, notify } = useApi();
+  const {prepare,prompt} = useLabelActions(sessionId);
   const [board, setBoard] = useState<CrmBoard>(blankBoard);
   const [metrics, setMetrics] = useState<CrmMetrics | null>(null);
   const [mode, setMode] = useState<'board' | 'dashboard'>('board');
@@ -122,6 +124,7 @@ export function CrmPage({
     setBusy(true);
     try {
       await request(`${base}/move`, 'POST', {
+        ...(source.labelId !== target.labelId && !card.contact.labels.some(link=>link.labelId===target.labelId) ? await prepare(target.labelId) : {}),
         conversationId: card.conversationId,
         sourceLabelId: source.labelId,
         targetLabelId: target.labelId,
@@ -184,6 +187,8 @@ export function CrmPage({
     );
   return (
     <div className="crm-page">
+      {prompt}
+      <LabelRulesButton sessionId={sessionId}/>
       <header className="crm-heading">
         <div>
           <p className="eyebrow">RELACIONAMENTOS QUE EVOLUEM</p>

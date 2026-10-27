@@ -36,6 +36,8 @@ export function AttendanceLayout({
   toolsOpen: boolean;
   onToolsChange: (open: boolean) => void;
   onClassic: () => void;
+  editRequest?: number;
+  onEditRequestHandled?: () => void;
 }) {
   const panels = Children.toArray(children);
   const { updatePreferences } = usePreferences();

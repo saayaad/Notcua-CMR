@@ -1,4 +1,5 @@
 import { chooseCampaignText } from './campaign-text.js';
+import { labelActionRoutes } from './label-actions.js';
 import { safetyRoutes } from './safety.routes.js';
 import { simulatorRoutes } from './simulator.routes.js';
 import { clientAiRoutes } from './client-ai.js';
@@ -67,6 +68,7 @@ const profile = z.object({
 });
 export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, messaging: MessagingService) {
   const router = Router();
+  router.use(labelActionRoutes(db));
   router.use(historyPreprocessingRoutes(db, messaging));
   router.use(numberValidationRoutes(db, whatsapp));
   router.use(campaignRevenueRoutes(db));

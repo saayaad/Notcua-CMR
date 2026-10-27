@@ -13,6 +13,8 @@ export interface PinnedButtonSettings {
   preview?: 'inherit' | 'always' | 'never';
 }
 export interface Preferences {
+  leadSort: 'priority'|'recent'|'oldest'|'waiting';
+  leadResponse: 'all'|'ours'|'client'|'never';
   dockingEnabled: boolean;
   dockingLayout: string;
   attendanceCustomizationVersion: number;
@@ -73,6 +75,7 @@ export interface Preferences {
   resourceOrder: Record<string, string[]>;
 }
 const defaults: Preferences = {
+  leadSort: 'priority', leadResponse: 'all',
   dockingEnabled: false,
   dockingLayout: '',
   attendanceCustomizationVersion: 3,

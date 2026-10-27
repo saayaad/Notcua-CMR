@@ -50,6 +50,7 @@ export function AiSettings() {
   return (
     <>
     <section className="surface">
+        {provider === 'gemini' && <p className="notice">Google AI Pro e a API são serviços separados. Sua assinatura não libera automaticamente cotas pagas para o Noctua. Confira o projeto em <a href="https://aistudio.google.com/projects" target="_blank" rel="noreferrer">Google AI Studio</a>. Ativar faturamento da API pode gerar cobrança adicional. <a href="https://ai.google.dev/gemini-api/docs/google-ai-plans" target="_blank" rel="noreferrer">Entenda a regra do Google</a>.</p>}
       <h2>Assistente de IA</h2><button className="button primary" onClick={()=>setSimulation(true)}>🧪 Testar / Simular atendimento</button>{simulation&&<ConversationSimulator aiOnly onClose={()=>setSimulation(false)}/>} <button type="button" className="button" aria-expanded={showKeySettings} onClick={() => setShowKeySettings((visible) => !visible)}><KeyRound size={15} /> {showKeySettings ? 'Ocultar chaves de API' : 'Mostrar configurações de chaves de API'}</button>
       <p>
         Defina as regras, escolha o provedor e acompanhe o consumo. Cada conversa tem seu próprio controle de

@@ -1,4 +1,5 @@
 import { ContactWorkspace } from './ContactWorkspace';
+import { useLabelActions, LabelRulesButton } from './LabelActions';
 import { useState } from 'react';
 import { Check, Plus, Tag } from 'lucide-react';
 import type { Conversation, Label } from '../types';
@@ -19,6 +20,7 @@ export function ContactDetails({
   onRefresh: () => void;
 }) {
   const { request, notify } = useApi();
+  const {prepare,prompt} = useLabelActions(sessionId);
   const [note, setNote] = useState(chat.contact.metadata?.note ?? '');
   const [editingTags, setEditingTags] = useState(false);
   const [busy, setBusy] = useState('');
@@ -36,7 +38,7 @@ export function ContactDetails({
     }
   };
   return (
-    <Modal title="Informações do cliente" onClose={onClose}>
+    <>{prompt}<Modal title="Informações do cliente" onClose={onClose}>
       <div className="contact-profile client-profile">
         <Avatar contact={chat.contact} size="large" />
         <h2>{chat.contact.name}</h2>
@@ -58,6 +60,7 @@ export function ContactDetails({
           </button>
         </div>
         <div className="tags-wrap">
+          <LabelRulesButton sessionId={sessionId}/>
           {chat.contact.labels.map(({ label }) => (
             <span
               key={label.id}
@@ -79,8 +82,8 @@ export function ContactDetails({
                   key={label.id}
                   disabled={Boolean(busy)}
                   onClick={() =>
-                    void action(label.id, () =>
-                      request(`${base}/labels/${encodeURIComponent(label.id)}`, 'PUT', { active: !active }),
+                    void action(label.id, async () =>
+                      request(`${base}/labels/${encodeURIComponent(label.id)}`, 'PUT', { active: !active, ...(!active ? await prepare(label.id) : {}) }),
                     )
                   }
                 >
@@ -122,6 +125,6 @@ export function ContactDetails({
           {busy === 'note' ? <Spinner /> : <Check size={16} />}Salvar resumo
         </button>
       </div>
-    </Modal>
+    </Modal></>
   );
 }

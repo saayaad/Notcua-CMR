@@ -371,12 +371,12 @@ label + .muted {
   padding: 0 12px;
   margin-bottom: 13px;
 }
-nav {
+.navigation nav {
   display: flex;
   flex-direction: column;
   gap: 5px;
 }
-nav button {
+.navigation nav button {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -389,11 +389,11 @@ nav button {
   border-radius: 8px;
   text-align: left;
 }
-nav button:hover {
+.navigation nav button:hover {
   background: var(--hover);
   color: var(--text);
 }
-nav button.selected {
+.navigation nav button.selected {
   background: var(--accent-bg);
   color: #c9b7fb;
   border-color: #a68bfa16;
@@ -401,7 +401,7 @@ nav button.selected {
 html[data-theme='light'] nav button.selected {
   color: var(--accent);
 }
-nav b {
+.navigation nav b {
   font-size: 10px;
   font-weight: 600;
   margin-left: auto;
@@ -409,7 +409,7 @@ nav b {
   border-radius: 5px;
   background: #a68bfa18;
 }
-nav span {
+.navigation nav span {
   flex: 1;
 }
 .nav-tip {
@@ -2167,16 +2167,16 @@ nav span {
   .nav-tip,
   .local-account,
   .nav-bottom > button > span,
-  nav button > span,
-  nav button > b {
+  .navigation nav button > span,
+  .navigation nav button > b {
     display: none;
   }
-  nav {
+  .navigation nav {
     margin-top: 38px;
     width: 100%;
     gap: 9px;
   }
-  nav button {
+  .navigation nav button {
     padding: 12px;
     justify-content: center;
   }

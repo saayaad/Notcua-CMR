@@ -3,14 +3,14 @@ dialog.modal {
   position: fixed;
   inset: 0;
   margin: auto;
-  width: min(500px, calc(100vw - 32px));
+  width: min(42rem, calc(100vw - 2rem));
   max-width: calc(100vw - 32px);
   max-height: min(90dvh, calc(100dvh - 32px));
   padding: 0;
   overflow: hidden;
 }
 dialog.modal-wide {
-  width: min(720px, calc(100vw - 32px));
+  width: min(68rem, calc(100vw - 2rem));
 }
 dialog.modal[open] {
   display: flex;
@@ -21,8 +21,20 @@ dialog.modal[open] {
   box-shadow: 0 24px 80px #0006;
   backdrop-filter: blur(16px);
 }
-dialog.modal::backdrop { background: #05050ab8; backdrop-filter: blur(5px); }
-@keyframes noctua-modal-in { from { opacity: 0; transform: translateY(.5rem) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+dialog.modal::backdrop {
+  background: #05050ab8;
+  backdrop-filter: blur(5px);
+}
+@keyframes noctua-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
 .modal-header {
   flex-shrink: 0;
   gap: 16px;
@@ -80,7 +92,10 @@ dialog.modal::backdrop { background: #05050ab8; backdrop-filter: blur(5px); }
 .toast > span {
   min-width: 0;
 }
-.toast { position: fixed; overflow: hidden; }
+.toast {
+  position: fixed;
+  overflow: hidden;
+}
 .toast-progress {
   position: absolute;
   inset: auto 0 0;
@@ -89,8 +104,15 @@ dialog.modal::backdrop { background: #05050ab8; backdrop-filter: blur(5px); }
   transform-origin: left;
   animation: toast-progress 4.5s linear forwards;
 }
-.toast-error .toast-progress { animation-duration: 7s; background: #ef647a; }
-@keyframes toast-progress { to { transform: scaleX(0); } }
+.toast-error .toast-progress {
+  animation-duration: 7s;
+  background: #ef647a;
+}
+@keyframes toast-progress {
+  to {
+    transform: scaleX(0);
+  }
+}
 @media (max-width: 700px) {
   .modal-header {
     padding: 16px;
@@ -115,4 +137,126 @@ dialog.modal::backdrop { background: #05050ab8; backdrop-filter: blur(5px); }
   .modal-body {
     padding: 14px 16px;
   }
+}
+
+.minimized-modal-tray {
+  position: fixed;
+  bottom: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+  max-width: 90vw;
+  z-index: 150;
+}
+.minimized-modal-tray:empty {
+  display: none;
+}
+.minimized-modal-tray .button {
+  max-width: 18rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-shadow: var(--shadow);
+}
+.modal-header h2 {
+  flex: 1;
+}
+.attendance-settings-menu {
+  position: relative;
+}
+.attendance-settings-menu > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.attendance-settings-menu > summary span {
+  display: inline !important;
+}
+.attendance-settings-options {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  width: min(21rem, 85vw);
+  padding: 0.65rem;
+  display: grid;
+  gap: 0.3rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+  box-shadow: var(--shadow);
+  z-index: 110;
+}
+.attendance-settings-options strong {
+  padding: 0.35rem;
+  font-size: 0.8rem;
+}
+.attendance-settings-options button {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem;
+  border-radius: 0.5rem;
+  text-align: left;
+  font-size: 0.78rem;
+}
+.attendance-settings-options button:hover {
+  background: var(--accent-bg);
+}
+
+.label-finance {
+  grid-column: 1/-1;
+  min-width: 0;
+}
+.label-finance-list {
+  display: grid;
+  max-height: 26rem;
+  overflow: auto;
+  gap: 0.4rem;
+  margin-top: 0.7rem;
+}
+.label-finance-list article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  padding: 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+}
+.label-finance-list article > div {
+  min-width: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+.label-finance-list small {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+.label-finance-list strong {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+}
+.label-finance-list i {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.workspace-main > .topbar {
+  position: relative;
+  z-index: 100;
+  overflow: visible;
+}
+.noctua-dock-workspace {
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
 }

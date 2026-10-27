@@ -263,3 +263,17 @@ html[data-dock-editing='false'] .dv-floating-titlebar {
   pointer-events: none;
   cursor: default;
 }
+
+.dock-reopen-tray {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.35rem 0.6rem;
+  border-top: 1px solid var(--line);
+}
+.dock-panel-quick .icon-button {
+  min-width: 1.6rem;
+  min-height: 1.6rem;
+  padding: 0.2rem;
+}

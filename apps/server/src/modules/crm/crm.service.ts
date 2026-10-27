@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { applyLabelActions, labelActionInput } from '../operations/label-actions.js';
 import { Prisma, type PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { AppError } from '../../shared/errors.js';
@@ -13,6 +14,7 @@ export const boardQuery = z.object({
   limit: z.coerce.number().int().min(50).max(5000).default(500),
 });
 export const moveInput = z.object({
+  ...labelActionInput,
   conversationId: id,
   sourceLabelId: id.nullable(),
   targetLabelId: id.nullable(),
@@ -257,6 +259,8 @@ export class CrmService {
             create: { conversationId: chat.id, placements, version: 1 },
             update: { placements, version: { increment: 1 } },
           });
+          if (body.targetLabelId && body.sourceLabelId !== body.targetLabelId && !chat.contact.labels.some(link=>link.labelId===body.targetLabelId))
+            await applyLabelActions(tx,sessionId,chat.id,body.targetLabelId,body);
         },
         { timeout: 30_000 },
       );

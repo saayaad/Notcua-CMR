@@ -7,6 +7,8 @@ import type { Conversation, Label } from '../types';
 import { Avatar, Spinner, time } from './ui';
 
 interface Props {
+  sort: 'priority'|'recent'|'oldest'|'waiting'; response: 'all'|'ours'|'client'|'never';
+  onSort: (value: Props['sort']) => void; onResponse: (value: Props['response']) => void;
   chats: Conversation[];
   total: number;
   active: string;
@@ -31,19 +33,7 @@ export function ConversationList(p: Props) {
     const timer = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(timer);
   }, []);
-  const orderedChats = [...p.chats].sort((left, right) => {
-    const isUrgent = (chat: Conversation) =>
-      p.filter !== 'archived' &&
-      chat.messages[0]?.direction === 'INBOUND' &&
-      Boolean(chat.lastMessageAt) &&
-      now - new Date(chat.lastMessageAt!).getTime() >= preferences.waitingRed * 60000;
-    const urgentDifference = Number(isUrgent(right)) - Number(isUrgent(left));
-    if (urgentDifference) return urgentDifference;
-    if (isUrgent(left) && isUrgent(right))
-      return new Date(left.lastMessageAt ?? 0).getTime() - new Date(right.lastMessageAt ?? 0).getTime();
-    if (left.pinned !== right.pinned) return left.pinned ? -1 : 1;
-    return 0;
-  });
+  const orderedChats = p.chats;
   return (
     <section
       {...placement.attributes}
@@ -102,6 +92,14 @@ export function ConversationList(p: Props) {
           </option>
         ))}
       </Select>
+      <div className="lead-list-controls">
+        <label>Resposta<Select aria-label="Filtrar situação da resposta" value={p.response} onChange={e=>p.onResponse(e.target.value as Props['response'])}>
+          <option value="all">Todas as situações</option><option value="ours">Aguardando nossa resposta</option><option value="client">Aguardando o cliente</option><option value="never">Ainda não respondidos</option>
+        </Select></label>
+        <label>Ordem<Select aria-label="Ordenar leads" value={p.sort} onChange={e=>p.onSort(e.target.value as Props['sort'])}>
+          <option value="priority">Prioridade de atendimento</option><option value="recent">Mais recentes</option><option value="oldest">Mais antigos</option><option value="waiting">Maior tempo de espera</option>
+        </Select></label>
+      </div>
       <div className="chat-list">
         {p.loading && !p.chats.length ? (
           <div className="list-placeholder">

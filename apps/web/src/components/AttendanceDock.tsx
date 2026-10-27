@@ -8,7 +8,16 @@ import {
   type IDockviewPanelProps,
   type IDockviewHeaderActionsProps,
 } from 'dockview-react';
-import { AppWindow, ExternalLink, Maximize2, Minimize2, Save, RotateCcw, PanelsTopLeft } from 'lucide-react';
+import {
+  AppWindow,
+  ExternalLink,
+  Maximize2,
+  Minimize2,
+  Minus,
+  Save,
+  RotateCcw,
+  PanelsTopLeft,
+} from 'lucide-react';
 import { usePreferences } from '../context/PreferencesContext';
 import { useApi, errorMessage } from '../context/ApiContext';
 import { DockingContext } from '../context/docking';
@@ -76,7 +85,19 @@ function Actions({ api, containerApi, activePanel }: IDockviewHeaderActionsProps
       notify(errorMessage(error), true);
     }
   };
-  if (!editing) return null;
+  if (!editing)
+    return activePanel && activePanel.id !== 'chat' ? (
+      <div className="dock-panel-quick">
+        <button
+          className="icon-button"
+          aria-label={`Recolher ${activePanel.title}`}
+          title="Recolher painel"
+          onClick={() => activePanel.api.close()}
+        >
+          <Minus size={15} />
+        </button>
+      </div>
+    ) : null;
   return (
     <div className="noctua-dock-actions">
       <button
@@ -112,11 +133,15 @@ export function AttendanceDock({
   toolsOpen,
   onToolsChange,
   onClassic,
+  editRequest = 0,
+  onEditRequestHandled,
 }: {
   children: Record<DockPanelId, ReactNode>;
   toolsOpen: boolean;
   onToolsChange: (open: boolean) => void;
   onClassic: () => void;
+  editRequest?: number;
+  onEditRequestHandled?: () => void;
 }) {
   const { preferences, savePreferences } = usePreferences();
   const { notify } = useApi();
@@ -131,6 +156,12 @@ export function AttendanceDock({
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
+  useEffect(() => {
+    if (editRequest) {
+      setEditing(true);
+      onEditRequestHandled?.();
+    }
+  }, [editRequest]);
   const ready = useRef(false);
   const open = (id: DockPanelId) => {
     const dock = api.current;
@@ -418,6 +449,24 @@ export function AttendanceDock({
               disableDnd={!editing}
               floatingGroupBounds="boundedWithinViewport"
             />
+            {!editing && Object.keys(dockPanels).some((id) => !present.includes(id)) && (
+              <div className="dock-reopen-tray" aria-label="Painéis recolhidos">
+                {Object.entries(dockPanels)
+                  .filter(([id]) => !present.includes(id))
+                  .map(([id, title]) => (
+                    <button
+                      key={id}
+                      className="button small"
+                      onClick={() => {
+                        if (id === 'tools') onToolsChange(true);
+                        open(id as DockPanelId);
+                      }}
+                    >
+                      Abrir {title}
+                    </button>
+                  ))}
+              </div>
+            )}
             {!present.includes('tools') && <div className="noctua-dock-parking">{children.tools}</div>}
           </section>
         </Editing.Provider>

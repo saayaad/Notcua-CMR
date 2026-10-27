@@ -17,7 +17,7 @@ Atualizado em 26/10/2026. Importe este Markdown no Notion para transformar os it
 - [ ] 🟡 Gestão/ordenação de etiquetas e renomeação de menus existe; confira cores/ícones e a ordem em filtros e Kanban.
 - [ ] ✅ Command Palette com `Ctrl + K`, busca de conversas e campanhas e navegação para áreas do sistema.
 - [ ] ✅ CRM com quadro/funil e valores de oportunidade em R$.
-- [ ] 🟡 Campanhas usam receita manual ou vendas ganhas vinculadas no CRM, sem dupla atribuição, com recálculo e resumo na Visão Geral. Investimento é informado; não representa lucro líquido. Receita/ROI por etiqueta ainda é parcial.
+- [ ] ✅ Campanhas usam receita manual ou vendas ganhas vinculadas no CRM, sem dupla atribuição, com recálculo e resumo na Visão Geral. Investimento é informado; não representa lucro líquido. Etiquetas têm receita e retorno estimado por negócio ganho atribuído, com investimento informado e ações manuais confirmadas.
 - [ ] 🟡 Tema premium, animações, estados de hover e toasts existem em parte da interface; consistência visual ainda requer revisão tela a tela.
 - [ ] 🟡 Há comportamento responsivo/mobile; validar navegação lista → conversa → ferramentas em celular e tablet.
 ## Parte 2 — Atendimento e HUD
@@ -111,7 +111,7 @@ Atualizado em 26/10/2026. Importe este Markdown no Notion para transformar os it
 - [ ] Confirmei backup e restauração em uma cópia descartável; não resetei a instalação real.
 - [ ] Enviei a especificação da Parte 8, se ela ainda fizer parte do projeto.
 
-Revisão de 26/10/2026: [relatório atualizado, resultados e bloqueios](verification/relatorio-revisao-2026-10-26.md). Suíte completa com 132 testes aprovados, nenhuma falha; etapa XLS e pré-processamento concluída no código e em testes isolados. Após nova autorização, texto e gravação pelo microfone entregues somente ao contato de teste; conferência visual do balão no telefone solicitada.
+Revisão de 26/10/2026: [relatório atualizado, resultados e bloqueios](verification/relatorio-revisao-2026-10-26.md). Suíte completa com 136 testes aprovados, nenhuma falha; etapa XLS e pré-processamento concluída no código e em testes isolados. Após nova autorização, texto e gravação pelo microfone entregues somente ao contato de teste; conferência visual do balão no telefone solicitada.
 
 
 ## Painéis encaixáveis do Atendimento
@@ -126,3 +126,18 @@ Implementação e testes desta etapa: [guia de uso e evidências](paineis-atendi
 - [ ] Abrir outra janela e trazê-la de volta ao Atendimento.
 - [ ] Salvar, cancelar alterações e recuperar o layout ao reabrir.
 - [ ] Conferir rascunho e único compositor ao mover a conversa, sem enviar mensagem.
+
+
+## Etiquetas, filtros e recuperação de janelas
+
+Guia: [etiquetas-filtros-e-janelas.md](etiquetas-filtros-e-janelas.md). Implementados e testados no código; itens abaixo para sua revisão pessoal.
+
+- [ ] Abrir Personalizar e habilitar arraste explicitamente.
+- [ ] Abrir o HUD completo pelo menu Personalizar.
+- [ ] Recolher e reabrir painel sem entrar nas configurações.
+- [ ] Minimizar e restaurar uma janela com seu formulário preservado.
+- [ ] Configurar uma etiqueta com pergunta do valor da venda.
+- [ ] Confirmar ou cancelar ações ao aplicar etiqueta no cliente ou Kanban.
+- [ ] Conferir receita e investimento por etiqueta, sem duplicar o mesmo negócio.
+- [ ] Filtrar leads aguardando nossa resposta, aguardando cliente e nunca respondidos.
+- [ ] Ordenar por recentes, antigos, prioridade e maior espera.

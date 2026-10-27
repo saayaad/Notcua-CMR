@@ -1337,3 +1337,64 @@ test('exportação estruturada ordena por horário, separa papéis e protege CSV
 test('campanha congela as variações por destinatário e nunca envia ao salvar',async()=>{const first=await makeContact('5511888877701','Primeiro');const second=await makeContact('5511888877702','Segundo');const before=socket.sends.length;const result=await draft([first.id,second.id],{kind:'text',text:'Base {{nome}}',textVariations:['Olá {{nome}}, opção A','Olá {{nome}}, opção B']});const tasks=await db.deliveryTask.findMany({where:{batchId:result.id},orderBy:{conversationId:'asc'}});const texts=tasks.map((task)=>(task.payload as {snapshot:{text:string}}).snapshot.text);assert.equal(new Set(texts).size,2);assert.ok(texts.every((text)=>text.includes('{{nome}}')));assert.equal(socket.sends.length,before);});
 test('transferência para setor valida a fila, pode ser aceita e não envia WhatsApp',async()=>{const chat=await makeContact('5511888877703','Setor');await putRecord(db,'settings:departments','SETTINGS',{items:[{name:'Comercial',label:''}]});const before=socket.sends.length;await request(app).post(`/api/operations/toolbox/sessions/${sessionId}/transfers`).send({conversationId:chat.id,target:'Inexistente',targetType:'DEPARTMENT',note:''}).expect(422);const created=await request(app).post(`/api/operations/toolbox/sessions/${sessionId}/transfers`).send({conversationId:chat.id,target:'Comercial',targetType:'DEPARTMENT',note:'Acompanhamento'}).expect(201);assert.equal(created.body.department,'Comercial');assert.equal(created.body.targetType,'DEPARTMENT');await request(app).put(`/api/operations/toolbox/sessions/${sessionId}/transfers/${created.body.id}`).send({status:'ACCEPTED'}).expect(200);assert.equal(socket.sends.length,before);});
 test('diretório fornece avatar e presença recente sem expor dados de integração',async()=>{await putRecord(db,'team:presence@example.com','TEAM',{email:'presence@example.com',name:'Presença',department:'Comercial',role:'MEMBER',active:true,avatar:''});await putRecord(db,'presence:presence@example.com','TEAM_PRESENCE',{email:'presence@example.com',seenAt:new Date().toISOString()});const result=await request(app).get('/api/operations/directory').expect(200);assert.equal(result.body.items.find((item:{email:string})=>item.email==='presence@example.com').online,true);assert.ok(result.body.departments.some((item:{name:string})=>item.name==='Comercial'));assert.equal(result.body.encryptedKey,undefined);});
+
+test('ações de etiqueta exigem confirmação, registram venda sem duplicar e calculam retorno por etiqueta', async()=>{
+  const chat=await makeContact('5511888800611','Venda etiqueta fictícia');
+  const label=await db.label.create({data:{id:'paid-rule-test',sessionId,name:'Pagamento concluído'}});
+  const base=`/api/operations/sessions/${sessionId}`;
+  const apply=`/api/attendance/sessions/${sessionId}/conversations/${chat.id}/labels/${label.id}`;
+  const before=socket.sends.length;
+  await request(app).put(`${base}/label-rules/${label.id}`).send({enabled:true,recordSale:true,askValue:true,internalNote:'Venda registrada no teste',pinConversation:true,investmentInCents:2000}).expect(200);
+  await request(app).put(apply).send({active:true}).expect(409);
+  assert.equal(await db.contactLabel.count({where:{contactId:chat.contactId,labelId:label.id}}),0);
+  await request(app).put(apply).send({active:true,confirmActions:true}).expect(422);
+  await request(app).put(apply).send({active:true,confirmActions:true,saleValueInCents:10000}).expect(200);
+  await request(app).put(apply).send({active:true}).expect(200);
+  let row=(await request(app).get(`${base}/label-finance`).expect(200)).body.items.find((x:{id:string})=>x.id===label.id);
+  assert.equal(row.sales,1);assert.equal(row.revenueInCents,10000);assert.equal(row.roiPercent,400);
+  assert.equal((await db.conversation.findUniqueOrThrow({where:{id:chat.id}})).pinned,true);
+  assert.equal(await db.operationRecord.count({where:{id:`label-note:${chat.id}:${label.id}`}}),1);
+  const second=await db.label.create({data:{id:'paid-second-rule-test',sessionId,name:'Outra classificação financeira'}});
+  await request(app).put(`${base}/label-rules/${second.id}`).send({enabled:true,recordSale:true,askValue:false,fixedValueInCents:12000}).expect(200);
+  await request(app).put(`/api/attendance/sessions/${sessionId}/conversations/${chat.id}/labels/${second.id}`).send({active:true,confirmActions:true}).expect(200);
+  const financial=(await request(app).get(`${base}/label-finance`).expect(200)).body.items;
+  assert.equal(financial.find((x:{id:string})=>x.id===label.id).sales,0);
+  assert.equal(financial.find((x:{id:string})=>x.id===second.id).sales,1);
+  assert.equal(financial.find((x:{id:string})=>x.id===second.id).revenueInCents,12000);
+  await db.crmOpportunity.update({where:{conversationId:chat.id},data:{status:'OPEN'}});
+  row=(await request(app).get(`${base}/label-finance`).expect(200)).body.items.find((x:{id:string})=>x.id===label.id);
+  assert.equal(row.sales,0);assert.equal(row.revenueInCents,0);
+  await request(app).get(`/api/operations/sessions/${otherSession}/label-rules/${label.id}`).expect(404);
+  assert.equal(socket.sends.length,before);
+});
+test('filtros de resposta e ordenação consideram todos os leads antes de paginar', async()=>{
+  const chats=[];
+  for(let i=0;i<3;i++){
+    const chat=await makeContact(`551188880062${i}`,'FiltroRespostaTeste '+i);chats.push(chat);
+    const date=new Date(Date.now()-(3-i)*60_000);
+    await db.conversation.update({where:{id:chat.id},data:{lastMessageAt:date}});
+    await db.chatMessage.create({data:{conversationId:chat.id,direction:i===2?'OUTBOUND':'INBOUND',status:'SENT',text:'Conteúdo fictício',sentAt:date}});
+    if(i===1) await db.chatMessage.create({data:{conversationId:chat.id,direction:'OUTBOUND',status:'SENT',text:'Resposta anterior',sentAt:new Date(date.getTime()-1000)}});
+  }
+  const base=`/api/attendance/sessions/${sessionId}/conversations?search=FiltroRespostaTeste&pageSize=1`;
+  const recent=await request(app).get(`${base}&sort=recent`).expect(200);
+  assert.equal(recent.body.total,3);assert.equal(recent.body.items[0].id,chats[2]!.id);
+  const ours=await request(app).get(`${base}&response=ours&sort=waiting&page=2`).expect(200);
+  assert.equal(ours.body.total,2);assert.equal(ours.body.items[0].id,chats[1]!.id);
+  const never=await request(app).get(`${base}&response=never`).expect(200);
+  assert.equal(never.body.total,1);assert.equal(never.body.items[0].id,chats[0]!.id);
+  const client=await request(app).get(`${base}&response=client`).expect(200);
+  assert.equal(client.body.total,1);assert.equal(client.body.items[0].id,chats[2]!.id);
+});
+test('Kanban confirma ações de etiqueta e desfaz movimentação sem valor obrigatório',async()=>{
+  const chat=await makeContact('5511888800631','Venda Kanban fictícia');
+  const source=await db.contactLabel.findFirstOrThrow({where:{contactId:chat.contactId}});
+  const label=await db.label.create({data:{id:'paid-kanban-rule-test',sessionId,name:'Venda no Kanban'}});
+  await request(app).put(`/api/operations/sessions/${sessionId}/label-rules/${label.id}`).send({enabled:true,recordSale:true,askValue:true}).expect(200);
+  const body={conversationId:chat.id,sourceLabelId:source.labelId,targetLabelId:label.id,version:0};
+  await request(app).post(`/api/crm/sessions/${sessionId}/move`).send(body).expect(409);
+  assert.equal(await db.contactLabel.count({where:{contactId:chat.contactId,labelId:label.id}}),0);
+  await request(app).post(`/api/crm/sessions/${sessionId}/move`).send({...body,confirmActions:true,saleValueInCents:9000}).expect(200);
+  const won=await db.crmOpportunity.findUniqueOrThrow({where:{conversationId:chat.id}});
+  assert.equal(won.status,'WON');assert.equal(won.valueInCents,9000);
+});

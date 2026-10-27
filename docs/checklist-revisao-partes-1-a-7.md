@@ -14,7 +14,7 @@
 
 ## Resumo da revisão
 
-- Parte 1: base visual, reset explícito, personalização, command palette, CRM/Kanban e responsividade existem; atribuição automática de ROI e validação entre navegadores seguem parciais.
+- Parte 1: base visual, reset explícito, personalização, command palette, CRM/Kanban e responsividade existem; receita por campanha/etiqueta usa atribuição explícita; validação entre navegadores segue parcial.
 - Parte 2: HUD, ferramentas, respostas, notas internas, Copiloto, gravação, transcrição e alertas de conversa existem em boa parte. Alguns comportamentos precisam de validação real.
 - Parte 3: biblioteca, exportação, campanhas, agenda e modais principais existem; exportação multimídia e alguns formatos/automatizações são parciais.
 - Parte 4: simulador, Sandbox integrado ao menu, quatro guias da Central de Ajuda e zona de segurança estão no código; calibração e isolamento ainda precisam de teste manual.
@@ -37,7 +37,7 @@
 | Parcial | Gestão/ordenação de etiquetas e renomeação de menus existe; confira cores/ícones e a ordem em filtros e Kanban. | [ ] |
 | Implementado | Command Palette com `Ctrl + K`, busca de conversas e campanhas e navegação para áreas do sistema. | [ ] |
 | Implementado | CRM com quadro/funil e valores de oportunidade em R$. | [ ] |
-| Parcial | Campanhas usam receita manual ou vendas ganhas vinculadas no CRM, sem dupla atribuição, com recálculo e resumo na Visão Geral. Investimento é informado; não representa lucro líquido. Receita/ROI por etiqueta ainda é parcial. | [ ] |
+| Implementado | Campanhas usam receita manual ou vendas ganhas vinculadas no CRM, sem dupla atribuição, com recálculo e resumo na Visão Geral. Investimento é informado; não representa lucro líquido. Etiquetas têm receita e retorno estimado por negócio ganho atribuído, com investimento informado e ações manuais confirmadas. | [ ] |
 | Parcial | Tema premium, animações, estados de hover e toasts existem em parte da interface; consistência visual ainda requer revisão tela a tela. | [ ] |
 | Parcial | Há comportamento responsivo/mobile; validar navegação lista → conversa → ferramentas em celular e tablet. | [ ] |
 
@@ -168,7 +168,7 @@
 
 **Nota sobre validação (25/10/2026):** as verificações de tipos do servidor e da interface e suas compilações passaram na revisão anterior. Após restabelecer o controle da aba autenticada, a conexão Teste foi confirmada como conectada. Um áudio sintético de 2 segundos foi anexado pelo atendimento e enviado ao número autorizado: o banco registrou OGG/Opus, `isPtt=true`, nenhum erro e estado `READ` retornado pelo WhatsApp. A evidência visual está em `verification/audio-voice-test-2026-10-25.png`. Os dois testes automatizados específicos de áudio passaram. A suíte anterior carregava a configuração Firebase do site, causando falhas 401; o comando de testes agora usa configuração isolada, sem alterar a autenticação do servidor em uso. Também foi corrigida a expressão de escala do conversor de vídeo; seu teste com clipe MP4 válido passou. A execução completa mais recente passou com 110 testes e nenhuma falha. Também foram confirmados envios reais de texto, imagem, vídeo, documento, voz por biblioteca/funil, macro, resposta padrão, campanha, agenda, lembrete privado e cancelamento automático de follow-up: a resposta recebida às 22h15min11s cancelou o retorno das 22h21min51s antes de qualquer envio. Consulte o relatório em verification/relatorio-testes-2026-10-25.md para distinguir as confirmações das pendências.
 
-Revisão de 26/10/2026: [relatório atualizado, resultados e bloqueios](verification/relatorio-revisao-2026-10-26.md). Suíte completa com 132 testes aprovados, nenhuma falha; etapa XLS e pré-processamento concluída no código e em testes isolados. Após nova autorização, texto e gravação pelo microfone entregues somente ao contato de teste; conferência visual do balão no telefone solicitada.
+Revisão de 26/10/2026: [relatório atualizado, resultados e bloqueios](verification/relatorio-revisao-2026-10-26.md). Suíte completa com 136 testes aprovados, nenhuma falha; etapa XLS e pré-processamento concluída no código e em testes isolados. Após nova autorização, texto e gravação pelo microfone entregues somente ao contato de teste; conferência visual do balão no telefone solicitada.
 
 
 ## Painéis encaixáveis do Atendimento
@@ -183,3 +183,18 @@ Implementação e testes desta etapa: [guia de uso e evidências](paineis-atendi
 - [ ] Abrir outra janela e trazê-la de volta ao Atendimento.
 - [ ] Salvar, cancelar alterações e recuperar o layout ao reabrir.
 - [ ] Conferir rascunho e único compositor ao mover a conversa, sem enviar mensagem.
+
+
+## Etiquetas, filtros e recuperação de janelas
+
+Guia: [etiquetas-filtros-e-janelas.md](etiquetas-filtros-e-janelas.md). Implementados e testados no código; itens abaixo para sua revisão pessoal.
+
+- [ ] Abrir Personalizar e habilitar arraste explicitamente.
+- [ ] Abrir o HUD completo pelo menu Personalizar.
+- [ ] Recolher e reabrir painel sem entrar nas configurações.
+- [ ] Minimizar e restaurar uma janela com seu formulário preservado.
+- [ ] Configurar uma etiqueta com pergunta do valor da venda.
+- [ ] Confirmar ou cancelar ações ao aplicar etiqueta no cliente ou Kanban.
+- [ ] Conferir receita e investimento por etiqueta, sem duplicar o mesmo negócio.
+- [ ] Filtrar leads aguardando nossa resposta, aguardando cliente e nunca respondidos.
+- [ ] Ordenar por recentes, antigos, prioridade e maior espera.

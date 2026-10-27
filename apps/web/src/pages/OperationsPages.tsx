@@ -1,4 +1,5 @@
 import { CampaignPhonePreview } from '../components/CampaignPhonePreview';
+import { LabelFinance } from '../components/LabelActions';
 import { NumberValidation } from '../components/NumberValidation';
 import { CampaignRevenue } from '../components/CampaignRevenue';
 import { usePreferences } from '../context/PreferencesContext';
@@ -120,6 +121,7 @@ export function OverviewPage({
         <small className="muted">Somente campanhas usando receita do CRM. Não representa lucro líquido e não inclui custos de produção, impostos ou outras despesas.</small>
       </section>}
       <div className="operation-launchers">
+        {sessionId && <LabelFinance sessionId={sessionId}/>}
         {[
           {
             title: 'Continuar um atendimento',

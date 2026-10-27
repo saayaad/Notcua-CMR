@@ -1536,20 +1536,20 @@ summary:focus-visible,
 .hud-sample-functions-bottom .hud-sample-composer {
   order: 4;
 }
-.app-shell .inbox-layout .attendance-functions {
+.app-shell :is(.inbox-layout, .noctua-dock-content) .attendance-functions {
   flex-direction: row;
   align-items: center;
   margin: 0;
   max-height: 3.1rem;
 }
-.app-shell .inbox-layout .attendance-functions button {
+.app-shell :is(.inbox-layout, .noctua-dock-content) .attendance-functions button {
   flex: 0 0 auto;
   width: auto;
   padding: 0.45rem 0.55rem;
   justify-content: center;
   min-height: 2rem;
 }
-.app-shell .inbox-layout .attendance-functions button > span {
+.app-shell :is(.inbox-layout, .noctua-dock-content) .attendance-functions button > span {
   display: inline;
 }
 .hud-preview-desktop {
@@ -2685,3 +2685,7 @@ dialog.modal.workbench-function-modal {
   padding: 0.4rem;
   font-size: 0.7rem;
 }
+
+.lead-list-controls { display:grid; grid-template-columns:1fr; gap:.35rem; padding:.4rem .7rem; border-bottom:1px solid var(--line); flex-shrink:0; }
+.lead-list-controls label { display:grid; grid-template-columns:3rem minmax(0,1fr); align-items:center; gap:.3rem; font-size:.65rem; color:var(--muted); }
+.lead-list-controls select,.lead-list-controls button { min-height:1.85rem; font-size:.7rem; }

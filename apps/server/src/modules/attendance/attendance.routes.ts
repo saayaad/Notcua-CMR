@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Router, type Request } from 'express';
+import { applyLabelActions, labelActionInput } from '../operations/label-actions.js';
 import { setAiControl } from '../operations/ai-control.js';
 import { Prisma, type PrismaClient } from '@prisma/client';
 import { z } from 'zod';
@@ -232,6 +233,8 @@ export function attendanceRoutes(
         search: z.string().max(100).default(''),
         labelId: z.string().optional(),
         filter: z.enum(['all', 'unread', 'closed', 'archived', 'mine']).default('all'),
+        response: z.enum(['all','ours','client','never']).default('all'),
+        sort: z.enum(['priority','recent','oldest','waiting']).default('priority'),
       })
       .parse(req.query);
     const where: Prisma.ConversationWhereInput = {
@@ -266,12 +269,19 @@ export function attendanceRoutes(
     };
     const archived = input.filter === 'archived' || input.filter === 'closed';
     const cutoff = BigInt(Date.now() - 15 * 60_000);
-    const [ranked, total] = await Promise.all([
-      db.$queryRaw<{ id: string }[]>(Prisma.sql`
+    const responseWhere = input.response === 'ours' ? Prisma.sql`latestDirection = 'INBOUND'`
+      : input.response === 'client' ? Prisma.sql`latestDirection = 'OUTBOUND'`
+      : input.response === 'never' ? Prisma.sql`latestDirection = 'INBOUND' AND hasOutgoing = 0` : Prisma.sql`1=1`;
+    const order = input.sort === 'recent' ? Prisma.sql`lastMessageAt DESC, id ASC`
+      : input.sort === 'oldest' ? Prisma.sql`lastMessageAt ASC, id ASC`
+      : input.sort === 'waiting' ? Prisma.sql`CASE WHEN latestDirection='INBOUND' THEN 0 ELSE 1 END, lastMessageAt ASC, id ASC`
+      : Prisma.sql`urgent DESC, CASE WHEN urgent = 1 THEN lastMessageAt END ASC, pinned DESC, lastMessageAt DESC, id ASC`;
+    const selection = Prisma.sql`
         WITH candidates AS (
           SELECT c.id, c.status, c.pinned, c.lastMessageAt,
-            (SELECT m.direction FROM ChatMessage m WHERE m.conversationId = c.id
-             ORDER BY m.sentAt DESC, m.id DESC LIMIT 1) AS latestDirection
+            (SELECT m.direction FROM ChatMessage m WHERE m.conversationId = c.id AND (m.direction='INBOUND' OR m.status NOT IN ('FAILED','PENDING'))
+             ORDER BY m.sentAt DESC, m.id DESC LIMIT 1) AS latestDirection,
+            EXISTS (SELECT 1 FROM ChatMessage outgoing WHERE outgoing.conversationId=c.id AND outgoing.direction='OUTBOUND' AND outgoing.status NOT IN ('FAILED','PENDING')) AS hasOutgoing
           FROM Conversation c JOIN Contact p ON p.id = c.contactId
           WHERE c.sessionId = ${String(where.sessionId)} AND c.status = ${archived ? 'CLOSED' : 'OPEN'}
           ${input.filter === 'mine' ? Prisma.sql`AND c.assignedTo = ${res.locals.identity?.email || res.locals.identity?.uid || 'local'}` : Prisma.empty}
@@ -282,13 +292,13 @@ export function attendanceRoutes(
           SELECT *, CASE WHEN status = 'OPEN' AND latestDirection = 'INBOUND'
             AND lastMessageAt <= ${cutoff} THEN 1 ELSE 0 END AS urgent FROM candidates
         )
-        SELECT id FROM ranked ORDER BY urgent DESC,
-          CASE WHEN urgent = 1 THEN lastMessageAt END ASC,
-          pinned DESC, lastMessageAt DESC, id ASC
-        LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}
-      `),
-      db.conversation.count({ where }),
+        , filtered AS (SELECT * FROM ranked WHERE ${responseWhere})
+    `;
+    const [ranked, totals] = await Promise.all([
+      db.$queryRaw<{id:string}[]>(Prisma.sql`${selection} SELECT id FROM filtered ORDER BY ${order} LIMIT ${pageSize} OFFSET ${(page-1)*pageSize}`),
+      db.$queryRaw<{total:bigint}[]>(Prisma.sql`${selection} SELECT COUNT(*) AS total FROM filtered`),
     ]);
+    const total=Number(totals[0]?.total??0);
     const found = await db.conversation.findMany({
       where: { ...where, id: { in: ranked.map((row) => row.id) } },
       include,
@@ -580,14 +590,18 @@ export function attendanceRoutes(
     const { sessionId, conversationId } = ids(req);
     const chat = await messaging.chat(sessionId, conversationId);
     const labelId = stringId.parse(req.params.labelId);
-    const { active } = z.object({ active: z.boolean() }).parse(req.body);
+    const input = z.object({ active: z.boolean(), ...labelActionInput }).parse(req.body);
+    const { active } = input;
     const label = await db.label.findUnique({ where: { id: labelId } });
     if (!label || label.isDeleted || (label.sessionId && label.sessionId !== sessionId))
       throw new AppError(422, 'Etiqueta indisponível nesta conexão.');
     const link = { contactId: chat.contactId, labelId };
     await db.$transaction(async (tx) => {
-      if (active)
+      if (active) {
+        const existing = await tx.contactLabel.findUnique({where:{contactId_labelId:link}});
+        if (!existing) await applyLabelActions(tx,sessionId,conversationId,labelId,input);
         await tx.contactLabel.upsert({ where: { contactId_labelId: link }, create: link, update: {} });
+      }
       else await tx.contactLabel.deleteMany({ where: link });
       if (label.whatsappId)
         await queueLabelChange(tx, {

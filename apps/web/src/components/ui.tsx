@@ -1,6 +1,6 @@
-import { useId, useLayoutEffect, useRef, type ReactNode } from 'react';
+import { useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { X, MessageCircle, LoaderCircle } from 'lucide-react';
+import { X, Minus, Maximize2, MessageCircle, LoaderCircle } from 'lucide-react';
 import type { Contact } from '../types';
 
 export function Avatar({
@@ -48,48 +48,80 @@ export function Modal({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+  const [minimized, setMinimized] = useState(false);
+  const [tray, setTray] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    let host = document.getElementById('noctua-modal-tray');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'noctua-modal-tray';
+      host.className = 'minimized-modal-tray';
+      document.body.append(host);
+    }
+    setTray(host);
+  }, []);
   const backdropPress = useRef(false);
   useLayoutEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
     const previousFocus = document.activeElement;
-    dialog.showModal();
+    if (minimized) dialog.close();
+    else dialog.showModal();
     return () => {
       dialog.close();
       if (previousFocus instanceof HTMLElement && previousFocus.isConnected)
         previousFocus.focus({ preventScroll: true });
     };
-  }, []);
+  }, [minimized]);
   const outside = (x: number, y: number) => {
     const rect = ref.current?.getBoundingClientRect();
     return Boolean(rect && (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom));
   };
   return createPortal(
-    <dialog
-      ref={ref}
-      aria-labelledby={titleId}
-      className={`modal ${wide ? 'modal-wide' : ''} ${className}`}
-      onCancel={(event) => {
-        event.preventDefault();
-        onClose();
-      }}
-      onPointerDown={(event) => {
-        backdropPress.current = event.target === ref.current && outside(event.clientX, event.clientY);
-      }}
-      onClick={(event) => {
-        if (event.target === ref.current && backdropPress.current && outside(event.clientX, event.clientY))
+    <>
+      <dialog
+        ref={ref}
+        aria-labelledby={titleId}
+        className={`modal ${wide ? 'modal-wide' : ''} ${className}`}
+        onCancel={(event) => {
+          event.preventDefault();
           onClose();
-        backdropPress.current = false;
-      }}
-    >
-      <div className="modal-header">
-        <h2 id={titleId}>{title}</h2>
-        <button type="button" className="icon-button" onClick={onClose} aria-label="Fechar janela">
-          <X size={20} />
-        </button>
-      </div>
-      <div className="modal-body">{children}</div>
-    </dialog>,
+        }}
+        onPointerDown={(event) => {
+          backdropPress.current = event.target === ref.current && outside(event.clientX, event.clientY);
+        }}
+        onClick={(event) => {
+          if (event.target === ref.current && backdropPress.current && outside(event.clientX, event.clientY))
+            onClose();
+          backdropPress.current = false;
+        }}
+      >
+        <div className="modal-header">
+          <h2 id={titleId}>{title}</h2>
+          <button
+            type="button"
+            className="icon-button"
+            onClick={() => setMinimized(true)}
+            aria-label="Minimizar janela"
+          >
+            <Minus size={18} />
+          </button>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Fechar janela">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="modal-body">{children}</div>
+      </dialog>
+      {minimized &&
+        tray &&
+        createPortal(
+          <button className="button" onClick={() => setMinimized(false)} aria-label={`Restaurar ${title}`}>
+            <Maximize2 size={14} />
+            {title}
+          </button>,
+          tray,
+        )}
+    </>,
     document.body,
   );
 }

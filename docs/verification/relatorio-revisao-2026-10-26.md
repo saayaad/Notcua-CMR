@@ -23,7 +23,7 @@ A pausa foi respeitada até a nova autorização. Após a retomada, um texto e u
 
 ## Verificação automatizada
 
-Última suíte completa: **132 testes aprovados, nenhuma falha**, incluindo marca em vídeo, falha segura de imagem, validação dos modelos, preparação de anexo do estúdio, XLS legado e pré-processamento de histórico. Verificação de tipos do servidor, interface e testes passou. Compilação final do servidor e da interface aprovada; permanece aviso de pacote principal acima de 500 kB como oportunidade de otimização do carregamento.
+Última suíte completa: **136 testes aprovados, nenhuma falha**, incluindo marca em vídeo, falha segura de imagem, validação dos modelos, preparação de anexo do estúdio, XLS legado e pré-processamento de histórico. Verificação de tipos do servidor, interface e testes passou. Compilação final do servidor e da interface aprovada; permanece aviso de pacote principal acima de 500 kB como oportunidade de otimização do carregamento.
 
 As mídias dos testes são sintéticas e os bancos usados pelos testes são descartáveis. Testes não executam cobranças nem enviam mensagens usando a conexão real.
 
@@ -134,3 +134,18 @@ Aplicados limites de painel flutuante dentro da área visível e confirmação t
 Uma tentativa de separar a conversa automaticamente durante a reconstrução gerou Invalid grid element no teste e foi removida. Não foi mantida reorganização automática durante encaixes. O erro foi identificado antes da publicação desta revisão.
 
 Conferido pela interface: modo normal com zero ações de layout expostas, abertura por Personalizar, Cancelar e confirmação do layout retornando ao modo limpo. Cinco testes de persistência/rota aprovados. Esta revisão não representa validação de todas as sequências de arraste em todos os navegadores; a nova experiência deve ser revista pelo usuário.
+
+
+## Revisão — personalização acessível, janelas, etiquetas e filtros
+
+Corrigidos dois problemas visuais concretos: seletores globais de nav afetavam botões da conversa e ocultavam os textos; o menu de personalização ficava atrás da grade de painéis. Estilos de navegação foram isolados e a ordem de sobreposição foi corrigida. Personalizar agora separa Habilitar arraste de HUD/atalhos/aparência. O pedido de edição é consumido após a montagem, evitando clique perdido no carregamento e reabertura da edição ao navegar.
+
+Painéis têm recolher e faixa de reabertura direta. Janelas têm minimizar/restaurar com conteúdo preservado. Tamanhos e espaçamentos de modais foram padronizados. Pela interface foram conferidos acesso ao menu visível, edição por solicitação, cancelamento, HUD, minimizar/restaurar e recolher/reabrir Conversas. Os botões da conversa mediram 33 px de altura e exibiram seus nomes em linha.
+
+Regras por etiqueta permitem venda com valor perguntado ou fixo, nota interna e fixação. A aplicação manual no cliente e o movimento no Kanban exigem confirmação e são transacionais. O registro financeiro é único por conversa e atribuído a uma etiqueta; outra atribuição reclassifica a venda. O painel de receita acompanha somente negócios ganhos e o investimento informado, sem inferir lucro líquido. Importações e automações de fundo não presumem valores nem fazem perguntas. Nenhuma regra foi salva em etiquetas reais durante a revisão visual; o modelo Pago foi conferido e cancelado.
+
+Filtros de resposta e ordenação são aplicados antes de contar e paginar, no servidor. Envio falho/pendente e notas internas não contam como resposta. Na interface, Ainda não respondidos mostrou 16 contatos; Todas as situações recuperou os 131 contatos. As preferências de ordenação são persistidas na conta.
+
+Validação: **136 testes aprovados, nenhuma falha**, incluindo reatribuição entre etiquetas, rollback do Kanban sem confirmação/valor e ordenação em páginas diferentes. Compilação e verificação de tipos aprovadas. Não houve envios ao WhatsApp, alteração de vendas reais ou ativação de faturamento da API nesta etapa. O aviso sobre Google AI Pro e API foi incluído no provedor Gemini com links oficiais.
+
+Guia: [etiquetas-filtros-e-janelas.md](../etiquetas-filtros-e-janelas.md). Capturas da conta permanecem apenas na pasta temporária local.

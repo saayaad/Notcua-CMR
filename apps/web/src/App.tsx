@@ -1,3 +1,4 @@
+import { AttendanceSettingsMenu } from './components/AttendanceSettingsMenu';
 import { CampaignMonitor } from './components/CampaignMonitor';
 import { AttendanceLayout } from './components/AttendanceLayout';
 import { Select } from './components/Select';
@@ -69,6 +70,8 @@ export default function App() {
   const { request, notify } = useApi();
   const [view, setView] = useState<View>('overview');
   const { preferences, updatePreferences } = usePreferences();
+  const leadSort = preferences.leadSort ?? 'priority';
+  const leadResponse = preferences.leadResponse ?? 'all';
   const theme = preferences.theme;
   const setTheme = (value: string) => updatePreferences({ theme: value });
   const [search, setSearch] = useState('');
@@ -96,6 +99,7 @@ export default function App() {
   const [campaignSearch, setCampaignSearch] = useState('');
   const [focusResourceId, setFocusResourceId] = useState('');
   const [hudOpen, setHudOpen] = useState(false);
+  const [dockEditRequest, setDockEditRequest] = useState(0);
   const [hudTab, setHudTab] = useState('panels');
   useEffect(() => {
     const open = (event: Event) => {
@@ -237,7 +241,7 @@ export default function App() {
   }, [search]);
   useEffect(() => {
     setPage(1);
-  }, [debounced, filter, labelId]);
+  }, [debounced, filter, labelId, leadSort, leadResponse]);
   useEffect(() => {
     setSelected(null);
     setChats([]);
@@ -255,6 +259,7 @@ export default function App() {
       pageSize: '50',
       search: debounced,
       filter,
+      sort: leadSort, response: leadResponse,
       ...(labelId ? { labelId } : {}),
     });
     void request<Paged<Conversation>>(
@@ -275,7 +280,7 @@ export default function App() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [workspace.sessionId, workspace.revision, debounced, filter, labelId, page, request, notify]);
+  }, [workspace.sessionId, workspace.revision, debounced, filter, labelId, leadSort, leadResponse, page, request, notify]);
   useEffect(() => {
     if (!workspace.sessionId) return;
     const controller = new AbortController();
@@ -463,28 +468,12 @@ export default function App() {
             <strong>{navigation.find((item) => item.id === view)?.name}</strong>
           </div>
           <div className="topbar-right">
-            {view === 'inbox' && !preferences.dockingEnabled && (
-              <button
-                className={`tools-toggle ${preferences.dockingEnabled ? 'active' : ''}`}
-                aria-label="Painéis encaixáveis"
-                aria-pressed={preferences.dockingEnabled}
-                onClick={() => updatePreferences({ dockingEnabled: !preferences.dockingEnabled })}
-                title="Ativar abas arrastáveis, divisões, painéis flutuantes e janelas externas"
-              >
-                <PanelLeftClose size={16}/><span>Painéis encaixáveis</span>
-              </button>
-            )}
-            {view === 'inbox' && (
-              <button
-                className="tools-toggle hud-open-button"
-                onClick={() => preferences.dockingEnabled && viewportWidth > 480
-                  ? window.dispatchEvent(new Event('noctua:dock-edit')) : setHudOpen(true)}
-                title={preferences.dockingEnabled ? 'Organizar Atendimento' : 'Personalizar Atendimento com prévia'}
-              >
-                <SlidersHorizontal size={16} />
-                <span>Personalizar</span>
-              </button>
-            )}
+            {view === 'inbox' && <AttendanceSettingsMenu
+              enabled={preferences.dockingEnabled}
+              onArrange={() => {if(viewportWidth<=480){setHudOpen(true);return;} updatePreferences({dockingEnabled:true}); setDockEditRequest(value => value + 1);}}
+              onHud={() => setHudOpen(true)}
+              onClassic={() => updatePreferences({dockingEnabled:false})}
+            />}
             <button
               className="global-search-trigger"
               onClick={() => setCommandOpen(true)}
@@ -548,6 +537,8 @@ export default function App() {
         {view === 'inbox' ? (
           <AttendanceLayout
             enabled={preferences.dockingEnabled && viewportWidth > 480}
+            editRequest={dockEditRequest}
+            onEditRequestHandled={() => setDockEditRequest(0)}
             toolsOpen={toolsOpen}
             onToolsChange={setToolsOpen}
             onClassic={() => updatePreferences({ dockingEnabled: false })}
@@ -570,6 +561,8 @@ export default function App() {
               label={labelId}
               setLabel={setLabelId}
               labels={labels}
+              sort={leadSort} response={leadResponse}
+              onSort={value => updatePreferences({leadSort:value})} onResponse={value => updatePreferences({leadResponse:value})}
               page={page}
               setPage={setPage}
               loading={loading || workspace.loading}
