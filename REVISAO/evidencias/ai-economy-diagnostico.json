@@ -1,0 +1,19 @@
+{
+  "date": "2026-10-27",
+  "externalCalls": 0,
+  "productionData": false,
+  "summary": {
+    "messagesBefore": 60,
+    "messagesAfter": 90,
+    "summariesBefore": 1,
+    "summariesAfter": 1,
+    "covered": 57,
+    "defectReproduced": true
+  },
+  "cache": {
+    "reviewed": false,
+    "reusedBetweenFakeClients": true,
+    "personalizedGreetingReused": true,
+    "defectReproduced": true
+  }
+}

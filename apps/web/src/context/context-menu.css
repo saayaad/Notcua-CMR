@@ -1,0 +1,93 @@
+.noctua-context-menu {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  z-index: 2147483647;
+  width: max-content;
+  min-width: 14rem;
+  max-width: min(23rem, calc(100vw - 1rem));
+  max-height: calc(100dvh - 1rem);
+  overflow: auto;
+  padding: 0.35rem;
+  color: var(--text, #eeeef7);
+  background: var(--surface, #1c1c27);
+  border: 1px solid var(--line, #393849);
+  border-radius: 0.8rem;
+  box-shadow: 0 0.5rem 2rem #0005;
+  font-size: 0.8125rem;
+  animation: noctua-menu-in 120ms ease-out;
+}
+.noctua-context-menu .noctua-context-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.4rem 0.6rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--line, #393849);
+  margin-bottom: 0.25rem;
+}
+.noctua-context-title span {
+  opacity: 0.5;
+  font-size: 0.7rem;
+}
+.noctua-context-menu > button {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  height: auto;
+  min-height: 2rem;
+  margin: 0;
+  padding: 0.45rem 0.65rem;
+  text-align: left;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 0.4rem;
+  font: inherit;
+  white-space: normal;
+  cursor: pointer;
+  transform: none;
+}
+.noctua-context-menu > button > svg {
+  flex: 0 0 auto;
+  opacity: 0.75;
+}
+.noctua-context-menu > button:hover,
+.noctua-context-menu > button:focus-visible {
+  background: color-mix(in srgb, var(--accent, #a68bfa) 20%, transparent);
+  outline: 1px solid var(--accent, #a68bfa);
+  outline-offset: -1px;
+}
+.noctua-context-menu > button:disabled {
+  opacity: 0.4;
+  cursor: default;
+  background: transparent;
+  outline: none;
+}
+.noctua-context-menu > button.context-danger {
+  color: #ef6d85;
+}
+.noctua-context-menu > small {
+  display: block;
+  padding: 0.4rem 0.6rem 0.1rem;
+  opacity: 0.6;
+  font-size: 0.65rem;
+  border-top: 1px solid var(--line, #393849);
+  margin-top: 0.25rem;
+}
+@keyframes noctua-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.2rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .noctua-context-menu {
+    animation: none;
+  }
+}

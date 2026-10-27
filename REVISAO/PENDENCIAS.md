@@ -2,9 +2,11 @@
 
 Atualização: 27/10/2026. Fase 2 autorizada e em execução. O novo módulo de chaves foi aprovado separadamente durante a revisão. **Este ainda não é o relatório final da Fase 3.**
 
+Prioridade seguinte autorizada pelo usuário: menu de botão direito global implementado localmente, com handlers existentes e edição de texto. Conferência e limites em [MENU-CONTEXTO.md](MENU-CONTEXTO.md) e [checklist do menu](MENU-CONTEXTO.md#testes-e-checklist). 60 testes selecionados passaram nesta rodada; a auditoria individual restante continua aberta. Essa autorização substitui a parada anterior somente para o menu, sem aprovar alterações indiscriminadas de outros módulos.
+
 ## Situação
 
-O livro [REQUISITOS.md](REQUISITOS.md) contém 699 registros: 617 a verificar, 28 completos, 3 não testados em conta cliente real, 4 decisões, 2 substituídos e 45 cancelados. Todos os itens não finais permanecem abertos no livro; não há percentual de completude comprovado nesta revisão.
+O livro [REQUISITOS.md](REQUISITOS.md) contém 699 registros: 568 ⬜ A VERIFICAR; 40 ✅ COMPLETO; 24 🟡 PARCIAL; 6 ⛔ NÃO TESTADO; 50 🔁 SUBSTITUÍDO OU CANCELADO; 4 ⚠️ PRECISA DE DECISÃO; 4 🔌 DESCONECTADO; 2 🐞 COM DEFEITO; 1 ❌ AUSENTE. Repetições de pedidos não são funções distintas; ainda não há percentual de completude comprovado.
 A verificação individual, prioridade, esforço e lotes serão preenchidos depois da aprovação do escopo, sem reutilizar “implementado” de um relatório antigo como prova.
 
 | ID / conjunto | Status | O que decidir ou completar | Prioridade/esforço |
@@ -50,3 +52,14 @@ Decisão de escopo em 27/10/2026: produção de vídeos/Drive permanece no Creat
 - Cadastro/ativação com cliente Firebase real ainda não executados: REQ-695–REQ-697 têm passo manual no livro. Não confundir testes simulados com uma venda real homologada.
 - A lógica original de Mensagens não foi alterada; há uma camada externa de autorização antes de transmitir.
 - Creatfy continua fora do escopo ativo. Fase 2 geral continua; não atingimos a segunda parada de aprovação do plano de pendências/menu.
+
+## Auditoria parcial seguinte — menu, backups, CRM e economia de IA
+
+- 49 registros receberam classificação individual nesta rodada. Contagens atuais estão no início deste documento e no livro; os registros parciais descrevem exatamente o que falta executar pela interface.
+- Menu contextual implementado por autorização posterior, compilado com ícones e conferido em fundo, Biblioteca e edição de texto. A revisão de cada módulo/dispositivo ainda está aberta; checklist dentro de MENU-CONTEXTO.md.
+- BUG-002: resumo estaciona após atingir a janela de 60 mensagens. Reproduzido com 60 → 90 mensagens fictícias. Prioridade Alta, esforço M, depende de teste de cursor/continuidade e reinício.
+- BUG-003: cache aceita resposta sem revisão e pode repetir nome entre clientes. Reproduzido entre duas conversas fictícias. Prioridade Alta, esforço M; exige definir publicação/invalidar entradas antigas no lote de correção, sem apagar cache real nesta auditoria.
+- INT-001: controles de economia de campanhas/treinamento/comprovantes/resumo diário são salvos sem consumidor localizado. Prioridade Alta, esforço G, ligar controles por técnica e por sistema e testar os quatro motores com provedor fictício.
+- LAC-001: embeddings/índice vetorial ausentes e estimativa diária não exposta. Prioridade Média, esforço G para índice e M para métricas, sem contratação/ativação de cobrança.
+- Backups e CRM têm testes de API/persistência aprovados, mas foram mantidos como parciais até completar a interface de cada cenário. Fixture de áudio ZV com bytes de texto não comprova reprodução; mídias vazias não comprovam importação de vídeo.
+- A revisão automática bloqueou uma compilação por limite temporário de uso; após o horário informado, a nova aprovação funcionou e a compilação final passou. Não é defeito do aplicativo.

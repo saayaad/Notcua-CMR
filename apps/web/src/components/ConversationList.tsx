@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { usePreferences } from '../context/PreferencesContext';
 import { Pin, Search, Plus, ChevronLeft, ChevronRight, CheckCheck, MessageSquare } from 'lucide-react';
 import type { Conversation, Label } from '../types';
+import { useContextMenu } from '../context/ContextMenu';
 import { Avatar, Spinner, time } from './ui';
 
 interface Props {
@@ -26,6 +27,7 @@ interface Props {
   onNew: () => void;
 }
 export function ConversationList(p: Props) {
+  const contextMenu = useContextMenu();
   const { preferences } = usePreferences();
   const placement = useHudPlacement('list');
   const [now, setNow] = useState(Date.now());
@@ -126,6 +128,10 @@ export function ConversationList(p: Props) {
                 key={chat.id}
                 className={`chat-item ${p.active === chat.id ? 'active' : ''} ${urgent ? 'sla-urgent' : ''}`}
                 onClick={() => p.onSelect(chat)}
+                onContextMenu={contextMenu(chat.contact.name, [
+                  { label: 'Abrir conversa', run: () => p.onSelect(chat) },
+                  { label: 'Copiar telefone', run: () => navigator.clipboard.writeText(chat.contact.phoneNumber) },
+                ])}
               >
                 <Avatar contact={chat.contact} />
                 <span className="chat-item-content">

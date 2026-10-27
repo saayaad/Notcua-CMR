@@ -29,6 +29,7 @@ import {
   BadgeDollarSign,
 } from 'lucide-react';
 import { useApi, errorMessage } from '../context/ApiContext';
+import { useContextMenu } from '../context/ContextMenu';
 import type { Conversation, Message, Paged } from '../types';
 import { Avatar, Empty, FormattedText, Modal, Spinner, phone, time } from './ui';
 import { Composer } from './Composer';
@@ -141,6 +142,7 @@ export function ChatPane({
   onToolRequest: (section: string, kind?: string, question?: string) => void;
 }) {
   const { request, notify } = useApi();
+  const contextMenu = useContextMenu();
   const { preferences } = usePreferences();
   const placement = useHudPlacement('chat');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -509,6 +511,11 @@ export function ChatPane({
                 <div className={`message-row ${message.direction === 'OUTBOUND' ? 'outbound' : ''}`}>
                   <div
                     className={`message-bubble ${message.status === 'FAILED' ? 'message-failed' : ''} ${message.internal ? 'internal-note-bubble' : ''}`}
+                    onContextMenu={contextMenu(message.internal ? 'Nota interna' : 'Mensagem', [
+                      ...((message.text || message.caption) ? [{ label: 'Copiar mensagem', run: () => navigator.clipboard.writeText(message.text || message.caption || '') }] : []),
+                      ...(message.direction === 'INBOUND' && message.text ? [{ label: 'Cadastrar resposta padrão', run: () => onToolRequest('faq', undefined, message.text!) }] : []),
+                      ...(message.direction === 'INBOUND' && /audio|image|document|pdf/i.test(message.type) && !message.asViewOnce ? [{ label: /audio/i.test(message.type) ? 'Transcrever áudio' : 'Analisar mídia', disabled: transcribing === message.id, run: () => transcribe(message.id) }] : []),
+                    ])}
                   >
                     {message.internal && (
                       <div className="internal-note-label">

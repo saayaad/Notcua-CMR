@@ -16,18 +16,21 @@ import './client-ai.css';
 import './watermark.css';
 import './usability.css';
 import { AccessKeysPage } from './pages/AccessKeysPage';
+import { ContextMenuProvider } from './context/ContextMenu';
 import './access-keys.css';
 
 createRoot(document.getElementById('root')!).render(
   <ApiProvider>
-    <AuthGate>
-      {window.location.pathname.replace(/\/+$/, '') === '/chaves' ? (
-        <AccessKeysPage />
-      ) : (
-        <PreferencesProvider>
-          <App />
-        </PreferencesProvider>
-      )}
-    </AuthGate>
+    <ContextMenuProvider>
+      <AuthGate>
+        {window.location.pathname.replace(/\/+$/, '') === '/chaves' ? (
+          <AccessKeysPage />
+        ) : (
+          <PreferencesProvider>
+            <App />
+          </PreferencesProvider>
+        )}
+      </AuthGate>
+    </ContextMenuProvider>
   </ApiProvider>,
 );

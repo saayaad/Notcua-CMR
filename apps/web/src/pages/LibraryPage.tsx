@@ -1,4 +1,5 @@
 import { LibraryCardMedia } from '../components/LibraryCardMedia';
+import { useContextMenu } from '../context/ContextMenu';
 import { Select } from '../components/Select';
 import { AssetPreview } from '../components/AssetPreview';
 import { LibraryCategories, useLibraryOrganization } from '../components/LibraryCategories';
@@ -44,6 +45,7 @@ export function LibraryPage({
   onFocusResourceHandled?: () => void;
 }) {
   const { request, notify } = useApi();
+  const contextMenu = useContextMenu();
   const { preferences } = usePreferences();
   const [macroEditor, setMacroEditor] = useState<string | null>(null);
   const [tab, setTab] = useState('MESSAGE');
@@ -201,7 +203,13 @@ export function LibraryPage({
       <div className="library-grid">
         {['MESSAGE', 'AUDIO', 'MEDIA', 'DOCUMENT'].includes(tab) &&
           assets.map((asset) => (
-            <article className="resource-card" key={asset.id}>
+            <article className="resource-card" key={asset.id} onContextMenu={contextMenu(asset.name, [
+              { label: 'Visualizar recurso', run: () => setPreview(asset) },
+              { label: 'Editar recurso', run: () => setEditor(asset) },
+              { label: asset.isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos', run: () => favorite(asset) },
+              { label: 'Duplicar recurso…', run: () => setAssetAction({ kind: 'duplicate', asset }) },
+              { label: 'Excluir recurso…', danger: true, run: () => remove(asset) },
+            ])}>
               <div className="resource-heading">
                 <span className="asset-icon">
                   {asset.kind === 'AUDIO' ? (
