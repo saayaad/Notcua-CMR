@@ -2419,6 +2419,16 @@ dialog.modal.batch-editor-modal {
 .contact-picker-options small {
   display: block;
 }
+.contact-picker-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+.contact-picker-labels .subtle-badge {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .contact-picker-options small {
   color: var(--muted);
   font-size: 0.7rem;

@@ -1,0 +1,89 @@
+{
+  "date": "2026-10-27",
+  "requirements": [
+    "REQ-116",
+    "REQ-170",
+    "REQ-272",
+    "REQ-273",
+    "REQ-274",
+    "REQ-325",
+    "REQ-459",
+    "REQ-169",
+    "REQ-207",
+    "REQ-210",
+    "REQ-451",
+    "REQ-404",
+    "REQ-405",
+    "REQ-319",
+    "REQ-164",
+    "REQ-217",
+    "REQ-186",
+    "REQ-337",
+    "REQ-338",
+    "REQ-339",
+    "REQ-343",
+    "REQ-345",
+    "REQ-346",
+    "REQ-351",
+    "REQ-352",
+    "REQ-187",
+    "REQ-340",
+    "REQ-341",
+    "REQ-342",
+    "REQ-344",
+    "REQ-347",
+    "REQ-348",
+    "REQ-349",
+    "REQ-350"
+  ],
+  "counts": {
+    "⬜ A VERIFICAR": 481,
+    "✅ COMPLETO": 71,
+    "🟡 PARCIAL": 82,
+    "⛔ NÃO TESTADO": 8,
+    "🔁 SUBSTITUÍDO OU CANCELADO": 50,
+    "⚠️ PRECISA DE DECISÃO": 4,
+    "🔌 DESCONECTADO": 4,
+    "🐞 COM DEFEITO": 2,
+    "❌ AUSENTE": 1
+  },
+  "tests": {
+    "distinctPassed": 136,
+    "failedFinal": 0,
+    "groups": {
+      "regression": 80,
+      "attendanceConnectionMicrophone": 32,
+      "nonAiOperations": 15,
+      "preferenceSave": 2,
+      "sandbox": 4,
+      "transfers": 3
+    },
+    "externalAiRequests": 0,
+    "realWhatsappSends": 0
+  },
+  "checks": {
+    "typecheck": true,
+    "build": true,
+    "preferenceFailureAndRetryUi": true,
+    "transferAcceptedDeclinedUi": true,
+    "labelDragAndFilterAndKanbanOrder": true,
+    "agendaLabelUi": true,
+    "sandboxLocalMediaReady": true,
+    "sandboxFlow": true,
+    "sandboxClear": true
+  },
+  "fixes": [
+    "BUG-001",
+    "LAC-002",
+    "BUG-004"
+  ],
+  "screenshots": [
+    "preferencias-falha-2026-10-27.png",
+    "agenda-etiquetas-2026-10-27.png",
+    "etiquetas-ordem-2026-10-27.png",
+    "transferencias-2026-10-27.png",
+    "sandbox-tema-claro-2026-10-27.png"
+  ],
+  "published": false,
+  "completeApp": false
+}

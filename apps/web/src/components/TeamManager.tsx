@@ -18,6 +18,26 @@ export function TeamManager() {
   const empty = { email: '', name: '', department: '', role: 'MEMBER', active: true, avatar: '' };
   const [draft, setDraft] = useState<Member>(empty);
   const [busy, setBusy] = useState(false);
+  const [distribution, setDistribution] = useState(false);
+  const [distributionReady, setDistributionReady] = useState(false);
+  const [distributionBusy, setDistributionBusy] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    void request<{ distribution?: boolean }>(
+      '/operations/settings/business',
+      'GET',
+      undefined,
+      controller.signal,
+    )
+      .then((data) => {
+        setDistribution(Boolean(data.distribution));
+        setDistributionReady(true);
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) notify(errorMessage(error), true);
+      });
+    return () => controller.abort();
+  }, [request, notify]);
   const load = () =>
     Promise.all([
       request<{ items: Member[] }>('/operations/team'),
@@ -46,6 +66,36 @@ export function TeamManager() {
   return (
     <div className="surface team-manager">
       <h2>Equipe e setores</h2>
+      <section className="team-distribution" aria-label="Distribuição automática">
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={distribution}
+            disabled={!distributionReady || distributionBusy}
+            onChange={(event) => {
+              const enabled = event.target.checked;
+              setDistributionBusy(true);
+              void request<Record<string, unknown>>('/operations/settings/business')
+                .then((settings) =>
+                  request('/operations/settings/business', 'PUT', { ...settings, distribution: enabled }),
+                )
+                .then(() => {
+                  setDistribution(enabled);
+                  notify(
+                    enabled ? 'Distribuição automática habilitada.' : 'Distribuição automática desabilitada.',
+                  );
+                })
+                .catch((error) => notify(errorMessage(error), true))
+                .finally(() => setDistributionBusy(false));
+            }}
+          />
+          Distribuir atendimentos automaticamente entre a equipe online
+        </label>
+        <small className="muted">
+          O rodízio considera atendentes ativos, presença recente e o setor do cliente. Conversas que já têm
+          responsável são preservadas.
+        </small>
+      </section>
       <p>
         Cadastre o e-mail usado no login. Os setores são criados em Configurações → Departamentos. Online
         indica presença recente no painel.

@@ -42,7 +42,7 @@ export function OrderingSettings({
     <>
       <div className="surface">
         <h2>Ordem dos grupos do menu</h2>
-        <p>Arraste pela alça ou use as setas. A ordem visual fica salva neste navegador.</p>
+        <p>Arraste pela alça ou use as setas. A ordem é salva na sua conta.</p>
         <ReorderList
           label="Ordem dos grupos"
           items={groups}

@@ -57,3 +57,10 @@ Corrigido e retestado. A checagem completa do servidor encontrou TS2835 em `test
 
 Arquivo: apps/web/src/context/PreferencesContext.tsx:245. O PUT automático descarta a falha com catch vazio. Na cópia fictícia, nome de menu com 31.000 caracteres foi recusado pela API (413, Configuração muito grande); o banco manteve Campanhas QA e o recarregamento recuperou esse valor. A edição local não foi persistida. Não corrigido ainda: respeitar o plano da Fase 3. É necessário apresentar falha, preservar rascunho e limitar a entrada de maneira clara.
 
+
+## Correções validadas na continuação autorizada de 27/10/2026
+
+- **BUG-001 corrigido:** preferências não descartam mais falha silenciosamente. Há aviso, rascunho local preservado, retry e fila serial contra sobrescrita por requisição lenta. A leitura inicial precisa concluir antes da gravação. Teste UI com 503 fictício exibiu aviso e retry, depois salvou e persistiu após reload; dois testes novos aprovados. A API mantém a recusa a configuração extensa.
+- **LAC-002 corrigida:** sugestões da agenda mostram as etiquetas recebidas no contato. UI mostrou nome, telefone, iniciais e RM1.
+- **BUG-004 corrigido:** no tema claro, balões do Sandbox usavam fallback escuro porque --panel/--border não existem no tema global. sandbox.css agora usa --surface2/--line. Capturas claro/escuro conferidas, com texto legível.
+- BUG-002/003 e INT-001 continuam abertos e com testes funcionais de IA adiados por solicitação do usuário. Os textos anteriores descrevem o estado histórico antes deste lote.

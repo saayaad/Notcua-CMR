@@ -120,6 +120,13 @@ export function ContactCombobox({
               <span>
                 <strong>{item.contact.name}</strong>
                 <small>{formatContactPhone(item.contact.phoneNumber)}</small>
+                <span className="contact-picker-labels" aria-label="Etiquetas do cliente">
+                  {(item.contact.labels ?? []).map(({ label }) => (
+                    <span className="subtle-badge" key={label.id} style={{ borderColor: label.color }}>
+                      {label.name}
+                    </span>
+                  ))}
+                </span>
               </span>
             </button>
           ))}

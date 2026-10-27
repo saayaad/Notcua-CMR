@@ -43,7 +43,7 @@ export function WorkspaceSettings({
 }) {
   const { request, notify } = useApi();
   const { enabled: aiEnabled } = useAiFeatures();
-  const { preferences, updatePreferences } = usePreferences();
+  const { preferences, updatePreferences, saveError, retrySave } = usePreferences();
   const [tab, setTab] = useState(initialTab);
   useEffect(() => { if (!aiEnabled && tab === 'economy') setTab('integrations'); }, [aiEnabled, tab]);
   const [hudOpen, setHudOpen] = useState(false);
@@ -138,6 +138,7 @@ export function WorkspaceSettings({
           ))}
         </aside>
         <section className="settings-content">
+          {saveError && <div className="notice" role="alert"><strong>Preferências ainda não salvas na conta.</strong><p>As alterações continuam neste navegador. {saveError}</p><button className="button small" type="button" onClick={retrySave}>Tentar salvar novamente</button></div>}
           {tab === 'general' && (
             <div className="surface personalization-card">
               <h2>Preferências da operação</h2>

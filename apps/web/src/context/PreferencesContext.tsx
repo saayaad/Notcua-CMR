@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { useApi } from './ApiContext';
+import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
+import { useApi, errorMessage } from './ApiContext';
+import { PreferenceSaveQueue } from './preferences-save';
 import { firebaseAuth } from '../auth/firebase';
 export interface HudBlockPosition {
   mode: 'dock' | 'floating';
@@ -14,8 +15,8 @@ export interface PinnedButtonSettings {
   preview?: 'inherit' | 'always' | 'never';
 }
 export interface Preferences {
-  leadSort: 'priority'|'recent'|'oldest'|'waiting';
-  leadResponse: 'all'|'ours'|'client'|'never';
+  leadSort: 'priority' | 'recent' | 'oldest' | 'waiting';
+  leadResponse: 'all' | 'ours' | 'client' | 'never';
   dockingEnabled: boolean;
   dockingLayout: string;
   attendanceCustomizationVersion: number;
@@ -76,7 +77,8 @@ export interface Preferences {
   resourceOrder: Record<string, string[]>;
 }
 const defaults: Preferences = {
-  leadSort: 'priority', leadResponse: 'all',
+  leadSort: 'priority',
+  leadResponse: 'all',
   dockingEnabled: false,
   dockingLayout: '',
   attendanceCustomizationVersion: 3,
@@ -179,10 +181,23 @@ const Context = createContext<{
   preferences: Preferences;
   updatePreferences: (value: Partial<Preferences>) => void;
   savePreferences: (value: Partial<Preferences>) => Promise<void>;
-}>({ preferences: defaults, updatePreferences: () => undefined, savePreferences: async () => undefined });
+  saveError: string;
+  retrySave: () => void;
+}>({
+  preferences: defaults,
+  updatePreferences: () => undefined,
+  savePreferences: async () => undefined,
+  saveError: '',
+  retrySave: () => undefined,
+});
 export function PreferencesProvider({ children }: { children: ReactNode }) {
   const storageKey = `noctua-preferences:${firebaseAuth?.currentUser?.uid ?? 'local'}`;
-  const { request } = useApi();
+  const { request, notify } = useApi();
+  const [saveError, setSaveError] = useState('');
+  const [loadRevision, setLoadRevision] = useState(0);
+  const writer = useRef(new PreferenceSaveQueue());
+  const saveRevision = useRef(0);
+  const lastSaved = useRef('');
   const ready = useRef(false);
   const [preferences, setPreferences] = useState<Preferences>(() => {
     try {
@@ -191,6 +206,28 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       return defaults;
     }
   });
+  const persist = useCallback(
+    async (snapshot: Preferences) => {
+      const revision = ++saveRevision.current;
+      try {
+        if (!ready.current) throw new Error('Aguarde carregar as preferências da conta antes de salvar.');
+        await writer.current.run(() => request('/operations/settings/preferences', 'PUT', snapshot));
+        lastSaved.current = JSON.stringify(snapshot);
+        if (revision === saveRevision.current) setSaveError('');
+      } catch (error) {
+        if (revision === saveRevision.current) {
+          const message = errorMessage(error);
+          setSaveError(message);
+          notify(
+            `Não foi possível salvar suas preferências na conta. Elas continuam neste navegador. ${message}`,
+            true,
+          );
+        }
+        throw error;
+      }
+    },
+    [request, notify],
+  );
   useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify(preferences));
     localStorage.setItem('noctua-theme', preferences.theme);
@@ -224,40 +261,54 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     let active = true;
     void request<Partial<Preferences>>('/operations/settings/preferences')
       .then((saved) => {
-        if (active)
-          setPreferences((current) =>
-            normalizeAttendancePreferences({
+        if (active) {
+          ready.current = true;
+          setSaveError('');
+          setPreferences((current) => {
+            const next = normalizeAttendancePreferences({
               ...current,
               ...saved,
               attendanceCustomizationVersion: saved.attendanceCustomizationVersion ?? 0,
-            }),
-          );
+            });
+            lastSaved.current = JSON.stringify(next);
+            return next;
+          });
+        }
       })
-      .catch(() => undefined)
-      .finally(() => {
-        if (active) ready.current = true;
+      .catch((error) => {
+        if (active) {
+          ready.current = false;
+          setSaveError(errorMessage(error));
+          notify(`Não foi possível carregar suas preferências da conta. ${errorMessage(error)}`, true);
+        }
       });
     return () => {
       active = false;
     };
-  }, [request]);
+  }, [request, notify, loadRevision]);
   useEffect(() => {
     if (!ready.current) return;
+    if (lastSaved.current === JSON.stringify(preferences)) return;
     const timer = window.setTimeout(() => {
-      void request('/operations/settings/preferences', 'PUT', preferences).catch(() => undefined);
+      void persist(preferences).catch(() => undefined);
     }, 500);
     return () => window.clearTimeout(timer);
-  }, [preferences, request]);
+  }, [preferences, persist]);
   return (
     <Context.Provider
       value={{
         preferences,
+        saveError,
+        retrySave: () => {
+          if (!ready.current) setLoadRevision((value) => value + 1);
+          else void persist(preferences).catch(() => undefined);
+        },
         updatePreferences: (value) =>
           setPreferences((current) => ({ ...current, ...value, brandingName: 'noctua' })),
         savePreferences: async (value) => {
           const next = { ...preferences, ...value, brandingName: 'noctua' };
-          await request('/operations/settings/preferences', 'PUT', next);
-          setPreferences(next);
+          await persist(next);
+          setPreferences((current) => ({ ...current, ...value, brandingName: 'noctua' }));
         },
       }}
     >

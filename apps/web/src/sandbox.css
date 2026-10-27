@@ -24,7 +24,7 @@
 
 .sandbox-tabs {
   padding: 0.45rem;
-  border: 1px solid var(--border, #30303a);
+  border: 1px solid var(--line);
   border-radius: 0.8rem;
   background: var(--surface, #191920);
 }
@@ -52,7 +52,7 @@
   min-height: min(68vh, 48rem);
   height: min(68vh, 48rem);
   overflow: hidden;
-  border: 1px solid var(--border, #30303a);
+  border: 1px solid var(--line);
   border-radius: 0.9rem;
   background: var(--surface, #191920);
 }
@@ -66,7 +66,7 @@
   min-width: 0;
   overflow: auto;
   padding: 0.65rem;
-  border-right: 1px solid var(--border, #30303a);
+  border-right: 1px solid var(--line);
 }
 
 .sandbox-contacts > input,
@@ -85,10 +85,10 @@
   align-items: center;
   gap: 0.65rem;
   padding: 0.65rem;
-  border: 1px solid var(--border, #30303a);
+  border: 1px solid var(--line);
   border-radius: 0.65rem;
   margin-top: 0.55rem;
-  background: var(--panel, #14141b);
+  background: var(--surface2);
 }
 
 .sandbox-contacts > button {
@@ -127,7 +127,7 @@
   align-items: center;
   gap: 0.6rem;
   padding: 0.65rem;
-  border-bottom: 1px solid var(--border, #30303a);
+  border-bottom: 1px solid var(--line);
 }
 
 .sandbox-chat > header strong {
@@ -147,9 +147,9 @@
   width: fit-content;
   max-width: min(85%, 36rem);
   padding: 0.65rem 0.8rem;
-  border: 1px solid var(--border, #30303a);
+  border: 1px solid var(--line);
   border-radius: 0.8rem;
-  background: var(--panel, #14141b);
+  background: var(--surface2);
   overflow-wrap: anywhere;
 }
 
@@ -159,7 +159,7 @@
 
 .test-bubble.assistant {
   align-self: flex-end;
-  background: color-mix(in srgb, var(--accent, #a78bfa) 18%, var(--panel, #14141b));
+  background: color-mix(in srgb, var(--accent, #a78bfa) 18%, var(--surface2));
 }
 
 .test-bubble.note,
@@ -185,7 +185,7 @@
   align-items: stretch;
   flex-direction: column;
   padding: 0.65rem;
-  border-top: 1px solid var(--border, #30303a);
+  border-top: 1px solid var(--line);
 }
 
 .sandbox-composer > select {
@@ -230,7 +230,7 @@
 .sandbox-kanban > section {
   min-height: 14rem;
   padding: 0.7rem;
-  border: 1px solid var(--border, #30303a);
+  border: 1px solid var(--line);
   border-radius: 0.8rem;
   background: var(--surface, #191920);
 }
@@ -262,15 +262,15 @@
 .simulator-toolbar {
   justify-content: space-between;
   padding-bottom: 0.65rem;
-  border-bottom: 1px solid var(--border, #30303a);
+  border-bottom: 1px solid var(--line);
 }
 
 .simulator-modal .test-chat-log {
   min-height: 12rem;
   max-height: 42dvh;
-  border: 1px solid var(--border, #30303a);
+  border: 1px solid var(--line);
   border-radius: 0.75rem;
-  background: var(--panel, #14141b);
+  background: var(--surface2);
 }
 
 .simulator-context {
