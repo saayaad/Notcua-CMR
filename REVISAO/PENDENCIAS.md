@@ -6,7 +6,7 @@ Prioridade seguinte autorizada pelo usuário: menu de botão direito global impl
 
 ## Situação
 
-O livro [REQUISITOS.md](REQUISITOS.md) contém 699 registros: 529 ⬜ A VERIFICAR; 40 ✅ COMPLETO; 61 🟡 PARCIAL; 8 ⛔ NÃO TESTADO; 50 🔁 SUBSTITUÍDO OU CANCELADO; 4 ⚠️ PRECISA DE DECISÃO; 4 🔌 DESCONECTADO; 2 🐞 COM DEFEITO; 1 ❌ AUSENTE. Repetições de pedidos não são funções distintas; ainda não há percentual de completude comprovado.
+O livro [REQUISITOS.md](REQUISITOS.md) contém 703 registros: 529 ⬜ A VERIFICAR; 44 ✅ COMPLETO; 61 🟡 PARCIAL; 8 ⛔ NÃO TESTADO; 50 🔁 SUBSTITUÍDO OU CANCELADO; 4 ⚠️ PRECISA DE DECISÃO; 4 🔌 DESCONECTADO; 2 🐞 COM DEFEITO; 1 ❌ AUSENTE. Repetições de pedidos não são funções distintas; ainda não há percentual de completude comprovado.
 A verificação individual, prioridade, esforço e lotes serão preenchidos depois da aprovação do escopo, sem reutilizar “implementado” de um relatório antigo como prova.
 
 | ID / conjunto | Status | O que decidir ou completar | Prioridade/esforço |
@@ -72,3 +72,9 @@ Decisão de escopo em 27/10/2026: produção de vídeos/Drive permanece no Creat
 - LAC-002: etiqueta não aparece nas sugestões da agenda. Prioridade Média, esforço P, depende de renderizar os vínculos já fornecidos e testar cliente com etiquetas.
 - Sem alteração de motor, Mensagens, banco de produção, chaves ou dados reais. Ainda falta revisão visual individual do canvas, monitor e formulário.
 - Evidência consolidada: evidencias/fluxos-agenda-2026-10-27.json. Dois testes do menu passaram após corrigir a extensão do import em teste; tipagem completa de servidor e interface passou. Não foi necessária nova compilação de produção, pois somente testes e documentos mudaram.
+
+## Lote autorizado — Habilitar I.A. (27/10/2026)
+
+REQ-700–703 concluídos: opção administrativa por operação, desabilitada por padrão, ocultação das ferramentas e bloqueio de novas chamadas no servidor. Chaves/regras preservadas; reabilitar não ativa automaticamente o robô. Seis testes sem rede externa aprovados, build aprovado e UI fictícia conferida antes/depois/recarregada. Evidência: evidencias/ia-controle-2026-10-27.json e ia-desabilitada-2026-10-27.png.
+
+Por pedido explícito do usuário, pular os testes funcionais de geração e demais módulos dependentes de API até existir chave disponível. Não apagar nem marcar como corrigidas BUG-002/003, INT-001 ou lacunas já registradas. Continuar a auditoria das funções manuais. Alterações locais; sem push/deploy neste lote.

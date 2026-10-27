@@ -97,6 +97,8 @@ before(async () => {
     ],
     { env: { ...process.env, RUST_LOG: 'info', DATABASE_URL: url }, stdio: 'pipe' },
   );
+  // These fixtures explicitly represent an operation with AI tools enabled.
+  await putRecord(db, 'settings:features', 'FEATURES', { aiEnabled: true });
   sessionId = (await whatsapp.create('Operação fictícia')).id;
   otherSession = (await whatsapp.create('Outra operação')).id;
   await whatsapp.connect(sessionId);

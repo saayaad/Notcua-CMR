@@ -1,4 +1,5 @@
 import { BookOpen, ArrowRight, Wifi, Workflow, Send, Users } from 'lucide-react';
+import { useAiFeatures } from '../context/AiFeatures';
 import type { LucideIcon } from 'lucide-react';
 import type { Dispatch, SetStateAction } from 'react';
 
@@ -97,6 +98,7 @@ export function HelpCenter({
     >
   >;
 }) {
+  const { enabled: aiEnabled } = useAiFeatures();
   return (
     <main className="workspace-page help-center">
       <div className="page-heading">
@@ -114,12 +116,12 @@ export function HelpCenter({
                 <Icon size={20} />
               </span>
               <span>
-                <h2>{title}</h2>
-                <p>{subtitle}</p>
+                <h2>{id === 'automation' && !aiEnabled ? '2. Autoatendimento' : title}</h2>
+                <p>{id === 'automation' && !aiEnabled ? 'Fluxos e simulação sem IA.' : subtitle}</p>
               </span>
             </header>
             <ol>
-              {steps.map((step) => (
+              {steps.filter(step => aiEnabled || !/\bIA\b|inteligência artificial/i.test(step)).map((step) => (
                 <li key={step}>{step}</li>
               ))}
             </ol>

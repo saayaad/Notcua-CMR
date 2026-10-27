@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-27",
+  "scope": "Controle global de IA por operação",
+  "tests": {
+    "file": "apps/server/test/ai-feature.test.ts",
+    "passed": 6,
+    "failed": 0,
+    "externalCalls": 0,
+    "coverage": [
+      "padrão desabilitado",
+      "bloqueio antes de cache/reserva",
+      "persistência e preservação das configurações",
+      "permissões de administrador",
+      "desligamento entre reserva e execução",
+      "ordem dos botões ocultos preservada"
+    ]
+  },
+  "build": "aprovado",
+  "ui": {
+    "environment": "5187, banco temporário e contatos fictícios, sem WhatsApp/workers",
+    "checked": [
+      "switch habilita sem chave e sem iniciar robô",
+      "switch desabilita e oculta formulário de IA/economia",
+      "chat habilitado mostra Copiloto e resumo",
+      "chat desabilitado mantém respostas rápidas, agenda, follow-up e nota interna",
+      "estado desabilitado persiste após reload"
+    ],
+    "screenshot": "ia-desabilitada-2026-10-27.png"
+  },
+  "deferred": "Gerações reais e homologação funcional de IA aguardam chave; defeitos anteriores continuam abertos.",
+  "deployment": false
+}

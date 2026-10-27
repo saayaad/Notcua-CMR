@@ -5,8 +5,8 @@ A verificação começou sem alterar o aplicativo. O usuário autorizou depois a
 
 ## Contagens
 
-- **27 blocos de fontes/listas e 699 registros atômicos rastreáveis.** Repetições são mantidas para preservar a origem; não são 687 funcionalidades distintas.
-- **Status atuais:** 529 ⬜ A VERIFICAR; 40 ✅ COMPLETO; 61 🟡 PARCIAL; 8 ⛔ NÃO TESTADO; 50 🔁 SUBSTITUÍDO OU CANCELADO; 4 ⚠️ PRECISA DE DECISÃO; 4 🔌 DESCONECTADO; 2 🐞 COM DEFEITO; 1 ❌ AUSENTE.
+- **28 blocos de fontes/listas e 703 registros atômicos rastreáveis.** Repetições são mantidas para preservar a origem; não são 687 funcionalidades distintas.
+- **Status atuais:** 529 ⬜ A VERIFICAR; 44 ✅ COMPLETO; 61 🟡 PARCIAL; 8 ⛔ NÃO TESTADO; 50 🔁 SUBSTITUÍDO OU CANCELADO; 4 ⚠️ PRECISA DE DECISÃO; 4 🔌 DESCONECTADO; 2 🐞 COM DEFEITO; 1 ❌ AUSENTE.
 - Os estados completos abaixo têm evidência desta etapa. A suíte histórica completa de Mensagens não foi reexecutada; foram escolhidos testes de outros módulos e os novos testes de acesso.
 - Mensagens já foi testado pelo usuário: verificar apenas código e ligação na Fase 2; permitir somente menu aditivo e fumaça simulada nas fases posteriores.
 
@@ -14,10 +14,10 @@ A verificação começou sem alterar o aplicativo. O usuário autorizou depois a
 
 | Tipo | Registros |
 |---|---:|
-| regra de negócio | 77 |
-| função nova | 460 |
+| regra de negócio | 79 |
+| função nova | 461 |
 | integração | 46 |
-| ajuste visual | 84 |
+| ajuste visual | 85 |
 | correção | 32 |
 
 ### Por módulo/tela
@@ -30,7 +30,7 @@ A verificação começou sem alterar o aplicativo. O usuário autorizou depois a
 | Fluxos e CRM | 22 |
 | Backups | 22 |
 | Acesso e operação | 30 |
-| Operação e IA | 31 |
+| Operação e IA | 35 |
 | Interface global | 40 |
 | Personalização | 37 |
 | Campanhas e agenda | 29 |
@@ -89,6 +89,8 @@ Decisão posterior do usuário: a lista de produção de vídeos/Drive pertence 
 | L-25 | Lembrança do usuário — produção de vídeos | Documento atual §2.1; não confirmado como escopo deste CRM | 45 |
 | L-26 | Prompt atual — verificação e menu contextual | Anexo 0f187194; fases 0–6 e §6.1 | 34 |
 | L-27 | Chaves de ativação e operações independentes | Solicitação de 27/10 e resposta expressa confirmando isolamento por cliente | 12 |
+
+| L-28 | Controle de visibilidade da IA e adiamento de testes | Solicitação direta do usuário de 27/10/2026 | 4 |
 
 ## Ocorrências repetidas e decisões posteriores
 
@@ -976,3 +978,23 @@ Foram classificados individualmente mais 49 registros nesta rodada, com evidênc
 ## Auditoria de fluxos e agenda — lote seguinte em 27/10/2026
 
 39 registros classificados. Resultado final: 15 testes de fluxos e 8 de campanhas/agenda aprovados, sem rede WhatsApp ou provedor de IA real. A primeira suíte de fluxos teve uma falha de espera; o cenário isolado passou e o teste foi ajustado para aguardar COMPLETED com prazo máximo, mantendo conteúdo e ausência de duplicidade. A suíte completa então passou. Nenhuma regra de produção foi alterada. UI não executada neste lote: os requisitos ficaram parciais ou não testados com passo manual. Busca da agenda ainda não mostra etiqueta (LAC-002).
+
+## L-28 — Habilitar I.A. — alteração explicitamente autorizada
+
+| ID | Origem | Pedido | Tipo | Módulo/tela | Critério de aceite | Declarado como feito? | Status | Evidência | Observações |
+|---|---|---|---|---|---|---|---|---|---|
+| REQ-700 | L-28, item 1 | Adicionar Habilitar I.A. em Configurações → Integração de IA. | função nova | Operação e IA | Alternar como administrador e preservar o estado após recarregar. | Implementado nesta etapa. | ✅ COMPLETO | ai-feature.ts, AiFeatures.tsx, ai-feature.test.ts: seis testes isolados aprovados; UI fictícia 5187 habilitada/desabilitada e recarregada; build aprovado. | Nenhuma chamada real ao provedor; configuração por operação, chaves preservadas. Ver evidencias/ia-controle-2026-10-27.json. |
+| REQ-701 | L-28, item 2 | Ocultar recursos, botões e menus de IA quando desabilitada, mantendo ferramentas manuais. | ajuste visual | Operação e IA | Copiloto, resumo, estúdio, análise de mídia, economia e variações de campanha ficam ocultos; biblioteca, agenda e fluxos permanecem. | Implementado nesta etapa. | ✅ COMPLETO | ai-feature.ts, AiFeatures.tsx, ai-feature.test.ts: seis testes isolados aprovados; UI fictícia 5187 habilitada/desabilitada e recarregada; build aprovado. | Nenhuma chamada real ao provedor; configuração por operação, chaves preservadas. Ver evidencias/ia-controle-2026-10-27.json. |
+| REQ-702 | L-28, item 3 | Restaurar os recursos ao habilitar sem apagar configurações nem iniciar o robô automaticamente. | regra de negócio | Operação e IA | Configurações persistidas e chamadas bloqueadas quando desligada; apenas administrador altera a opção. | Implementado nesta etapa. | ✅ COMPLETO | ai-feature.ts, AiFeatures.tsx, ai-feature.test.ts: seis testes isolados aprovados; UI fictícia 5187 habilitada/desabilitada e recarregada; build aprovado. | Nenhuma chamada real ao provedor; configuração por operação, chaves preservadas. Ver evidencias/ia-controle-2026-10-27.json. |
+| REQ-703 | L-28, item 4 | Adiar testes funcionais dependentes de API de IA até o usuário obter uma chave. | regra de negócio | Operação e IA | Não realizar novas gerações reais; manter as pendências conhecidas registradas. | Implementado nesta etapa. | ✅ COMPLETO | ai-feature.ts, AiFeatures.tsx, ai-feature.test.ts: seis testes isolados aprovados; UI fictícia 5187 habilitada/desabilitada e recarregada; build aprovado. | Nenhuma chamada real ao provedor; configuração por operação, chaves preservadas. Ver evidencias/ia-controle-2026-10-27.json. |
+
+### Checklist manual do controle de IA
+
+- [ ] Abrir Configurações → Integração de IA e conferir Habilitar I.A.
+- [ ] Desabilitar e conferir chat sem Copiloto, resumo e análise de mídia.
+- [ ] Conferir que Biblioteca, campanhas manuais, agenda e fluxos continuam acessíveis.
+- [ ] Recarregar e conferir que continua desabilitada.
+- [ ] Habilitar e conferir que ferramentas voltam e respostas automáticas continuam desligadas.
+- [ ] Quando houver chave válida: configurar e testar geração separadamente. **Adiado.**
+
+BUG-002/003, INT-001 e demais lacunas de IA não foram corrigidos por este lote: a validação funcional adicional de IA está adiada por pedido do usuário. Isso não conclui a auditoria geral.

@@ -1,4 +1,5 @@
 import { CampaignPhonePreview } from '../components/CampaignPhonePreview';
+import { AiOnly, useAiFeatures } from '../context/AiFeatures';
 import { LabelFinance } from '../components/LabelActions';
 import { NumberValidation } from '../components/NumberValidation';
 import { CampaignRevenue } from '../components/CampaignRevenue';
@@ -38,6 +39,7 @@ export function OverviewPage({
   sessionId: string;
   onNavigate: (view: 'inbox' | 'campaigns' | 'contacts' | 'flows') => void;
 }) {
+  const { enabled: aiEnabled } = useAiFeatures();
   const { request, notify } = useApi();
   const [metrics, setMetrics] = useState<{
     people: number;
@@ -104,7 +106,7 @@ export function OverviewPage({
             value: metrics?.batches.find((row) => row.status === 'QUEUED')?._count ?? 0,
             icon: Clock3,
           },
-        ].map(({ title, value, icon: Icon, currency }) => (
+        ].filter(item => aiEnabled || !item.title.includes('Tokens de IA')).map(({ title, value, icon: Icon, currency }) => (
           <article className="surface" key={title}>
             <Icon size={21} />
             <strong>
@@ -1377,7 +1379,7 @@ export function BatchEditor({
               </label>
               {kind === 'text' && (
                 <>
-                  <button
+                  <AiOnly><button
                     type="button"
                     className="button"
                     disabled={generating || message.trim().length < 3}
@@ -1398,7 +1400,7 @@ export function BatchEditor({
                     }}
                   >
                     {generating ? <Spinner /> : '✨'}Gerar variações com IA
-                  </button>
+                  </button></AiOnly>
                   <p className="muted">
                     As variações alternam entre contatos. Também aceita spintax, por exemplo {'{Olá|Oi}'}.
                     Variações e intervalos não garantem proteção contra bloqueios.

@@ -1,3 +1,4 @@
+import { AiOnly } from '../context/AiFeatures';
 import { useState } from 'react';
 import { MediaAnalysis } from './MediaAnalysis';
 import { Download, Sparkles, Copy, Save, CalendarDays } from 'lucide-react';
@@ -212,7 +213,7 @@ export function ContactWorkspace({
             Exporte textos e mídias disponíveis para arquivo ou revisão. O ZIP informa quais mídias não
             puderam ser obtidas. Visualização única fica fora da exportação.
           </p>
-          <HistoryPreprocessing sessionId={sessionId} conversationIds={[chat.id]} disabled={busy} onBusyChange={setBusy}/>
+          <AiOnly><HistoryPreprocessing sessionId={sessionId} conversationIds={[chat.id]} disabled={busy} onBusyChange={setBusy}/></AiOnly>
           <div className="contact-tools-row">
             <button className="button" disabled={busy} onClick={() => void download(false)}>
               <Download size={15} />
@@ -223,7 +224,7 @@ export function ContactWorkspace({
               Exportar com mídias
             </button>
           </div>
-          <button
+          <AiOnly><button
             className="button"
             disabled={busy}
             onClick={() => {
@@ -240,7 +241,7 @@ export function ContactWorkspace({
           >
             <Sparkles size={15} />
             Aprovar respostas como exemplos da IA
-          </button>
+          </button></AiOnly>
           <a
             className="button"
             style={{ marginTop: 12 }}
@@ -272,7 +273,7 @@ export function AiAssistant({
   const [suggestion, setSuggestion] = useState('');
   return (
     <Modal title="Assistente de atendimento" onClose={onClose} wide>
-      <MediaAnalysis sessionId={sessionId} conversationId={chat.id} />
+      <AiOnly><MediaAnalysis sessionId={sessionId} conversationId={chat.id} /></AiOnly>
       <p className="muted">
         A IA gera uma sugestão para sua revisão. Copie o texto para a conversa quando estiver de acordo.
       </p>

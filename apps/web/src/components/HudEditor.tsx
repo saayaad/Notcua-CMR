@@ -1,4 +1,6 @@
 import { Select } from './Select';
+import { useAiFeatures } from '../context/AiFeatures';
+import { aiHeaderVisible, reorderVisibleHeaders } from '../context/ai-visibility';
 import { useState, useEffect, type CSSProperties } from 'react';
 import {
   Check,
@@ -103,6 +105,7 @@ export function HudEditor({
   sessionId?: string;
 }) {
   const { preferences, savePreferences } = usePreferences();
+  const { enabled: aiEnabled } = useAiFeatures();
   const { notify, request } = useApi();
   const [flows, setFlows] = useState<{ id: string; name: string }[]>([]);
   useEffect(() => {
@@ -368,7 +371,7 @@ export function HudEditor({
                 </p>
                 <ReorderList
                   label="Ordem dos botões"
-                  items={draft.hudHeaderOrder.map((id) => ({
+                  items={draft.hudHeaderOrder.filter(id => aiHeaderVisible(id, aiEnabled)).map((id) => ({
                     ...hudActions.find((item) => item.id === id)!,
                     visible: !draft.hudHiddenActions.includes(id),
                     locked: false,
@@ -380,7 +383,7 @@ export function HudEditor({
                         : [...draft.hudHiddenActions, id],
                     })
                   }
-                  onChange={(ids) => change({ hudHeaderOrder: ids })}
+                  onChange={(ids) => change({ hudHeaderOrder: reorderVisibleHeaders(draft.hudHeaderOrder, ids, aiEnabled) })}
                 />
               </div>
             )}
@@ -554,7 +557,7 @@ export function HudEditor({
                           <strong>Ana Costa</strong>
                           <div>
                             {draft.hudHeaderOrder
-                              .filter((action) => !draft.hudHiddenActions.includes(action))
+                              .filter((action) => aiHeaderVisible(action, aiEnabled) && !draft.hudHiddenActions.includes(action))
                               .slice(0, 3)
                               .map((action) => (
                                 <span

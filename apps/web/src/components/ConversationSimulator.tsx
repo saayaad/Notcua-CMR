@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { RotateCcw, Send, FlaskConical, Pencil, Save, X } from 'lucide-react';
 import { useApi, errorMessage } from '../context/ApiContext';
+import { AiOnly, useAiFeatures } from '../context/AiFeatures';
 import { Modal, Spinner } from './ui';
 import { Select } from './Select';
 import { AudioTestInput } from './AudioTestInput';
@@ -13,7 +14,9 @@ type Trace = { nodeId: string; title: string; action: string; text?: string };
 
 export function ConversationSimulator({ base, graph, onClose, aiOnly = false }: { base?: string; graph?: FlowGraph; onClose: () => void; aiOnly?: boolean }) {
   const { request, notify } = useApi();
+  const { enabled: aiEnabled } = useAiFeatures();
   const [mode, setMode] = useState(aiOnly ? 'ai' : 'flow');
+  useEffect(() => { if (!aiEnabled) setMode('flow'); }, [aiEnabled]);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [text, setText] = useState('');
   const [audio, setAudio] = useState('');
@@ -76,7 +79,7 @@ export function ConversationSimulator({ base, graph, onClose, aiOnly = false }: 
         <span><FlaskConical size={15} />Contato fictício · sem envio ao WhatsApp</span>
         <button className="button small" onClick={reset}><RotateCcw size={14} />Limpar / Reiniciar teste</button>
       </div>
-      {!aiOnly && <label>Modo de teste<Select value={mode} onChange={e => { reset(); setMode(e.target.value); }}><option value="flow">Fluxo atual · sem custo de IA</option><option value="ai">IA configurada · usa tokens do provedor</option></Select></label>}
+      {aiEnabled && !aiOnly && <label>Modo de teste<Select value={mode} onChange={e => { reset(); setMode(e.target.value); }}><option value="flow">Fluxo atual · sem custo de IA</option><option value="ai">IA configurada · usa tokens do provedor</option></Select></label>}
       <p className="muted">{mode === 'ai' ? 'O teste envia apenas o histórico fictício ao provedor escolhido e usa as regras e o estilo salvos. Pode consumir o seu limite de IA.' : 'O percurso usa os gatilhos e caminhos do rascunho atual. As esperas são aceleradas para revisão; os tempos originais aparecem no histórico.'}</p>
       
       <div className="test-chat-log" ref={log} role="log" aria-label="Histórico da simulação">
@@ -98,7 +101,7 @@ export function ConversationSimulator({ base, graph, onClose, aiOnly = false }: 
         {presence && <small role="status">{presence}</small>}
       </div>
 
-      {calibration && <form className="simulator-calibration" onSubmit={event => {
+      {aiEnabled && calibration && <form className="simulator-calibration" onSubmit={event => {
         event.preventDefault();
         if (!correctedReply.trim() || savingCalibration) return;
         setSavingCalibration(true);
@@ -117,12 +120,12 @@ export function ConversationSimulator({ base, graph, onClose, aiOnly = false }: 
         <small>A correção fica guardada como exemplo para futuras respostas da IA. Ela não altera nem treina o modelo externo.</small>
       </form>}
       
-      {audio && <div className="test-audio-preview"><audio controls src={audio} /><button className="button small" onClick={() => setAudio('')}>Descartar áudio</button><button className="button small" disabled={busy} onClick={() => {
+      {audio && <div className="test-audio-preview"><audio controls src={audio} /><button className="button small" onClick={() => setAudio('')}>Descartar áudio</button><AiOnly><button className="button small" disabled={busy} onClick={() => {
         setBusy(true); void fetch(audio).then(r => r.blob()).then(async blob => {
           const data = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result).split(',')[1] || ''); reader.onerror = reject; reader.readAsDataURL(blob); });
           return request<{ text: string }>('/operations/simulator/transcribe', 'POST', { data, mime: blob.type.split(';')[0] || '' });
         }).then(result => setText(result.text)).catch(e => notify(errorMessage(e), true)).finally(() => setBusy(false));
-      }}>Transcrever com IA</button><small>Escreva a transcrição abaixo ou use IA. O áudio só sai deste navegador ao escolher Transcrever.</small></div>}
+      }}>Transcrever com IA</button></AiOnly><small>{aiEnabled ? "Escreva a transcrição abaixo ou use IA. O áudio só sai deste navegador ao escolher Transcrever." : "Escreva abaixo a transcrição para testar o gatilho."}</small></div>}
       {sendError && <p className="notice" role="alert">{sendError} Sua mensagem foi mantida para tentar novamente.</p>}
       <AudioTestInput onAudio={setAudio} />
       <form className="test-composer" onSubmit={e => { e.preventDefault(); void send(); }}>

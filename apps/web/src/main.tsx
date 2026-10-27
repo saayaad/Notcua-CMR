@@ -17,6 +17,7 @@ import './watermark.css';
 import './usability.css';
 import { AccessKeysPage } from './pages/AccessKeysPage';
 import { ContextMenuProvider } from './context/ContextMenu';
+import { AiFeaturesProvider } from './context/AiFeatures';
 import './access-keys.css';
 
 createRoot(document.getElementById('root')!).render(
@@ -27,7 +28,7 @@ createRoot(document.getElementById('root')!).render(
           <AccessKeysPage />
         ) : (
           <PreferencesProvider>
-            <App />
+              <AiFeaturesProvider><App /></AiFeaturesProvider>
           </PreferencesProvider>
         )}
       </AuthGate>

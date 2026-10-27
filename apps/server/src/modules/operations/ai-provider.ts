@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { AiFeatureDisabled, requireAiFeature } from './ai-feature.js';
 import type { PrismaClient } from '@prisma/client';
 import { SerialQueue } from '../../shared/serial-queue.js';
 import { AppError } from '../../shared/errors.js';
@@ -46,6 +47,7 @@ export async function meteredCall<T>(
   call: () => Promise<{ result: T; inputTokens?: number; outputTokens?: number }>,
 ) {
   const maxOutput = settings.maxOutputTokens ?? 1200;
+  await requireAiFeature(db);
   const cost =
     (inputEstimate * (settings.inputPrice ?? 0) + maxOutput * (settings.outputPrice ?? 0)) / 1_000_000;
   const id = `ai-usage:${randomUUID()}`;
@@ -67,6 +69,7 @@ export async function meteredCall<T>(
     await putRecord(db, id, 'AI_USAGE', reserved);
   });
   try {
+    await requireAiFeature(db);
     const response = await call();
     const inputTokens = response.inputTokens ?? inputEstimate;
     const outputTokens = response.outputTokens ?? maxOutput;
@@ -81,7 +84,7 @@ export async function meteredCall<T>(
     });
     return response.result;
   } catch (error) {
-    if (error instanceof ProviderRejection) {
+    if (error instanceof ProviderRejection || error instanceof AiFeatureDisabled) {
       await putRecord(db, id, 'AI_USAGE', {
         ...reserved, inputTokens: 0, outputTokens: 0, estimatedCost: 0, status: 'REJECTED',
       });
@@ -126,6 +129,7 @@ function dailyQuotaExhausted(status: number, data: any) {
   return /per.?day|daily|requests_per_day|tokens_per_day/i.test(`${details} ${message}`);
 }
 export async function geminiResponse(db: PrismaClient, settings: AgentSettings, url: string, init: RequestInit) {
+  await requireAiFeature(db);
   const candidates: GeminiKey[] = [
     ...(settings.encryptedKey ? [{ id: 'primary', label: 'Chave principal', encryptedKey: settings.encryptedKey, enabled: true }] : []),
     ...(settings.fallbackKeys ?? []).filter((key) => key.enabled),
@@ -140,6 +144,7 @@ export async function geminiResponse(db: PrismaClient, settings: AgentSettings, 
   }
   if (!available.length) throw new ProviderRejection(429, 'A cota diária de todas as chaves Gemini cadastradas foi atingida. Ela será verificada novamente mais tarde.');
   for (let index = 0; index < available.length; index++) {
+    await requireAiFeature(db);
     const key = available[index]!;
     const secret = cipher.decrypt<string>(Buffer.from(key.encryptedKey, 'base64'));
     const headers = new Headers(init.headers);

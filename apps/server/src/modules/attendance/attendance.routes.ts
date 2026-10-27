@@ -11,6 +11,7 @@ import { AppError } from '../../shared/errors.js';
 import { json } from '../backups/validation.js';
 import { textCompletion } from '../operations/ai-provider.js';
 import { hasConfiguredKey, putRecord, record, type AgentSettings } from '../operations/records.js';
+import { aiFeatureEnabled } from '../operations/ai-feature.js';
 import { MediaService } from './media.service.js';
 import { MessagingService } from './messaging.service.js';
 import { SequenceService } from './sequence.service.js';
@@ -519,7 +520,7 @@ export function attendanceRoutes(
           },
         });
     });
-    if (body.status === 'CLOSED') {
+    if (body.status === 'CLOSED' && await aiFeatureEnabled(db)) {
       await putRecord(db, `ai-audit:${conversationId}`, 'AI_AUDIT', {
         conversationId,
         sessionId,

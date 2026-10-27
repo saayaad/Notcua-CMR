@@ -17,6 +17,7 @@ import { Spinner } from '../components/ui';
 import { SystemBackups } from '../components/SystemBackups';
 import { WatermarkSettings } from '../components/WatermarkSettings';
 import { EconomySettings } from '../components/EconomySettings';
+import { useAiFeatures } from '../context/AiFeatures';
 import './operations.css';
 const menuItems = [
   ['overview', 'Visão geral'],
@@ -41,8 +42,10 @@ export function WorkspaceSettings({
   initialTab?: string;
 }) {
   const { request, notify } = useApi();
+  const { enabled: aiEnabled } = useAiFeatures();
   const { preferences, updatePreferences } = usePreferences();
   const [tab, setTab] = useState(initialTab);
+  useEffect(() => { if (!aiEnabled && tab === 'economy') setTab('integrations'); }, [aiEnabled, tab]);
   const [hudOpen, setHudOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [data, setData] = useState<Record<string, unknown>>({});
@@ -128,7 +131,7 @@ export function WorkspaceSettings({
             ['integrations', 'Integração de IA'],
             ['economy', 'Economia de Tokens'],
             ['backup', 'Backups e acesso'],
-          ].map(([id, title]) => (
+          ].filter(([id]) => aiEnabled || id !== 'economy').map(([id, title]) => (
             <button key={id} className={tab === id ? 'selected' : ''} onClick={() => setTab(id!)}>
               {title}
             </button>
@@ -611,7 +614,7 @@ export function WorkspaceSettings({
             </div>
           )}
           {tab === 'team' && <TeamManager />}
-          {tab === 'economy' && <EconomySettings />}
+          {aiEnabled && tab === 'economy' && <EconomySettings />}
           {tab === 'integrations' && <AiSettings />}
           {tab === 'backup' && (
             <>

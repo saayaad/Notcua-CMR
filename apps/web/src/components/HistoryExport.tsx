@@ -1,3 +1,4 @@
+import { AiOnly } from '../context/AiFeatures';
 import { useEffect, useState } from 'react';
 import { useApi, errorMessage } from '../context/ApiContext';
 import type { Conversation } from '../types';
@@ -124,7 +125,7 @@ export function HistoryExport({ sessionId, onClose }: { sessionId: string; onClo
         Mídias expiradas ou de visualização única são identificadas como indisponíveis. O download do ZIP
         não envia dados à IA. A análise opcional abaixo exige autorização separada.
       </p>
-      <HistoryPreprocessing sessionId={sessionId} conversationIds={selected} disabled={busy} onBusyChange={setBusy}/>
+      <AiOnly><HistoryPreprocessing sessionId={sessionId} conversationIds={selected} disabled={busy} onBusyChange={setBusy}/></AiOnly>
       <div className="modal-actions">
         <button type="button" className="button" disabled={busy} onClick={onClose}>
           Fechar

@@ -7,7 +7,7 @@ Atualização mais recente: ContextMenuProvider global, ações de mensagens/lis
 Após esse lote: 49 registros receberam classificação individual. BUG-002 (resumo estagnado em conversa longa) e BUG-003 (cache sem aprovação reutilizando saudação personalizada) foram reproduzidos por generateSuggestion com provedor/repositório fictícios. INT-001: quatro toggles de economia salvos sem consumidor. LAC-001: índice vetorial ausente, métrica somente mensal. Nenhum desses quatro achados foi corrigido ainda; detalhes e prioridade em BUGS.md/PENDENCIAS.md. Fumaça de menu executada na lista, na mensagem recebida e no cadastro de pergunta com cancelamento, sem envios ou cadastro real.
 
 - Branch revisao-completa; checkpoint inicial 8039a09 e livro inicial 24d997f. O escopo foi aprovado para verificação.
-- 699 registros em 27 blocos: 529 ⬜ A VERIFICAR; 40 ✅ COMPLETO; 61 🟡 PARCIAL; 8 ⛔ NÃO TESTADO; 50 🔁 SUBSTITUÍDO OU CANCELADO; 4 ⚠️ PRECISA DE DECISÃO; 4 🔌 DESCONECTADO; 2 🐞 COM DEFEITO; 1 ❌ AUSENTE. Contagens atuais; não significam homologação integral.
+- 703 registros em 28 blocos: 529 ⬜ A VERIFICAR; 44 ✅ COMPLETO; 61 🟡 PARCIAL; 8 ⛔ NÃO TESTADO; 50 🔁 SUBSTITUÍDO OU CANCELADO; 4 ⚠️ PRECISA DE DECISÃO; 4 🔌 DESCONECTADO; 2 🐞 COM DEFEITO; 1 ❌ AUSENTE. Contagens atuais; não significam homologação integral.
 - Produção de vídeos e Drive pertencem ao Creatfy Studio. REQ-609–REQ-653 cancelados; sincronização futura adiada.
 - Nova solicitação aprovada: /chaves, exclusivo de gustavohenriquee011@gmail.com; teste por dias e planos 1/3/6/12 meses; operação própria por cliente. Implementação isolada em modules/access, database/paths, auth, gateway/realtime e AccessKeysPage/ActivationPanel. Mensagens permanece intacto; verificação de validade é uma camada externa.
 - Registro central em PLATFORM_DATA_DIR/platform/access.db; bancos/chaves/backups de empresas em PLATFORM_DATA_DIR/workspaces. Padrão .secrets; Docker /data. Operação original preservada. Backup de uma empresa não inclui a plataforma ou outras empresas; a pasta privada da plataforma precisa de cópia própria.
@@ -22,3 +22,9 @@ Após esse lote: 49 registros receberam classificação individual. BUG-002 (res
 Atualização do lote seguinte: 39 requisitos de fluxos/agenda/campanhas classificados. Testes finais: 15/15 fluxos + 8/8 operações selecionadas. Apenas flows.test.ts mudou: espera por estado persistido com prazo máximo, preservando as asserções; o motor não mudou. LAC-002 de etiqueta ausente no autocomplete documentada. UI não executada neste lote; manter parciais. Continuar requisitos ainda não verificados; BUG-001/002/003 e INT-001 permanecem sem correção de produção.
 
 Complemento do mesmo lote: corrigido também o import de context-menu.test.ts para extensão .js exigida por NodeNext (TST-002); 2/2 casos do menu e a tipagem completa passaram. Código de produção permaneceu intacto. Resultado consolidado em evidencias/fluxos-agenda-2026-10-27.json. Não encerrar a Fase 2: 529 registros ainda a verificar.
+
+## Lote autorizado — Habilitar I.A. (27/10/2026)
+
+REQ-700–703 concluídos: opção administrativa por operação, desabilitada por padrão, ocultação das ferramentas e bloqueio de novas chamadas no servidor. Chaves/regras preservadas; reabilitar não ativa automaticamente o robô. Seis testes sem rede externa aprovados, build aprovado e UI fictícia conferida antes/depois/recarregada. Evidência: evidencias/ia-controle-2026-10-27.json e ia-desabilitada-2026-10-27.png.
+
+Por pedido explícito do usuário, pular os testes funcionais de geração e demais módulos dependentes de API até existir chave disponível. Não apagar nem marcar como corrigidas BUG-002/003, INT-001 ou lacunas já registradas. Continuar a auditoria das funções manuais. Alterações locais; sem push/deploy neste lote.

@@ -5,7 +5,9 @@ import { KeyRound, Save } from 'lucide-react';
 import { useApi, errorMessage } from '../context/ApiContext';
 import { Spinner } from './ui';
 import { AiKeyManager } from './AiKeyManager';
+import { AiFeatureSwitch, useAiFeatures } from '../context/AiFeatures';
 export function AiSettings() {
+  const { enabled: aiEnabled } = useAiFeatures();
   const { request, notify } = useApi();
   const [data, setData] = useState<Record<string, unknown> | null>(null);
   const [simulation,setSimulation]=useState(false);
@@ -18,20 +20,27 @@ export function AiSettings() {
   const [loadingModels, setLoadingModels] = useState(false);
   const [modelsError, setModelsError] = useState('');
   useEffect(() => {
-    void request<Record<string, unknown>>('/operations/ai')
+    setError('');
+    setData(null);
+    if (!aiEnabled) { setSimulation(false); return; }
+    const controller = new AbortController();
+    void request<Record<string, unknown>>('/operations/ai', 'GET', undefined, controller.signal)
       .then((result) => {
+        if (controller.signal.aborted) return;
         setData(result);
         setProvider(String(result.provider ?? 'openai'));
       })
-      .catch((error) => setError(errorMessage(error)));
-  }, [request, notify]);
+      .catch((error) => { if (!controller.signal.aborted) setError(errorMessage(error)); });
+    return () => controller.abort();
+  }, [request, notify, aiEnabled]);
+  if (!aiEnabled) return <AiFeatureSwitch />;
   if (error)
     return (
-      <p className="notice" role="alert">
+      <><AiFeatureSwitch /><p className="notice" role="alert">
         {error}
-      </p>
+      </p></>
     );
-  if (!data) return <Spinner />;
+  if (!data) return <><AiFeatureSwitch /><Spinner /></>;
   const usage = data.usage as
     { todayTokens: number; todayRequests: number; monthCost: number; unconfirmed: number } | undefined;
   const number = (name: string, label: string, fallback: number, max: number, step = '1') => (
@@ -49,6 +58,7 @@ export function AiSettings() {
   );
   return (
     <>
+    <AiFeatureSwitch />
     <section className="surface">
         {provider === 'gemini' && <p className="notice">Google AI Pro e a API são serviços separados. Sua assinatura não libera automaticamente cotas pagas para o Noctua. Confira o projeto em <a href="https://aistudio.google.com/projects" target="_blank" rel="noreferrer">Google AI Studio</a>. Ativar faturamento da API pode gerar cobrança adicional. <a href="https://ai.google.dev/gemini-api/docs/google-ai-plans" target="_blank" rel="noreferrer">Entenda a regra do Google</a>.</p>}
       <h2>Assistente de IA</h2><button className="button primary" onClick={()=>setSimulation(true)}>🧪 Testar / Simular atendimento</button>{simulation&&<ConversationSimulator aiOnly onClose={()=>setSimulation(false)}/>} <button type="button" className="button" aria-expanded={showKeySettings} onClick={() => setShowKeySettings((visible) => !visible)}><KeyRound size={15} /> {showKeySettings ? 'Ocultar chaves de API' : 'Mostrar configurações de chaves de API'}</button>

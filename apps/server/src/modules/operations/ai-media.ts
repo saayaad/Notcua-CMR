@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
+import { requireAiFeature } from './ai-feature.js';
 import type { MessagingService } from '../attendance/messaging.service.js';
 import { AppError } from '../../shared/errors.js';
 import { SerialQueue } from '../../shared/serial-queue.js';
@@ -13,6 +14,7 @@ export async function preprocessMedia(
   messageId: string,
 ) {
   return mediaQueue.run(async () => {
+    await requireAiFeature(db);
     await messaging.chat(sessionId, conversationId);
     const message = await db.chatMessage.findFirst({ where: { id: messageId, conversationId } });
     if (!message || message.asViewOnce)

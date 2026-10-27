@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
+import { aiFeatureEnabled } from './ai-feature.js';
 import type { MessagingService } from '../attendance/messaging.service.js';
 import type { WhatsappService } from '../whatsapp/whatsapp.service.js';
 import { generateSuggestion } from './ai.service.js';
@@ -39,7 +40,7 @@ export class AiWorker {
     try {
       await this.assertAccess();
       const settings = await record<AgentSettings | null>(this.db, 'integration:ai', null);
-      if (!settings?.enabled || !hasConfiguredKey(settings) || !settings.enabledAt) return;
+      if (!(await aiFeatureEnabled(this.db)) || !settings?.enabled || !hasConfiguredKey(settings) || !settings.enabledAt) return;
       const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
       if (
         (await this.db.operationRecord.count({
@@ -150,7 +151,7 @@ export class AiWorker {
             include: { contact: true },
           });
           if (
-            !current?.enabled ||
+            !(await aiFeatureEnabled(this.db)) || !current?.enabled ||
             (await aiControl(this.db, chat.id)).paused ||
             currentChat?.status !== 'OPEN' ||
             (currentChat.contact.metadata as { optOut?: boolean }).optOut ||
@@ -184,7 +185,7 @@ export class AiWorker {
                 orderBy: [{ sentAt: 'desc' }, { id: 'desc' }],
               });
               if (
-                finalControl.paused ||
+                !(await aiFeatureEnabled(this.db)) || finalControl.paused ||
                 finalControl.changedAt !== control.changedAt ||
                 !finalSettings?.enabled ||
                 changed?.id !== message.id
@@ -198,6 +199,10 @@ export class AiWorker {
             usage: suggestion.usage ?? null,
           });
         } catch (error) {
+          if (!(await aiFeatureEnabled(this.db))) {
+            await putRecord(this.db, key, 'AI_RUN', { status: 'HELD', conversationId: chat.id, reason: 'feature-disabled' });
+            continue;
+          }
           const failureControl = await aiControl(this.db, chat.id);
           if (!failureControl.paused && failureControl.changedAt === control.changedAt) {
             if (!attemptedSend && settings.fallbackText?.trim()) {
@@ -214,7 +219,7 @@ export class AiWorker {
                       orderBy: [{ sentAt: 'desc' }, { id: 'desc' }],
                     });
                     if (
-                      now.paused ||
+                      !(await aiFeatureEnabled(this.db)) || now.paused ||
                       now.changedAt !== control.changedAt ||
                       !current?.enabled ||
                       latest?.id !== message.id ||

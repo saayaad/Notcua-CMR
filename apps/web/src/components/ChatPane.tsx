@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { useApi, errorMessage } from '../context/ApiContext';
 import { useContextMenu } from '../context/ContextMenu';
+import { useAiFeatures } from '../context/AiFeatures';
 import type { Conversation, Message, Paged } from '../types';
 import { Avatar, Empty, FormattedText, Modal, Spinner, phone, time } from './ui';
 import { Composer } from './Composer';
@@ -142,6 +143,7 @@ export function ChatPane({
   onToolRequest: (section: string, kind?: string, question?: string) => void;
 }) {
   const { request, notify } = useApi();
+  const { enabled: aiEnabled } = useAiFeatures();
   const contextMenu = useContextMenu();
   const { preferences } = usePreferences();
   const placement = useHudPlacement('chat');
@@ -157,6 +159,7 @@ export function ChatPane({
   const [followUpBusy, setFollowUpBusy] = useState(false);
   const [followUpSteps, setFollowUpSteps] = useState([{ waitMinutes: 120, text: '' }, { waitMinutes: 1440, text: '' }]);
   const [summaryOpen, setSummaryOpen] = useState(false);
+  useEffect(() => { if (!aiEnabled) { setAiOpen(false); setClientAiOpen(false); setSummaryOpen(false); } }, [aiEnabled]);
   const [summary, setSummary] = useState('');
   const [summaryBusy, setSummaryBusy] = useState(false);
   const [transcriptions, setTranscriptions] = useState<Record<string, string>>({});
@@ -173,7 +176,7 @@ export function ChatPane({
   }, [chat?.id]);
   useEffect(() => {
     setAudit(null);
-    if (!chat || chat.status !== 'CLOSED') return;
+    if (!aiEnabled || !chat || chat.status !== 'CLOSED') return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let attempts = 0;
@@ -187,7 +190,7 @@ export function ChatPane({
     };
     void load();
     return () => { cancelled = true; if (timer) clearTimeout(timer); };
-  }, [base, chat?.id, chat?.status, request]);
+  }, [base, chat?.id, chat?.status, request, aiEnabled]);
   useEffect(() => {
     if (!chat) return;
     const controller = new AbortController();
@@ -355,7 +358,7 @@ export function ChatPane({
   const orderedActions = completeOrder(
     preferences.hudHeaderOrder,
     actions.map((item) => item.id),
-  ).map((id) => actions.find((item) => item.id === id)!);
+  ).map((id) => actions.find((item) => item.id === id)!).filter(item => aiEnabled || !['ai', 'summary', 'image-studio'].includes(item.id));
   const shortcut = (id: string) => {
     if (id === 'client') onDetails();
     else if (id === 'schedule') setScheduleOpen(true);
@@ -462,7 +465,7 @@ export function ChatPane({
         onEdit={() => onToolRequest('next')}
       />
       <SequenceMonitor base={base} revision={revision} onRefresh={onRefresh} />
-      {audit && (
+      {aiEnabled && audit && (
         <section className="conversation-audit" aria-live="polite">
           <strong>{audit.status === 'FAILED' ? 'Auditoria não concluída' : typeof audit.score === 'number' ? `Qualidade do atendimento: ${audit.score}/10` : 'Analisando atendimento…'}</strong>
           {audit.feedback && <p>{audit.feedback}</p>}
@@ -514,7 +517,7 @@ export function ChatPane({
                     onContextMenu={contextMenu(message.internal ? 'Nota interna' : 'Mensagem', [
                       ...((message.text || message.caption) ? [{ label: 'Copiar mensagem', run: () => navigator.clipboard.writeText(message.text || message.caption || '') }] : []),
                       ...(message.direction === 'INBOUND' && message.text ? [{ label: 'Cadastrar resposta padrão', run: () => onToolRequest('faq', undefined, message.text!) }] : []),
-                      ...(message.direction === 'INBOUND' && /audio|image|document|pdf/i.test(message.type) && !message.asViewOnce ? [{ label: /audio/i.test(message.type) ? 'Transcrever áudio' : 'Analisar mídia', disabled: transcribing === message.id, run: () => transcribe(message.id) }] : []),
+                      ...(aiEnabled && message.direction === 'INBOUND' && /audio|image|document|pdf/i.test(message.type) && !message.asViewOnce ? [{ label: /audio/i.test(message.type) ? 'Transcrever áudio' : 'Analisar mídia', disabled: transcribing === message.id, run: () => transcribe(message.id) }] : []),
                     ])}
                   >
                     {message.internal && (
@@ -538,7 +541,7 @@ export function ChatPane({
                         <BookOpenCheck size={14} />
                       </button>
                     )}
-                    {message.direction === 'INBOUND' &&
+                    {aiEnabled && message.direction === 'INBOUND' &&
                       (/audio|image|document|pdf/i.test(message.type) || /\.pdf$/i.test(message.caption ?? '')) &&
                       !message.asViewOnce && (
                         <div className="transcription-actions">
@@ -552,13 +555,13 @@ export function ChatPane({
                           </button>
                         </div>
                       )}
-                    {transcriptions[message.id] && (
+                    {aiEnabled && transcriptions[message.id] && (
                       <div className="transcription-text">
                         <strong>Transcrição</strong>
                         <p>{transcriptions[message.id]}</p>
                       </div>
                     )}
-                    {receiptCandidates[message.id] && (
+                    {aiEnabled && receiptCandidates[message.id] && (
                       <div className="receipt-candidate">
                         <strong><BadgeDollarSign size={15} /> Comprovante candidato — revise a mídia</strong>
                         <span>Valor: {receiptCandidates[message.id]?.amount || 'não identificado'}</span>
@@ -593,9 +596,9 @@ export function ChatPane({
         <div className="attendance-flow-slot">
           <FlowIndicator sessionId={sessionId} conversationId={chat.id} revision={revision} />
         </div>
-        <div className="attendance-ai-slot">
+        {aiEnabled && <div className="attendance-ai-slot">
           <AiControl sessionId={sessionId} conversationId={chat.id} revision={revision} />
-        </div>
+        </div>}
         <div className="composer-container">
           <Composer
             key={chat.id}
@@ -616,8 +619,8 @@ export function ChatPane({
       {flowOpen && (
         <FlowLaunch sessionId={sessionId} conversationId={chat.id} onClose={() => setFlowOpen(false)} />
       )}{' '}
-      {aiOpen && <AiAssistant chat={chat} sessionId={sessionId} onClose={() => setAiOpen(false)} />}{' '}
-      {clientAiOpen && <ClientAiStudio chat={chat} sessionId={sessionId} messages={messages} onClose={() => setClientAiOpen(false)} />}
+      {aiEnabled && aiOpen && <AiAssistant chat={chat} sessionId={sessionId} onClose={() => setAiOpen(false)} />}{' '}
+      {aiEnabled && clientAiOpen && <ClientAiStudio chat={chat} sessionId={sessionId} messages={messages} onClose={() => setClientAiOpen(false)} />}
       {scheduleOpen && (
         <CampaignsPage
           sessionId={sessionId}
@@ -627,7 +630,7 @@ export function ChatPane({
           onClose={() => setScheduleOpen(false)}
         />
       )}
-      {summaryOpen && (
+      {aiEnabled && summaryOpen && (
         <Modal title="✨ Resumo da conversa" onClose={() => setSummaryOpen(false)}>
           {!summary ? (
             <div className="ai-summary-intro">

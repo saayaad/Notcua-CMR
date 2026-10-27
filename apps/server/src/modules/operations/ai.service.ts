@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
+import { requireAiFeature } from './ai-feature.js';
 import { randomUUID } from 'node:crypto';
 import { AppError } from '../../shared/errors.js';
 import { hasConfiguredKey, putRecord, record, type AgentSettings } from './records.js';
@@ -21,6 +22,7 @@ export interface KnowledgeExample {
   approvedAt: string;
 }
 export async function generateSuggestion(db: PrismaClient, conversationId: string, task: string) {
+  await requireAiFeature(db);
   const settings = await record<AgentSettings | null>(db, 'integration:ai', null);
   if (!hasConfiguredKey(settings) || !settings?.model)
     throw new AppError(422, 'Configure a integração de IA e o modelo antes de gerar sugestões.');

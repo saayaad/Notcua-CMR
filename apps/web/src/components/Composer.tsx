@@ -4,6 +4,7 @@ import { usePreferences } from '../context/PreferencesContext';
 import { useEffect, useRef, useState } from 'react';
 import { Send, Paperclip, Mic, Square, Trash2, Zap, Smile, Eye, FileText, MessageSquare } from 'lucide-react';
 import { errorMessage, useApi } from '../context/ApiContext';
+import { AiOnly, useAiFeatures } from '../context/AiFeatures';
 import { Modal, Spinner } from './ui';
 import type { Asset, Library } from '../types';
 import { WandSparkles, LockKeyhole, LibraryBig } from 'lucide-react';
@@ -79,6 +80,8 @@ export function Composer({
   const [copilotConsent, setCopilotConsent] = useState(false);
   const [copilotBusy, setCopilotBusy] = useState(false);
   const [copilotText, setCopilotText] = useState('');
+  const { enabled: aiEnabled } = useAiFeatures();
+  useEffect(() => { if (!aiEnabled) setCopilotOpen(false); }, [aiEnabled]);
   const upload = useRef<HTMLInputElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const recorder = useRef<MediaRecorder | null>(null);
@@ -431,7 +434,7 @@ export function Composer({
           <Zap size={14} />
           Respostas rápidas
         </button>
-        <button
+        <AiOnly><button
           className={`copilot-trigger ${copilotOpen ? 'selected' : ''}`}
           onClick={() => {
             setCopilotAction('');
@@ -441,7 +444,7 @@ export function Composer({
           }}
         >
           <WandSparkles size={14} /> Copiloto IA
-        </button>
+        </button></AiOnly>
         <button
           className={`internal-note-toggle ${internalMode ? 'selected' : ''}`}
           onClick={() => {
@@ -695,7 +698,7 @@ export function Composer({
           </div>
         </Modal>
       )}
-      {copilotOpen && (
+      {aiEnabled && copilotOpen && (
         <Modal
           title="✨ Copiloto IA"
           onClose={() => {

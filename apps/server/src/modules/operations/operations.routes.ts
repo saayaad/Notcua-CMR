@@ -6,6 +6,7 @@ import { clientAiRoutes } from './client-ai.js';
 import { textCompletion, listGeminiModels } from './ai-provider.js';
 import { directoryRoutes, teamDirectory } from './team-directory.js';
 import { Router } from 'express';
+import { aiFeatureEnabled, setAiFeature } from './ai-feature.js';
 import { retryDatabaseOperation } from '../../database/retry.js';
 import { randomUUID } from 'node:crypto';
 import { stat } from 'node:fs/promises';
@@ -87,6 +88,15 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
   const admin = (role: string) => {
     if (role !== 'ADMIN') throw new AppError(403, 'Esta ação exige acesso de administrador.');
   };
+  router.get('/features', async (_req, res) => {
+    res.json({ aiEnabled: await aiFeatureEnabled(db), canManage: res.locals.identity.role === 'ADMIN' });
+  });
+  router.put('/features', async (req, res) => {
+    admin(res.locals.identity.role);
+    const { aiEnabled } = z.object({ aiEnabled: z.boolean() }).strict().parse(req.body);
+    await setAiFeature(db, aiEnabled);
+    res.json({ saved: true, aiEnabled });
+  });
   router.put('/sessions/:sessionId/label-order', async (req, res) => {
     admin(res.locals.identity.role);
     const sessionId = id.parse(req.params.sessionId);
@@ -1039,6 +1049,8 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       if (!input.model) throw new AppError(422, 'Escolha um modelo de atendimento Gemini.');
     }
     const { apiKey, ...settings } = input;
+    if (settings.enabled && !(await aiFeatureEnabled(db)))
+      throw new AppError(409, 'Habilite a I.A. antes de ativar o atendimento automático.');
     let encryptedKey =
       settings.provider === (previous?.provider ?? 'openai') ? previous?.encryptedKey : undefined;
     if (settings.monthlyBudget && (!settings.inputPrice || !settings.outputPrice))
