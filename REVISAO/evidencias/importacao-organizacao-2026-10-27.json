@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-27",
+  "requirements": [
+    "REQ-116",
+    "REQ-131",
+    "REQ-146",
+    "REQ-147",
+    "REQ-158",
+    "REQ-169",
+    "REQ-170",
+    "REQ-207",
+    "REQ-272",
+    "REQ-273",
+    "REQ-274",
+    "REQ-309",
+    "REQ-310",
+    "REQ-311",
+    "REQ-312",
+    "REQ-313",
+    "REQ-314",
+    "REQ-325",
+    "REQ-404",
+    "REQ-405",
+    "REQ-445",
+    "REQ-451",
+    "REQ-455",
+    "REQ-456",
+    "REQ-457",
+    "REQ-458",
+    "REQ-459"
+  ],
+  "counts": {
+    "⬜ A VERIFICAR": 502,
+    "✅ COMPLETO": 49,
+    "🟡 PARCIAL": 83,
+    "⛔ NÃO TESTADO": 8,
+    "🔁 SUBSTITUÍDO OU CANCELADO": 50,
+    "⚠️ PRECISA DE DECISÃO": 4,
+    "🔌 DESCONECTADO": 4,
+    "🐞 COM DEFEITO": 2,
+    "❌ AUSENTE": 1
+  },
+  "tests": {
+    "passed": 17,
+    "failed": 0,
+    "source": "operations.test.ts",
+    "selected": "CSV/XLS/Excel, importação misturada, perfil/anotações, fixação/atribuição, rodízio, macro, etiquetas, receita, exportação estruturada, transferência, diretório, filtros e Kanban",
+    "realAiCalls": 0,
+    "realWhatsappSends": 0
+  },
+  "ui": {
+    "environment": "http://127.0.0.1:5187, banco temporário, conexão REVISAO FICTICIA, sem workers",
+    "csv": {
+      "valid": 2,
+      "rejected": 2,
+      "reasons": [
+        "duplicado",
+        "inválido"
+      ],
+      "defaultCountry": "55",
+      "defaultArea": "11",
+      "reload": true,
+      "campaignListCount": 2
+    },
+    "profile": {
+      "locationPersisted": true,
+      "summaryPersisted": true
+    },
+    "screenshots": [
+      "importacao-previa-2026-10-27.png",
+      "importacao-persistida-2026-10-27.png"
+    ],
+    "notExecuted": [
+      "Upload visual XLS/XLSX",
+      "Transferências completas na UI",
+      "Rodízio visual",
+      "Drag and drop de etiquetas"
+    ]
+  },
+  "productionCodeChanged": false,
+  "published": false
+}

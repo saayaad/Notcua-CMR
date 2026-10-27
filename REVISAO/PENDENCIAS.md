@@ -6,7 +6,7 @@ Prioridade seguinte autorizada pelo usuário: menu de botão direito global impl
 
 ## Situação
 
-O livro [REQUISITOS.md](REQUISITOS.md) contém 703 registros: 529 ⬜ A VERIFICAR; 44 ✅ COMPLETO; 61 🟡 PARCIAL; 8 ⛔ NÃO TESTADO; 50 🔁 SUBSTITUÍDO OU CANCELADO; 4 ⚠️ PRECISA DE DECISÃO; 4 🔌 DESCONECTADO; 2 🐞 COM DEFEITO; 1 ❌ AUSENTE. Repetições de pedidos não são funções distintas; ainda não há percentual de completude comprovado.
+O livro [REQUISITOS.md](REQUISITOS.md) contém 703 registros: 502 ⬜ A VERIFICAR; 49 ✅ COMPLETO; 83 🟡 PARCIAL; 8 ⛔ NÃO TESTADO; 50 🔁 SUBSTITUÍDO OU CANCELADO; 4 ⚠️ PRECISA DE DECISÃO; 4 🔌 DESCONECTADO; 2 🐞 COM DEFEITO; 1 ❌ AUSENTE. Repetições de pedidos não são funções distintas; ainda não há percentual de completude comprovado.
 A verificação individual, prioridade, esforço e lotes serão preenchidos depois da aprovação do escopo, sem reutilizar “implementado” de um relatório antigo como prova.
 
 | ID / conjunto | Status | O que decidir ou completar | Prioridade/esforço |
@@ -78,3 +78,9 @@ Decisão de escopo em 27/10/2026: produção de vídeos/Drive permanece no Creat
 REQ-700–703 concluídos: opção administrativa por operação, desabilitada por padrão, ocultação das ferramentas e bloqueio de novas chamadas no servidor. Chaves/regras preservadas; reabilitar não ativa automaticamente o robô. Seis testes sem rede externa aprovados, build aprovado e UI fictícia conferida antes/depois/recarregada. Evidência: evidencias/ia-controle-2026-10-27.json e ia-desabilitada-2026-10-27.png.
 
 Por pedido explícito do usuário, pular os testes funcionais de geração e demais módulos dependentes de API até existir chave disponível. Não apagar nem marcar como corrigidas BUG-002/003, INT-001 ou lacunas já registradas. Continuar a auditoria das funções manuais. Alterações locais; sem push/deploy neste lote.
+
+## Auditoria manual seguinte — 27/10/2026
+
+27 requisitos classificados; 17 testes selecionados aprovados sem IA/WhatsApp real. CSV conferido de ponta a ponta na cópia fictícia: dois válidos, duplicado e inválido separados, DDD revisável, etiquetas preservadas após reload e lista disponível para campanha. Perfil/localização/resumo persistiram ao reabrir. Evidências em evidencias/importacao-organizacao-2026-10-27.json e capturas relacionadas. Código de produção não mudou neste lote.
+
+Continuar percursos visuais parciais: XLS/XLSX e mapeamento, transferências/aceite/recusa, rodízio e gesto de reordenação de etiquetas. Configuração de rodízio existe em Negócio, embora pedido original indique Equipe. A auditoria ainda não encerrou; manter IA adiada e não publicar sem solicitação.

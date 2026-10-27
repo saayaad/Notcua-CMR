@@ -7,7 +7,7 @@ Atualização mais recente: ContextMenuProvider global, ações de mensagens/lis
 Após esse lote: 49 registros receberam classificação individual. BUG-002 (resumo estagnado em conversa longa) e BUG-003 (cache sem aprovação reutilizando saudação personalizada) foram reproduzidos por generateSuggestion com provedor/repositório fictícios. INT-001: quatro toggles de economia salvos sem consumidor. LAC-001: índice vetorial ausente, métrica somente mensal. Nenhum desses quatro achados foi corrigido ainda; detalhes e prioridade em BUGS.md/PENDENCIAS.md. Fumaça de menu executada na lista, na mensagem recebida e no cadastro de pergunta com cancelamento, sem envios ou cadastro real.
 
 - Branch revisao-completa; checkpoint inicial 8039a09 e livro inicial 24d997f. O escopo foi aprovado para verificação.
-- 703 registros em 28 blocos: 529 ⬜ A VERIFICAR; 44 ✅ COMPLETO; 61 🟡 PARCIAL; 8 ⛔ NÃO TESTADO; 50 🔁 SUBSTITUÍDO OU CANCELADO; 4 ⚠️ PRECISA DE DECISÃO; 4 🔌 DESCONECTADO; 2 🐞 COM DEFEITO; 1 ❌ AUSENTE. Contagens atuais; não significam homologação integral.
+- 703 registros em 28 blocos: 502 ⬜ A VERIFICAR; 49 ✅ COMPLETO; 83 🟡 PARCIAL; 8 ⛔ NÃO TESTADO; 50 🔁 SUBSTITUÍDO OU CANCELADO; 4 ⚠️ PRECISA DE DECISÃO; 4 🔌 DESCONECTADO; 2 🐞 COM DEFEITO; 1 ❌ AUSENTE. Contagens atuais; não significam homologação integral.
 - Produção de vídeos e Drive pertencem ao Creatfy Studio. REQ-609–REQ-653 cancelados; sincronização futura adiada.
 - Nova solicitação aprovada: /chaves, exclusivo de gustavohenriquee011@gmail.com; teste por dias e planos 1/3/6/12 meses; operação própria por cliente. Implementação isolada em modules/access, database/paths, auth, gateway/realtime e AccessKeysPage/ActivationPanel. Mensagens permanece intacto; verificação de validade é uma camada externa.
 - Registro central em PLATFORM_DATA_DIR/platform/access.db; bancos/chaves/backups de empresas em PLATFORM_DATA_DIR/workspaces. Padrão .secrets; Docker /data. Operação original preservada. Backup de uma empresa não inclui a plataforma ou outras empresas; a pasta privada da plataforma precisa de cópia própria.
@@ -28,3 +28,9 @@ Complemento do mesmo lote: corrigido também o import de context-menu.test.ts pa
 REQ-700–703 concluídos: opção administrativa por operação, desabilitada por padrão, ocultação das ferramentas e bloqueio de novas chamadas no servidor. Chaves/regras preservadas; reabilitar não ativa automaticamente o robô. Seis testes sem rede externa aprovados, build aprovado e UI fictícia conferida antes/depois/recarregada. Evidência: evidencias/ia-controle-2026-10-27.json e ia-desabilitada-2026-10-27.png.
 
 Por pedido explícito do usuário, pular os testes funcionais de geração e demais módulos dependentes de API até existir chave disponível. Não apagar nem marcar como corrigidas BUG-002/003, INT-001 ou lacunas já registradas. Continuar a auditoria das funções manuais. Alterações locais; sem push/deploy neste lote.
+
+## Auditoria manual seguinte — 27/10/2026
+
+27 requisitos classificados; 17 testes selecionados aprovados sem IA/WhatsApp real. CSV conferido de ponta a ponta na cópia fictícia: dois válidos, duplicado e inválido separados, DDD revisável, etiquetas preservadas após reload e lista disponível para campanha. Perfil/localização/resumo persistiram ao reabrir. Evidências em evidencias/importacao-organizacao-2026-10-27.json e capturas relacionadas. Código de produção não mudou neste lote.
+
+Continuar percursos visuais parciais: XLS/XLSX e mapeamento, transferências/aceite/recusa, rodízio e gesto de reordenação de etiquetas. Configuração de rodízio existe em Negócio, embora pedido original indique Equipe. A auditoria ainda não encerrou; manter IA adiada e não publicar sem solicitação.
