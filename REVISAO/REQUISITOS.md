@@ -1,13 +1,13 @@
 # Livro de requisitos — Noctua CRM
 
-Atualização: 27/10/2026, America/Sao_Paulo. **Fase 2 autorizada. Verificação em andamento; menu contextual implementado; verificação funcional dos módulos em andamento.**
+Atualização: 28/10/2026, America/Sao_Paulo. **Fase 2 autorizada. Verificação em andamento; menu contextual implementado; verificação funcional dos módulos em andamento.**
 A verificação começou sem alterar o aplicativo. O usuário autorizou depois as chaves, operações separadas e o menu contextual global. Esses lotes foram implementados; a aprovação de outros lotes de correção continua vinculada ao relatório da auditoria.
 
 ## Contagens
 
 - **28 blocos de fontes/listas e 703 registros atômicos rastreáveis.** Repetições são mantidas para preservar a origem; não são 687 funcionalidades distintas.
-- **Status atuais:** 449 ⬜ A VERIFICAR; 85 ✅ COMPLETO; 100 🟡 PARCIAL; 8 ⛔ NÃO TESTADO; 50 🔁 SUBSTITUÍDO OU CANCELADO; 4 ⚠️ PRECISA DE DECISÃO; 4 🔌 DESCONECTADO; 2 🐞 COM DEFEITO; 1 ❌ AUSENTE.
-- Os estados completos abaixo têm evidência desta etapa. Em 27/10/2026, a suíte inteira do servidor passou 171/171 com bancos descartáveis e conectores fictícios; isso não confirma todos os percursos visuais nem os envios reais.
+- **Status atuais:** 436 ⬜ A VERIFICAR; 85 ✅ COMPLETO; 116 🟡 PARCIAL; 5 ⛔ NÃO TESTADO; 50 🔁 SUBSTITUÍDO OU CANCELADO; 4 ⚠️ PRECISA DE DECISÃO; 4 🔌 DESCONECTADO; 2 🐞 COM DEFEITO; 1 ❌ AUSENTE.
+- Os estados completos abaixo têm evidência desta etapa. Em 28/10/2026, a suíte inteira do servidor passou 172/172 com bancos descartáveis e conectores fictícios; depois foram acrescentados dois testes de funil e macro, cujas suítes específicas passaram 18/18 e 45/45. Isso não confirma todos os percursos visuais nem os envios reais.
 - Mensagens já foi testado pelo usuário: verificar apenas código e ligação na Fase 2; permitir somente menu aditivo e fumaça simulada nas fases posteriores.
 
 ### Por tipo

@@ -1,0 +1,21 @@
+{
+  "data": "2026-10-28",
+  "commit": "eef1d31f0329b3cbd28199e7d6156aab577b3e58",
+  "github": {
+    "repositorio": "https://github.com/saayaad/Notcua-CMR",
+    "branches": ["revisao-completa", "main"],
+    "estado_deploy": "success",
+    "contexto": "Vercel",
+    "descricao": "Deployment has completed"
+  },
+  "vercel": {
+    "endereco": "https://notcua.vercel.app/atendimento",
+    "resposta_http": 200,
+    "titulo": "Noctua · Atendimento"
+  },
+  "backend": {
+    "saude_tunel": 200,
+    "dependencia": "PC e túnel Cloudflare precisam permanecer ligados"
+  },
+  "limite": "Status e saúde públicos não comprovam login, percurso de interface ou funcionalidades ainda pendentes no checklist."
+}
