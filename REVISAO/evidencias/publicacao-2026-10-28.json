@@ -1,0 +1,25 @@
+{
+  "date": "2026-10-28",
+  "project": "noctua-crm",
+  "domain": "https://notcua.vercel.app/atendimento",
+  "deploymentId": "dpl_quW1LBAWRzs8VcuaAJF7K4EUpiR8",
+  "readyState": "READY",
+  "verification": {
+    "siteHttpStatus": 200,
+    "apiHealthHttpStatus": 200,
+    "unauthenticatedApiHttpStatus": 401,
+    "browserPreflightHttpStatus": 204,
+    "browserPreflightAllowedOrigin": "https://notcua.vercel.app",
+    "publishedFlowChunkMatchesLocalBuildAfterIndexImportNormalization": true
+  },
+  "repository": {
+    "branch": "revisao-completa",
+    "remoteBranchPushed": true,
+    "auditCommit": "46cbb2e"
+  },
+  "limits": [
+    "The backend depends on the owner's PC, internet connection and temporary Cloudflare tunnel.",
+    "The full suite passed 171/171, but 459 requirement records still await classification.",
+    "Gemini generation was not tested because no working API key is available."
+  ]
+}

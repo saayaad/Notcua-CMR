@@ -1,6 +1,6 @@
 # Pendências — Noctua CRM
 
-Publicação de 27/10/2026 concluída por pedido explícito: https://notcua.vercel.app/atendimento, projeto noctua-crm, versão READY `dpl_9ZQXmBsz8AwGtaBYd1veR3Ajcimo`. Operação autenticada conferida no domínio principal; IA desligada e API protegida com 401 sem login. Servidor real e túnel autorizado estão ativos neste PC. Isso atende ao pedido de acesso online; a auditoria funcional abaixo continua com pendências próprias. Não declarar homologação integral do aplicativo.
+Publicação atualizada em 28/10/2026 por autorização anterior do usuário: https://notcua.vercel.app/atendimento, projeto noctua-crm, versão READY `dpl_quW1LBAWRzs8VcuaAJF7K4EUpiR8`. Página 200, servidor público 200, API protegida com 401 sem login e comunicação Vercel/API liberada no teste de origem. O pacote de fluxos publicado coincide com a compilação local testada. Servidor e túnel dependem deste PC. Isso atende ao acesso online, mas a auditoria funcional abaixo continua aberta.
 
 Atualização: 27/10/2026. Fase 2 autorizada e em execução. O novo módulo de chaves foi aprovado separadamente durante a revisão. **Este ainda não é o relatório final da Fase 3.**
 

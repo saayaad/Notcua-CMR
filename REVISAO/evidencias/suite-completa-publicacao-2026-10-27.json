@@ -28,7 +28,7 @@
   "limits": [
     "Passing server tests do not verify all 703 requirements or all browser interactions.",
     "No real WhatsApp message or Gemini request was sent in this audit.",
-    "The latest local flow preview fix is not in the current public bundle.",
+    "At the time of this check, the flow preview fix was not yet public; it was published on 2026-10-28 (see publicacao-2026-10-28.json).",
     "The backend depends on this PC and its temporary Cloudflare tunnel staying online."
   ]
 }
