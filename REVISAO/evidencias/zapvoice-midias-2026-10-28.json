@@ -1,0 +1,13 @@
+{
+  "data": "2026-10-28",
+  "requisito": "REQ-078",
+  "cenario": "Backup ZV_backup fictício com dois objetos binários válidos, uma imagem PNG e um vídeo MP4",
+  "verificacao": [
+    "Importação reconhecida como ZV_backup e dois recursos MEDIA criados",
+    "Dois arquivos armazenados com tipos image/png e video/mp4",
+    "Bytes comparados integralmente entre origem, banco SQLite temporário e backup reexportado",
+    "Nenhum dado real do usuário, envio WhatsApp ou API externa utilizada"
+  ],
+  "teste": "apps/server/test/backup.test.ts — suíte completa 13/13 aprovada após posicionar o novo cenário no fim, preservando as contagens esperadas nos testes anteriores",
+  "limite": "Prévia pela interface e recarregamento ainda não verificados; requisito classificado parcial"
+}

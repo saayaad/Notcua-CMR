@@ -335,6 +335,59 @@ test('funil aguarda o intervalo, usa snapshot e pode ser cancelado sem enviar a 
   assert.equal((await db.sequenceRun.findUniqueOrThrow({ where: { id: run.id } })).status, 'CANCELLED');
 });
 
+test('funil envia texto, áudio de voz e imagem em ordem com atraso entre etapas', async () => {
+  const ffmpeg = createRequire(import.meta.url)('ffmpeg-static') as string;
+  const wav = execFileSync(ffmpeg, [
+    '-nostdin', '-v', 'error', '-f', 'lavfi', '-i', 'sine=frequency=523:duration=0.15',
+    '-c:a', 'pcm_s16le', '-f', 'wav', 'pipe:1',
+  ], { windowsHide: true });
+  const png = execFileSync(ffmpeg, [
+    '-nostdin', '-v', 'error', '-f', 'lavfi', '-i', 'color=c=yellow:s=16x16:d=0.1',
+    '-frames:v', '1', '-c:v', 'png', '-f', 'image2pipe', 'pipe:1',
+  ], { windowsHide: true });
+  const voiceFile = await media.upload({
+    base64: wav.toString('base64'), filename: 'funil.wav', mimeType: 'audio/wav', voice: true,
+  });
+  const imageFile = await media.upload({
+    base64: png.toString('base64'), filename: 'funil.png', mimeType: 'image/png',
+  });
+  await db.asset.createMany({ data: [
+    { id: 'funnel-media-text', kind: 'MESSAGE', name: 'Abertura', text: 'Olá, #nome' },
+    { id: 'funnel-media-voice', kind: 'AUDIO', name: 'Voz', fileId: voiceFile.id, isPtt: true },
+    { id: 'funnel-media-image', kind: 'MEDIA', name: 'Imagem', fileId: imageFile.id, caption: 'Prévia para #nome' },
+  ] });
+  await db.funnel.create({ data: {
+    id: 'funnel-multimedia-test', name: 'Funil multimídia',
+    items: { create: [
+      { assetId: 'funnel-media-text', position: 0, delayBeforeSendMs: 0 },
+      { assetId: 'funnel-media-voice', position: 1, delayBeforeSendMs: 10_000 },
+      { assetId: 'funnel-media-image', position: 2, delayBeforeSendMs: 0 },
+    ] },
+  } });
+  const before = socket.sends.length;
+  const presenceBefore = socket.presence.length;
+  const run = await sequences.enqueue(sessionId, conversationId, 'FUNNEL', 'funnel-multimedia-test', 'funnel-multimedia-request');
+  await sequences.flush();
+  assert.deepEqual(socket.sends.at(-1)?.content, { text: 'Olá, Cliente Exemplo' });
+  assert.equal(socket.sends.length, before + 1);
+  await sequences.flush();
+  assert.equal(socket.sends.length, before + 1);
+  assert.ok(socket.presence.slice(presenceBefore).includes('recording'));
+  await db.sequenceRun.update({ where: { id: run.id }, data: { nextRunAt: new Date(0) } });
+  await sequences.flush();
+  const voice = socket.sends.at(-1)?.content as { audio?: Buffer; mimetype?: string; ptt?: boolean };
+  assert.equal(socket.sends.length, before + 2);
+  assert.ok(Buffer.isBuffer(voice.audio));
+  assert.equal(voice.mimetype, 'audio/ogg; codecs=opus');
+  assert.equal(voice.ptt, true);
+  await sequences.flush();
+  const image = socket.sends.at(-1)?.content as { image?: Buffer; caption?: string };
+  assert.equal(socket.sends.length, before + 3);
+  assert.ok(Buffer.isBuffer(image.image));
+  assert.equal(image.caption, 'Prévia para Cliente Exemplo');
+  assert.equal((await db.sequenceRun.findUniqueOrThrow({ where: { id: run.id } })).status, 'COMPLETED');
+});
+
 test('API filtra, protege escopo, salva ativos/funis/notas e entrega o histórico', async () => {
   const app = createApp(db, whatsapp, sequences, messaging);
   const library = await request(app)
@@ -362,10 +415,21 @@ test('API filtra, protege escopo, salva ativos/funis/notas e entrega o históric
     .post('/api/attendance/assets')
     .send({ kind: 'MESSAGE', name: 'Resposta via API', text: 'Oi, #nome' })
     .expect(201);
-  await request(app)
+  const funnel = await request(app)
     .post('/api/attendance/funnels')
     .send({ name: 'Funil via API', itemsSequence: [{ itemId: asset.body.id, delayBeforeSend: 500 }] })
     .expect(201);
+  await request(app)
+    .put(`/api/attendance/funnels/${encodeURIComponent(funnel.body.id)}`)
+    .send({ name: 'Funil revisado', itemsSequence: [{ itemId: asset.body.id, delayBeforeSend: 1000 }] })
+    .expect(200);
+  assert.equal((await db.funnel.findUniqueOrThrow({ where: { id: funnel.body.id } })).name, 'Funil revisado');
+  const absentId = 'funnel:excluido';
+  await request(app)
+    .put(`/api/attendance/funnels/${encodeURIComponent(absentId)}`)
+    .send({ name: 'Funil excluído', itemsSequence: [{ itemId: asset.body.id, delayBeforeSend: 0 }] })
+    .expect(404);
+  assert.equal(await db.funnel.findUnique({ where: { id: absentId } }), null);
   await request(app)
     .delete(`/api/attendance/assets/${encodeURIComponent(asset.body.id)}`)
     .expect(409);
@@ -374,6 +438,75 @@ test('API filtra, protege escopo, salva ativos/funis/notas e entrega o históric
     .post(`/api/attendance/sessions/${other.id}/conversations/${conversationId}/send`)
     .send({ requestId: 'wrong-session', kind: 'text', text: 'Não enviar' })
     .expect(404);
+});
+
+test('biblioteca cria, edita, lista, baixa e exclui áudio, imagem, vídeo e documento', async () => {
+  const app = createApp(db, whatsapp, sequences, messaging);
+  const sendsBefore = socket.sends.length;
+  const ffmpeg = createRequire(import.meta.url)('ffmpeg-static') as string;
+  const wav = execFileSync(ffmpeg, [
+    '-nostdin', '-v', 'error', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=0.15',
+    '-c:a', 'pcm_s16le', '-f', 'wav', 'pipe:1',
+  ], { windowsHide: true });
+  const png = execFileSync(ffmpeg, [
+    '-nostdin', '-v', 'error', '-f', 'lavfi', '-i', 'color=c=red:s=16x16:d=0.1',
+    '-frames:v', '1', '-c:v', 'png', '-f', 'image2pipe', 'pipe:1',
+  ], { windowsHide: true });
+  const mp4 = execFileSync(ffmpeg, [
+    '-nostdin', '-v', 'error', '-f', 'lavfi', '-i', 'color=c=blue:s=32x32:d=0.1',
+    '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-f', 'mp4',
+    '-movflags', 'frag_keyframe+empty_moov', 'pipe:1',
+  ], { windowsHide: true });
+  const fixtures = [
+    { kind: 'AUDIO', filename: 'voz.wav', mimeType: 'audio/wav', bytes: wav, voice: true },
+    { kind: 'MEDIA', filename: 'foto.png', mimeType: 'image/png', bytes: png, voice: false },
+    { kind: 'MEDIA', filename: 'video.mp4', mimeType: 'video/mp4', bytes: mp4, voice: false },
+    { kind: 'DOCUMENT', filename: 'contrato.pdf', mimeType: 'application/pdf', bytes: Buffer.from('%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\n%%EOF'), voice: false },
+  ] as const;
+  for (const [index, fixture] of fixtures.entries()) {
+    const uploaded = await request(app).post('/api/attendance/files').send({
+      base64: fixture.bytes.toString('base64'),
+      filename: fixture.filename,
+      mimeType: fixture.mimeType,
+      voice: fixture.voice,
+    }).expect(201);
+    assert.ok(uploaded.body.id);
+    const created = await request(app).post('/api/attendance/assets').send({
+      kind: fixture.kind,
+      name: `Auditoria multimídia ${index}`,
+      fileId: uploaded.body.id,
+      caption: 'Versão inicial',
+      isPtt: fixture.kind === 'AUDIO',
+    }).expect(201);
+    const id = created.body.id as string;
+    await request(app).put(`/api/attendance/assets/${encodeURIComponent(id)}`).send({
+      kind: fixture.kind,
+      name: `Auditoria revisada ${index}`,
+      fileId: uploaded.body.id,
+      caption: 'Legenda revisada',
+      isPtt: fixture.kind === 'AUDIO',
+    }).expect(200);
+    const listing = await request(app).get('/api/attendance/library').expect(200);
+    const listed = listing.body.assets.find((asset: { id: string }) => asset.id === id);
+    assert.equal(listed?.name, `Auditoria revisada ${index}`);
+    assert.equal(listed?.caption, 'Legenda revisada');
+    assert.equal(listed?.file?.id, uploaded.body.id);
+    const download = await request(app).get(`/api/attendance/assets/${encodeURIComponent(id)}/file`).expect(200);
+    assert.match(String(download.headers['content-disposition']), /attachment/i);
+    const stored = await db.storedFile.findUniqueOrThrow({ where: { id: uploaded.body.id } });
+    assert.equal(download.headers['content-type'], stored.mimeType);
+    assert.equal(Number(download.headers['content-length']), stored.byteLength);
+    assert.deepEqual(Buffer.from(download.body as Buffer), Buffer.from(stored.data));
+    await request(app).delete(`/api/attendance/assets/${encodeURIComponent(id)}`).expect(200);
+    const afterDelete = await request(app).get('/api/attendance/library').expect(200);
+    assert.equal(afterDelete.body.assets.some((asset: { id: string }) => asset.id === id), false);
+    await request(app).put(`/api/attendance/assets/${encodeURIComponent(id)}`).send({
+      kind: fixture.kind,
+      name: 'Item excluído',
+      fileId: uploaded.body.id,
+    }).expect(404);
+  }
+  assert.equal(socket.sends.length, sendsBefore);
 });
 
 test('notas internas não enviam WhatsApp e a paginação intercala notas e mensagens sem repetir itens', async () => {

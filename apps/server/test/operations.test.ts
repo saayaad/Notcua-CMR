@@ -5,6 +5,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { PrismaClient } from '@prisma/client';
 import { createSqliteClient } from '../src/database/sqlite-client.js';
@@ -27,6 +28,7 @@ import { BusinessWorker } from '../src/modules/operations/business.worker.js';
 import { env } from '../src/config/env.js';
 import { authorizeToken } from '../src/http/auth.js';
 import { createSystemBackup } from '../src/modules/operations/system-backups.js';
+import { BackupService } from '../src/modules/backups/backup.service.js';
 import { AiWorker } from '../src/modules/operations/ai.worker.js';
 import { FlowEngine } from '../src/modules/flows/flow.engine.js';
 import { FlowService } from '../src/modules/flows/flow.service.js';
@@ -352,6 +354,10 @@ test('reinício marca envio incerto como falha e não o reenvia', async () => {
 test('macros criadas executam texto, espera, etiqueta e atribuição em ordem', async () => {
   const chat = await makeContact('5511777770007');
   const label = await db.label.findFirstOrThrow({ where: { sessionId } });
+  const removedLabel = await db.label.create({
+    data: { id: 'macro-remove-label-test', name: 'Etiqueta para remover', sessionId },
+  });
+  await db.contactLabel.create({ data: { contactId: chat.contactId, labelId: removedLabel.id } });
   const result = await request(app)
     .post('/api/operations/macros')
     .send({
@@ -360,13 +366,14 @@ test('macros criadas executam texto, espera, etiqueta e atribuição em ordem', 
         { type: 'TEXT', text: 'Olá #nome', delayMs: 0, composingMs: 0 },
         { type: 'UTILITY', command: 'WAIT', delayMs: 0 },
         { type: 'ADD_LABEL', labelId: label.id, delayMs: 0 },
+        { type: 'REMOVE_LABEL', labelId: removedLabel.id, delayMs: 0 },
         { type: 'UTILITY', command: 'TRANSFER', target: 'operador@example.com', delayMs: 0 },
       ],
     })
     .expect(201);
   const before = socket.sends.length;
   await sequences.enqueue(sessionId, chat.id, 'MACRO', result.body.id, 'macro-operations-test');
-  for (let i = 0; i < 5; i++) await sequences.flush();
+  for (let i = 0; i < 6; i++) await sequences.flush();
   assert.equal(socket.sends.length, before + 1);
   assert.equal(
     (await db.contact.findUniqueOrThrow({ where: { id: chat.contactId } })).metadata &&
@@ -378,6 +385,7 @@ test('macros criadas executam texto, espera, etiqueta e atribuição em ordem', 
     'operador@example.com',
   );
   assert.equal(await db.contactLabel.count({ where: { contactId: chat.contactId, labelId: label.id } }), 1);
+  assert.equal(await db.contactLabel.count({ where: { contactId: chat.contactId, labelId: removedLabel.id } }), 0);
 });
 test('perfil e anotações são preservados e o histórico é exportado como ZIP', async () => {
   const chat = await makeContact('5511777770008');
@@ -1399,4 +1407,35 @@ test('Kanban confirma ações de etiqueta e desfaz movimentação sem valor obri
   await request(app).post(`/api/crm/sessions/${sessionId}/move`).send({...body,confirmActions:true,saleValueInCents:9000}).expect(200);
   const won=await db.crmOpportunity.findUniqueOrThrow({where:{conversationId:chat.id}});
   assert.equal(won.status,'WON');assert.equal(won.valueInCents,9000);
+});
+
+test('macro importada usa mídia Base64 como áudio de voz no conector fictício', async () => {
+  const ffmpeg = createRequire(import.meta.url)('ffmpeg-static') as string;
+  const wav = execFileSync(ffmpeg, [
+    '-nostdin', '-v', 'error', '-f', 'lavfi', '-i', 'sine=frequency=660:duration=0.15',
+    '-c:a', 'pcm_s16le', '-f', 'wav', 'pipe:1',
+  ], { windowsHide: true });
+  const report = await new BackupService(db).import({
+    respostasRapidasAcao: [{
+      id: 'imported-audio-macro-test', name: 'Áudio importado',
+      acao: [{
+        type: 'media', filename: 'amostra.wav', mimeType: 'audio/wav',
+        base64: `data:audio/wav;base64,${wav.toString('base64')}`,
+        aguarde: 0, composing: 0,
+      }],
+    }],
+  }, 'macro-audio-ficticia.json');
+  assert.equal(report.counts.macros, 1);
+  const action = await db.macroAction.findFirstOrThrow({ where: { macroId: 'imported-audio-macro-test' } });
+  assert.ok(action.fileId);
+  const chat = await makeContact('5511888800641', 'Cliente de macro fictício');
+  const before = socket.sends.length;
+  const run = await sequences.enqueue(sessionId, chat.id, 'MACRO', 'imported-audio-macro-test', 'imported-audio-macro-request');
+  await sequences.flush();
+  assert.equal(socket.sends.length, before + 1);
+  const sent = socket.sends.at(-1) as { audio?: Buffer; mimetype?: string; ptt?: boolean };
+  assert.ok(Buffer.isBuffer(sent.audio));
+  assert.equal(sent.mimetype, 'audio/ogg; codecs=opus');
+  assert.equal(sent.ptt, true);
+  assert.equal((await db.sequenceRun.findUniqueOrThrow({ where: { id: run.id } })).status, 'COMPLETED');
 });

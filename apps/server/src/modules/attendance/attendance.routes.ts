@@ -127,16 +127,19 @@ export function attendanceRoutes(
       .parse(req.body);
     res.status(201).json(await media.upload(input));
   });
-  const saveAsset = async (req: Request, id: string) => {
+  const saveAsset = async (req: Request, id: string, creating = false) => {
     const input = assetSchema.parse(req.body);
     if (input.kind === 'MESSAGE' ? !input.text?.trim() : !input.fileId)
       throw new AppError(422, 'Informe o texto ou o arquivo do ativo.');
     if (input.fileId && !(await db.storedFile.findUnique({ where: { id: input.fileId } })))
       throw new AppError(404, 'Arquivo não encontrado.');
-    return db.asset.upsert({ where: { id }, create: { id, ...input }, update: input });
+    if (creating) return db.asset.create({ data: { id, ...input } });
+    const updated = await db.asset.updateMany({ where: { id }, data: input });
+    if (!updated.count) throw new AppError(404, 'Recurso não encontrado.');
+    return db.asset.findUniqueOrThrow({ where: { id } });
   };
   router.post('/assets', async (req, res) => {
-    res.status(201).json(await saveAsset(req, `asset:${randomUUID()}`));
+    res.status(201).json(await saveAsset(req, `asset:${randomUUID()}`, true));
   });
   router.put('/assets/:id', async (req, res) => {
     res.json(await saveAsset(req, stringId.parse(req.params.id)));
@@ -168,18 +171,18 @@ export function attendanceRoutes(
     await db.asset.deleteMany({ where: { id } });
     res.json({ deleted: true });
   });
-  const saveFunnel = async (req: Request, id: string) => {
+  const saveFunnel = async (req: Request, id: string, creating = false) => {
     const body = funnelSchema.parse(req.body);
     return db.$transaction(
       async (tx) => {
         for (const item of body.itemsSequence)
           if (!(await tx.asset.findUnique({ where: { id: item.itemId } })))
             throw new AppError(422, 'O funil contém um ativo inexistente.');
-        await tx.funnel.upsert({
-          where: { id },
-          create: { id, name: body.name },
-          update: { name: body.name },
-        });
+        if (creating) await tx.funnel.create({ data: { id, name: body.name } });
+        else {
+          const updated = await tx.funnel.updateMany({ where: { id }, data: { name: body.name } });
+          if (!updated.count) throw new AppError(404, 'Funil não encontrado.');
+        }
         await tx.funnelItem.deleteMany({ where: { funnelId: id } });
         await tx.funnelItem.createMany({
           data: body.itemsSequence.map((item, position) => ({
@@ -198,7 +201,7 @@ export function attendanceRoutes(
     );
   };
   router.post('/funnels', async (req, res) => {
-    res.status(201).json(await saveFunnel(req, `funnel:${randomUUID()}`));
+    res.status(201).json(await saveFunnel(req, `funnel:${randomUUID()}`, true));
   });
   router.put('/funnels/:id', async (req, res) => {
     res.json(await saveFunnel(req, stringId.parse(req.params.id)));

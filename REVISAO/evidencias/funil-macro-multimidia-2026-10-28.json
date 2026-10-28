@@ -1,0 +1,24 @@
+{
+  "data": "2026-10-28",
+  "ambiente": "SQLite descartável e conector WhatsApp fictício; sem contato com operação real",
+  "funil": {
+    "passos": ["texto personalizado", "áudio de voz OGG/Opus", "imagem com legenda personalizada"],
+    "ordem": "três envios observados na sequência configurada",
+    "atraso": "etapa de áudio não enviada antes de 10 segundos; relógio do banco antecipado para concluir o teste",
+    "presenca": "recording durante espera do áudio; composing já coberto por teste anterior",
+    "resultado": "COMPLETED",
+    "suite": "attendance.test.ts: 18/18 aprovados"
+  },
+  "macro_importada": {
+    "origem": "backup fictício com ação de mídia WAV em Base64",
+    "resultado": "arquivo importado, ação executada como mensagem de voz OGG/Opus com ptt=true",
+    "suite": "operations.test.ts: 45/45 aprovados"
+  },
+  "tipagem": "servidor e interface aprovados",
+  "requisitos": ["REQ-046", "REQ-050", "REQ-051", "REQ-052"],
+  "limites": [
+    "Sem percurso completo de configuração e prévia na interface",
+    "Sem aferição de atraso real em tempo de relógio",
+    "Nenhum envio ao telefone real"
+  ]
+}

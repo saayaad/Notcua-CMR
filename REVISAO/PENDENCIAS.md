@@ -110,3 +110,17 @@ BUG-006 corrigido: o reset limpava apenas chaves noctua: e deixava noctua-prefer
 Quatro testes de segurança e um de cache local aprovados; confirmação visual de duas etapas, texto incorreto bloqueado, EXCLUIR exato liberado e cancelamento sem exclusão. O JSON do backup foi reaberto como banco, conferindo contato, recurso, bytes de arquivo, preferência e exemplo local. Nenhum dado real foi apagado. A primeira fixture do teste precisava de id obrigatório no Asset; corrigida antes dos testes finais.
 
 Acumulado desta continuação: 141 testes distintos aprovados (136 anteriores + 4 de segurança + 1 de limpeza local); sem novas gerações de IA. Build e tipagem aprovados. Evidências em evidencias/reset-seguro-2026-10-27.json. A auditoria geral ainda não concluiu os registros a verificar.
+
+## Biblioteca, macros e funis — 28/10/2026
+
+O ciclo de API para áudio, imagem, vídeo e documento foi conferido em banco temporário: upload, criação, edição, listagem, download com bytes e tipo corretos, exclusão e recusa de edição depois da exclusão. A macro de teste confirmou texto, espera, adicionar/remover etiquetas e transferência em ordem, sem envio real. Um funil foi criado e editado pela API; edição de ID inexistente agora retorna 404. BUG-007 corrigido. Os 17 testes de atendimento passaram e a tipagem das duas aplicações passou. A compilação do cliente exigiu acesso de leitura fora do ambiente restrito e então passou; o Vite ainda alerta sobre um chunk de 595,92 kB, sem impedir o build.
+
+Doze requisitos de Biblioteca, macro e funil avançaram de “a verificar” para “parcial”. Dois requisitos de mídia em fluxos (REQ-064/065), que tinham prova antiga ainda não refletida no checklist, avançaram de “não testado” para “parcial”. Contagem: 437 a verificar, 85 completos, 114 parciais, 6 não testados; demais estados inalterados. Faltam os percursos visuais de mídia, a execução de funil multimídia e a conferência de duração não nula em macros. Nenhum envio ao WhatsApp real ou geração de IA nesta rodada. A regressão completa passou 172/172, sem falhas ou itens pulados. Evidência: `evidencias/biblioteca-funis-macros-2026-10-28.json`.
+
+## Backup ZapVoice com imagem e vídeo — 28/10/2026
+
+REQ-078 passou de “não testado” a “parcial”. Um backup fictício no formato ZV_backup importou PNG e MP4 válidos, preservou MIME e bytes no banco e no backup reexportado. A suíte inteira de backup passou 13/13 depois do acréscimo; o novo teste foi colocado após os cenários que dependem da contagem inicial da base compartilhada. Ainda faltam upload pela interface, prévia na Biblioteca e recarregamento. Contagem consolidada: 437 a verificar, 85 completos, 115 parciais, 5 não testados, 50 substituídos/cancelados, 4 decisões, 4 desconectados, 2 com defeito e 1 ausente. Evidência: `evidencias/zapvoice-midias-2026-10-28.json`.
+
+## Funil multimídia e macro importada — 28/10/2026
+
+REQ-046 avançou de “a verificar” para “parcial”; REQ-050/051/052 receberam prova mais específica. Texto, voz OGG/Opus e imagem foram executados em ordem no funil fictício, com atraso antes do áudio e presença de gravação. Uma macro importada com WAV Base64 resultou em mensagem de voz no conector fictício. Suítes de atendimento 18/18 e operações 45/45, tipagem aprovada. Não houve envio real. Persistem pendências de configuração e prévia visual, atraso medido em tempo real e confirmação em aparelho. Contagem atual: 436 a verificar, 85 completos, 116 parciais, 5 não testados; demais estados inalterados. Evidência: `evidencias/funil-macro-multimidia-2026-10-28.json`.

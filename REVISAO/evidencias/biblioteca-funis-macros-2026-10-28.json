@@ -1,0 +1,36 @@
+{
+  "data": "2026-10-28",
+  "escopo": "Biblioteca multimídia, macro e funil em banco SQLite temporário e conector WhatsApp fictício",
+  "requisitos_classificados": [
+    "REQ-040", "REQ-041", "REQ-042", "REQ-044", "REQ-045", "REQ-047",
+    "REQ-048", "REQ-049", "REQ-050", "REQ-051", "REQ-052", "REQ-053"
+  ],
+  "resultado": {
+    "attendance_test": "17/17 aprovados",
+    "macro_operations_test": "1/1 aprovado",
+    "typecheck": "servidor e interface aprovados",
+    "build": "servidor e interface aprovados com acesso de leitura necessário ao Vite",
+    "regressao_completa": "172/172 aprovados, zero falhas, zero pulados, 411 segundos"
+  },
+  "biblioteca": {
+    "formatos": ["WAV convertido para voz OGG/Opus", "PNG", "MP4", "PDF"],
+    "etapas": ["upload", "criação", "edição", "listagem", "download", "conferência de MIME, comprimento e bytes", "exclusão"],
+    "protecao": "PUT de recurso excluído retorna 404 e não recria registro"
+  },
+  "funil": {
+    "criacao_e_edicao": "API aceita sequência e persiste nome revisado",
+    "protecao": "PUT de ID inexistente retorna 404 e não cria funil",
+    "execucao_preexistente": "teste simulado cobre ordem, snapshot, espera, presença digitando, cancelamento e idempotência"
+  },
+  "macro": {
+    "acoes": ["texto com nome", "espera", "adicionar etiqueta", "remover etiqueta", "transferir atendimento"],
+    "resultado": "ordem e estado final conferidos no banco e conector fictícios"
+  },
+  "bug": "BUG-007 corrigido: edição de recurso ou funil ausente não deve criar item",
+  "limites": [
+    "Percurso completo de mídia e documento ainda não repetido pela interface do navegador",
+    "Funil multimídia completo ainda não executado neste lote",
+    "Tempos de composição de macro não nulos ainda não medidos",
+    "Nenhuma mensagem real de WhatsApp enviada e nenhuma API de IA chamada"
+  ]
+}

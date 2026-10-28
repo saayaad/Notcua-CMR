@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { PrismaClient } from '@prisma/client';
 import { createSqliteClient } from '../src/database/sqlite-client.js';
 import request from 'supertest';
@@ -332,5 +333,49 @@ test('upload inválido falha sem gravar importação e exige autenticação ante
       .expect(401);
   } finally {
     env.API_TOKEN = '';
+  }
+});
+
+test('backup ZapVoice importa imagem e vídeo válidos com bytes preservados', async () => {
+  const ffmpeg = createRequire(import.meta.url)('ffmpeg-static') as string;
+  const png = execFileSync(ffmpeg, [
+    '-nostdin', '-v', 'error', '-f', 'lavfi', '-i', 'color=c=green:s=16x16:d=0.1',
+    '-frames:v', '1', '-c:v', 'png', '-f', 'image2pipe', 'pipe:1',
+  ], { windowsHide: true });
+  const mp4 = execFileSync(ffmpeg, [
+    '-nostdin', '-v', 'error', '-f', 'lavfi', '-i', 'color=c=green:s=32x32:d=0.1',
+    '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-f', 'mp4',
+    '-movflags', 'frag_keyframe+empty_moov', 'pipe:1',
+  ], { windowsHide: true });
+  const report = await service.import({
+    ZV_backup: {
+      type: 'full',
+      messages: [],
+      medias: [
+        { id: 'zv-image-test', name: 'Imagem de exemplo', objectId: 'zv-image-object' },
+        { id: 'zv-video-test', name: 'Vídeo de exemplo', objectId: 'zv-video-object' },
+      ],
+      objectsList: [
+        { id: 'zv-image-object', filename: 'amostra.png', data: `data:image/png;base64,${png.toString('base64')}` },
+        { id: 'zv-video-object', filename: 'amostra.mp4', data: `data:video/mp4;base64,${mp4.toString('base64')}` },
+      ],
+    },
+  }, 'zapvoice-midias-ficticias.json');
+  assert.equal(report.format, 'ZV_backup');
+  assert.equal(report.counts.assets, 2);
+  assert.equal(report.counts.files, 2);
+  const exported = await service.export();
+  for (const [id, mimeType, expected] of [
+    ['zv-image-test', 'image/png', png],
+    ['zv-video-test', 'video/mp4', mp4],
+  ] as const) {
+    const asset = await db.asset.findUniqueOrThrow({ where: { id }, include: { file: true } });
+    assert.equal(asset.kind, 'MEDIA');
+    assert.equal(asset.file?.mimeType, mimeType);
+    assert.deepEqual(Buffer.from(asset.file!.data), expected);
+    const exportedAsset = exported.medias.find((item) => item.id === id);
+    const exportedFile = exported.objectsList.find((item) => item.id === exportedAsset?.objectId);
+    assert.equal(exportedFile?.mimeType, mimeType);
+    assert.deepEqual(Buffer.from(exportedFile!.base64, 'base64'), expected);
   }
 });

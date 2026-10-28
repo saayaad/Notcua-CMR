@@ -72,3 +72,7 @@ AssetPreview.tsx usava um parágrafo de texto simples, embora o chat aplicasse F
 ## BUG-006 — Reset recuperava preferências locais antigas — corrigido
 
 SafetyZone apagava apenas chaves com prefixo noctua:, mas as preferências usam noctua-preferences:uid e a seleção usa noctua-active-session:uid. Corrigido com clearOperationLocalState: limpa a conta corrente, tema e estado das ferramentas, preserva outras contas e Firebase. Teste com duas contas aprovado. Reset também bloqueia fluxos/macros/funis RUNNING; quatro casos safety.test.ts aprovados, com recuperação de snapshot. Modal de confirmação vermelho e EXCLUIR exato conferidos; reset real somente em banco descartável.
+
+## BUG-007 — Editar recurso ou funil excluído recriava o item — corrigido em 28/10/2026
+
+As rotas PUT de recurso e funil usavam upsert. Uma edição com ID antigo recriava o item, apesar de a tela tratá-la como atualização. O teste reproduziu o retorno 200 para um recurso já excluído. As rotas agora criam somente em POST e, em PUT, atualizam apenas o registro existente; devolvem 404 se ele não existir. O teste de API cobre áudio, imagem, vídeo e documento excluídos, além de funil inexistente. Banco temporário; nenhum dado de produção foi alterado. Evidência: `evidencias/biblioteca-funis-macros-2026-10-28.json`.
