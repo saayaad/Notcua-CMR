@@ -2,7 +2,7 @@ import {Select} from './Select';
 import { useHudPlacement, HudMoveHandle } from './HudPlacement';
 import { useEffect, useState } from 'react';
 import { usePreferences } from '../context/PreferencesContext';
-import { Pin, Search, Plus, ChevronLeft, ChevronRight, CheckCheck, MessageSquare } from 'lucide-react';
+import { Pin, Search, Plus, ChevronLeft, ChevronRight, CheckCheck, MessageSquare, MoreHorizontal } from 'lucide-react';
 import type { Conversation, Label } from '../types';
 import { useContextMenu } from '../context/ContextMenu';
 import { Avatar, Spinner, time } from './ui';
@@ -124,15 +124,18 @@ export function ConversationList(p: Props) {
               Boolean(chat.lastMessageAt) &&
               now - new Date(chat.lastMessageAt!).getTime() >= preferences.waitingRed * 60000;
             return (
-              <button
+              <div
                 key={chat.id}
-                className={`chat-item ${p.active === chat.id ? 'active' : ''} ${urgent ? 'sla-urgent' : ''}`}
-                onClick={() => p.onSelect(chat)}
+                className="chat-item-shell"
                 onContextMenu={contextMenu(chat.contact.name, [
                   { label: 'Abrir conversa', run: () => p.onSelect(chat) },
                   { label: 'Copiar telefone', run: () => navigator.clipboard.writeText(chat.contact.phoneNumber) },
                 ])}
               >
+                <button
+                  className={`chat-item ${p.active === chat.id ? 'active' : ''} ${urgent ? 'sla-urgent' : ''}`}
+                  onClick={() => p.onSelect(chat)}
+                >
                 <Avatar contact={chat.contact} />
                 <span className="chat-item-content">
                   <span className="chat-item-top">
@@ -180,7 +183,25 @@ export function ConversationList(p: Props) {
                     {chat.unreadCount > 0 && <b className="unread-count">{chat.unreadCount}</b>}
                   </span>
                 </span>
-              </button>
+                </button>
+                <button
+                  type="button"
+                  className="chat-item-more icon-button"
+                  aria-label={`Mais opções de ${chat.contact.name}`}
+                  title="Mais opções"
+                  onClick={(event) => {
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    event.currentTarget.dispatchEvent(new MouseEvent('contextmenu', {
+                      bubbles: true,
+                      cancelable: true,
+                      clientX: rect.right,
+                      clientY: rect.bottom,
+                    }));
+                  }}
+                >
+                  <MoreHorizontal size={16} aria-hidden="true" />
+                </button>
+              </div>
             );
           })
         )}

@@ -678,6 +678,36 @@ html[data-theme='light'] nav button.selected {
   overflow: auto;
   border-top: 1px solid var(--line);
 }
+.chat-item-shell {
+  position: relative;
+}
+.chat-item-shell .chat-item {
+  padding-right: 2.75rem;
+}
+.chat-item-more {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.5rem;
+  width: 1.7rem;
+  height: 1.7rem;
+  opacity: 0;
+  transition: opacity 160ms ease, background 160ms ease;
+}
+.chat-item-shell:hover .chat-item-more,
+.chat-item-shell:focus-within .chat-item-more {
+  opacity: 1;
+}
+.chat-item-more:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (hover: none), (pointer: coarse), (max-width: 48rem) {
+  .chat-item-more {
+    opacity: 1;
+    width: 2rem;
+    height: 2rem;
+  }
+}
 .chat-item {
   width: 100%;
   display: flex;

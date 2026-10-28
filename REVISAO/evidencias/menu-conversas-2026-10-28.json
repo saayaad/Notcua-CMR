@@ -1,0 +1,23 @@
+{
+  "data": "2026-10-28",
+  "escopo": "Acesso visível ao menu contextual na lista de conversas",
+  "ambiente": "Noctua local, sessão autenticada, sem envio de mensagens ou alteração de dados",
+  "verificacoes": [
+    {
+      "acao": "Clique no botão Mais opções da primeira conversa em desktop",
+      "resultado": "Menu contextual abriu com Abrir conversa e Copiar telefone; a conversa não foi selecionada"
+    },
+    {
+      "acao": "Foco no botão e tecla Enter",
+      "resultado": "O mesmo menu abriu; Escape no item do menu fechou"
+    },
+    {
+      "acao": "Viewport simulado 390x844",
+      "resultado": "Botão de opções com opacidade 1 e menu aberto pelo toque simulado; nenhuma conversa selecionada"
+    }
+  ],
+  "limites": [
+    "Não houve teste em aparelho físico",
+    "Outros locais que só usam botão direito ainda precisam de inventário"
+  ]
+}
