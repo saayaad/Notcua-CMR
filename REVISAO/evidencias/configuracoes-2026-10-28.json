@@ -1,0 +1,18 @@
+{
+  "data": "2026-10-28",
+  "ambiente": "Inspeção das telas e fluxos de código; testes de acesso e preferências em banco temporário",
+  "testes": "14/14 aprovados em access.test.ts e preferences-save.test.ts",
+  "correcao": "WorkspaceSettings.tsx agora ignora respostas assíncronas de uma aba de Configurações que já foi fechada; typecheck e build de produção aprovados",
+  "inspecionado": [
+    "Ordenação e visibilidade do menu",
+    "Perfil, privacidade visual, notificações e assinatura",
+    "Empresa, horário, departamentos e equipe",
+    "Recuperação de senha e verificação de e-mail no Firebase"
+  ],
+  "requisitos": ["REQ-103", "REQ-104", "REQ-105", "REQ-106", "REQ-107", "REQ-108", "REQ-109", "REQ-110", "REQ-111", "REQ-112", "REQ-113"],
+  "limites": [
+    "Os percursos visuais e os e-mails externos não foram exercitados nesta rodada",
+    "A equipe é cadastrada por e-mail, mas não foi identificado fluxo de envio de convite privado",
+    "O build mantém aviso de chunk principal acima de 500 kB, sem impedir a compilação"
+  ]
+}

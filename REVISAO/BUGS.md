@@ -80,3 +80,7 @@ As rotas PUT de recurso e funil usavam upsert. Uma edição com ID antigo recria
 ## BUG-008 — Iniciador procurava vínculo Vercel no arquivo errado — corrigido em 28/10/2026
 
 `scripts/iniciar-noctua-online.ps1` procurava `.vercel/repo.json` antes de decidir se precisava executar `vercel link`. A Vercel CLI usa `.vercel/project.json`; assim o iniciador podia pedir a escolha do projeto mesmo depois de vinculado. Corrigida a verificação. O README e o guia de operação também deixaram claro que esse botão mantém o servidor/túnel online e que Vite local usa `npm.cmd run dev`. Parser PowerShell aprovado. O iniciador não foi executado por completo para não afetar o túnel ativo. Evidência: `evidencias/iniciador-2026-10-28.json`.
+
+## BUG-009 — Resposta antiga sobrescrevia dados da nova aba de Configurações — corrigido em 28/10/2026
+
+Ao trocar rapidamente entre Negócio, Departamentos, Opt-out e Notificações, uma requisição ainda pendente podia preencher a aba nova com dados da anterior. `WorkspaceSettings.tsx` agora ignora resultados e erros depois que a aba correspondente foi fechada. Tipagem e build da interface aprovados. Falta conferir visualmente com rede lenta; evidência: `evidencias/configuracoes-2026-10-28.json`.

@@ -59,18 +59,20 @@ export function WorkspaceSettings({
       .catch((error) => notify(errorMessage(error), true));
   }, [request, notify]);
   useEffect(() => {
+    let active = true;
     setData({});
     const path = tab === 'business' || tab === 'departments' || tab === 'optout' ? `/operations/settings/${tab}` : '';
     if (path)
       void request<Record<string, unknown>>(path)
         .then((result) => {
-          setData(result);
+          if (active) setData(result);
         })
-        .catch((error) => notify(errorMessage(error), true));
+        .catch((error) => { if (active) notify(errorMessage(error), true); });
     if (tab === 'notifications')
       void request<{ items: typeof notices }>('/operations/notices')
-        .then((result) => setNotices(result.items))
-        .catch((error) => notify(errorMessage(error), true));
+        .then((result) => { if (active) setNotices(result.items); })
+        .catch((error) => { if (active) notify(errorMessage(error), true); });
+    return () => { active = false; };
   }, [tab, request, notify]);
   const save = async (path: string, body: unknown) => {
     setBusy(true);
