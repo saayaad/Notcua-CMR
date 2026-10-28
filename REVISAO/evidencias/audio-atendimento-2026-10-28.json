@@ -1,0 +1,17 @@
+{
+  "data": "2026-10-28",
+  "escopo": "Gravação no navegador, prévia, nota de voz PTT e transcrição",
+  "evidencias": [
+    "Composer.tsx usa MediaRecorder e getUserMedia; o usuário confirmou antes nesta conversa que o contador de gravação apareceu.",
+    "Composer.tsx desenha nível de áudio via AnalyserNode e apresenta player antes de confirmar o envio.",
+    "Três testes isolados passaram: conversão WAV para OGG/Opus, remoção de metadados para compatibilidade móvel e envio como PTT ao conector fictício.",
+    "O usuário confirmou antes nesta conversa que a nota de voz mais recente baixou e tocou normalmente no iPhone.",
+    "ChatPane.tsx mostra Ler transcrição em áudio recebido quando a IA está habilitada e expande o resultado abaixo da mensagem."
+  ],
+  "limites": [
+    "Não houve novo envio real nesta auditoria.",
+    "Ondas em tempo real e prévia não foram rechecadas visualmente em navegador nesta rodada.",
+    "Transcrição real depende de IA habilitada e chave funcional; não foi executada.",
+    "A confirmação do usuário no iPhone se refere à versão corrigida anteriormente e não substitui teste em todos os aparelhos."
+  ]
+}
