@@ -65,6 +65,13 @@ type View =
   | 'schedule'
   | 'sandbox'
   | 'help';
+const personalizationSearchItems = [
+  { name: 'Cores, tema e identidade', terms: 'paleta logotipo favicon claro escuro', target: 'personalization-identity' },
+  { name: 'Layout do atendimento', terms: 'hud paineis ferramentas botoes', target: 'personalization-layout' },
+  { name: 'Renomear menus e pastas', terms: 'nomes secoes grupos', target: 'personalization-names' },
+  { name: 'Ordem das etiquetas', terms: 'reordenar etiquetas kanban', target: 'personalization-order' },
+  { name: 'Marca d’água', terms: 'imagem video amostra', target: 'personalization-watermark' },
+] as const;
 export default function App() {
   const workspace = useWorkspace();
   const { request, notify } = useApi();
@@ -100,6 +107,7 @@ export default function App() {
   const [commandChats, setCommandChats] = useState<Conversation[]>([]);
   const [campaignSearch, setCampaignSearch] = useState('');
   const [focusResourceId, setFocusResourceId] = useState('');
+  const [personalizationFocus, setPersonalizationFocus] = useState<{ target: string; request: number } | null>(null);
   const [hudOpen, setHudOpen] = useState(false);
   const [dockEditRequest, setDockEditRequest] = useState(0);
   const [hudTab, setHudTab] = useState('panels');
@@ -692,6 +700,7 @@ export default function App() {
           <WorkspaceSettings
             key={view}
             initialTab={view === 'personalization' ? 'personalization' : 'general'}
+            focusSection={view === 'personalization' ? personalizationFocus : null}
             sessionId={workspace.sessionId}
             library={workspace.library}
             onOrderRefresh={workspace.refresh}
@@ -809,6 +818,26 @@ export default function App() {
                     <Icon size={17} />
                     <span>{name}</span>
                     <small>Abrir tela</small>
+                  </button>
+                ))}
+              {personalizationSearchItems
+                .filter((item) =>
+                  commandSearch.trim().length > 1 &&
+                  `${item.name} ${item.terms}`.toLocaleLowerCase('pt-BR').includes(commandSearch.trim().toLocaleLowerCase('pt-BR')),
+                )
+                .map((item) => (
+                  <button
+                    key={item.target}
+                    onClick={() => {
+                      setPersonalizationFocus({ target: item.target, request: Date.now() });
+                      setView('personalization');
+                      setCommandOpen(false);
+                      setCommandSearch('');
+                    }}
+                  >
+                    <Palette size={17} />
+                    <span>{item.name}</span>
+                    <small>Personalização</small>
                   </button>
                 ))}
               {commandChats.slice(0, 8).map((chat) => (

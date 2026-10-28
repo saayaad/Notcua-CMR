@@ -34,17 +34,27 @@ export function WorkspaceSettings({
   library,
   onOrderRefresh,
   initialTab = 'general',
+  focusSection,
 }: {
   onImported: () => Promise<void>;
   sessionId: string;
   library: Library;
   onOrderRefresh: () => void;
   initialTab?: string;
+  focusSection?: { target: string; request: number } | null;
 }) {
   const { request, notify } = useApi();
   const { enabled: aiEnabled } = useAiFeatures();
   const { preferences, updatePreferences, saveError, retrySave } = usePreferences();
   const [tab, setTab] = useState(initialTab);
+  useEffect(() => {
+    if (focusSection) setTab('personalization');
+  }, [focusSection]);
+  useEffect(() => {
+    if (focusSection && tab === 'personalization') {
+      document.getElementById(focusSection.target)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+  }, [focusSection, tab]);
   useEffect(() => { if (!aiEnabled && tab === 'economy') setTab('integrations'); }, [aiEnabled, tab]);
   const [hudOpen, setHudOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -161,7 +171,7 @@ export function WorkspaceSettings({
           )}
           {tab === 'personalization' && (
             <>
-              <div className="surface personalization-card">
+              <div className="surface personalization-card" id="personalization-identity">
                 <h2>
                   <Palette size={18} /> Identidade e cores
                 </h2>
@@ -231,7 +241,7 @@ export function WorkspaceSettings({
                     </Select>
                   </label>
                 </div>
-                <div className="hud-settings-entry">
+                <div className="hud-settings-entry" id="personalization-layout">
                   <h3>Organização do Atendimento</h3>
                   <p>
                     Posição dos painéis, tamanho, ordem dos botões e ferramentas, com prévia antes de salvar.
@@ -242,7 +252,7 @@ export function WorkspaceSettings({
                 </div>
                 {toggle('compactNav', 'Menu lateral compacto', 'Mostra apenas os ícones e libera espaço.')}
               </div>
-              <div className="surface personalization-card">
+              <div className="surface personalization-card" id="personalization-names">
                 <h2>Renomear grupos e pastas</h2>
                 <p>Deixe os nomes da navegação e da Biblioteca com a linguagem da sua equipe.</p>
                 <div className="form-grid">
@@ -314,8 +324,12 @@ export function WorkspaceSettings({
                   ))}
                 </div>
               </div>
-              <OrderingSettings sessionId={sessionId} library={library} onRefresh={onOrderRefresh} />
-              <WatermarkSettings />
+              <div id="personalization-order">
+                <OrderingSettings sessionId={sessionId} library={library} onRefresh={onOrderRefresh} />
+              </div>
+              <div id="personalization-watermark">
+                <WatermarkSettings />
+              </div>
             </>
           )}
           {tab === 'profile' && (

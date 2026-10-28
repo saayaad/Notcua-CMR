@@ -1,0 +1,19 @@
+{
+  "data": "2026-10-28",
+  "escopo": "REQ-224 a REQ-229: busca rápida global",
+  "metodo": "Inspeção do caminho de código e build da interface; sem alteração de dados ou envio de mensagens",
+  "resultado": {
+    "atalho": "App.tsx registra Ctrl/Meta+K para abrir Busca rápida",
+    "cabecalho": "Botão Buscar no cabeçalho abre o mesmo modal",
+    "conversas": "Consulta por termo com debounce e seleção de conversa no Atendimento",
+    "campanhas": "Consulta lotes CAMPAIGN; o servidor usa esse modo para campanhas de remarketing",
+    "biblioteca": "Busca em recursos, funis e macros com foco do ID na LibraryPage",
+    "personalizacao": "Atalhos de busca para cinco seções, com abertura da aba e rolagem ao alvo",
+    "buildWeb": "aprovado"
+  },
+  "limites": [
+    "Sessão autenticada do navegador local expirou; percursos não foram executados nesta rodada",
+    "A busca não cobre todas as opções de Personalização",
+    "Não foram feitas chamadas reais de IA nem envios de WhatsApp"
+  ]
+}

@@ -1,5 +1,7 @@
 # Pendências — Noctua CRM
 
+Busca global conferida pelo código em 28/10/2026: Ctrl+K, botão do cabeçalho, conversas, campanhas e Biblioteca têm caminhos ligados. Acrescentados atalhos para cinco seções da Personalização. REQ-224–229 classificados como parciais: a sessão local expirou e falta o percurso visual autenticado, inclusive conferir foco na seção escolhida. Build web aprovado, sem uso de IA ou envios. Evidência: `evidencias/busca-global-2026-10-28.json`.
+
 Retomada após o desligamento do PC em 28/10/2026: iniciador corrigido para carregar e repetir a verificação de assinatura do conector Cloudflare. Servidor local, túnel HTTPS e Vercel recuperados; publicação `dpl_AikyJa3WDdZXDmxvtTQX3JoXzZyk` READY. Suíte 177/177 e build completo passaram antes do commit `d147e95`, presente em `revisao-completa` e `main`. A conexão WhatsApp “Teste” aparece desconectada após o reinício; não foi reconectada nesta auditoria para evitar disparos reais. Evidência: `evidencias/reinicio-2026-10-28.json`.
 
 Menu de conversas: adicionado acesso ⋯ que abre o menu contextual existente por clique e Enter. Em viewport simulado 390x844 ele fica visível; em desktop aparece ao passar o mouse ou focar. REQ-675–676 classificados como parciais até inventário dos demais contextos e teste em aparelho real. Evidência: `evidencias/menu-conversas-2026-10-28.json`.
