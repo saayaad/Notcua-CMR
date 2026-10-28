@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-27",
+  "scope": "Full server regression and read-only public availability check",
+  "testCommand": "npm.cmd test",
+  "testResult": {
+    "passed": 171,
+    "failed": 0,
+    "skipped": 0,
+    "durationMs": 273283
+  },
+  "publicCheck": {
+    "site": "https://notcua.vercel.app/atendimento",
+    "siteHttpStatus": 200,
+    "apiHealthHttpStatus": 200,
+    "unauthenticatedApiHttpStatus": 401,
+    "browserPreflightHttpStatus": 204,
+    "browserPreflightAllowedOrigin": "https://notcua.vercel.app",
+    "siteBundlePointsToCurrentTunnel": true,
+    "note": "The prior tunnel URL in .npm-cache/online-runtime.json was stale. A later tunnel is active and is referenced by the published bundle. The local runtime registry was refreshed."
+  },
+  "requirementAudit": {
+    "total": 703,
+    "unverified": 459,
+    "complete": 84,
+    "partial": 91,
+    "newlyClassified": ["REQ-008", "REQ-009", "REQ-012", "REQ-015", "REQ-016", "REQ-017", "REQ-018", "REQ-019", "REQ-020", "REQ-021", "REQ-022", "REQ-023"]
+  },
+  "limits": [
+    "Passing server tests do not verify all 703 requirements or all browser interactions.",
+    "No real WhatsApp message or Gemini request was sent in this audit.",
+    "The latest local flow preview fix is not in the current public bundle.",
+    "The backend depends on this PC and its temporary Cloudflare tunnel staying online."
+  ]
+}

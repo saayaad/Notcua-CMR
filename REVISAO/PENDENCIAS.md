@@ -8,7 +8,7 @@ Prioridade seguinte autorizada pelo usuário: menu de botão direito global impl
 
 ## Situação
 
-O livro [REQUISITOS.md](REQUISITOS.md) contém 703 registros: 471 ⬜ A VERIFICAR; 78 ✅ COMPLETO; 85 🟡 PARCIAL; 8 ⛔ NÃO TESTADO; 50 🔁 SUBSTITUÍDO OU CANCELADO; 4 ⚠️ PRECISA DE DECISÃO; 4 🔌 DESCONECTADO; 2 🐞 COM DEFEITO; 1 ❌ AUSENTE. Repetições de pedidos não são funções distintas; ainda não há percentual de completude comprovado.
+O livro [REQUISITOS.md](REQUISITOS.md) contém 703 registros: 459 ⬜ A VERIFICAR; 84 ✅ COMPLETO; 91 🟡 PARCIAL; 8 ⛔ NÃO TESTADO; 50 🔁 SUBSTITUÍDO OU CANCELADO; 4 ⚠️ PRECISA DE DECISÃO; 4 🔌 DESCONECTADO; 2 🐞 COM DEFEITO; 1 ❌ AUSENTE. Repetições de pedidos não são funções distintas; ainda não há percentual de completude comprovado.
 A verificação individual, prioridade, esforço e lotes serão preenchidos depois da aprovação do escopo, sem reutilizar “implementado” de um relatório antigo como prova.
 
 | ID / conjunto | Status | O que decidir ou completar | Prioridade/esforço |

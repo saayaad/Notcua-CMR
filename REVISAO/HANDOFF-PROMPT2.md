@@ -64,3 +64,11 @@ Acumulado desta continuação: 141 testes distintos aprovados (136 anteriores + 
 ## Fluxos e prévia de simulação — continuação em 27/10/2026
 
 Percurso visual em operação isolada: rascunho criado, gatilho por igualdade ligado a um texto da Biblioteca, simulação aprovada e recusada, publicação criada sem ativação automática. Corrigida a duplicação do texto original sob a resposta personalizada no simulador. A suíte `flows.test.ts` passou 16/16, incluindo novos cenários de áudio de voz OGG/Opus e imagem PNG preparados pelo conector fictício. Não houve envio WhatsApp ou chamada de IA. Evidência: `evidencias/fluxos-interface-midias-2026-10-27.json`.
+
+## Diagnóstico geral seguinte — 27/10/2026
+
+`npm.cmd test` executou toda a suíte do servidor em bancos descartáveis: 171 aprovados, zero falhas, zero pulados. É uma regressão integral da suíte existente, não uma prova de todos os 703 requisitos. REQ-008 foi classificado parcial (biblioteca de arrastar ligada ao Kanban, sem gesto e persistência homologados neste lote); REQ-009 e REQ-012 completos quanto às tecnologias pedidas. Contagem atual: 468 a verificar, 80 completos, 86 parciais; outros estados inalterados.
+
+Disponibilidade lida sem sessão de usuário: domínio Vercel 200, saúde do túnel vigente 200, rota protegida sem login 401. O registro `.npm-cache/online-runtime.json` apontava para um túnel anterior encerrado; foi atualizado com a instância ativa. O pacote público aponta para o endereço novo. A correção mais recente da prévia de fluxo ainda está apenas no commit local `cbca663` e não foi publicada. O serviço público depende de PC e túnel ativos. Nenhum envio real ou chamada Gemini. Evidência: `evidencias/suite-completa-publicacao-2026-10-27.json`.
+
+Mais nove requisitos de Conexões foram classificados pelo código, teste com conector fictício e telas: REQ-015/016/022/023 completos quanto ao critério específico; REQ-017–021 parciais até comparação com conta real e percurso visual. Contagem após esse bloco: 459 a verificar, 84 completos, 91 parciais, demais estados inalterados. Não houve alteração da conexão real.
