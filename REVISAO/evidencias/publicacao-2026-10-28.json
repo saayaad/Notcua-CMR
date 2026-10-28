@@ -19,7 +19,7 @@
   },
   "limits": [
     "The backend depends on the owner's PC, internet connection and temporary Cloudflare tunnel.",
-    "The full suite passed 171/171, but 459 requirement records still await classification.",
+    "The full suite passed 171/171, but 449 requirement records still await classification after the subsequent message audit.",
     "Gemini generation was not tested because no working API key is available."
   ]
 }
