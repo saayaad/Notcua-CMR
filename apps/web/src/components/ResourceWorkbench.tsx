@@ -30,7 +30,7 @@ import type { ToolIntent } from '../context/attendance';
 import { insertDraft } from '../context/attendance';
 import { usePreferences } from '../context/PreferencesContext';
 import { completeOrder } from '../context/hud';
-import { orderItems, libraryFolders } from '../context/ordering';
+import { orderItems, libraryFolders, synchronizeWorkbenchOrder } from '../context/ordering';
 import { useApi, errorMessage } from '../context/ApiContext';
 import { Modal, Spinner } from './ui';
 import { AssetPreview } from './AssetPreview';
@@ -252,7 +252,11 @@ export function ResourceWorkbench({
   ];
   const favorite = (item: Resource) =>
     Boolean(item.asset?.isFavorite || preferences.favoriteResourceIds.includes(item.id));
-  const ordered = orderItems(resources, preferences.workbenchResourceOrder, (item) => item.id);
+  const ordered = synchronizeWorkbenchOrder(
+    resources,
+    preferences.workbenchResourceOrder,
+    preferences.resourceOrder,
+  );
   const matching = ordered.filter(
     (item) =>
       (kind === 'ALL' || item.kind === kind) &&
@@ -925,7 +929,15 @@ export function ResourceWorkbench({
               disabled={busy}
               onClick={() => {
                 setBusy(true);
-                void savePreferences({ workbenchResourceOrder: draftOrder, folderOrder: draftFolders })
+                const resourceOrder = { ...preferences.resourceOrder };
+                for (const item of resources) {
+                  if (!resourceOrder[item.kind]) resourceOrder[item.kind] = [];
+                }
+                for (const kind of Object.keys(resourceOrder))
+                  resourceOrder[kind] = draftOrder.filter((id) =>
+                    resources.some((item) => item.id === id && item.kind === kind),
+                  );
+                void savePreferences({ workbenchResourceOrder: draftOrder, folderOrder: draftFolders, resourceOrder })
                   .then(() => {
                     setOrganize(false);
                     notify('Organização salva.');

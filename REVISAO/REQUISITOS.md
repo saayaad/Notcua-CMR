@@ -6,7 +6,7 @@ A verificação começou sem alterar o aplicativo. O usuário autorizou depois a
 ## Contagens
 
 - **28 blocos de fontes/listas e 703 registros atômicos rastreáveis.** Repetições são mantidas para preservar a origem; não são 687 funcionalidades distintas.
-- **Status atuais:** 377 ⬜ A VERIFICAR; 98 ✅ COMPLETO; 162 🟡 PARCIAL; 5 ⛔ NÃO TESTADO; 50 🔁 SUBSTITUÍDO OU CANCELADO; 4 ⚠️ PRECISA DE DECISÃO; 4 🔌 DESCONECTADO; 2 🐞 COM DEFEITO; 1 ❌ AUSENTE.
+- **Status atuais:** 376 ⬜ A VERIFICAR; 98 ✅ COMPLETO; 163 🟡 PARCIAL; 5 ⛔ NÃO TESTADO; 50 🔁 SUBSTITUÍDO OU CANCELADO; 4 ⚠️ PRECISA DE DECISÃO; 4 🔌 DESCONECTADO; 2 🐞 COM DEFEITO; 1 ❌ AUSENTE.
 - Os estados completos abaixo têm evidência desta etapa. Em 28/10/2026, a suíte inteira do servidor passou 177/177 com bancos descartáveis e conectores fictícios. Isso não confirma todos os percursos visuais nem os envios reais.
 - Mensagens já foi testado pelo usuário: verificar apenas código e ligação na Fase 2; permitir somente menu aditivo e fumaça simulada nas fases posteriores.
 
@@ -657,7 +657,7 @@ Nas linhas ainda não verificadas, “Fase 2 ainda não iniciada” refere-se à
 | REQ-447 | L-17, 4 | Ocultar e mostrar ferramentas por botão. | ajuste visual | Atendimento | Na área Atendimento, deve ser possível ocultar e mostrar ferramentas por botão. Conferir o resultado pelo caminho da interface e, quando houver gravação, após recarregar. | Não apurado nesta fase; declarações antigas não são prova. | ⬜ A VERIFICAR | Fase 2 ainda não iniciada; sem prova de execução por requisito. | Sem conclusão funcional nesta fase. |
 | REQ-448 | L-17, 5 | Melhorar aparência e clareza dos botões. | ajuste visual | Atendimento | Na área Atendimento, deve ser possível melhorar aparência e clareza dos botões. Conferir o resultado pelo caminho da interface e, quando houver gravação, após recarregar. | Não apurado nesta fase; declarações antigas não são prova. | ⬜ A VERIFICAR | Fase 2 ainda não iniciada; sem prova de execução por requisito. | Sem conclusão funcional nesta fase. |
 | REQ-449 | L-17, 6 | Reordenar botões do menu. | ajuste visual | Atendimento | Na área Atendimento, deve ser possível reordenar botões do menu. Conferir o resultado pelo caminho da interface e, quando houver gravação, após recarregar. | Não apurado nesta fase; declarações antigas não são prova. | ⬜ A VERIFICAR | Fase 2 ainda não iniciada; sem prova de execução por requisito. | Sem conclusão funcional nesta fase. |
-| REQ-450 | L-17, 7 | Reordenar pastas/categorias. | ajuste visual | Atendimento | Na área Atendimento, deve ser possível reordenar pastas/categorias. Conferir o resultado pelo caminho da interface e, quando houver gravação, após recarregar. | Não apurado nesta fase; declarações antigas não são prova. | ⬜ A VERIFICAR | Fase 2 ainda não iniciada; sem prova de execução por requisito. | Sem conclusão funcional nesta fase. |
+| REQ-450 | L-17, 7 | Reordenar pastas/categorias. | ajuste visual | Atendimento | Na área Atendimento, deve ser possível reordenar pastas/categorias. Conferir o resultado pelo caminho da interface e, quando houver gravação, após recarregar. | Código e ordenação isolada conferidos em 28/10/2026. | 🟡 PARCIAL | Biblioteca e Atendimento agora compartilham `resourceOrder`; nomes numerados usam comparação natural. Testes locais de ordem padrão e personalizada e build web aprovados. Evidência: evidencias/ordem-biblioteca-atendimento-2026-10-28.json. | Falta conferir arraste, persistência e atualização visual após recarregar em sessão autenticada. |
 | REQ-451 | L-17, 8 | Reordenar etiquetas. | ajuste visual | Atendimento | Na área Atendimento, deve ser possível reordenar etiquetas. Conferir o resultado pelo caminho da interface e, quando houver gravação, após recarregar. | Implementação/conferência desta etapa; resultado abaixo. | ✅ COMPLETO | OrderingSettings/ReorderList: UI moveu RM2 por seta e Novo lead por arraste da posição 1 para 3. Filtro de atendimento e colunas do CRM retornaram RM2, RM1, Novo lead nesta ordem. operations.test.ts:1155 e crm.test.ts aprovados para persistência/escopo. | Evidência etiquetas-ordem-2026-10-27.png; nenhuma etiqueta real alterada. |
 | REQ-452 | L-17, 9 | Centralizar pop-ups e revisar formatação. | ajuste visual | Atendimento | Na área Atendimento, deve ser possível centralizar pop-ups e revisar formatação. Conferir o resultado pelo caminho da interface e, quando houver gravação, após recarregar. | Não apurado nesta fase; declarações antigas não são prova. | ⬜ A VERIFICAR | Fase 2 ainda não iniciada; sem prova de execução por requisito. | Sem conclusão funcional nesta fase. |
 | REQ-453 | L-17, 10 | Refazer painel lateral mantendo as funções. | ajuste visual | Atendimento | Na área Atendimento, deve ser possível refazer painel lateral mantendo as funções. Conferir o resultado pelo caminho da interface e, quando houver gravação, após recarregar. | Não apurado nesta fase; declarações antigas não são prova. | ⬜ A VERIFICAR | Fase 2 ainda não iniciada; sem prova de execução por requisito. | Sem conclusão funcional nesta fase. |
@@ -1012,6 +1012,16 @@ BUG-002/003, INT-001 e demais lacunas de IA não foram corrigidos por este lote:
 - [ ] Arrastar etiquetas e conferir a ordem nos filtros/Kanban após recarregar.
 
 A revisão geral continua. Nenhum requisito de IA foi executado neste lote; geração real permanece adiada.
+
+## Sincronização da Biblioteca com o Atendimento — 28/10/2026
+
+- [x] Textos, funis e macros sem ordem personalizada aparecem como 1, 2, 3… 10, 11 na Biblioteca.
+- [x] A ordem por pasta configurada na Biblioteca é aplicada aos mesmos recursos no painel do Atendimento no teste isolado.
+- [x] A reorganização feita no painel do Atendimento grava também a ordem por pasta usada pela Biblioteca.
+- [ ] Na conta autenticada, arrastar um texto na Biblioteca, salvar, abrir Atendimento e conferir a mesma sequência após recarregar.
+- [ ] Editar um texto e uma macro na Biblioteca e conferir conteúdo atualizado no Atendimento após recarregar.
+
+Evidência: evidencias/ordem-biblioteca-atendimento-2026-10-28.json. O build web foi aprovado; a verificação visual autenticada permanece pendente.
 
 ## Continuação autônoma autorizada — 27/10/2026
 

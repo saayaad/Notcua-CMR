@@ -2,7 +2,7 @@ import {Select} from './Select';
 import { useEffect, useState } from 'react';
 import { usePreferences } from '../context/PreferencesContext';
 import { useApi, errorMessage } from '../context/ApiContext';
-import { menuGroups, libraryFolders, orderItems } from '../context/ordering';
+import { menuGroups, libraryFolders, orderItems, orderNamedItems } from '../context/ordering';
 import type { Library, Label } from '../types';
 import { ReorderList } from './ReorderList';
 export function OrderingSettings({
@@ -109,7 +109,7 @@ export function OrderingSettings({
         </label>
         <ReorderList
           label="Ordem dos recursos da pasta"
-          items={orderItems(resources, prefs.resourceOrder[folder] ?? [], (item) => item.id).map((item) => ({
+          items={orderNamedItems(resources, prefs.resourceOrder[folder] ?? []).map((item) => ({
             id: item.id,
             name: item.name,
           }))}
@@ -162,7 +162,7 @@ export function OrderingSettings({
         type="button"
         className="button"
         onClick={() =>
-          updatePreferences({ menuGroupOrder: [], menuOrder: [], folderOrder: [], resourceOrder: {} })
+          updatePreferences({ menuGroupOrder: [], menuOrder: [], folderOrder: [], resourceOrder: {}, workbenchResourceOrder: [] })
         }
       >
         Restaurar ordem visual padrão

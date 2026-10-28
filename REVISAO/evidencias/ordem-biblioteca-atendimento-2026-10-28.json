@@ -1,0 +1,19 @@
+{
+  "data": "2026-10-28",
+  "escopo": "Sincronização de ordem entre Biblioteca e Atendimento e ordenação natural de recursos numerados",
+  "alteracoes": [
+    "A ordem de textos, áudios, mídias, documentos, funis, macros e PIX usa a mesma preferência por pasta nas duas telas.",
+    "Ao reorganizar os recursos no Atendimento, a ordem por pasta também é salva para a Biblioteca.",
+    "Recursos sem ordem personalizada seguem a sequência numérica do nome: 1, 2, 3, 10, 11."
+  ],
+  "verificacoes": [
+    "npm.cmd run typecheck -w @noctua/web: aprovado",
+    "npm.cmd run build -w @noctua/web: aprovado fora da restrição de leitura do Vite",
+    "Teste isolado de ordenação natural e ordem manual: aprovado",
+    "Teste isolado com textos, funis e macros misturados, preservando a ordem compartilhada: aprovado"
+  ],
+  "limites": [
+    "Não foi feito teste visual autenticado de arrastar, salvar e recarregar nesta rodada.",
+    "Nenhum recurso real ou preferência da conta foi alterado."
+  ]
+}
