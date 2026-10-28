@@ -154,6 +154,7 @@ before(async () => {
   });
   const voice = Buffer.from('OggS\0\x02noctua-test-OpusHead\x01\x01');
   const image = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const document = Buffer.from('%PDF-1.4\nDocumento fictício para teste.');
   await db.storedFile.createMany({
     data: [
       {
@@ -172,6 +173,14 @@ before(async () => {
         byteLength: image.length,
         data: image,
       },
+      {
+        id: 'flow-document-file',
+        sha256: 'flow-test-document-pdf',
+        filename: 'proposta-teste.pdf',
+        mimeType: 'application/pdf',
+        byteLength: document.length,
+        data: document,
+      },
     ],
   });
   await db.asset.createMany({
@@ -189,6 +198,12 @@ before(async () => {
         kind: 'MEDIA',
         fileId: 'flow-image-file',
         caption: 'Prévia para #nome',
+      },
+      {
+        id: 'document',
+        name: 'Documento fictício',
+        kind: 'DOCUMENT',
+        fileId: 'flow-document-file',
       },
     ],
   });
@@ -288,7 +303,7 @@ test('atraso e snapshot publicado preservam a mensagem mesmo após editar a bibl
   await db.asset.update({ where: { id: 'hello' }, data: { text: 'Olá, #nome! Deseja continuar?' } });
 });
 
-test('fluxos enviam áudio de voz e imagem pelos formatos corretos no conector fictício', async () => {
+test('fluxos enviam áudio de voz, imagem e documento pelos formatos corretos no conector fictício', async () => {
   const audioGraph: FlowGraph = {
     nodes: [
       node('audio-start', 'start', {
@@ -327,6 +342,26 @@ test('fluxos enviam áudio de voz e imagem pelos formatos corretos no conector f
   assert.equal(socket.sends.length, beforeImage + 1);
   assert.ok(Buffer.isBuffer(media.image));
   assert.equal(media.caption, 'Prévia para Contato Fictício');
+
+  const documentGraph: FlowGraph = {
+    nodes: [
+      node('document-start', 'start', {
+        keywordRules: [{ rule: 'equals', keyword: 'documento' }],
+        nextNodeIds: ['document-message'],
+      }),
+      node('document-message', 'document', { itemId: 'document', simulationDelay: 0 }),
+    ],
+  };
+  await prepare(documentGraph);
+  const documentConversation = await contact();
+  const beforeDocument = socket.sends.length;
+  await incoming(documentConversation.id, 'documento');
+  await drain();
+  const attachment = socket.sends.at(-1) as { document?: Buffer; mimetype?: string; fileName?: string };
+  assert.equal(socket.sends.length, beforeDocument + 1);
+  assert.ok(Buffer.isBuffer(attachment.document));
+  assert.equal(attachment.mimetype, 'application/pdf');
+  assert.equal(attachment.fileName, 'proposta-teste.pdf');
 });
 
 test('resposta rápida entra na espera sem se perder e o caminho compatível é consumido uma vez', async () => {
@@ -576,4 +611,28 @@ test('fluxo manual não dispara por mensagem e aplica etiqueta inicial somente a
   const before = socket.sends.length;
   await drain();
   assert.equal(socket.sends.length, before + 1);
+});
+
+test('primeira mensagem do dia ignora conversa anterior do mesmo dia e aceita histórico antigo', async () => {
+  const value = graph();
+  value.nodes[0]!.data.triggerMode = 'first-day';
+  await prepare(value);
+  const previousDay = new Date(Date.now() - 86_400_000);
+  const oldConversation = await contact();
+  await db.chatMessage.create({
+    data: { conversationId: oldConversation.id, direction: 'INBOUND', status: 'DELIVERED', text: 'Ontem', sentAt: previousDay },
+  });
+  const before = socket.sends.length;
+  await incoming(oldConversation.id, 'Hoje');
+  await drain();
+  assert.equal(socket.sends.length, before + 1);
+
+  const sameDayConversation = await contact();
+  await db.chatMessage.create({
+    data: { conversationId: sameDayConversation.id, direction: 'INBOUND', status: 'DELIVERED', text: 'Mais cedo', sentAt: new Date(Date.now() - 60_000) },
+  });
+  const beforeSecond = socket.sends.length;
+  await incoming(sameDayConversation.id, 'Agora');
+  await drain();
+  assert.equal(socket.sends.length, beforeSecond);
 });
