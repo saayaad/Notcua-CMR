@@ -1,0 +1,23 @@
+{
+  "data": "2026-10-28",
+  "ambiente": "https://notcua.vercel.app/atendimento",
+  "tamanhos_simulados": [
+    "390x844",
+    "768x1024"
+  ],
+  "resultado_celular": [
+    "Lista de conversas visível e rolável com busca e filtros.",
+    "Selecionar Nolan abriu o chat em uma camada própria com botão Voltar à lista.",
+    "Voltar à lista restaurou a listagem.",
+    "Biblioteca lateral abriu como gaveta sobre o chat e fechou pelo botão X."
+  ],
+  "resultado_tablet": [
+    "Lista e conversa apareceram lado a lado.",
+    "A conversa selecionada mostrou histórico e campo de rascunho."
+  ],
+  "limites": [
+    "A revisão foi feita no navegador interno com viewport simulado, não em dispositivos físicos nem em todos os navegadores.",
+    "No tablet, algumas ações e rótulos do rodapé ficam visualmente apertados.",
+    "Não houve envio de mensagens ou alteração de clientes."
+  ]
+}
