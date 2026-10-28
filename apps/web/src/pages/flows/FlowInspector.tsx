@@ -1,5 +1,7 @@
 import {Select} from '../../components/Select';
+import { useEffect, useState } from 'react';
 import { X, Plus, Trash2, ArrowRight } from 'lucide-react';
+import { useLibraryOrganization } from '../../components/LibraryCategories';
 import type { Label, Library } from '../../types';
 import { blockNames, type BlockData, type GraphBlock } from './flow.types';
 
@@ -27,15 +29,23 @@ export function FlowInspector({
   busy: boolean;
 }) {
   const data = node.data;
-  const resources = library.assets.filter((asset) =>
-    node.type === 'text'
+  const organization = useLibraryOrganization();
+  const [category, setCategory] = useState('');
+  useEffect(() => setCategory(''), [node.type]);
+  const resources = library.assets.filter((asset) => {
+    const correctType = node.type === 'text'
       ? asset.kind === 'MESSAGE'
       : node.type === 'audio'
         ? asset.kind === 'AUDIO'
         : node.type === 'document'
           ? asset.kind === 'DOCUMENT'
-          : asset.kind === 'MEDIA',
-  );
+          : asset.kind === 'MEDIA';
+    return correctType && (!category ||
+      (category === '__none' ? !organization.assignments[asset.id] : organization.assignments[asset.id] === category));
+  });
+  const selectedOutsideFilter = data.itemId && !resources.some((asset) => asset.id === data.itemId)
+    ? library.assets.find((asset) => asset.id === data.itemId)
+    : null;
   const route = (handle: string, label: string) => (
     <label>
       {label}
@@ -293,9 +303,18 @@ export function FlowInspector({
         {['text', 'audio', 'media', 'document'].includes(node.type) && (
           <>
             <label>
+              Categoria da biblioteca
+              <Select value={category} onChange={(event) => setCategory(event.target.value)}>
+                <option value="">Todas as categorias</option>
+                <option value="__none">Sem categoria</option>
+                {organization.categories.map((name) => <option key={name} value={name}>{name}</option>)}
+              </Select>
+            </label>
+            <label>
               Recurso da biblioteca
               <Select value={data.itemId ?? ''} onChange={(event) => update({ itemId: event.target.value })}>
                 <option value="">Selecione um recurso</option>
+                {selectedOutsideFilter && <option value={selectedOutsideFilter.id}>{selectedOutsideFilter.name} · fora do filtro</option>}
                 {resources.map((asset) => (
                   <option key={asset.id} value={asset.id}>
                     {asset.name}
@@ -303,6 +322,7 @@ export function FlowInspector({
                 ))}
               </Select>
             </label>
+            {!resources.length && <p className="flow-field-help">Nenhum recurso nesta categoria e tipo.</p>}
             {data.itemId && (
               <div className="flow-resource-preview">
                 {library.assets.find((asset) => asset.id === data.itemId)?.text ||

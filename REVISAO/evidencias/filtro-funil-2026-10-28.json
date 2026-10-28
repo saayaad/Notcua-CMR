@@ -1,0 +1,8 @@
+{
+  "data": "2026-10-28",
+  "requisito": "REQ-127",
+  "problema": "O editor de fluxo restringia o recurso pelo tipo do bloco, mas não oferecia filtro de categoria.",
+  "correcao": "Filtro Todas/Sem categoria/categoria específica integrado à organização já salva pela Biblioteca. Recurso anteriormente escolhido permanece visível se estiver fora do filtro.",
+  "verificacao": ["Typecheck da interface aprovado", "Build de produção aprovado"],
+  "limite": "Ainda falta percorrer o editor e confirmar a escolha após salvar e recarregar na interface."
+}
