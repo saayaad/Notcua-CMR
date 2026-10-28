@@ -60,3 +60,7 @@ BUG-006 corrigido: o reset limpava apenas chaves noctua: e deixava noctua-prefer
 Quatro testes de segurança e um de cache local aprovados; confirmação visual de duas etapas, texto incorreto bloqueado, EXCLUIR exato liberado e cancelamento sem exclusão. O JSON do backup foi reaberto como banco, conferindo contato, recurso, bytes de arquivo, preferência e exemplo local. Nenhum dado real foi apagado. A primeira fixture do teste precisava de id obrigatório no Asset; corrigida antes dos testes finais.
 
 Acumulado desta continuação: 141 testes distintos aprovados (136 anteriores + 4 de segurança + 1 de limpeza local); sem novas gerações de IA. Build e tipagem aprovados. Evidências em evidencias/reset-seguro-2026-10-27.json. A auditoria geral ainda não concluiu os registros a verificar.
+
+## Fluxos e prévia de simulação — continuação em 27/10/2026
+
+Percurso visual em operação isolada: rascunho criado, gatilho por igualdade ligado a um texto da Biblioteca, simulação aprovada e recusada, publicação criada sem ativação automática. Corrigida a duplicação do texto original sob a resposta personalizada no simulador. A suíte `flows.test.ts` passou 16/16, incluindo novos cenários de áudio de voz OGG/Opus e imagem PNG preparados pelo conector fictício. Não houve envio WhatsApp ou chamada de IA. Evidência: `evidencias/fluxos-interface-midias-2026-10-27.json`.

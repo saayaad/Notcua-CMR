@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { RotateCcw, Send, FlaskConical, Pencil, Save, X } from 'lucide-react';
 import { useApi, errorMessage } from '../context/ApiContext';
 import { AiOnly, useAiFeatures } from '../context/AiFeatures';
-import { Modal, Spinner } from './ui';
+import { FormattedText, Modal, Spinner } from './ui';
 import { Select } from './Select';
 import { AudioTestInput } from './AudioTestInput';
 import { AssetPreview } from './AssetPreview';
@@ -87,9 +87,9 @@ export function ConversationSimulator({ base, graph, onClose, aiOnly = false }: 
         {entries.map((entry, index) => (
           <div className={`test-bubble ${entry.role}`} key={index}>
             {entry.audio && <audio controls src={entry.audio} />}
-            <p>{entry.text}</p>
+            <p><FormattedText text={entry.text} /></p>
             {entry.contextSources?.length ? <details className="simulator-context"><summary>Contexto enviado à IA</summary><ul>{entry.contextSources.map((source, sourceIndex) => <li key={`${sourceIndex}:${source}`}>{source}</li>)}</ul></details> : null}
-            {entry.assetId && <>{assets.filter(asset => asset.id === entry.assetId).map(asset => <AssetPreview key={asset.id} asset={asset} {...({ compact: true } as any)} />)}</>}
+            {entry.assetId && <>{assets.filter(asset => asset.id === entry.assetId && asset.kind !== 'MESSAGE').map(asset => <AssetPreview key={asset.id} asset={asset} name="Contato de teste" compact />)}</>}
             {mode === 'ai' && entry.role === 'assistant' && index === entries.length - 1 && <button className="button small" onClick={() => {
               const previousQuestion = [...entries.slice(0, index)].reverse().find(item => item.role === 'user')?.text;
               if (!previousQuestion) return;

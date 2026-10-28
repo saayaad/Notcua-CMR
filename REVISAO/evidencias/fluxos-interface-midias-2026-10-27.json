@@ -1,0 +1,25 @@
+{
+  "date": "2026-10-27",
+  "environment": "isolated local operation, temporary database and fake WhatsApp connector",
+  "realWhatsappSends": 0,
+  "realAiCalls": 0,
+  "flowInterface": {
+    "createdDraft": "Auditoria - Primeiro contato",
+    "trigger": "oi by exact match",
+    "resource": "Boas-vindas",
+    "simulation": {
+      "compatibleInput": "oi",
+      "response": "Ola, Contato de teste! Como posso ajudar?",
+      "incompatibleInput": "outra pergunta",
+      "result": "Trigger does not match the message, contact or schedule"
+    },
+    "publication": "Version 3 published; flow remained paused and did not start automation"
+  },
+  "regression": {
+    "suite": "apps/server/test/flows.test.ts",
+    "passed": 16,
+    "failed": 0,
+    "audioAndImage": "The flow prepared OGG/Opus voice content with ptt=true and PNG image content with a personalized caption through the fake connector only."
+  },
+  "uiCorrection": "The simulator no longer duplicates the source text preview after displaying the personalized message."
+}

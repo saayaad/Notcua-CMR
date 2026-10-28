@@ -152,6 +152,46 @@ before(async () => {
       { id: 'timeout', name: 'Recuperação', kind: 'MESSAGE', text: 'Ainda podemos ajudar?' },
     ],
   });
+  const voice = Buffer.from('OggS\0\x02noctua-test-OpusHead\x01\x01');
+  const image = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  await db.storedFile.createMany({
+    data: [
+      {
+        id: 'flow-voice-file',
+        sha256: 'flow-test-voice-ogg-opus',
+        filename: 'mensagem-de-voz.ogg',
+        mimeType: 'audio/ogg; codecs=opus',
+        byteLength: voice.length,
+        data: voice,
+      },
+      {
+        id: 'flow-image-file',
+        sha256: 'flow-test-image-png',
+        filename: 'imagem-de-teste.png',
+        mimeType: 'image/png',
+        byteLength: image.length,
+        data: image,
+      },
+    ],
+  });
+  await db.asset.createMany({
+    data: [
+      {
+        id: 'voice',
+        name: 'Voz fictícia',
+        kind: 'AUDIO',
+        fileId: 'flow-voice-file',
+        isPtt: true,
+      },
+      {
+        id: 'image',
+        name: 'Imagem fictícia',
+        kind: 'MEDIA',
+        fileId: 'flow-image-file',
+        caption: 'Prévia para #nome',
+      },
+    ],
+  });
 });
 after(async () => {
   await engine.stop();
@@ -246,6 +286,47 @@ test('atraso e snapshot publicado preservam a mensagem mesmo após editar a bibl
   await drain();
   assert.deepEqual(socket.sends.at(-1), { text: 'Olá, Contato Fictício! Deseja continuar?' });
   await db.asset.update({ where: { id: 'hello' }, data: { text: 'Olá, #nome! Deseja continuar?' } });
+});
+
+test('fluxos enviam áudio de voz e imagem pelos formatos corretos no conector fictício', async () => {
+  const audioGraph: FlowGraph = {
+    nodes: [
+      node('audio-start', 'start', {
+        keywordRules: [{ rule: 'equals', keyword: 'áudio' }],
+        nextNodeIds: ['audio-message'],
+      }),
+      node('audio-message', 'audio', { itemId: 'voice', simulationDelay: 0 }),
+    ],
+  };
+  await prepare(audioGraph);
+  const audioConversation = await contact();
+  const beforeAudio = socket.sends.length;
+  await incoming(audioConversation.id, 'áudio');
+  await drain();
+  const voice = socket.sends.at(-1) as { audio?: Buffer; mimetype?: string; ptt?: boolean };
+  assert.equal(socket.sends.length, beforeAudio + 1);
+  assert.ok(Buffer.isBuffer(voice.audio));
+  assert.equal(voice.mimetype, 'audio/ogg; codecs=opus');
+  assert.equal(voice.ptt, true);
+
+  const imageGraph: FlowGraph = {
+    nodes: [
+      node('image-start', 'start', {
+        keywordRules: [{ rule: 'equals', keyword: 'imagem' }],
+        nextNodeIds: ['image-message'],
+      }),
+      node('image-message', 'media', { itemId: 'image', simulationDelay: 0 }),
+    ],
+  };
+  await prepare(imageGraph);
+  const imageConversation = await contact();
+  const beforeImage = socket.sends.length;
+  await incoming(imageConversation.id, 'imagem');
+  await drain();
+  const media = socket.sends.at(-1) as { image?: Buffer; caption?: string };
+  assert.equal(socket.sends.length, beforeImage + 1);
+  assert.ok(Buffer.isBuffer(media.image));
+  assert.equal(media.caption, 'Prévia para Contato Fictício');
 });
 
 test('resposta rápida entra na espera sem se perder e o caminho compatível é consumido uma vez', async () => {
