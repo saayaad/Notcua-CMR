@@ -2,13 +2,15 @@
 
 Publicação atualizada em 28/10/2026 por autorização anterior do usuário: https://notcua.vercel.app/atendimento, projeto noctua-crm, versão READY `dpl_quW1LBAWRzs8VcuaAJF7K4EUpiR8`. Página 200, servidor público 200, API protegida com 401 sem login e comunicação Vercel/API liberada no teste de origem. O pacote de fluxos publicado coincide com a compilação local testada. Servidor e túnel dependem deste PC. Isso atende ao acesso online, mas a auditoria funcional abaixo continua aberta.
 
+Nova publicação em 28/10/2026: `dpl_9WMHsTNvBFpT9Z2ZibJscRjECETS` READY, alias https://notcua.vercel.app. Depois que o túnel anterior parou, o usuário aprovou especificamente reabri-lo para o CRM. A API voltou a responder por HTTPS; a interface publicada carregou 131 conversas da conexão Teste. A suíte completa passou 177/177. REQ-604–606 foram conferidos em produção, com persistência dos filtros e da ordem após recarregar. O endereço da API continua temporário: se o processo ou PC parar, o site perde acesso aos dados até iniciar um novo túnel e atualizar a Vercel. Evidência: `evidencias/leads-e-publicacao-2026-10-28.json`.
+
 Atualização: 27/10/2026. Fase 2 autorizada e em execução. O novo módulo de chaves foi aprovado separadamente durante a revisão. **Este ainda não é o relatório final da Fase 3.**
 
 Prioridade seguinte autorizada pelo usuário: menu de botão direito global implementado localmente, com handlers existentes e edição de texto. Conferência e limites em [MENU-CONTEXTO.md](MENU-CONTEXTO.md) e [checklist do menu](MENU-CONTEXTO.md#testes-e-checklist). 60 testes selecionados passaram nesta rodada; a auditoria individual restante continua aberta. Essa autorização substitui a parada anterior somente para o menu, sem aprovar alterações indiscriminadas de outros módulos.
 
 ## Situação
 
-O livro [REQUISITOS.md](REQUISITOS.md) contém 703 registros: 449 ⬜ A VERIFICAR; 85 ✅ COMPLETO; 100 🟡 PARCIAL; 8 ⛔ NÃO TESTADO; 50 🔁 SUBSTITUÍDO OU CANCELADO; 4 ⚠️ PRECISA DE DECISÃO; 4 🔌 DESCONECTADO; 2 🐞 COM DEFEITO; 1 ❌ AUSENTE. Repetições de pedidos não são funções distintas; ainda não há percentual de completude comprovado.
+O livro [REQUISITOS.md](REQUISITOS.md) contém 703 registros: 397 ⬜ A VERIFICAR; 94 ✅ COMPLETO; 146 🟡 PARCIAL; 5 ⛔ NÃO TESTADO; 50 🔁 SUBSTITUÍDO OU CANCELADO; 4 ⚠️ PRECISA DE DECISÃO; 4 🔌 DESCONECTADO; 2 🐞 COM DEFEITO; 1 ❌ AUSENTE. Repetições de pedidos não são funções distintas; ainda não há percentual de completude comprovado.
 A verificação individual, prioridade, esforço e lotes serão preenchidos depois da aprovação do escopo, sem reutilizar “implementado” de um relatório antigo como prova.
 
 | ID / conjunto | Status | O que decidir ou completar | Prioridade/esforço |

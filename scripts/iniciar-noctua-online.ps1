@@ -94,7 +94,9 @@ try {
     Write-Host 'Na primeira vez, entre na sua conta Vercel quando o navegador abrir.' -ForegroundColor Yellow
     Invoke-Vercel @('login')
   }
-  if (-not (Test-Path -LiteralPath (Join-Path $ProjectRoot '.vercel\project.json'))) {
+  $ProjectLink = Join-Path $ProjectRoot '.vercel\project.json'
+  $RepositoryLink = Join-Path $ProjectRoot '.vercel\repo.json'
+  if (-not (Test-Path -LiteralPath $ProjectLink) -and -not (Test-Path -LiteralPath $RepositoryLink)) {
     Write-Host 'Na primeira vez, selecione sua conta e o projeto Noctua na lista da Vercel.' -ForegroundColor Yellow
     Invoke-Vercel @('link')
   }

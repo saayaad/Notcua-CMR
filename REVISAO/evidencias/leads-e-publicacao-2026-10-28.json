@@ -1,0 +1,32 @@
+{
+  "data": "2026-10-28",
+  "ambiente": "https://notcua.vercel.app/atendimento",
+  "publicacao": {
+    "projeto": "nolan-70b4/noctua-crm",
+    "deployment": "dpl_9WMHsTNvBFpT9Z2ZibJscRjECETS",
+    "estado": "READY",
+    "alias": "https://notcua.vercel.app",
+    "atendimento": "131 conversas carregadas na conexão Teste",
+    "autenticacao": "GET /api/files/nonexistent sem login retornou 401 no servidor local",
+    "dependencia": "O endereço da API é um túnel temporário; o servidor e o túnel precisam continuar ligados neste PC."
+  },
+  "testes": {
+    "comando": "npm.cmd test",
+    "total": 177,
+    "aprovados": 177,
+    "falhas": 0,
+    "ambiente": "bancos descartáveis e conectores fictícios"
+  },
+  "interface": {
+    "aguardando_cliente": "47 conversas; filtro preservado após recarregar",
+    "ainda_nao_respondidos": "16 conversas",
+    "aguardando_nossa_resposta": "42 conversas",
+    "ordenacao": "Mais antigos mudou o primeiro contato e permaneceu após recarregar; restaurado Mais recentes",
+    "fluxo_teste": "Editor exibiu Categoria da biblioteca e Recurso da biblioteca; só havia Sem categoria. Bloco temporário descartado ao sair, sem salvar. REQ-127 permanece parcial."
+  },
+  "limites": [
+    "Não houve envio real de WhatsApp nesta rodada.",
+    "Os filtros não comprovam comportamento em outros navegadores ou celulares.",
+    "A publicação depende da disponibilidade do túnel temporário."
+  ]
+}
