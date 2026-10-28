@@ -20,6 +20,20 @@ import { ContextMenuProvider } from './context/ContextMenu';
 import { AiFeaturesProvider } from './context/AiFeatures';
 import './access-keys.css';
 
+window.addEventListener('vite:preloadError', (event) => {
+  const key = 'noctua:preload-reload';
+  const now = Date.now();
+  try {
+    const lastAttempt = Number(window.sessionStorage.getItem(key) || 0);
+    if (now - lastAttempt < 60_000) return;
+    window.sessionStorage.setItem(key, String(now));
+  } catch {
+    return;
+  }
+  event.preventDefault();
+  window.location.reload();
+});
+
 createRoot(document.getElementById('root')!).render(
   <ApiProvider>
     <ContextMenuProvider>

@@ -84,3 +84,7 @@ As rotas PUT de recurso e funil usavam upsert. Uma edição com ID antigo recria
 ## BUG-009 — Resposta antiga sobrescrevia dados da nova aba de Configurações — corrigido em 28/10/2026
 
 Ao trocar rapidamente entre Negócio, Departamentos, Opt-out e Notificações, uma requisição ainda pendente podia preencher a aba nova com dados da anterior. `WorkspaceSettings.tsx` agora ignora resultados e erros depois que a aba correspondente foi fechada. Tipagem e build da interface aprovados. Falta conferir visualmente com rede lenta; evidência: `evidencias/configuracoes-2026-10-28.json`.
+
+## BUG-010 — Atendimento antigo não carregava após publicação — corrigido em 28/10/2026
+
+Na página publicada, uma aba mantida aberta tentou importar um arquivo JavaScript de uma versão anterior. O erro `Failed to fetch dynamically imported module` acionou incorretamente a mensagem “Recuperar layout clássico”, que sugeria limpar a disposição do usuário. Atualizar a página resolveu a importação. A interface agora tenta uma atualização automática uma vez por minuto ao receber `vite:preloadError`; caso ainda falhe, mostra “Atualizar página” sem apagar a disposição. Acesso direto a `/atendimento` também abre o Atendimento, em vez da Visão Geral. Tipagem e build serão registrados no lote de publicação. Evidência: `evidencias/atendimento-busca-2026-10-28.json`.

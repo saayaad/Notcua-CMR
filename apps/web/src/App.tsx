@@ -68,7 +68,9 @@ type View =
 export default function App() {
   const workspace = useWorkspace();
   const { request, notify } = useApi();
-  const [view, setView] = useState<View>('overview');
+  const [view, setView] = useState<View>(() =>
+    window.location.pathname.replace(/\/+$/, '') === '/atendimento' ? 'inbox' : 'overview',
+  );
   const { preferences, updatePreferences } = usePreferences();
   const leadSort = preferences.leadSort ?? 'priority';
   const leadResponse = preferences.leadResponse ?? 'all';

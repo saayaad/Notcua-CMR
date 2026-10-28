@@ -1,0 +1,23 @@
+{
+  "data": "2026-10-28",
+  "ambiente": "https://notcua.vercel.app/atendimento",
+  "metodo": "Navegação autenticada pelo navegador, somente leitura; nenhuma mensagem enviada ou cadastro alterado",
+  "requisitos": {
+    "REQ-025": {
+      "resultado": "aprovado",
+      "observacoes": [
+        "Busca por nome reduziu a lista a uma conversa, com contador 1–1 de 1.",
+        "Busca pelos oito dígitos finais do telefone autorizado retornou a mesma conversa.",
+        "Ao limpar o campo, a lista foi restaurada."
+      ]
+    },
+    "REQ-026": {
+      "resultado": "aprovado",
+      "observacoes": [
+        "Selecionar uma etiqueta existente reduziu a lista de 16 para uma conversa com essa etiqueta.",
+        "A opção Todas as etiquetas foi restaurada após o teste."
+      ]
+    }
+  },
+  "falha_adicional": "Após publicação, a aba antiga tentou importar um arquivo JavaScript indisponível e mostrou incorretamente Recuperar layout clássico. Atualizar a página carregou os painéis; a recuperação de erro e o destino /atendimento foram corrigidos no código do lote seguinte."
+}

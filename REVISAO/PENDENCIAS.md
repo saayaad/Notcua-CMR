@@ -152,3 +152,7 @@ REQ-114/115 e REQ-117 a REQ-125 passaram de “a verificar” a “parcial”. O
 ## Filtro de recursos no funil — 28/10/2026
 
 REQ-127 avançou de “a verificar” para “parcial”. O editor já restringia recursos pelo tipo do bloco; acrescentei o filtro pela categoria compartilhada da Biblioteca, com opções Todas e Sem categoria. Trocar o filtro não apaga a seleção atual. A tipagem e o build de produção passaram. Falta conferir visualmente a seleção, o salvamento e o recarregamento do fluxo. Contagem: 400 a verificar, 89 completos, 148 parciais, 5 não testados; demais estados inalterados. Evidência: `evidencias/filtro-funil-2026-10-28.json`.
+
+## Busca e filtro do Atendimento — 28/10/2026
+
+REQ-025/026 passaram de parciais a completos após teste na interface publicada com dados existentes, sem mensagens ou alterações de contato. Busca por nome e telefone retornou a mesma conversa; o filtro por etiqueta reduziu 16 conversas a uma e foi restaurado. Contagem: 400 a verificar, 91 completos, 146 parciais; demais estados inalterados. A aba aberta de uma versão anterior também revelou BUG-010: arquivo de painel indisponível após publicação mostrava a recuperação errada. Recarregar resolveu no navegador; o código agora diferencia essa falha de layout corrompido e tenta atualização automática limitada. O link direto `/atendimento` passou a abrir a tela correspondente. Evidência: `evidencias/atendimento-busca-2026-10-28.json`.
