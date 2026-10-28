@@ -1,0 +1,15 @@
+{
+  "requisitos": ["REQ-596", "REQ-597", "REQ-598", "REQ-599", "REQ-600", "REQ-601", "REQ-602"],
+  "ambiente": "banco descartável e conector WhatsApp fictício",
+  "teste": "tsx --import ./test/setup-env.mjs --test --test-concurrency=1 --test-name-pattern=ações de etiqueta test/operations.test.ts",
+  "resultado": "2 testes aprovados; 0 falhas",
+  "comportamentos": [
+    "regra personalizada por etiqueta aceita registro de venda, solicitação de valor, nota e fixação",
+    "aplicação sem confirmação é rejeitada; valor obrigatório ausente é rejeitado",
+    "venda é registrada uma vez e não dispara mensagem WhatsApp",
+    "receita e ROI consideram venda fechada e investimento explícito",
+    "troca de etiqueta move a atribuição; oportunidade reaberta deixa de compor a receita",
+    "regra de outra operação não pode ser lida"
+  ],
+  "limite": "Caminho completo da interface, gravação e persistência após recarregar ainda precisam de verificação visual. ROI não representa lucro líquido."
+}

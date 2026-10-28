@@ -79,7 +79,19 @@ try {
     $DownloadUrl = 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe'
     Invoke-WebRequest -Uri $DownloadUrl -OutFile $Cloudflared
   }
-  $Signature = Get-AuthenticodeSignature -FilePath $Cloudflared
+  $Signature = $null
+  for ($Attempt = 0; $Attempt -lt 3; $Attempt++) {
+    try {
+      Import-Module Microsoft.PowerShell.Security -ErrorAction Stop
+      $Signature = Get-AuthenticodeSignature -FilePath $Cloudflared -ErrorAction Stop
+      break
+    } catch {
+      if ($Attempt -eq 2) {
+        throw 'Não consegui verificar a assinatura da Cloudflare. Tente iniciar novamente em instantes.'
+      }
+      Start-Sleep -Seconds 2
+    }
+  }
   if ($Signature.Status -ne 'Valid' -or $Signature.SignerCertificate.Subject -notmatch 'Cloudflare') {
     Remove-Item -LiteralPath $Cloudflared -Force -ErrorAction SilentlyContinue
     throw 'A assinatura do programa Cloudflare não foi validada. O arquivo foi descartado por segurança.'

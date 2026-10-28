@@ -1,0 +1,25 @@
+{
+  "evento": "PC desligado e processo local encerrado",
+  "estado_inicial": {
+    "site": "HTTP 200, mas sem conexão com a API local",
+    "api_local": "offline",
+    "tunel_anterior": "offline"
+  },
+  "recuperacao": {
+    "servidor": "reiniciado pelo iniciador existente",
+    "tunel": "novo endereço HTTPS temporário da Cloudflare",
+    "vercel": "variável VITE_API_URL atualizada e deployment dpl_AikyJa3WDdZXDmxvtTQX3JoXzZyk READY no alias notcua.vercel.app"
+  },
+  "verificacoes": {
+    "api_local_health": 200,
+    "tunel_health": 200,
+    "site_atendimento": 200,
+    "rota_de_arquivo_sem_autenticacao": 401,
+    "assinatura_cloudflared": "Valid, certificado Cloudflare",
+    "parser_do_iniciador": "0 erros",
+    "regressao_servidor": "177 testes aprovados, 0 falhas, bancos descartáveis e conectores fictícios",
+    "build_servidor_e_interface": "aprovado"
+  },
+  "correcao": "Importação explícita do módulo Microsoft.PowerShell.Security com até três tentativas para falha transitória na partida oculta.",
+  "limite": "O túnel rápido é temporário; o processo precisa permanecer aberto e uma nova partida atualiza a Vercel. A correção do retry ainda não foi homologada em um novo desligamento real do PC."
+}
