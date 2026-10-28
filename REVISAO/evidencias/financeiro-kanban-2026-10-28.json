@@ -1,0 +1,19 @@
+{
+  "data": "2026-10-28",
+  "escopo": "Kanban, valor de negócios, retorno por etiqueta e campanha",
+  "ambiente": "Banco SQLite descartável e conector WhatsApp fictício; nenhum envio real",
+  "correcao": "A API financeira de campanhas recusa agendamentos e requisições que misturam mudança de estado com valores, sem gravar dados.",
+  "testes": [
+    "Receita do CRM: apenas negócios ganhos, vínculo único por campanha, investimento preservado e valor atualizado após edição: aprovado.",
+    "Financeiro rejeita agendamento e atualização mista sem modificar a execução: aprovado.",
+    "Ações de etiqueta exigem confirmação e valor, atribuem venda uma vez e retiram receita após reabertura: aprovado.",
+    "Kanban move cartão após confirmação da ação financeira: aprovado.",
+    "Agendamento futuro e cancelamento continuam impedindo envios: aprovado.",
+    "Tipagem e build do servidor: aprovados."
+  ],
+  "limites": [
+    "Não houve sessão autenticada para arrastar cartões e revisar o financeiro no navegador.",
+    "ROI representa retorno sobre investimento informado; não é lucro líquido.",
+    "O servidor local está desligado nesta rodada; não foi iniciado para evitar disparos pendentes reais."
+  ]
+}

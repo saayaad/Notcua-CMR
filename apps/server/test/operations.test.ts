@@ -1233,6 +1233,23 @@ test('receita do CRM conta somente vendas ganhas, não duplica campanhas e prese
   assert.equal(socket.sends.length, before);
 });
 
+test('financeiro rejeita agendamento e atualização mista sem alterar execução', async () => {
+  const chat = await makeContact('5511888877792', 'Agendamento fictício');
+  const scheduled = await draft(
+    [chat.id],
+    { kind: 'text', text: 'Não enviar: teste financeiro' },
+    'SCHEDULE',
+    new Date(Date.now() + 3_600_000).toISOString(),
+  );
+  const base = `/api/operations/sessions/${sessionId}/batches/${scheduled.id}`;
+  const before = socket.sends.length;
+  await request(app).put(base).send({ investmentInCents: 2000 }).expect(422);
+  await request(app).put(base).send({ status: 'PAUSED', investmentInCents: 2000 }).expect(422);
+  assert.equal(await db.operationRecord.count({ where: { id: `campaign-finance:${scheduled.id}` } }), 0);
+  assert.equal((await record<Batch>(db, scheduled.id, scheduled)).status, 'DRAFT');
+  assert.equal(socket.sends.length, before);
+});
+
 function unzipEntries(bytes: Buffer) {
   const files = new Map<string, string>();
   for (let at = 0; at + 46 <= bytes.length; at++) {

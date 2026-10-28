@@ -817,11 +817,15 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       .refine((value) => Object.values(value).some((item) => item !== undefined))
       .parse(req.body);
     const { status } = update;
+    if (status && (update.investmentInCents !== undefined || update.attributedRevenueInCents !== undefined || update.revenueSource !== undefined))
+      throw new AppError(422, 'Atualize o estado e os valores financeiros em operações separadas.');
     if (status && (data.status === 'CANCELLED' || data.status === 'COMPLETED'))
       throw new AppError(409, 'Esta execução foi encerrada. Crie uma nova.');
     if (status) {
       await putRecord(db, batchId, 'BATCH', { ...data, status });
     } else {
+      if (data.mode !== 'CAMPAIGN')
+        throw new AppError(422, 'Valores financeiros pertencem apenas a campanhas.');
       const previous = await record(db, financeKey(batchId), defaultFinance(data));
       await putRecord(db, financeKey(batchId), 'CAMPAIGN_FINANCE', { ...previous,
         ...(update.investmentInCents === undefined ? {} : { investmentInCents: update.investmentInCents }),
