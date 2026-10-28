@@ -22,11 +22,14 @@
     "ainda_nao_respondidos": "16 conversas",
     "aguardando_nossa_resposta": "42 conversas",
     "ordenacao": "Mais antigos mudou o primeiro contato e permaneceu após recarregar; restaurado Mais recentes",
+    "filtro_nossa_resposta_persistencia": "Aguardando nossa resposta permaneceu após recarregar; restaurado Todas as situações",
+    "maior_tempo_espera": "Primeiro contato com aproximadamente 70.828 minutos aguardando; restaurado Mais recentes",
+    "paginacao": "Com maior tempo de espera selecionado, páginas 1–50, 51–100 e 101–131 de 131 carregaram sem perda da seleção",
     "fluxo_teste": "Editor exibiu Categoria da biblioteca e Recurso da biblioteca; só havia Sem categoria. Bloco temporário descartado ao sair, sem salvar. REQ-127 permanece parcial."
   },
   "limites": [
     "Não houve envio real de WhatsApp nesta rodada.",
-    "Os filtros não comprovam comportamento em outros navegadores ou celulares.",
+    "Os filtros não comprovam comportamento em outros navegadores ou celulares; paginação com filtro combinado acima de 50 resultados permanece sem teste.",
     "A publicação depende da disponibilidade do túnel temporário."
   ]
 }
