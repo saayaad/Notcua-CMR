@@ -301,6 +301,30 @@ test('PIX usa TLV, moeda BRL e CRC16; chave aleatória deve existir no banco do 
   );
 });
 
+test('API cadastra chave PIX fictícia de formato aleatório e gera Copia e Cola e QR sem enviar', async () => {
+  const app = createApp(db, whatsapp, sequences, messaging);
+  const sendsBefore = socket.sends.length;
+  const key = await request(app).post('/api/attendance/pix-keys').send({
+    name: 'PIX fictício', type: 'RANDOM', value: 'b3c545dc-5668-4882-8991-31983cc0ed60',
+    merchantName: 'Loja Exemplo', merchantCity: 'Sao Paulo',
+  }).expect(201);
+  const listing = await request(app).get('/api/attendance/library').expect(200);
+  assert.equal(listing.body.pixKeys.some((item: { id: string }) => item.id === key.body.id), true);
+  const preview = await request(app).post('/api/attendance/pix-preview').send({
+    keyId: key.body.id, amountInCents: 15000,
+  }).expect(200);
+  assert.equal(preview.body.key, key.body.value);
+  assert.match(preview.body.payload, /5406150\.00/);
+  assert.equal(preview.body.payload.slice(-4), crc16(preview.body.payload.slice(0, -4)));
+  assert.match(preview.body.qrDataUrl, /^data:image\/png;base64,/);
+  await request(app).post('/api/attendance/pix-preview').send({
+    keyId: 'pix-inexistente', amountInCents: 15000,
+  }).expect(404);
+  await request(app).delete(`/api/attendance/pix-keys/${key.body.id}`).expect(200);
+  await request(app).post('/api/attendance/pix-preview').send({ keyId: key.body.id }).expect(404);
+  assert.equal(socket.sends.length, sendsBefore);
+});
+
 test('funil aguarda o intervalo, usa snapshot e pode ser cancelado sem enviar a próxima etapa', async () => {
   await db.asset.create({ data: { id: 'hello', kind: 'MESSAGE', name: 'Olá', text: 'Bom dia, #nome' } });
   await db.funnel.create({

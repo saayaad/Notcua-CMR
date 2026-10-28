@@ -1,0 +1,22 @@
+{
+  "data": "2026-10-28",
+  "ambiente": "SQLite temporário, conexão WhatsApp fictícia e inspeção somente leitura da hospedagem pública",
+  "testes": {
+    "whatsapp_e_requisicoes_autenticadas": "18/18 aprovados",
+    "qr": "QR PNG fictício, estado de espera, limpeza após conectar e pausa verificados",
+    "reconexao": "evento restartRequired reconectou; logout remoto removeu apenas credenciais da sessão",
+    "api": "token Firebase atual usado; 401 renovado uma vez; falha de rede não repetiu POST"
+  },
+  "publicacao": {
+    "url": "https://notcua.vercel.app/atendimento",
+    "http": 200,
+    "repositorio": "https://github.com/saayaad/Notcua-CMR.git",
+    "main_e_revisao_completa_antes_deste_lote": "bd798a75dbf9dbdddf5264eeb9a61bdbff78549b"
+  },
+  "requisitos": ["REQ-094", "REQ-095", "REQ-098", "REQ-099", "REQ-100", "REQ-101"],
+  "limites": [
+    "Não houve novo login por Google nem cadastro por e-mail nesta rodada",
+    "QR real não foi escaneado e o túnel em uso não foi interrompido",
+    "HTTP 200 não comprova todas as telas e funções autenticadas"
+  ]
+}

@@ -6,7 +6,7 @@ O formulário inicial salva nome, empresa, segmento, equipe, objetivo e rede soc
 
 Em Menu e atalhos, arraste as alças ou use Subir/Descer para ordenar os grupos, os botões dentro de cada grupo, as pastas/categorias da biblioteca e os recursos dentro de cada pasta. A ordem também aparece no painel de ferramentas e é salva neste navegador. Etiquetas têm ordem salva no servidor, compartilhada com as listas e colunas do CRM da conexão selecionada. Etiquetas novas continuam disponíveis ao final; reordenar não muda vínculos nem envia mensagens ao WhatsApp.
 
-Se aparecer “Servidor desconectado”, abra `Iniciar Noctua.cmd` na pasta do projeto e mantenha a janela aberta. O iniciador detecta os serviços já ligados nas portas 3333/5173 e inicia os que faltarem. O painel tenta reconectar automaticamente e atualiza os dados quando o servidor retorna. O status de WhatsApp só é apresentado como conectado enquanto existe comunicação com o servidor.
+Se aparecer “Servidor desconectado” no site da Vercel, abra `Iniciar Noctua.cmd` na pasta do projeto e mantenha a janela aberta. O iniciador reutiliza ou inicia o servidor na porta 3333 e abre o túnel seguro; a interface local na porta 5173 é iniciada separadamente por `npm.cmd run dev`. O painel tenta reconectar automaticamente e atualiza os dados quando o servidor retorna. O status de WhatsApp só é apresentado como conectado enquanto existe comunicação com o servidor.
 
 Clique no nome do cliente para abrir perfil, negócio, resumo e anotações com data. A atribuição identifica o responsável da equipe; não envia a conversa para um número externo. O atalho Google Agenda prepara um evento; você confirma a criação no Google. Nenhum token de calendário é armazenado.
 

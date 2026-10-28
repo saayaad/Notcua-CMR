@@ -1,0 +1,12 @@
+{
+  "data": "2026-10-28",
+  "problema": "O iniciador consultava .vercel/repo.json, enquanto a Vercel CLI usa .vercel/project.json para o vínculo local do projeto.",
+  "correcao": "Verificação atualizada para .vercel/project.json; README e guia de operação corrigidos para separar servidor online de Vite local.",
+  "verificacao": [
+    "Documentação oficial da Vercel confirma .vercel/project.json após vercel link",
+    "Parser PowerShell leu o iniciador sem erros de sintaxe",
+    "README e docs/atendimento.md indicam pasta correta, npm.cmd run dev e alternativa Command Prompt no VS Code"
+  ],
+  "limite": "O iniciador completo não foi executado nesta auditoria porque faria login/link e poderia reiniciar o túnel em uso; falta conferir depois de reiniciar o PC.",
+  "fonte": "https://vercel.com/docs/cli/global-options"
+}

@@ -1,0 +1,19 @@
+{
+  "data": "2026-10-28",
+  "ambiente": "SQLite temporário, chave de formato aleatório fictícia e conector WhatsApp fictício",
+  "verificacoes": [
+    "Cadastro e listagem da chave no sistema",
+    "Geração de payload Copia e Cola para R$ 150,00",
+    "CRC16 conferido e QR retornado como PNG em Data URL",
+    "Chave ausente ou excluída recusada com HTTP 404",
+    "Nenhum envio de mensagem realizado pelo teste"
+  ],
+  "suite": "attendance.test.ts: 19/19 aprovados",
+  "tipagem": "servidor e interface aprovados",
+  "requisitos": ["REQ-035", "REQ-036", "REQ-037", "REQ-038"],
+  "limites": [
+    "A chave fictícia não foi verificada em instituição financeira",
+    "Botões da interface e recebimento no telefone não foram testados neste lote",
+    "Texto e áudio opcionais do pedido de comprovante foram inspecionados no código, sem execução integrada"
+  ]
+}
