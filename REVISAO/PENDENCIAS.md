@@ -2,7 +2,7 @@
 
 Publicação atualizada em 28/10/2026 por autorização anterior do usuário: https://notcua.vercel.app/atendimento, projeto noctua-crm, versão READY `dpl_quW1LBAWRzs8VcuaAJF7K4EUpiR8`. Página 200, servidor público 200, API protegida com 401 sem login e comunicação Vercel/API liberada no teste de origem. O pacote de fluxos publicado coincide com a compilação local testada. Servidor e túnel dependem deste PC. Isso atende ao acesso online, mas a auditoria funcional abaixo continua aberta.
 
-Nova publicação em 28/10/2026: `dpl_9WMHsTNvBFpT9Z2ZibJscRjECETS` READY, alias https://notcua.vercel.app. Depois que o túnel anterior parou, o usuário aprovou especificamente reabri-lo para o CRM. A API voltou a responder por HTTPS; a interface publicada carregou 131 conversas da conexão Teste. A suíte completa passou 177/177. REQ-603–607 foram conferidos em produção, com persistência dos filtros e da ordem após recarregar. REQ-608 permanece parcial: três páginas respeitaram a ordem, faltando combinação de filtro com mais de 50 resultados. O endereço da API continua temporário: se o processo ou PC parar, o site perde acesso aos dados até iniciar um novo túnel e atualizar a Vercel. Evidência: `evidencias/leads-e-publicacao-2026-10-28.json`.
+Nova publicação em 28/10/2026: `dpl_9WMHsTNvBFpT9Z2ZibJscRjECETS` READY, alias https://notcua.vercel.app. Depois que o túnel anterior parou, o usuário aprovou especificamente reabri-lo para o CRM. A API voltou a responder por HTTPS; a interface publicada carregou 131 conversas da conexão Teste. A suíte completa passou 177/177. REQ-603–608 foram concluídos: filtros e ordem persistiram após recarregar; três páginas mantiveram a ordenação; o teste isolado validou filtro combinado, ordem e segunda página. O endereço da API continua temporário: se o processo ou PC parar, o site perde acesso aos dados até iniciar um novo túnel e atualizar a Vercel. Evidência: `evidencias/leads-e-publicacao-2026-10-28.json`.
 
 Atendimento responsivo conferido em viewports simulados 390x844 e 768x1024: lista → conversa → voltar e gaveta da biblioteca funcionaram; REQ-234 concluído. REQ-198 permanece parcial por não haver teste em dispositivos físicos e porque o rodapé do chat fica apertado no tablet. Evidência: `evidencias/atendimento-responsivo-2026-10-28.json`.
 
@@ -12,7 +12,7 @@ Prioridade seguinte autorizada pelo usuário: menu de botão direito global impl
 
 ## Situação
 
-O livro [REQUISITOS.md](REQUISITOS.md) contém 703 registros: 392 ⬜ A VERIFICAR; 97 ✅ COMPLETO; 148 🟡 PARCIAL; 5 ⛔ NÃO TESTADO; 50 🔁 SUBSTITUÍDO OU CANCELADO; 4 ⚠️ PRECISA DE DECISÃO; 4 🔌 DESCONECTADO; 2 🐞 COM DEFEITO; 1 ❌ AUSENTE. Repetições de pedidos não são funções distintas; ainda não há percentual de completude comprovado.
+O livro [REQUISITOS.md](REQUISITOS.md) contém 703 registros: 392 ⬜ A VERIFICAR; 98 ✅ COMPLETO; 147 🟡 PARCIAL; 5 ⛔ NÃO TESTADO; 50 🔁 SUBSTITUÍDO OU CANCELADO; 4 ⚠️ PRECISA DE DECISÃO; 4 🔌 DESCONECTADO; 2 🐞 COM DEFEITO; 1 ❌ AUSENTE. Repetições de pedidos não são funções distintas; ainda não há percentual de completude comprovado.
 A verificação individual, prioridade, esforço e lotes serão preenchidos depois da aprovação do escopo, sem reutilizar “implementado” de um relatório antigo como prova.
 
 | ID / conjunto | Status | O que decidir ou completar | Prioridade/esforço |

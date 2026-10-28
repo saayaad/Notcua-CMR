@@ -24,12 +24,12 @@
     "ordenacao": "Mais antigos mudou o primeiro contato e permaneceu após recarregar; restaurado Mais recentes",
     "filtro_nossa_resposta_persistencia": "Aguardando nossa resposta permaneceu após recarregar; restaurado Todas as situações",
     "maior_tempo_espera": "Primeiro contato com aproximadamente 70.828 minutos aguardando; restaurado Mais recentes",
-    "paginacao": "Com maior tempo de espera selecionado, páginas 1–50, 51–100 e 101–131 de 131 carregaram sem perda da seleção",
+    "paginacao": "Com maior tempo de espera selecionado, páginas 1–50, 51–100 e 101–131 de 131 carregaram sem perda da seleção; operations.test.ts validou resposta + ordem + página 2 em banco descartável e passou na suíte 177/177",
     "fluxo_teste": "Editor exibiu Categoria da biblioteca e Recurso da biblioteca; só havia Sem categoria. Bloco temporário descartado ao sair, sem salvar. REQ-127 permanece parcial."
   },
   "limites": [
     "Não houve envio real de WhatsApp nesta rodada.",
-    "Os filtros não comprovam comportamento em outros navegadores ou celulares; paginação com filtro combinado acima de 50 resultados permanece sem teste.",
+    "Os filtros não comprovam comportamento em outros navegadores ou celulares; a combinação de filtro e página 2 foi comprovada em banco descartável, não com mais de 50 leads reais.",
     "A publicação depende da disponibilidade do túnel temporário."
   ]
 }
