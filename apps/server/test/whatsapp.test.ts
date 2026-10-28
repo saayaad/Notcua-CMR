@@ -270,6 +270,27 @@ test('primeira mensagem nova etiqueta uma vez; histórico, grupos, replays e eve
   assert.equal(await db.contact.count({ where: { phoneNumber: '5511444440000' } }), 0);
 });
 
+test('exclusão recebida preserva texto e só marca a conversa de origem', async () => {
+  const firstJid = '5511777771001@s.whatsapp.net';
+  const secondJid = '5511777771002@s.whatsapp.net';
+  await sync.messagesUpsert(sessionId, [message(firstJid, 'id-compartilhado', false, 'Texto preservado')], false);
+  await sync.messagesUpsert(sessionId, [message(secondJid, 'id-compartilhado', false, 'Outro texto')], false);
+  await sync.messagesUpsert(sessionId, [{
+    key: { remoteJid: firstJid, id: 'evento-exclusao', fromMe: false },
+    message: { protocolMessage: { type: 0, key: { id: 'id-compartilhado', remoteJid: firstJid } } },
+  }], true);
+  const first = await db.chatMessage.findFirstOrThrow({
+    where: { whatsappMessageId: 'id-compartilhado', conversation: { contact: { phoneNumber: '5511777771001' } } },
+  });
+  const second = await db.chatMessage.findFirstOrThrow({
+    where: { whatsappMessageId: 'id-compartilhado', conversation: { contact: { phoneNumber: '5511777771002' } } },
+  });
+  assert.equal(first.text, 'Texto preservado');
+  assert.equal((first.rawPayload as { deletedByClient?: boolean }).deletedByClient, true);
+  assert.equal(second.text, 'Outro texto');
+  assert.equal((second.rawPayload as { deletedByClient?: boolean }).deletedByClient, undefined);
+});
+
 test('fila de etiquetas tenta novamente após falha e conclui sem reenviar mensagens', async () => {
   const socket = new FakeSocket();
   const outbox = new LabelOutbox(db, () => socket);

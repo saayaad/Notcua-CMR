@@ -132,6 +132,18 @@ test('envio sem confirmação fica FAILED e nunca é repetido automaticamente', 
   assert.equal((await db.chatMessage.findUniqueOrThrow({ where: { id: 'out:timeout' } })).status, 'FAILED');
 });
 
+test('duração zero desliga presença automática e ausência da opção mantém digitando', async () => {
+  const before = socket.presence.length;
+  await messaging.send(sessionId, conversationId, {
+    requestId: 'sem-presenca', kind: 'text', text: 'Mensagem sem digitando', composingMs: 0,
+  });
+  assert.deepEqual(socket.presence.slice(before), ['paused']);
+  await messaging.send(sessionId, conversationId, {
+    requestId: 'presenca-automatica', kind: 'text', text: 'Oi',
+  });
+  assert.ok(socket.presence.slice(before).includes('composing'));
+});
+
 test('conversão real de WAV produz OGG/Opus; PTT e visualização única chegam ao socket', async () => {
   const samples = 8000;
   const pcm = Buffer.alloc(samples * 2);

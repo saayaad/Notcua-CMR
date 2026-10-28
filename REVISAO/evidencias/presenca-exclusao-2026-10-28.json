@@ -1,0 +1,19 @@
+{
+  "data": "2026-10-28",
+  "escopo": "Presença de digitação/gravação e preservação de mensagens apagadas",
+  "correcoes": [
+    "Duração de presença zero configurada explicitamente deixa de ativar o estado digitando; omissão mantém a duração automática baseada no texto.",
+    "Um evento de exclusão só marca a mensagem original do mesmo contato e conexão, mesmo se outra conversa usar o mesmo ID remoto."
+  ],
+  "testes": [
+    "Três testes isolados de presença e funil passaram em banco descartável com conector fictício.",
+    "O arquivo completo whatsapp.test.ts passou 14/14, incluindo o novo cenário de dois contatos com ID remoto repetido.",
+    "Typecheck do servidor passou."
+  ],
+  "limites": [
+    "O texto original é preservado e a interface tem selo de mensagem apagada, mas esse selo não foi conferido visualmente nesta rodada.",
+    "Mídias recebidas não são guardadas antecipadamente como arquivo local no caminho de sincronização; depois de apagadas, a recuperação do arquivo depende da disponibilidade no WhatsApp. Não declarar preservação de áudio/imagem como concluída.",
+    "Presença real em aparelho do destinatário e duração exata por tamanho ainda não foram medidas.",
+    "Nenhuma mensagem real foi enviada."
+  ]
+}

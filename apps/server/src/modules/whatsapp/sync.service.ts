@@ -160,8 +160,21 @@ export class SyncService {
       const protocol = entry.message.protocolMessage;
       if (protocol?.type === 0 && protocol.key?.id) {
         if (!entry.key.fromMe) {
+          const jids = [entry.key.remoteJid, entry.key.remoteJidAlt]
+            .filter((jid): jid is string => Boolean(jid));
           const original = await this.db.chatMessage.findFirst({
-            where: { whatsappMessageId: protocol.key.id, conversation: { sessionId } },
+            where: {
+              whatsappMessageId: protocol.key.id,
+              conversation: {
+                sessionId,
+                contact: {
+                  OR: [
+                    { whatsappJid: { in: jids } },
+                    { identities: { some: { jid: { in: jids } } } },
+                  ],
+                },
+              },
+            },
             select: { id: true, rawPayload: true },
           });
           if (original) {

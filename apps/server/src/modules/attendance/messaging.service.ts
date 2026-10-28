@@ -169,7 +169,7 @@ export class MessagingService {
       });
       this.whatsapp.notify(sessionId, 'messages');
       try {
-        const presenceMs = input.composingMs || (input.kind === 'text'
+        const presenceMs = Object.hasOwn(raw as object, 'composingMs') ? input.composingMs : (input.kind === 'text'
           ? Math.min(8000, Math.max(700, (text?.trim().length ?? 0) * 18))
           : input.kind === 'audio' ? 1400 : 0);
         if (presenceMs) {
