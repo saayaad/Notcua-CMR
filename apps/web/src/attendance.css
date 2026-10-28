@@ -86,6 +86,12 @@
 .inbox-layout .wait-age {
   font-size: 0.65rem;
 }
+.inbox-layout .wait-age:not(.warning):not(.urgent) {
+  color: #39bf91;
+}
+:root[data-theme='light'] .inbox-layout .wait-age:not(.warning):not(.urgent) {
+  color: #176e53;
+}
 .inbox-layout .wait-age.urgent::before {
   content: '';
   display: inline-block;

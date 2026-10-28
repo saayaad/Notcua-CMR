@@ -1,0 +1,17 @@
+{
+  "data": "2026-10-28",
+  "escopo": "Resumo de IA, copiloto e Biblioteca rápida do compositor",
+  "correcao": "Enter em uma busca / sem resultados deixa o rascunho intacto e não chama o envio de texto comum.",
+  "evidencias": [
+    "ChatPane.tsx oferece resumo em modal com objetivo, objeções e próximo passo e o oculta quando IA está desabilitada.",
+    "Composer.tsx oferece melhoria supervisionada do rascunho e três sugestões de objeção, condicionadas ao botão de IA e ao consentimento.",
+    "Composer.tsx abre Biblioteca rápida ao digitar /, filtra pelo termo e permite escolher recurso por clique ou Enter.",
+    "A seleção de recurso usa send-asset e exige conexão; a busca sem resultados não cai mais em sendText.",
+    "A compilação web de produção passou após as correções de atendimento."
+  ],
+  "limites": [
+    "Nenhuma geração Gemini foi executada: a chave funcional ainda não está disponível nesta auditoria.",
+    "Falta teste visual autenticado do modal, filtro e seleção por teclado.",
+    "Nenhuma mensagem real foi enviada."
+  ]
+}

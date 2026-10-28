@@ -118,10 +118,9 @@ export function ConversationList(p: Props) {
           orderedChats.map((chat) => {
             const last = chat.messages[0];
             const label = chat.contact.labels[0]?.label;
+            const awaitingResponse = chat.status === 'OPEN' && last?.direction === 'INBOUND' && Boolean(chat.lastMessageAt);
             const urgent =
-              p.filter !== 'archived' &&
-              last?.direction === 'INBOUND' &&
-              Boolean(chat.lastMessageAt) &&
+              awaitingResponse &&
               now - new Date(chat.lastMessageAt!).getTime() >= preferences.waitingRed * 60000;
             return (
               <div
@@ -165,7 +164,7 @@ export function ConversationList(p: Props) {
                         {label.name}
                       </span>
                     )}
-                    {preferences.waitingTimer && last?.direction === 'INBOUND' && chat.lastMessageAt && (
+                    {preferences.waitingTimer && awaitingResponse && chat.lastMessageAt && (
                       <small
                         className={
                           now - new Date(chat.lastMessageAt).getTime() >= preferences.waitingRed * 60000

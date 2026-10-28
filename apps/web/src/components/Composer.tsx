@@ -538,8 +538,11 @@ export function Composer({
               }
               if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
                 event.preventDefault();
-                if (slashOpen && quickAssets[0]) void sendQuickAsset(quickAssets[0]);
-                else void sendText();
+                if (slashOpen) {
+                  if (quickAssets[0]) void sendQuickAsset(quickAssets[0]);
+                  return;
+                }
+                void sendText();
               }
             }}
           />

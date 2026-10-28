@@ -1,0 +1,22 @@
+{
+  "data": "2026-10-28",
+  "escopo": "Atendimento móvel, personalização do HUD, fila SLA e notas internas",
+  "correcoes": [
+    "Conversas arquivadas não exibem mais o tempo de espera do cliente na lista.",
+    "A espera curta agora tem texto verde nos temas claro e escuro."
+  ],
+  "evidencias": [
+    "atendimento-responsivo-2026-10-28.json registra a gaveta da biblioteca abrindo e fechando em viewport 390x844 no site publicado.",
+    "App.tsx abre HudEditor a partir do atendimento e alterna a gaveta da biblioteca; HudEditor.tsx configura densidade, painéis, botões e funções com prévia.",
+    "ConversationList.tsx separa espera verde/amarela/vermelha com limites configuráveis e restringe o contador a conversas abertas.",
+    "O teste isolado de fila SLA confirmou a ordenação antes da paginação e a separação entre conversas abertas e arquivadas.",
+    "O teste isolado de notas internas confirmou persistência na cronologia sem envio ao conector WhatsApp fictício.",
+    "npm.cmd run typecheck -w @noctua/web passou."
+  ],
+  "limites": [
+    "Não houve inspeção visual autenticada nesta rodada para as mudanças do HUD, cores de SLA ou notas internas.",
+    "A reabertura da barra existe no topo, mas não foi localizada uma animação do atalho flutuante pedida em REQ-240.",
+    "A interface ainda precisa de teste em aparelho físico e em outros navegadores.",
+    "Nenhuma mensagem real foi enviada."
+  ]
+}
