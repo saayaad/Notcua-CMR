@@ -343,6 +343,54 @@ test('REQ-104: perfil persiste por usuário e fica isolado entre espaços', asyn
     await reopened.$disconnect();
   }
 });
+test('REQ-109: configuração do negócio persiste com isolamento e permissão de administrador', async () => {
+  const staffId = `access-member:${accounts.staff.email}`;
+  const binding = { email: accounts.staff.email, workspaceId: a, role: 'MEMBER', active: true };
+  await registry.operationRecord.upsert({
+    where: { id: staffId },
+    create: { id: staffId, kind: 'ACCESS_MEMBER', data: binding },
+    update: { data: binding },
+  });
+  const teamId = `team:${accounts.staff.email}`;
+  const teamMember = { email: accounts.staff.email, role: 'MEMBER', active: true };
+  await alphaDb.operationRecord.upsert({
+    where: { id: teamId },
+    create: { id: teamId, kind: 'TEAM', data: teamMember },
+    update: { data: teamMember },
+  });
+  const business = {
+    company: 'Empresa fictícia',
+    schedule: { days: [1, 2, 3, 4, 5], minTime: '08:00', maxTime: '18:00' },
+    autoCloseMinutes: 10,
+    distribution: false,
+  };
+  await request(app)
+    .put('/api/operations/settings/business')
+    .set('Authorization', 'Bearer alpha')
+    .send(business)
+    .expect(200);
+  assert.deepEqual(
+    (await request(app).get('/api/operations/settings/business').set('Authorization', 'Bearer alpha').expect(200)).body,
+    business,
+  );
+  assert.notDeepEqual(
+    (await request(app).get('/api/operations/settings/business').set('Authorization', 'Bearer beta').expect(200)).body,
+    business,
+  );
+  await request(app)
+    .put('/api/operations/settings/business')
+    .set('Authorization', 'Bearer staff')
+    .send(business)
+    .expect(403);
+
+  const reopened = createSqliteClient(databaseUrl('alpha'));
+  try {
+    const saved = await reopened.operationRecord.findUniqueOrThrow({ where: { id: 'settings:business' } });
+    assert.deepEqual(saved.data, business);
+  } finally {
+    await reopened.$disconnect();
+  }
+});
 test('renovação mantém a operação; revogar a licença atual bloqueia acesso sem apagar arquivos', async () => {
   const previous = await access.workspace(a);
   const renewal = await access.create(accounts.owner, { label: 'Renovação', months: 3 });
