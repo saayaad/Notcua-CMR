@@ -1,0 +1,5 @@
+# REQ-126 — funcionalidades de referência no site, 29/10/2026
+
+Diagnóstico documental, sem teste ou alteração funcional. O livro `REVISAO/REQUISITOS.md:70,97,281` atribui o item à pasta original Alterações, arquivo `6.txt`, mas esse arquivo não está presente na cópia atual do projeto. O resumo disponível `docs/revisao-solicitada.md:3–16` enumera acesso, navegação, preferências, contatos, fluxos, operação, IA e publicação e declara que não foi criada extensão de navegador. Ele não identifica quais capturas ou funcionalidades específicas devem ser homologadas como uma unidade em REQ-126.
+
+Os itens específicos já possuem IDs próprios no livro e têm provas individuais distintas; o resumo geral não comprova sua conclusão conjunta. Sem a fonte `6.txt` ou uma lista de referência aprovada pelo proprietário, REQ-126 permanece **A VERIFICAR**. A lacuna é de escopo/critério de aceite, não prova de ausência de implementação. Não iniciar extensão nem acrescentar funcionalidades deduzidas das capturas.

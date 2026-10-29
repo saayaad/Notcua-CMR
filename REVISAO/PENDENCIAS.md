@@ -1,5 +1,21 @@
 # Pendências — Noctua CRM
 
+## Chaves e operações, diagnóstico REQ-695/696/697 — 29/10/2026
+
+Os três IDs passam de “não testado” a “parcial”: o próprio histórico já comprovava ativação, reserva/uso único e isolamento com contas Firebase fictícias. A interface e a API estão ligadas por AuthGate, ActivationPanel, access.routes e AccessService. Falta o percurso externo de cadastro, verificação de e-mail, ativação e recarregamento com segunda conta real; nenhum teste foi repetido nem chave/conta real criada. Ver `evidencias/ativacao-conta-historico-2026-10-29.md`. Contagem consolidada: 304 a verificar, 114 completos, 226 parciais, 0 não testados; demais estados inalterados.
+
+## Regra de horário comercial informada pelo usuário — 29/10/2026
+
+Para REQ-109, o usuário esclareceu que mensagens recebidas devem continuar entrando e que funis, fluxos e agendamentos seguem normalmente fora do horário. Solicitou opção de resposta automática com texto configurável quando um lead escrever fora do horário. Ainda falta definir a frequência da resposta para mensagens repetidas do mesmo lead; a pergunta está pendente. Não implementar nem enviar mensagem real antes de fechar a regra e verificar em conector fictício. O código atual salva `settings:business.schedule`, mas não o usa para essa resposta.
+
+## Acesso e operação, diagnóstico REQ-126 — 29/10/2026
+
+REQ-126 continua “a verificar” após leitura documental: `docs/revisao-solicitada.md` resume módulos do site e adia a extensão, mas o `6.txt` original indicado no livro não está nesta cópia; não há lista fechada das funcionalidades/capturas abrangidas por este ID. Isso é lacuna de escopo e critério de aceite, não prova de que nunca foi testado. Ver `evidencias/escopo-referencias-req126-2026-10-29.md`. Depende da fonte original ou de critério aprovado antes de implementar algo novo. Próximo módulo P1: Chaves e operações.
+
+## Acesso e operação, lote REQ-112/113 — 29/10/2026
+
+REQ-112/113 continuam parciais: caminhos de recuperação e verificação no Firebase foram relidos, sem disparar e-mail. Para REQ-113, um teste novo e isolado passou 1/1: token fictício com e-mail não verificado foi recusado com HTTP 403 antes do acesso; tipagem aprovada. Isso não comprova entrega, clique no link nem retorno ao aplicativo. Prova por arquivo/função/linha em `evidencias/recuperacao-verificacao-email-2026-10-29.md`. REQ-112 depende de conta de teste e autorização para envio controlado; REQ-113 depende também de confirmação manual do link. Nenhum teste anterior foi repetido. Próximo lote independente: diagnosticar REQ-126 pela fonte original e, em seguida, passar às pendências P1 de Chaves e operações.
+
 ## Acesso e operação, lotes REQ-103/107/109 — 29/10/2026
 
 REQ-103/107 seguem parciais após leitura das ligações de ordem/visibilidade e da prova anterior de preferências; falta o percurso visual e a conferência após recarregar. Nenhum teste antigo foi repetido. REQ-109 segue parcial: teste novo e isolado passou 1/1 para gravação/leitura, persistência em segunda conexão SQLite, isolamento entre espaços e 403 para atendente. A primeira tentativa isolada encontrou fixture sem atendente (402); após preparar o fixture, repetiu-se apenas esse teste novo. O encerramento automático já tinha prova e não foi testado de novo. O horário comercial é salvo, mas não foi identificada aplicação no servidor; sua função exata depende de decisão de regra de negócio. REQ-108 também segue parcial após leitura de código: assinatura é acrescentada ao enviar, mas o rascunho visível não mostra o texto final. Conforme REQ-661, nenhum teste funcional de Mensagens ou envio foi feito. Ver `evidencias/menu-negocio-2026-10-29.md`. Próximo lote: outras lacunas de Acesso que possam ser verificadas sem login externo; REQ-105/106/109 aguardam decisões de comportamento antes de correção.

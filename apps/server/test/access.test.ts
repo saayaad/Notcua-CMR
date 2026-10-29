@@ -21,7 +21,7 @@ import {
 import { createSqliteClient } from '../src/database/sqlite-client.js';
 import { setDatabasePaths } from '../src/database/paths.js';
 import { env } from '../src/config/env.js';
-import { authorizeAccount, authorizeToken } from '../src/http/auth.js';
+import { authorizeAccount, authorizeToken, verifyRegisteredToken } from '../src/http/auth.js';
 import { createApp } from '../src/app.js';
 import { WhatsappService } from '../src/modules/whatsapp/whatsapp.service.js';
 import { CredentialCipher } from '../src/modules/whatsapp/credential-cipher.js';
@@ -71,6 +71,7 @@ before(async () => {
   env.FIREBASE_PROJECT_ID = 'noctua-license-test';
   if (!getApps().length) initializeApp({ projectId: 'noctua-license-test' });
   mock.method(getAuth(), 'verifyIdToken', async (token: string) => {
+    if (token === 'unverified') return { ...accounts.alpha, email_verified: false };
     const account = accounts[token as keyof typeof accounts];
     if (!account) throw new Error('Invalid token');
     return { ...account, email_verified: true };
@@ -143,6 +144,13 @@ after(async () => {
     parent = resolve(tmpdir());
   assert.ok(target.startsWith(parent + '\\') || target.startsWith(parent + '/'));
   await rm(target, { recursive: true, force: true });
+});
+test('REQ-113: token fictício de e-mail não confirmado é recusado antes do acesso', async () => {
+  await assert.rejects(verifyRegisteredToken('unverified'), /Confirme seu e-mail/);
+  await request(app)
+    .get('/api/access/me')
+    .set('Authorization', 'Bearer unverified')
+    .expect(403);
 });
 test('somente o e-mail proprietário gera chaves e o código completo não fica armazenado', async () => {
   await assert.rejects(access.create(accounts.alpha, { label: 'No', months: 1 }), /proprietário/);
