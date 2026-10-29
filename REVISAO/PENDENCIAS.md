@@ -1,5 +1,9 @@
 # Pendências — Noctua CRM
 
+## Acesso e operação, lote REQ-105/106 — 29/10/2026
+
+Diagnóstico por leitura de código e da prova de 28/10, sem repetir testes. REQ-105 continua parcial: as cinco opções aplicam classes de privacidade, mas o nome do contato também aparece em outras telas fora dos seletores CSS; falta definir a cobertura esperada e conferir visualmente cada painel após recarregar. REQ-106 continua parcial: a opção é persistida, porém o evento que aciona o aviso também ocorre após envios e atualizações de status; falta decidir quais eventos devem notificar e verificar permissão/entrega no navegador. Nenhuma notificação foi disparada e nenhuma mensagem foi testada. Evidência por arquivo/função/linha em `evidencias/privacidade-notificacoes-2026-10-29.md`. Próximo lote independente: REQ-103/107, ordem e visibilidade do menu, somente lacunas ainda sem prova.
+
 ## Acesso e operação, lote REQ-104 — 29/10/2026
 
 Um teste novo e exclusivo de REQ-104 passou 1/1: perfil fictício gravado, lido após reabrir SQLite descartável e isolado de outro espaço. Tipagem aprovada. O requisito permanece parcial porque falta o percurso visual com recarregamento. Nenhuma suíte anterior, conta real ou banco de produção foi tocado. Prova por arquivo/função/linha em `evidencias/perfil-operador-2026-10-29.md`. Próximo lote P1: verificar as lacunas específicas de privacidade/notificações sem repetir os testes de preferências já aprovados; os efeitos do navegador aguardam acesso visual permitido.
