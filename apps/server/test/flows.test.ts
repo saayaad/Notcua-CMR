@@ -660,3 +660,77 @@ test('primeira mensagem do dia respeita a virada da meia-noite em São Paulo', a
   await drain();
   assert.equal(socket.sends.length, before + 1);
 });
+
+test('primeira mensagem absoluta ignora saídas antigas e bloqueia segunda entrada', async () => {
+  const value = graph();
+  value.nodes[0]!.data.triggerMode = 'first';
+  await prepare(value);
+
+  const firstChat = await contact();
+  await db.chatMessage.create({
+    data: {
+      conversationId: firstChat.id,
+      direction: 'OUTBOUND',
+      status: 'DELIVERED',
+      text: 'Saída anterior',
+      sentAt: new Date(Date.now() - 60_000),
+    },
+  });
+  const beforeFirst = socket.sends.length;
+  await incoming(firstChat.id, 'Primeira entrada');
+  await drain();
+  assert.equal(socket.sends.length, beforeFirst + 1);
+
+  const secondChat = await contact();
+  await db.chatMessage.create({
+    data: {
+      conversationId: secondChat.id,
+      direction: 'INBOUND',
+      status: 'DELIVERED',
+      text: 'Entrada anterior',
+      sentAt: new Date(Date.now() - 60_000),
+    },
+  });
+  const beforeSecond = socket.sends.length;
+  await incoming(secondChat.id, 'Segunda entrada');
+  await drain();
+  assert.equal(socket.sends.length, beforeSecond);
+});
+
+test('filtro de etiquetas do fluxo exige permitida e rejeita excluída', async () => {
+  const allowed = await db.label.create({
+    data: { id: `allowed:${randomUUID()}`, sessionId, name: 'Permitida', color: '#a68bfa' },
+  });
+  const excluded = await db.label.create({
+    data: { id: `excluded:${randomUUID()}`, sessionId, name: 'Excluída', color: '#a68bfa' },
+  });
+  const value = graph();
+  value.nodes[0]!.data.allowedLabelIds = [allowed.id];
+  value.nodes[0]!.data.excludedLabelIds = [excluded.id];
+  await prepare(value);
+
+  const unlabeled = await contact();
+  const beforeUnlabeled = socket.sends.length;
+  await incoming(unlabeled.id, 'oi');
+  await drain();
+  assert.equal(socket.sends.length, beforeUnlabeled);
+
+  const permitted = await contact();
+  await db.contactLabel.create({ data: { contactId: permitted.contactId, labelId: allowed.id } });
+  const beforePermitted = socket.sends.length;
+  await incoming(permitted.id, 'oi');
+  await drain();
+  assert.equal(socket.sends.length, beforePermitted + 1);
+
+  const rejected = await contact();
+  await db.contactLabel.createMany({
+    data: [
+      { contactId: rejected.contactId, labelId: allowed.id },
+      { contactId: rejected.contactId, labelId: excluded.id },
+    ],
+  });
+  const beforeRejected = socket.sends.length;
+  await incoming(rejected.id, 'oi');
+  await drain();
+  assert.equal(socket.sends.length, beforeRejected);
+});
