@@ -2,7 +2,7 @@
 
 Fonte: REVISAO/REQUISITOS.md, livro com 703 IDs. Este inventário preserva a evidência e o limite de cada linha. O estado “a verificar” significa falta de prova individual vinculada no livro; não significa que o requisito nunca tenha sido testado. A prioridade abaixo é proposta para triagem, não aprovação de implementação.
 
-Pendentes ativos: **541**. Concluídos excluídos: **112**. Substituídos ou cancelados excluídos: **50**.
+Pendentes ativos: **539**. Concluídos excluídos: **114**. Substituídos ou cancelados excluídos: **50**.
 
 ## Estados pendentes
 
@@ -11,9 +11,9 @@ Pendentes ativos: **541**. Concluídos excluídos: **112**. Substituídos ou can
 | ⚠️ PRECISA DE DECISÃO | 4 |
 | ⛔ NÃO TESTADO | 5 |
 | ❌ AUSENTE | 1 |
-| ⬜ A VERIFICAR | 307 |
+| ⬜ A VERIFICAR | 304 |
 | 🔌 DESCONECTADO | 4 |
-| 🟡 PARCIAL | 220 |
+| 🟡 PARCIAL | 221 |
 
 ## Módulos e ordem de triagem
 
@@ -34,7 +34,7 @@ Pendentes ativos: **541**. Concluídos excluídos: **112**. Substituídos ou can
 | Fluxos e CRM | 22 | 0 | 22 | 0 | 0 | 0 |
 | IA | 12 | 0 | 0 | 0 | 0 | 12 |
 | IA e mídia | 32 | 0 | 0 | 0 | 0 | 32 |
-| Infraestrutura | 16 | 16 | 0 | 0 | 0 | 0 |
+| Infraestrutura | 14 | 14 | 0 | 0 | 0 | 0 |
 | Interface global | 33 | 0 | 0 | 31 | 0 | 2 |
 | Mensagens | 53 | 0 | 0 | 0 | 51 | 2 |
 | Operação e IA | 30 | 0 | 20 | 0 | 0 | 10 |
@@ -432,8 +432,6 @@ Pendentes ativos: **541**. Concluídos excluídos: **112**. Substituídos ou can
 |---|---|---|---|---|---|---|
 | REQ-521 (L746) | ⬜ A VERIFICAR | P1 diagnóstico | Resolver limite de arquivo de 100 MB na publicação. | Sem prova individual vinculada neste livro; consultar histórico antes de testar. | Diagnosticar histórico e critério de aceite; registrar o limite específico. | Não explicitada no livro; levantar no diagnóstico |
 | REQ-523 (L748) | 🟡 PARCIAL | P1 diagnóstico | Resolver tela de servidor sem resposta no site publicado. | evidencias/reinicio-2026-10-28.json:3–16 registra site 200 com API offline após PC desligado, seguido de servidor/túnel reiniciados e saúde 200; docs/operacao.md:9 instrui reabrir Iniciar Noctua.cmd. | A falha retorna quando PC ou túnel param. Disponibilidade sem PC depende de escolher hospedagem persistente e plano de dados; requer decisão do usuário antes de implementar. | Não explicitada no livro; levantar no diagnóstico |
-| REQ-524 (L749) | ⬜ A VERIFICAR | P1 diagnóstico | Integrar Firebase para login. | Sem prova individual vinculada neste livro; consultar histórico antes de testar. | Diagnosticar histórico e critério de aceite; registrar o limite específico. | Não explicitada no livro; levantar no diagnóstico |
-| REQ-525 (L750) | ⬜ A VERIFICAR | P1 diagnóstico | Fornecer nomes corretos de todas as variáveis públicas Firebase. | Sem prova individual vinculada neste livro; consultar histórico antes de testar. | Diagnosticar histórico e critério de aceite; registrar o limite específico. | Não explicitada no livro; levantar no diagnóstico |
 | REQ-526 (L751) | ⚠️ PRECISA DE DECISÃO | P1 diagnóstico | Usar uma solução sem cartão ou dados de pagamento. | Sem prova individual vinculada neste livro; consultar histórico antes de testar. | Restrição gratuita sem cartão confirmada. Conflita com garantia de geração Gemini quando o projeto não oferece cota gratuita; não ativar faturamento sem decisão. | Decisão do usuário antes de implementar |
 | REQ-527 (L752) | ⬜ A VERIFICAR | P1 diagnóstico | Configurar contas conectadas na medida autorizada. | Sem prova individual vinculada neste livro; consultar histórico antes de testar. | Diagnosticar histórico e critério de aceite; registrar o limite específico. | Não explicitada no livro; levantar no diagnóstico |
 | REQ-530 (L755) | 🟡 PARCIAL | P1 diagnóstico | Não exigir QR Code em toda abertura quando sessão válida estiver persistida. | whatsapp.service.ts:197 salva atualizações de credencial e :402–410 restaura sessões com autoConnect e credencial persistida; auth-store.ts:15–67 persiste estado no banco; whatsapp.test.ts:116–159 cobre persistência e QR em conector fictício. | A conexão Teste não possui credencial salva e as sessões estão desligadas; falta observar reinício com uma sessão real válida. Não conectar nem gerar QR automaticamente nesta revisão. | Não explicitada no livro; levantar no diagnóstico |
@@ -442,7 +440,7 @@ Pendentes ativos: **541**. Concluídos excluídos: **112**. Substituídos ou can
 | REQ-535 (L760) | ⬜ A VERIFICAR | P1 diagnóstico | Guiar autenticação inicial da Vercel e escolha do projeto. | Sem prova individual vinculada neste livro; consultar histórico antes de testar. | Diagnosticar histórico e critério de aceite; registrar o limite específico. | Não explicitada no livro; levantar no diagnóstico |
 | REQ-538 (L763) | ⬜ A VERIFICAR | P1 diagnóstico | Evitar abrir endereço de outro produto chamado Noctua. | Sem prova individual vinculada neste livro; consultar histórico antes de testar. | Diagnosticar histórico e critério de aceite; registrar o limite específico. | Não explicitada no livro; levantar no diagnóstico |
 | REQ-539 (L764) | ⬜ A VERIFICAR | P1 diagnóstico | Adequar link e projeto após renomear para noctua-crm. | Sem prova individual vinculada neste livro; consultar histórico antes de testar. | Diagnosticar histórico e critério de aceite; registrar o limite específico. | Não explicitada no livro; levantar no diagnóstico |
-| REQ-540 (L765) | ⬜ A VERIFICAR | P1 diagnóstico | Corrigir Firebase ausente no ambiente local apesar de configurado na hospedagem. | Sem prova individual vinculada neste livro; consultar histórico antes de testar. | Diagnosticar histórico e critério de aceite; registrar o limite específico. | Não explicitada no livro; levantar no diagnóstico |
+| REQ-540 (L765) | 🟡 PARCIAL | P1 diagnóstico | Corrigir Firebase ausente no ambiente local apesar de configurado na hospedagem. | apps/web/src/auth/firebase.ts:3–12 exige quatro VITE_FIREBASE_*; apps/web/src/auth/AuthGate.tsx:155–162 mostra “Acesso em configuração” se faltarem. apps/web/.env.example declara os nomes, mas nenhum apps/web/.env ou .env.local existe nesta cópia. | Obter os quatro identificadores públicos da aplicação Firebase correta e criar configuração local ignorada pelo Git; depois validar inicialização local e acesso autorizado. Não copiar credencial administrativa para VITE_*. | Conta de teste e confirmação manual |
 | REQ-541 (L766) | 🟡 PARCIAL | P1 diagnóstico | Abrir o endereço correto do sistema após iniciar. | scripts/iniciar-noctua-online.ps1:6 define https://notcua.vercel.app/atendimento e linha 148 chama Start-Process com esse endereço; LEIA-ME - Noctua Online.txt:17–18 repete a URL. | Falta observar o navegador aberto pelo atalho em uma partida controlada; não contornar a negativa anterior de acesso à página autenticada. | Evidência visual autorizada ou fornecida pelo usuário |
 | REQ-542 (L767) | ⬜ A VERIFICAR | P1 diagnóstico | Fazer git push das entregas para publicação. | Sem prova individual vinculada neste livro; consultar histórico antes de testar. | Diagnosticar histórico e critério de aceite; registrar o limite específico. | Não explicitada no livro; levantar no diagnóstico |
 | REQ-543 (L768) | 🟡 PARCIAL | P1 diagnóstico | Manter o PC ligado e o túnel aberto no modelo local gratuito; explicar essa dependência. | LEIA-ME - Noctua Online.txt:10–20 instrui deixar PC, internet e janela abertos; docs/operacao.md:9 orienta reinício; evidencias/reinicio-2026-10-28.json:2–11 registra API offline após desligamento e recuperação. | Não há garantia de disponibilidade contínua; mudar para hospedagem persistente exige escolha de tecnologia, migração de dados e possivelmente custo, dependentes de aprovação. | Não explicitada no livro; levantar no diagnóstico |
