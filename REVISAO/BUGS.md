@@ -12,7 +12,7 @@ Atualização: 27/10/2026. Nenhum defeito funcional novo confirmado na Fase 1 e 
 Os relatos do usuário estão individualizados em REQUISITOS.md (L-05, L-17, L-18, L-19, L-20, L-23 e L-24). Relatórios anteriores dizem que alguns foram corrigidos, mas não ganham status 🔧 nesta revisão sem reteste próprio.
 IDs BUG-001 em diante serão atribuídos a defeitos concretos na Fase 2. Não converter observação ambiental em bug do produto.
 
-## BUG-002 — Resumo parava de acompanhar conversas longas (reprodução corrigida localmente em 29/10/2026)
+## BUG-002 — Resumo parava de acompanhar conversas longas (reprodução corrigida e enviada em 29/10/2026)
 
 Prioridade alta; esforço estimado M. `apps/server/src/modules/operations/ai.service.ts:27–31, 62–70`: a consulta carrega no máximo 60 mensagens, mas a atualização compara o tamanho dessa janela com `covered`. Depois de criar um resumo com `covered=57`, novas mensagens não fazem `60 - 57` atingir o intervalo de 10. Configurar intervalo acima de 60 também impede o primeiro resumo.
 
@@ -20,7 +20,7 @@ Reprodução em 27/10/2026: execução real de `generateSuggestion` com reposit�
 
 Correção local: o disparo do resumo agora considera a contagem completa de mensagens, processa o próximo trecho cronológico em lotes de até 100 e inclui o resumo anterior no pedido. O teste com provedor fictício confirmou avanço de 57 para 87 e 157 mensagens e disparo com intervalo 100. A cobertura é persistida no banco temporário e uma nova chamada sem mensagens adicionais não repete o resumo. Ainda falta verificar histórico inserido fora de ordem, reinício do servidor, falha do provedor e interface real; o marcador atual é uma contagem, não um cursor estável. Evidência: `evidencias/resumo-ia-2026-10-29.json`. REQ-433/434.
 
-## BUG-003 — Cache não exigia aprovação e podia reutilizar saudação personalizada (corrigido localmente em 29/10/2026)
+## BUG-003 — Cache não exigia aprovação e podia reutilizar saudação personalizada (corrigido e enviado em 29/10/2026)
 
 Prioridade alta; esforço M. `apps/server/src/modules/operations/ai.service.ts:39–50,109–110`: respostas produzidas pelo modelo são incluídas diretamente em `AI_SEMANTIC_CACHE`, sem aprovação, e a busca não exige estado aprovado ou resposta genérica. O filtro exclui alguns números/valores, mas não nomes. A interface anuncia respostas “aprovadas”.
 
@@ -28,7 +28,7 @@ Reprodução isolada: dois clientes fictícios fizeram a mesma pergunta. A prime
 
 Correção local: respostas geradas entram como pendentes; somente a aprovação explícita por administrador libera reutilização. A aprovação exige conversa de origem e recusa o nome do cliente, saudações com nome e padrões de contato/valores. Editar sem aprovar retira a aprovação. Entradas antigas sem origem verificável ficam inativas e não podem ser aprovadas; nenhuma linha da base real foi apagada ou alterada. Teste isolado com três clientes fictícios aprovou o caminho de revisão e bloqueou a saudação personalizada. Falta percurso visual publicado; REQ-424 permanece parcial. Evidência: `evidencias/cache-ia-2026-10-29.json`. REQ-424/425/442.
 
-## BUG-004 — Sugestão inicial ignorava texto analisado de mídia (corrigido localmente em 29/10/2026)
+## BUG-004 — Sugestão inicial ignorava texto analisado de mídia (corrigido e enviado em 29/10/2026)
 
 `preprocessMedia` gravava transcrições e descrições em `ai-media`, mas `generateSuggestion` usava esse texto somente nas linhas do resumo. Antes de existir resumo, o contexto da sugestão substituía a mídia por um marcador genérico. A correção usa as linhas já enriquecidas pela análise no histórico recente. Teste isolado com áudio e vídeo fictícios confirmou que ambos os textos chegam ao pedido de sugestão; tipagem passou. Nenhum provedor externo foi chamado. Falta conferir mídia real e interface autenticada. Evidência: `evidencias/media-contexto-2026-10-29.json`. REQ-140/141.
 

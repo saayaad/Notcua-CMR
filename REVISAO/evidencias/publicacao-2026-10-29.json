@@ -1,0 +1,14 @@
+{
+  "date": "2026-10-29",
+  "repository": "https://github.com/saayaad/Notcua-CMR",
+  "branch": "main",
+  "codeCommit": "b3e040910a946b025a784690c7f1065cb1e9aa90",
+  "vercelProject": "noctua-crm",
+  "vercelStatus": "success: Deployment has completed",
+  "vercelDeployment": "https://vercel.com/nolan-70b4/noctua-crm/DZKVozHdwwViU4jMDt8MfLWAnwPW",
+  "githubChecks": "success: npm ci, db:generate, typecheck, build e test",
+  "githubJob": "https://github.com/saayaad/Notcua-CMR/actions/runs/40930659931/job/123647885403",
+  "localVerification": "186 testes de servidor, zero falhas; compilação de servidor e interface aprovada; /health local e API pública responderam ok.",
+  "operationsSafety": "Quatro sessões WhatsApp desconectadas com autoConnect=false; nove tarefas QUEUED permanecem adiadas para 2999.",
+  "limits": "A Vercel hospeda a interface. A API e os dados seguem neste computador através de túnel temporário; percurso visual autenticado não foi observado nesta rodada."
+}
