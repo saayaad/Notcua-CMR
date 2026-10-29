@@ -31,6 +31,7 @@ import {
   FreePlacementSettings,
 } from './AttendanceCustomization';
 import { shortcutOptions } from '../context/attendance';
+import { normalizeFloatingPositions } from '../context/hud-placement';
 
 type HudDraft = Pick<
   Preferences,
@@ -121,14 +122,23 @@ export function HudEditor({
       .catch(() => undefined);
     return () => controller.abort();
   }, [sessionId, request]);
-  const [draft, setDraft] = useState(() => draftFrom(preferences));
+  const [draft, setDraft] = useState(() => ({
+    ...draftFrom(preferences),
+    hudBlockPositions: normalizeFloatingPositions(preferences.hudBlockPositions),
+  }));
   const [tab, setTab] = useState(initialTab);
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [mobileView, setMobileView] = useState('chat');
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [dragging, setDragging] = useState('');
   const [busy, setBusy] = useState(false);
-  const change = (value: Partial<HudDraft>) => setDraft((current) => ({ ...current, ...value }));
+  const change = (value: Partial<HudDraft>) => setDraft((current) => ({
+    ...current,
+    ...value,
+    ...(value.hudBlockPositions
+      ? { hudBlockPositions: normalizeFloatingPositions(value.hudBlockPositions) }
+      : {}),
+  }));
   const movePanel = (target: string) => {
     if (!dragging || dragging === target) return;
     const next = [...draft.hudPanelOrder];

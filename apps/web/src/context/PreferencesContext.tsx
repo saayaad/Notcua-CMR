@@ -2,13 +2,8 @@ import { createContext, useContext, useEffect, useRef, useState, useCallback, ty
 import { useApi, errorMessage } from './ApiContext';
 import { PreferenceSaveQueue } from './preferences-save';
 import { firebaseAuth } from '../auth/firebase';
-export interface HudBlockPosition {
-  mode: 'dock' | 'floating';
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
+import type { HudBlockPosition } from './hud-placement.js';
+export type { HudBlockPosition } from './hud-placement.js';
 export interface PinnedButtonSettings {
   label?: string;
   category?: string;

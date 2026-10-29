@@ -263,6 +263,7 @@ test('REQ-493/494/503/206/208/209/214/215/216: preferências fictícias persiste
     favicon: image,
     density: 'expanded',
     panelPosition: 'left',
+    hudBlockPositions: { chat: { mode: 'floating', x: 12, y: 10, width: 40, height: 50 } },
   };
   await request(app).put(route).set('Authorization', 'Bearer alpha').send(settings).expect(200);
   const saved = (await request(app).get(route).set('Authorization', 'Bearer alpha').expect(200)).body;
@@ -300,14 +301,25 @@ test('REQ-493/494/503/206/208/209/214/215/216: preferências fictícias persiste
     create: { id: `team:${accounts.preferenceMember.email}`, kind: 'TEAM', data: member },
     update: { data: member },
   });
-  await request(app).put(route).set('Authorization', 'Bearer preferenceMember').send({ density: 'medium' }).expect(200);
+  await request(app).put(route).set('Authorization', 'Bearer preferenceMember').send({
+    density: 'medium',
+    hudBlockPositions: { tools: { mode: 'floating', x: 60, y: 10, width: 25, height: 50 } },
+  }).expect(200);
   assert.equal(
     (await request(app).get(route).set('Authorization', 'Bearer preferenceMember').expect(200)).body.density,
     'medium',
   );
+  assert.deepEqual(
+    (await request(app).get(route).set('Authorization', 'Bearer preferenceMember').expect(200)).body.hudBlockPositions,
+    { tools: { mode: 'floating', x: 60, y: 10, width: 25, height: 50 } },
+  );
   assert.equal(
     (await request(app).get(route).set('Authorization', 'Bearer alpha').expect(200)).body.density,
     'expanded',
+  );
+  assert.deepEqual(
+    (await request(app).get(route).set('Authorization', 'Bearer alpha').expect(200)).body.hudBlockPositions,
+    settings.hudBlockPositions,
   );
   await request(app).get(route).expect(401);
 });

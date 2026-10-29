@@ -6,6 +6,7 @@ import type { Library } from '../types';
 import { useApi, errorMessage } from '../context/ApiContext';
 import { useLibraryOrganization } from './LibraryCategories';
 import { pinnedKinds } from './PinnedShelf';
+import { snapFloatingPosition } from '../context/hud-placement';
 import { shortcutOptions } from '../context/attendance';
 import { completeOrder, hudPanels } from '../context/hud';
 import { ReorderList } from './ReorderList';
@@ -338,7 +339,12 @@ export function FreePlacementSettings({ value, onChange }: EditorProps) {
     const next = { ...position, ...patch };
     next.x = Math.max(0, Math.min(next.x, 100 - next.width));
     next.y = Math.max(0, Math.min(next.y, 100 - next.height));
-    onChange({ hudBlockPositions: { ...value.hudBlockPositions, [selected]: next } });
+    onChange({
+      hudBlockPositions: {
+        ...value.hudBlockPositions,
+        [selected]: snapFloatingPosition(selected, next, value.hudBlockPositions),
+      },
+    });
   };
   return (
     <div className="hud-settings-content">
