@@ -21,7 +21,7 @@ O `Dockerfile` inclui a aplicação e as migrações. Configure HTTPS no provedo
 
 ## Painel Vercel
 
-Importe o repositório pela raiz. O arquivo `vercel.json` define instalação, compilação e pasta de saída. Configure:
+Importe o repositório pela raiz, com **Framework Preset: Vite** e **Root Directory: `.`**. O arquivo `vercel.json` define `npm ci`, compilação de `@noctua/web` e saída em `apps/web/dist`. Não selecione `apps/web` como raiz, pois a instalação usa os workspaces do repositório. Configure:
 
 - `VITE_API_URL=https://seu-servidor-persistente` (sem `/api` ao final).
 - Os quatro campos públicos `VITE_FIREBASE_*`.

@@ -9,14 +9,14 @@ NA PRIMEIRA UTILIZAÇÃO
 
 NAS PRÓXIMAS VEZES
 1. Ligue o computador e conecte à internet.
-2. Abra a pasta “Noctua CRM - Atendimento” em Documentos.
+2. Abra a pasta do projeto que contém este guia e “Iniciar Noctua.cmd”.
 3. Dê dois cliques em “Iniciar Noctua.cmd”.
 4. Aguarde o aviso “Noctua online” e deixe a janela preta aberta.
 5. Para encerrar, volte à janela preta e pressione Ctrl+C.
 
 O atalho inicia o servidor, abre o túnel, atualiza a conexão na Vercel e publica o site.
 O endereço principal do sistema é https://notcua.vercel.app/atendimento.
-Cada reinício cria um endereço temporário novo e faz uma publicação nova na Vercel.
+O endereço do túnel é temporário e pode mudar quando ele reiniciar ou cair. O iniciador atualiza a Vercel ao abrir um novo túnel.
 Por isso, a conexão depende de o computador ficar ligado, conectado à internet e com a janela aberta.
 
 Se algo der errado, não apague arquivos. Copie a mensagem vermelha da janela preta e envie para o suporte.
