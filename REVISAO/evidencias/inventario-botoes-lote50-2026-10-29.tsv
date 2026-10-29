@@ -1,0 +1,505 @@
+arquivo	linha	ligação estática	atributos	texto aproximado
+apps/web/src/App.tsx	353	clique	className,title,aria-label,onClick	{preferences.brandingLogo ? ( <img className="branding-mark" src={preferences.b
+apps/web/src/App.tsx	411	clique	title,aria-label,className,onClick	<Icon size={19} /> <span>{name}</span> {id === 'inbox' && total > 0 && <b>{tota
+apps/web/src/App.tsx	440	clique	aria-label,title,onClick	{theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />} <span>Tema {theme =
+apps/web/src/App.tsx	448	clique	aria-label,title,onClick	<CircleHelp size={18} /> <span>Ajuda e configurações</span>
+apps/web/src/App.tsx	467	clique	className,aria-label,onClick	(sem texto literal)
+apps/web/src/App.tsx	487	clique	className,onClick,aria-label,title	<Search size={16} /> <span>Buscar</span> <kbd>Ctrl K</kbd>
+apps/web/src/App.tsx	498	clique	className,aria-label,aria-expanded,aria-controls,onClick	{toolsOpen ? <PanelRightClose size={17} /> : <PanelRightOpen size={17} />} <spa
+apps/web/src/App.tsx	538	clique	className,onClick,aria-label	EU
+apps/web/src/App.tsx	619	clique	className,aria-label,onClick	(sem texto literal)
+apps/web/src/App.tsx	765	clique	type,className,onClick	Cancelar
+apps/web/src/App.tsx	768	formulário	className,disabled	{busy ? <Spinner /> : <Plus size={15} />} Criar conversa
+apps/web/src/App.tsx	810	clique	key,onClick	<Icon size={17} /> <span>{name}</span> <small>Abrir tela</small>
+apps/web/src/App.tsx	829	clique	key,onClick	<Palette size={17} /> <span>{item.name}</span> <small>Personalização</small>
+apps/web/src/App.tsx	844	clique	key,onClick	<MessageSquare size={17} /> <span>{chat.contact.name}</span> <small>Conversa</s
+apps/web/src/App.tsx	866	clique	key,onClick	<Send size={17} /> <span>{item.name}</span> <small>Campanha</small>
+apps/web/src/App.tsx	896	clique	key,onClick	<LibraryIcon size={17} /> <span>{item.name}</span> <small>{item.kind}</small>
+apps/web/src/auth/ActivationPanel.tsx	50	formulário	className,disabled	{busy ? 'Ativando seu acesso…' : 'Ativar minha operação'}
+apps/web/src/auth/AuthGate.tsx	148	clique	className,onClick	Tentar novamente
+apps/web/src/auth/AuthGate.tsx	180	clique	className,disabled,onClick	Já confirmei / verificar acesso
+apps/web/src/auth/AuthGate.tsx	194	clique	className,disabled,onClick	Reenviar verificação
+apps/web/src/auth/AuthGate.tsx	207	clique	className,onClick	Usar outra conta
+apps/web/src/auth/AuthGate.tsx	214	clique	className,onClick	Entrar
+apps/web/src/auth/AuthGate.tsx	217	clique	className,onClick	Criar conta
+apps/web/src/auth/AuthGate.tsx	221	clique	className,disabled,onClick	Continuar com o Google
+apps/web/src/auth/AuthGate.tsx	265	clique	type,className,aria-label,onClick	{passwordVisible ? <EyeOff size={17} /> : <Eye size={17} />}
+apps/web/src/auth/AuthGate.tsx	276	clique	type,className,disabled,onClick	Esqueci minha senha
+apps/web/src/auth/AuthGate.tsx	292	formulário	className,disabled	{busy ? <Spinner /> : <ArrowRight size={16} />} {signup ? 'Criar minha conta' :
+apps/web/src/auth/AuthGate.tsx	345	formulário	className	Aplicar acesso
+apps/web/src/auth/AuthGate.tsx	348	clique	className,onClick	Tentar novamente
+apps/web/src/auth/AuthGate.tsx	434	formulário	className,disabled	Começar meu atendimento <ArrowRight size={16} />
+apps/web/src/components/AiControl.tsx	46	clique	className,disabled,onClick	{control.paused ? ( <> <Play size={14} /> Retomar IA </> ) : ( <> <Pause size={
+apps/web/src/components/AiKeyManager.tsx	36	clique	type,className,disabled,onClick	<Trash2 size={15} /> Excluir
+apps/web/src/components/AiKeyManager.tsx	40	formulário	type,className,disabled	Salvar chave principal
+apps/web/src/components/AiKeyManager.tsx	47	clique	type,className,disabled,aria-label,onClick	<ArrowUp size={15} />
+apps/web/src/components/AiKeyManager.tsx	48	clique	type,className,disabled,aria-label,onClick	<ArrowDown size={15} />
+apps/web/src/components/AiKeyManager.tsx	50	clique	type,className,disabled,aria-label,onClick	<Trash2 size={15} /> Remover
+apps/web/src/components/AiKeyManager.tsx	56	formulário	type,className,disabled	Salvar edição
+apps/web/src/components/AiKeyManager.tsx	63	formulário	className,type,disabled	<Plus size={15} /> Adicionar chave
+apps/web/src/components/AiSettings.tsx	64	clique	className,onClick	🧪 Testar / Simular atendimento
+apps/web/src/components/AiSettings.tsx	64	clique	type,className,aria-expanded,onClick	<KeyRound size={15} /> {showKeySettings ? 'Ocultar chaves de API' : 'Mostrar con
+apps/web/src/components/AiSettings.tsx	72	clique	type,className,disabled,onClick	{loadingModels ? <Spinner/> : null} Consultar modelos disponíveis
+apps/web/src/components/AiSettings.tsx	278	formulário	className,disabled	{busy ? <Spinner /> : <Save size={16} />} Salvar integração
+apps/web/src/components/AttendanceCustomization.tsx	74	clique	className,onClick	Remover todos da barra
+apps/web/src/components/AttendanceCustomization.tsx	247	clique	className,title,aria-label,onClick	<Settings2 size={14} />
+apps/web/src/components/AttendanceCustomization.tsx	256	clique	className,aria-label,onClick	<Trash2 size={14} />
+apps/web/src/components/AttendanceCustomization.tsx	320	clique	className,onClick	<Trash2 size={14} /> Remover todos os fixados
+apps/web/src/components/AttendanceDock.tsx	91	clique	className,aria-label,title,onClick	<Minus size={15} />
+apps/web/src/components/AttendanceDock.tsx	103	clique	type,title,aria-label,onClick	<AppWindow size={14} />
+apps/web/src/components/AttendanceDock.tsx	111	clique	type,title,aria-label,onClick	<ExternalLink size={14} />
+apps/web/src/components/AttendanceDock.tsx	119	clique	type,title,aria-label,onClick	<Maximize2 size={14} />
+apps/web/src/components/AttendanceDock.tsx	393	clique	className,disabled,onClick	<Save size={14} /> Confirmar layout
+apps/web/src/components/AttendanceDock.tsx	397	clique	className,disabled,onClick	Cancelar
+apps/web/src/components/AttendanceDock.tsx	411	clique	className,onClick	<RotateCcw size={14} /> Recuperar painéis
+apps/web/src/components/AttendanceDock.tsx	415	clique	className,onClick	<Minimize2 size={14} /> Restaurar tamanho
+apps/web/src/components/AttendanceDock.tsx	419	clique	className,onClick	Atalhos e aparência
+apps/web/src/components/AttendanceDock.tsx	429	clique	className,onClick	Voltar ao layout clássico
+apps/web/src/components/AttendanceDock.tsx	457	clique	key,className,onClick	Abrir {title}
+apps/web/src/components/AttendanceFunctions.tsx	26	clique	key,title,onClick	<Icon size={15} /> <span>{item.name}</span>
+apps/web/src/components/AttendanceLayout.tsx	21	clique	className,onClick	{outdatedPage ? 'Atualizar página' : 'Recuperar layout clássico'}
+apps/web/src/components/AttendanceSettingsMenu.tsx	25	clique	onClick	<Move size={16} /> <span>Habilitar arraste e organizar painéis</span>
+apps/web/src/components/AttendanceSettingsMenu.tsx	29	clique	onClick	<Palette size={16} /> <span>HUD, atalhos, botões e aparência</span>
+apps/web/src/components/AttendanceSettingsMenu.tsx	34	clique	onClick	<PanelsTopLeft size={16} /> <span>Voltar ao layout clássico</span>
+apps/web/src/components/AttendanceShortcuts.tsx	70	clique	key,title,onClick	<Icon size={15} /> <span>{name}</span>
+apps/web/src/components/AudioTestInput.tsx	42	clique	type,className,disabled,onClick	{recording ? <Square size={14} /> : <Mic size={14} />} {' '} {pending ? 'Aguard
+apps/web/src/components/CampaignMedia.tsx	90	clique	type,className,disabled,onClick	{recording ? <Square size={15} /> : <Mic size={15} />} {recording ? 'Parar grav
+apps/web/src/components/CampaignMedia.tsx	111	clique	type,className,disabled,onClick	Usar esta mídia na sequência
+apps/web/src/components/CampaignMonitor.tsx	80	clique	className,onClick	<Send size={15} /> {items.length} campanha(s) em acompanhamento
+apps/web/src/components/CampaignMonitor.tsx	90	clique	className,aria-label,onClick	<ChevronDown size={16} />
+apps/web/src/components/CampaignMonitor.tsx	150	clique	className,disabled,onClick	{item.status === 'PAUSED' ? <Play size={14} /> : <Pause size={14} />} {' '} {it
+apps/web/src/components/CampaignMonitor.tsx	158	clique	className,disabled,onClick	<Square size={13} /> Cancelar
+apps/web/src/components/CampaignMonitor.tsx	174	clique	className,disabled,onClick	Voltar
+apps/web/src/components/CampaignMonitor.tsx	177	clique	className,disabled,onClick	Confirmar cancelamento
+apps/web/src/components/CampaignRevenue.tsx	108	clique	className,disabled,onClick	Cancelar
+apps/web/src/components/CampaignRevenue.tsx	111	clique	className,disabled,onClick	Confirmar vínculos
+apps/web/src/components/ChatPane.tsx	96	clique	className,disabled,onClick	{busy ? <Spinner /> : <Download size={19} />} <span> {kind.includes('audio') ?
+apps/web/src/components/ChatPane.tsx	373	clique	className,onClick,aria-label	<ArrowLeft size={20} />
+apps/web/src/components/ChatPane.tsx	376	clique	className,onClick,aria-label,title	<Avatar contact={chat.contact} /> <span className="chat-heading"> <strong>{chat
+apps/web/src/components/ChatPane.tsx	396	clique	key,className,aria-label,title,onClick	<Icon size={17} />
+apps/web/src/components/ChatPane.tsx	417	clique	key,onClick	<Icon size={16} /> {name}
+apps/web/src/components/ChatPane.tsx	428	clique	onClick	<Wrench size={16} /> {toolsVisible ? 'Ocultar mensagens fixadas' : 'Mostrar men
+apps/web/src/components/ChatPane.tsx	432	clique	onClick	{toolsCompact ? <Maximize2 size={16} /> : <Minimize2 size={16} />} {toolsCompac
+apps/web/src/components/ChatPane.tsx	436	clique	onClick	<SlidersHorizontal size={16} /> Personalizar Atendimento
+apps/web/src/components/ChatPane.tsx	442	clique	className,aria-label,title,onClick	<SlidersHorizontal size={17} />
+apps/web/src/components/ChatPane.tsx	483	clique	className,disabled,onClick	{loading ? 'Carregando…' : 'Carregar mensagens anteriores'}
+apps/web/src/components/ChatPane.tsx	535	clique	className,title,aria-label,onClick	<BookOpenCheck size={14} />
+apps/web/src/components/ChatPane.tsx	548	clique	className,disabled,onClick	{transcribing === message.id ? <Spinner /> : <FileText size={14} />} {' '} {tra
+apps/web/src/components/ChatPane.tsx	569	clique	className,onClick	Confirmar e mover para Pago / Fechado
+apps/web/src/components/ChatPane.tsx	639	clique	className,disabled,onClick	{summaryBusy ? <Spinner /> : <WandSparkles size={16} />} Gerar resumo
+apps/web/src/components/ChatPane.tsx	646	clique	className,onClick	Copiar resumo
+apps/web/src/components/ChatPane.tsx	671	clique	className,onClick	Remover etapa
+apps/web/src/components/ChatPane.tsx	675	clique	className,onClick	Adicionar etapa
+apps/web/src/components/ChatPane.tsx	676	clique	className,onClick	Cancelar
+apps/web/src/components/ChatPane.tsx	676	clique	className,disabled,onClick	{followUpBusy ? <Spinner/> : <Clock3 size={15}/>} Ativar follow-up
+apps/web/src/components/ClientAiStudio.tsx	111	clique	className,onClick	<MessageCircle size={14}/> Conversar
+apps/web/src/components/ClientAiStudio.tsx	112	clique	className,onClick	<ImagePlus size={14}/> Gerar imagem
+apps/web/src/components/ClientAiStudio.tsx	124	formulário	className,disabled	{busy ? <Spinner/> : <Send size={15}/>} Enviar
+apps/web/src/components/ClientAiStudio.tsx	155	clique	type,className,key,onClick	Usar imagem de {new Date(message.sentAt).toLocaleDateString('pt-BR')}
+apps/web/src/components/ClientAiStudio.tsx	156	clique	type,className,aria-label,onClick	<X size={15}/>
+apps/web/src/components/ClientAiStudio.tsx	158	formulário	className,disabled	{busy ? <Spinner/> : <Sparkles size={15}/>} Gerar e salvar no histórico
+apps/web/src/components/ClientAiStudio.tsx	179	clique	type,className,onClick	<Send size={14}/> Preparar envio ao cliente
+apps/web/src/components/ColorPalette.tsx	59	clique	key,className,aria-pressed,onClick	<span className="palette-choice-colors"> <i style={{ background: palette.primar
+apps/web/src/components/ColorPalette.tsx	91	clique	className,aria-expanded,onClick	<Paintbrush size={15} /> Cor personalizada (HEX ou RGB) <ChevronDown size={15}
+apps/web/src/components/ColorPalette.tsx	159	clique	className,disabled,onClick	{busy ? <Spinner /> : <Check size={15} />} Aplicar paleta
+apps/web/src/components/Composer.tsx	433	clique	onClick	<Zap size={14} /> Respostas rápidas
+apps/web/src/components/Composer.tsx	437	clique	className,onClick	<WandSparkles size={14} /> Copiloto IA
+apps/web/src/components/Composer.tsx	448	clique	className,onClick,aria-pressed	<LockKeyhole size={14} /> {internalMode ? 'Nota interna ativa' : 'Nota interna'
+apps/web/src/components/Composer.tsx	471	clique	key,role,disabled,onClick	<span className="library-slash-icon"> {asset.kind === 'MESSAGE' ? 'T' : asset.k
+apps/web/src/components/Composer.tsx	506	clique	className,onClick	<Square size={14} /> Parar e revisar
+apps/web/src/components/Composer.tsx	553	clique	className,type,disabled,onClick	#nome
+apps/web/src/components/Composer.tsx	564	clique	className,title,aria-label,disabled,onClick	<Smile size={20} />
+apps/web/src/components/Composer.tsx	573	clique	className,aria-label,disabled,onClick	<Paperclip size={20} />
+apps/web/src/components/Composer.tsx	581	clique	className,aria-label,disabled,onClick	{recording ? <Square size={19} /> : <Mic size={20} />}
+apps/web/src/components/Composer.tsx	600	clique	className,aria-label,title,disabled,onClick	{busy ? <Spinner /> : <Send size={19} />}
+apps/web/src/components/Composer.tsx	694	clique	className,disabled,onClick	<Trash2 size={15} /> Descartar
+apps/web/src/components/Composer.tsx	698	clique	className,disabled,onClick	{busy ? <Spinner /> : <Send size={16} />} Enviar {kind === 'audio' ? 'áudio' :
+apps/web/src/components/Composer.tsx	716	clique	className,onClick	<WandSparkles size={15} /> Melhorar e corrigir meu rascunho
+apps/web/src/components/Composer.tsx	719	clique	className,onClick	<MessageSquare size={15} /> Sugerir quebra de objeção
+apps/web/src/components/Composer.tsx	739	clique	className,disabled,onClick	{copilotBusy ? <Spinner /> : <WandSparkles size={15} />} {copilotAction === 'im
+apps/web/src/components/Composer.tsx	757	clique	className,onClick	Usar no rascunho
+apps/web/src/components/Composer.tsx	771	clique	key,className,onClick	{choice}
+apps/web/src/components/ContactCombobox.tsx	111	clique	type,role,aria-selected,className,key,onClick	<Avatar contact={item.contact} /> <span> <strong>{item.contact.name}</strong> <
+apps/web/src/components/ContactCombobox.tsx	134	clique	type,className,disabled,onClick	<Plus size={17} /> <span> Agendar para novo número<small>{formatContactPhone(ne
+apps/web/src/components/ContactDetails.tsx	54	clique	className,aria-label,onClick	<Plus size={17} />
+apps/web/src/components/ContactDetails.tsx	81	clique	key,disabled,onClick	<i style={{ background: label.color }} /> {label.name} {active && <Check size={
+apps/web/src/components/ContactDetails.tsx	112	clique	className,onClick	Fechar
+apps/web/src/components/ContactDetails.tsx	115	clique	className,disabled,onClick	{busy === 'note' ? <Spinner /> : <Check size={16} />} Salvar resumo
+apps/web/src/components/ContactWorkspace.tsx	71	clique	key,className,onClick	{name}
+apps/web/src/components/ContactWorkspace.tsx	164	formulário	className,disabled	<Save size={15} /> Salvar dados
+apps/web/src/components/ContactWorkspace.tsx	191	formulário	className,disabled	Adicionar anotação
+apps/web/src/components/ContactWorkspace.tsx	218	clique	className,disabled,onClick	<Download size={15} /> Exportar textos
+apps/web/src/components/ContactWorkspace.tsx	222	clique	className,disabled,onClick	<Download size={15} /> Exportar com mídias
+apps/web/src/components/ContactWorkspace.tsx	227	clique	className,disabled,onClick	<Sparkles size={15} /> Aprovar respostas como exemplos da IA
+apps/web/src/components/ContactWorkspace.tsx	288	clique	className,disabled,onClick	{busy ? <Spinner /> : <Sparkles size={15} />} Gerar sugestão
+apps/web/src/components/ContactWorkspace.tsx	310	clique	className,onClick	<Copy size={15} /> Copiar texto revisado
+apps/web/src/components/ConversationList.tsx	54	clique	className,onClick,aria-label	<Plus size={20} />
+apps/web/src/components/ConversationList.tsx	75	clique	key,className,onClick	{label}
+apps/web/src/components/ConversationList.tsx	134	clique	className,onClick	<Avatar contact={chat.contact} /> <span className="chat-item-content"> <span cl
+apps/web/src/components/ConversationList.tsx	186	clique	type,className,aria-label,title,onClick	<MoreHorizontal size={16} aria-hidden="true" />
+apps/web/src/components/ConversationList.tsx	215	clique	className,disabled,aria-label,onClick	<ChevronLeft size={16} />
+apps/web/src/components/ConversationList.tsx	223	clique	className,disabled,aria-label,onClick	<ChevronRight size={16} />
+apps/web/src/components/ConversationSimulator.tsx	80	clique	className,onClick	<RotateCcw size={14} /> Limpar / Reiniciar teste
+apps/web/src/components/ConversationSimulator.tsx	93	clique	className,onClick	<Pencil size={13}/> Corrigir resposta
+apps/web/src/components/ConversationSimulator.tsx	119	clique	className,type,disabled,onClick	<X size={13}/> Cancelar
+apps/web/src/components/ConversationSimulator.tsx	119	formulário	className,disabled	{savingCalibration ? <Spinner/> : <Save size={13}/>} Salvar exemplo aprovado
+apps/web/src/components/ConversationSimulator.tsx	123	clique	className,onClick	Descartar áudio
+apps/web/src/components/ConversationSimulator.tsx	123	clique	className,disabled,onClick	Transcrever com IA
+apps/web/src/components/ConversationSimulator.tsx	133	formulário	className,disabled	{busy ? <Spinner /> : <Send size={16} />} Enviar teste
+apps/web/src/components/EconomySettings.tsx	69	clique	className,disabled,onClick	{busy ? <Spinner/> : '⚡'} Otimizar regras e estilo com IA
+apps/web/src/components/EconomySettings.tsx	69	clique	className,disabled,onClick	Salvar economia
+apps/web/src/components/EconomySettings.tsx	70	clique	className,onClick	Descartar
+apps/web/src/components/EconomySettings.tsx	70	clique	className,disabled,onClick	Revisado · aplicar
+apps/web/src/components/EconomySettings.tsx	71	clique	className,disabled,onClick	Limpar cache
+apps/web/src/components/EconomySettings.tsx	72	clique	className,onClick	Salvar rascunho
+apps/web/src/components/EconomySettings.tsx	72	clique	className,onClick	Revisado · aprovar
+apps/web/src/components/EconomySettings.tsx	72	clique	className,onClick	Remover
+apps/web/src/components/FlowActions.tsx	46	clique	className,onClick	Cancelar
+apps/web/src/components/FlowActions.tsx	49	clique	className,disabled,onClick	Iniciar fluxo
+apps/web/src/components/FlowActions.tsx	105	clique	className,disabled,onClick	Cancelar fluxo
+apps/web/src/components/HistoryExport.tsx	79	clique	type,className,disabled,onClick	Selecionar esta página
+apps/web/src/components/HistoryExport.tsx	107	clique	type,className,disabled,onClick	Anterior
+apps/web/src/components/HistoryExport.tsx	111	clique	type,className,disabled,onClick	Próxima
+apps/web/src/components/HistoryExport.tsx	130	clique	type,className,disabled,onClick	Fechar
+apps/web/src/components/HistoryExport.tsx	133	clique	type,className,disabled,onClick	{busy && <Spinner />} Exportar {selected.length} conversas
+apps/web/src/components/HistoryPreprocessing.tsx	62	clique	type,className,disabled,onClick	{running && <Spinner/>} Analisar mídias antes de exportar
+apps/web/src/components/HistoryPreprocessing.tsx	63	clique	type,className,onClick	Cancelar análise
+apps/web/src/components/HudEditor.tsx	240	clique	role,key,aria-selected,onClick	{name}
+apps/web/src/components/HudEditor.tsx	441	clique	aria-pressed,onClick	{previewExpanded ? <Minimize2 size={15}/> : <Maximize2 size={15}/>} {previewExp
+apps/web/src/components/HudEditor.tsx	445	clique	aria-pressed,onClick	<Monitor size={15} /> Computador
+apps/web/src/components/HudEditor.tsx	449	clique	aria-pressed,onClick	<Smartphone size={15} /> Celular
+apps/web/src/components/HudEditor.tsx	458	clique	key,aria-pressed,onClick	{hudPanels.find((panel) => panel.id === id)?.name}
+apps/web/src/components/HudEditor.tsx	676	clique	className,disabled,onClick	<RotateCcw size={15} /> Restaurar padrão
+apps/web/src/components/HudEditor.tsx	710	clique	className,disabled,onClick	Cancelar
+apps/web/src/components/HudEditor.tsx	713	clique	className,disabled,onClick	{busy ? <Spinner /> : <Check size={16} />} Confirmar alterações
+apps/web/src/components/HudPlacement.tsx	78	evento	className,title,aria-label,onPointerDown,onPointerMove,onPointerUp,onPointerCancel	<Move size={14} />
+apps/web/src/components/InactivityRules.tsx	69	clique	className,onClick	<Plus size={15} /> Nova regra de inatividade
+apps/web/src/components/InactivityRules.tsx	86	clique	className,disabled,onClick	{rule.enabled ? <Pause size={14} /> : <Play size={14} />} {rule.enabled ? 'Paus
+apps/web/src/components/InactivityRules.tsx	161	clique	type,className,onClick	Cancelar
+apps/web/src/components/InactivityRules.tsx	164	formulário	className,disabled	Salvar pausada
+apps/web/src/components/InactivityRules.tsx	178	clique	className,onClick	Voltar
+apps/web/src/components/InactivityRules.tsx	181	clique	className,disabled,onClick	Confirmar ativação
+apps/web/src/components/LabelActions.tsx	108	clique	className,onClick	Cancelar
+apps/web/src/components/LabelActions.tsx	111	clique	className,onClick	Confirmar e aplicar etiqueta
+apps/web/src/components/LabelActions.tsx	151	clique	className,onClick	Usar modelo “Pagamento concluído”
+apps/web/src/components/LabelActions.tsx	219	clique	className,onClick	Cancelar
+apps/web/src/components/LabelActions.tsx	222	clique	className,disabled,onClick	{busy ? <Spinner /> : 'Salvar ações'}
+apps/web/src/components/LabelActions.tsx	312	clique	className,disabled,onClick	Configurar ações
+apps/web/src/components/LabelActions.tsx	339	clique	className,onClick	Etiquetas e ações
+apps/web/src/components/LibraryCardMedia.tsx	23	clique	className,disabled,onClick	{busy ? <Spinner /> : <Play size={15} />} Ouvir aqui
+apps/web/src/components/LibraryCardMedia.tsx	44	clique	className,onClick	<Maximize2 size={15} /> {asset.kind === 'MEDIA' ? 'Visualizar mídia' : 'Prévia
+apps/web/src/components/LibraryCategories.tsx	52	formulário	className,disabled	Adicionar categoria
+apps/web/src/components/LibraryCategories.tsx	58	clique	className,key,onClick,title	{category} ×
+apps/web/src/components/LibraryCategories.tsx	99	clique	className,onClick	Cancelar
+apps/web/src/components/LibraryCategories.tsx	102	clique	className,disabled,onClick	Salvar organização
+apps/web/src/components/MacroEditor.tsx	107	clique	type,className,aria-label,disabled,onClick	<ArrowUp size={14} />
+apps/web/src/components/MacroEditor.tsx	116	clique	type,className,aria-label,disabled,onClick	<ArrowDown size={14} />
+apps/web/src/components/MacroEditor.tsx	125	clique	type,className,aria-label,disabled,onClick	<Trash2 size={14} />
+apps/web/src/components/MacroEditor.tsx	139	clique	type,onClick	Texto
+apps/web/src/components/MacroEditor.tsx	142	clique	type,onClick	Imagem, vídeo, áudio ou documento
+apps/web/src/components/MacroEditor.tsx	145	clique	type,onClick	PIX ou figurinha da biblioteca
+apps/web/src/components/MacroEditor.tsx	151	clique	type,onClick	Adicionar etapa ou etiqueta
+apps/web/src/components/MacroEditor.tsx	154	clique	type,onClick	Remover etapa ou etiqueta
+apps/web/src/components/MacroEditor.tsx	160	clique	type,onClick	Adicionar etiqueta
+apps/web/src/components/MacroEditor.tsx	163	clique	type,onClick	Remover etiqueta
+apps/web/src/components/MacroEditor.tsx	166	clique	type,onClick	Remover todas as etiquetas
+apps/web/src/components/MacroEditor.tsx	175	clique	type,onClick	Esperar e mostrar presença
+apps/web/src/components/MacroEditor.tsx	181	clique	type,onClick	Arquivar conversa
+apps/web/src/components/MacroEditor.tsx	184	clique	type,onClick	Reabrir conversa
+apps/web/src/components/MacroEditor.tsx	190	clique	type,onClick	Fixar conversa
+apps/web/src/components/MacroEditor.tsx	193	clique	type,onClick	Desafixar conversa
+apps/web/src/components/MacroEditor.tsx	196	clique	type,onClick	Marcar como não lida
+apps/web/src/components/MacroEditor.tsx	202	clique	type,onClick	Transferir atendimento
+apps/web/src/components/MacroEditor.tsx	347	clique	type,className,onClick	<Plus size={15} /> Adicionar ação
+apps/web/src/components/MacroEditor.tsx	352	clique	type,className,onClick	Cancelar
+apps/web/src/components/MacroEditor.tsx	355	formulário	className,disabled	Salvar macro
+apps/web/src/components/MediaAnalysis.tsx	44	clique	type,className,disabled,onClick	{busy && <Spinner />} Analisar mídia
+apps/web/src/components/NextAction.tsx	68	clique	onClick	<strong>{action.title}</strong> <span> {new Date(action.dueAt).toLocaleString('
+apps/web/src/components/NextAction.tsx	74	clique	className,aria-label,disabled,onClick	<Check size={15} />
+apps/web/src/components/NextAction.tsx	117	formulário	className,disabled	{busy ? <Spinner /> : <Pencil size={15} />} Salvar próxima ação
+apps/web/src/components/NextAction.tsx	121	clique	type,className,disabled,onClick	<Check size={15} /> Marcar como concluída
+apps/web/src/components/NumberValidation.tsx	91	clique	type,className,disabled,onClick	{running && <Spinner />} Verificar números no WhatsApp
+apps/web/src/components/NumberValidation.tsx	100	clique	type,className,onClick	Parar consulta
+apps/web/src/components/NumberValidation.tsx	113	clique	type,className,disabled,onClick	Remover {absent.length} sem conta da prévia
+apps/web/src/components/OrderingSettings.tsx	161	clique	type,className,onClick	Restaurar ordem visual padrão
+apps/web/src/components/PinnedShelf.tsx	93	clique	className,aria-label,title,onClick	<Settings2 size={15} />
+apps/web/src/components/PinnedShelf.tsx	114	clique	className,disabled,onClick	<Send size={13} /> {busy ? 'Enviando…' : 'Enviar'}
+apps/web/src/components/PinnedShelf.tsx	130	clique	className,onClick	Personalizar Atendimento
+apps/web/src/components/PixModal.tsx	121	clique	className,onClick	<Copy size={14} /> Copiar código
+apps/web/src/components/PixModal.tsx	154	clique	className,disabled,onClick	Enviar só a chave
+apps/web/src/components/PixModal.tsx	157	clique	className,disabled,onClick	{busy ? <Spinner /> : <Send size={16} />} Enviar Copia e Cola
+apps/web/src/components/ReorderList.tsx	59	spread	type,className,...spread,aria-label,title,disabled	<GripVertical size={17} />
+apps/web/src/components/ReorderList.tsx	70	clique	type,className,aria-label,disabled,onClick	<ArrowUp size={14} />
+apps/web/src/components/ReorderList.tsx	79	clique	type,className,aria-label,disabled,onClick	<ArrowDown size={14} />
+apps/web/src/components/ReorderList.tsx	90	clique	type,className,aria-label,onClick	<Pencil size={14} />
+apps/web/src/components/ReorderList.tsx	100	clique	type,className,aria-label,aria-pressed,disabled,title,onClick	{item.visible === false ? <EyeOff size={16} /> : <Eye size={16} />}
+apps/web/src/components/ResourceWorkbench.tsx	415	clique	aria-pressed,onClick	Tudo
+apps/web/src/components/ResourceWorkbench.tsx	421	clique	key,aria-pressed,title,onClick	<Icon size={13} /> {preferences.folderLabels[id!] || name}
+apps/web/src/components/ResourceWorkbench.tsx	432	clique	aria-pressed,onClick	<Workflow size={13} /> Fluxos
+apps/web/src/components/ResourceWorkbench.tsx	447	clique	key,aria-pressed,title,onClick	{Icon && <Icon size={13} />} <span>{name}</span>
+apps/web/src/components/ResourceWorkbench.tsx	461	clique	key,onClick	{preferences.folderLabels[id!] || name}
+apps/web/src/components/ResourceWorkbench.tsx	489	clique	className,title,aria-label,onClick	<Pencil size={13} />
+apps/web/src/components/ResourceWorkbench.tsx	497	clique	className,onClick	<GripVertical size={13} /> Reordenar
+apps/web/src/components/ResourceWorkbench.tsx	525	clique	className,aria-label,onClick	<Star size={15} fill={favorite(item) ? 'currentColor' : 'none'} />
+apps/web/src/components/ResourceWorkbench.tsx	538	clique	onClick	<Pencil size={14} /> {item.kind === 'PIX' ? 'Cadastrar outra chave' : 'Editar r
+apps/web/src/components/ResourceWorkbench.tsx	544	clique	onClick	<Copy size={14} /> Duplicar
+apps/web/src/components/ResourceWorkbench.tsx	557	clique	onClick	<Trash2 size={14} /> Excluir
+apps/web/src/components/ResourceWorkbench.tsx	566	clique	className,onClick	{item.name}
+apps/web/src/components/ResourceWorkbench.tsx	574	clique	className,disabled,onClick	<Send size={14} /> Enviar
+apps/web/src/components/ResourceWorkbench.tsx	591	clique	className,onClick	Limpar filtros
+apps/web/src/components/ResourceWorkbench.tsx	624	clique	className,title,aria-label,onClick	<Pencil size={16} />
+apps/web/src/components/ResourceWorkbench.tsx	632	clique	className,title,aria-label,onClick	<X size={18} />
+apps/web/src/components/ResourceWorkbench.tsx	643	clique	aria-pressed,onClick	Biblioteca
+apps/web/src/components/ResourceWorkbench.tsx	646	clique	aria-pressed,onClick	Fixados
+apps/web/src/components/ResourceWorkbench.tsx	761	clique	className,onClick	Prévia
+apps/web/src/components/ResourceWorkbench.tsx	788	clique	className,onClick	Revisar ações no editor
+apps/web/src/components/ResourceWorkbench.tsx	817	clique	className,disabled,onClick	Fechar
+apps/web/src/components/ResourceWorkbench.tsx	821	clique	className,disabled,onClick	Inserir no rascunho
+apps/web/src/components/ResourceWorkbench.tsx	833	clique	className,disabled,onClick	{busy ? ( <Spinner /> ) : preview.funnel || preview.macro ? ( <Play size={15} /
+apps/web/src/components/ResourceWorkbench.tsx	924	clique	className,onClick	Cancelar
+apps/web/src/components/ResourceWorkbench.tsx	927	clique	className,disabled,onClick	Confirmar organização
+apps/web/src/components/ResourceWorkbench.tsx	958	clique	className,onClick	Cancelar
+apps/web/src/components/ResourceWorkbench.tsx	961	clique	className,disabled,onClick	Excluir recurso
+apps/web/src/components/SafetyZone.tsx	33	clique	className,onClick	Limpar todas as configurações / Resetar sistema
+apps/web/src/components/SafetyZone.tsx	49	clique	className,disabled,onClick	{busy ? <Spinner /> : <Download size={16} />} Fazer backup completo agora (.JSO
+apps/web/src/components/SafetyZone.tsx	83	clique	className,disabled,onClick	Cancelar
+apps/web/src/components/SafetyZone.tsx	86	clique	className,disabled,onClick	Continuar para confirmação
+apps/web/src/components/SafetyZone.tsx	109	clique	className,disabled,onClick	Voltar
+apps/web/src/components/SafetyZone.tsx	112	clique	className,disabled,onClick	{busy && <Spinner />} Confirmar e apagar tudo
+apps/web/src/components/Select.tsx	234	clique	ref,id,type,className,role,aria-label,aria-labelledby,aria-required,aria-expanded,aria-controls,aria-haspopup,disabled,title,onKeyDown,onClick,onBlur,onFocus	<span>{label}</span> <ChevronDown size={15} />
+apps/web/src/components/Select.tsx	302	clique	type,role,aria-selected,disabled,key,className,onPointerMove,onClick	{option.color && <i style={{ background: option.color }} />} <span>{option.labe
+apps/web/src/components/Select.tsx	322	clique	type,onClick	<X size={13} /> Limpar
+apps/web/src/components/Select.tsx	326	clique	type,onClick	Concluir
+apps/web/src/components/SequenceMonitor.tsx	62	clique	className,disabled,title,aria-label,onClick	{run.status === 'PAUSED' ? <Play size={15} /> : <Pause size={15} />}
+apps/web/src/components/SequenceMonitor.tsx	71	clique	className,disabled,title,aria-label,onClick	<Square size={14} />
+apps/web/src/components/SequenceMonitor.tsx	85	clique	className,onClick	Manter sequência
+apps/web/src/components/SequenceMonitor.tsx	88	clique	className,disabled,onClick	Cancelar próximas etapas
+apps/web/src/components/StandardReplies.tsx	206	clique	className,disabled,onClick	<Plus size={15} /> Cadastrar pergunta
+apps/web/src/components/StandardReplies.tsx	214	clique	className,title,aria-label,onClick	<GripVertical size={16} />
+apps/web/src/components/StandardReplies.tsx	225	clique	className,aria-label,title,onClick	<RefreshCw size={16} />
+apps/web/src/components/StandardReplies.tsx	235	clique	aria-pressed,onClick	Cadastradas ( {items.length} )
+apps/web/src/components/StandardReplies.tsx	238	clique	aria-pressed,onClick	Perguntas repetidas
+apps/web/src/components/StandardReplies.tsx	268	clique	className,aria-label,onClick	<Pencil size={15} />
+apps/web/src/components/StandardReplies.tsx	290	clique	className,disabled,onClick	Inserir texto
+apps/web/src/components/StandardReplies.tsx	301	clique	className,onClick	<Eye size={14} /> Prévia e envio
+apps/web/src/components/StandardReplies.tsx	305	clique	className,title,aria-label,onClick	<Archive size={14} />
+apps/web/src/components/StandardReplies.tsx	350	clique	className,onClick	Revisar e cadastrar
+apps/web/src/components/StandardReplies.tsx	365	clique	className,onClick	Ignorar
+apps/web/src/components/StandardReplies.tsx	387	clique	className,onClick	Restaurar sugestões ignoradas
+apps/web/src/components/StandardReplies.tsx	462	clique	type,className,onClick	Novo áudio
+apps/web/src/components/StandardReplies.tsx	465	clique	type,className,onClick	Nova mídia
+apps/web/src/components/StandardReplies.tsx	468	clique	type,className,onClick	Novo arquivo
+apps/web/src/components/StandardReplies.tsx	526	clique	type,className,disabled,onClick	Cancelar
+apps/web/src/components/StandardReplies.tsx	529	formulário	className,disabled	{busy ? <Spinner /> : <BookOpenCheck size={15} />} Salvar resposta padrão
+apps/web/src/components/StandardReplies.tsx	573	clique	className,disabled,onClick	Fechar prévia
+apps/web/src/components/StandardReplies.tsx	576	clique	className,disabled,onClick	{busy ? <Spinner /> : <Send size={15} />} {sendError ? 'Continuar o mesmo envio
+apps/web/src/components/StandardReplies.tsx	604	clique	className,onClick	Cancelar
+apps/web/src/components/StandardReplies.tsx	607	clique	className,disabled,onClick	Confirmar ordem
+apps/web/src/components/StandardReplies.tsx	630	clique	className,onClick	Cancelar
+apps/web/src/components/StandardReplies.tsx	633	clique	className,disabled,onClick	Arquivar padrão
+apps/web/src/components/SystemBackups.tsx	71	clique	className,disabled,onClick	<Plus size={15} /> Criar cópia agora
+apps/web/src/components/SystemBackups.tsx	92	clique	className,disabled,onClick	<Download size={14} /> Baixar ZIP
+apps/web/src/components/TeamManager.tsx	119	clique	className,onClick	Editar
+apps/web/src/components/TeamManager.tsx	122	clique	className,disabled,onClick	{member.active ? 'Desativar' : 'Ativar'}
+apps/web/src/components/TeamManager.tsx	200	clique	type,className,onClick	Novo cadastro
+apps/web/src/components/TeamManager.tsx	203	formulário	className,disabled	{busy && <Spinner />} Salvar atendente
+apps/web/src/components/ToolboxWorkspace.tsx	126	clique	aria-pressed,onClick	Pendentes
+apps/web/src/components/ToolboxWorkspace.tsx	129	clique	aria-pressed,onClick	Finalizadas
+apps/web/src/components/ToolboxWorkspace.tsx	134	clique	className,onClick	<ArrowRightLeft size={15} /> Transferir conversa atual
+apps/web/src/components/ToolboxWorkspace.tsx	149	clique	className,disabled,onClick	Aceitar
+apps/web/src/components/ToolboxWorkspace.tsx	162	clique	className,disabled,onClick	Recusar
+apps/web/src/components/ToolboxWorkspace.tsx	192	clique	className,onClick	<Avatar contact={chat.contact} /> <span> <strong>{chat.contact.name}</strong> <
+apps/web/src/components/ToolboxWorkspace.tsx	213	clique	onClick	<Tag size={17} /> <span> Etiquetas e dados do cliente<small>Consultar e editar
+apps/web/src/components/ToolboxWorkspace.tsx	219	clique	onClick	<ArrowRightLeft size={17} /> <span> Transferir atendimento<small>Enviar para ou
+apps/web/src/components/ToolboxWorkspace.tsx	225	clique	onClick	<Archive size={17} /> <span>{chat.status === 'CLOSED' ? 'Reabrir' : 'Arquivar'}
+apps/web/src/components/ToolboxWorkspace.tsx	241	clique	onClick	<Pin size={17} /> <span>{chat.pinned ? 'Desfixar' : 'Fixar'} conversa</span>
+apps/web/src/components/ToolboxWorkspace.tsx	254	clique	onClick	<Mail size={17} /> <span>Marcar como não lida</span>
+apps/web/src/components/ToolboxWorkspace.tsx	267	clique	className,onClick	<ShieldBan size={17} /> <span>{chat.contact.metadata.blocked ? 'Desbloquear' :
+apps/web/src/components/ToolboxWorkspace.tsx	303	clique	className,onClick	Cancelar
+apps/web/src/components/ToolboxWorkspace.tsx	306	clique	className,disabled,onClick	Confirmar alteração
+apps/web/src/components/TransferDialog.tsx	80	clique	type,aria-pressed,onClick	Atendente
+apps/web/src/components/TransferDialog.tsx	90	clique	type,aria-pressed,onClick	Fila de setor
+apps/web/src/components/TransferDialog.tsx	143	clique	type,className,disabled,onClick	Cancelar
+apps/web/src/components/TransferDialog.tsx	146	formulário	className,disabled	{busy && <Spinner />} Solicitar transferência
+apps/web/src/components/ui.tsx	101	clique	type,className,onClick,aria-label	<Minus size={18} />
+apps/web/src/components/ui.tsx	109	clique	type,className,onClick,aria-label	<X size={20} />
+apps/web/src/components/ui.tsx	118	clique	className,onClick,aria-label	<Maximize2 size={14} /> {title}
+apps/web/src/components/WatermarkSettings.tsx	51	clique	className,onClick	Remover selo
+apps/web/src/components/WatermarkSettings.tsx	53	clique	className,disabled,onClick	<Trash2 size={14}/> Remover modelo
+apps/web/src/components/WatermarkSettings.tsx	55	clique	className,onClick	<Plus size={14}/> Adicionar modelo
+apps/web/src/components/WatermarkSettings.tsx	58	clique	className,disabled,onClick	{busy ? <Spinner/> : <Save size={15}/>} Salvar modelos
+apps/web/src/context/AiFeatures.tsx	118	clique	type,className,role,aria-label,aria-checked,disabled,onClick	{saving ? 'Salvando…' : loading ? 'Carregando…' : enabled ? 'I.A. habilitada' :
+apps/web/src/context/AiFeatures.tsx	136	clique	type,className,onClick	Tentar novamente
+apps/web/src/context/ApiContext.tsx	47	clique	type,className,aria-label,onClick	<X size={17} />
+apps/web/src/context/ContextMenu.tsx	409	clique	type,role,key,disabled,className,onClick	<ActionIcon label={action.label} /> <span>{action.label}</span>
+apps/web/src/pages/AccessKeysPage.tsx	85	clique	className,onClick	Tentar novamente
+apps/web/src/pages/AccessKeysPage.tsx	159	formulário	className,disabled	<KeyRound size={16} /> {busy ? 'Gerando…' : 'Gerar chave'}
+apps/web/src/pages/AccessKeysPage.tsx	174	clique	className,disabled,onClick	<RefreshCw size={15} /> Atualizar
+apps/web/src/pages/AccessKeysPage.tsx	223	clique	className,disabled,onClick	<ShieldX size={15} /> Revogar
+apps/web/src/pages/AccessKeysPage.tsx	244	clique	className,onClick	<Copy size={16} /> Copiar chave
+apps/web/src/pages/AccessKeysPage.tsx	258	clique	className,onClick	Já guardei a chave
+apps/web/src/pages/AccessKeysPage.tsx	275	clique	className,disabled,onClick	Cancelar
+apps/web/src/pages/AccessKeysPage.tsx	278	clique	className,disabled,onClick	{busy ? 'Revogando…' : 'Confirmar revogação'}
+apps/web/src/pages/ConnectionsPage.tsx	73	clique	key,className,onClick	<span className={item.status === 'CONNECTED' ? 'online-dot' : 'offline-dot'} />
+apps/web/src/pages/ConnectionsPage.tsx	105	formulário	className,disabled	{busy === 'create' ? <Spinner /> : <Plus size={16} />} Criar conexão
+apps/web/src/pages/ConnectionsPage.tsx	154	clique	className,disabled,onClick	<Wifi size={16} /> Conectar
+apps/web/src/pages/ConnectionsPage.tsx	164	clique	className,disabled,onClick	<Pause size={16} /> Pausar
+apps/web/src/pages/ConnectionsPage.tsx	174	clique	className,disabled,onClick	<Unplug size={16} /> Desvincular
+apps/web/src/pages/ConnectionsPage.tsx	213	clique	className,disabled,onClick	Salvar regra
+apps/web/src/pages/ConnectionsPage.tsx	228	clique	className,disabled,onClick	<RefreshCw size={13} /> Sincronizar etiquetas
+apps/web/src/pages/CrmPage.tsx	217	clique	className,onClick	<Plus size={16} /> Nova etapa
+apps/web/src/pages/CrmPage.tsx	226	clique	className,onClick	<KanbanSquare size={16} /> Quadro
+apps/web/src/pages/CrmPage.tsx	230	clique	className,onClick	<BarChart3 size={16} /> Indicadores
+apps/web/src/pages/CrmPage.tsx	257	clique	className,onClick	<Settings2 size={15} /> Etapas
+apps/web/src/pages/CrmPage.tsx	263	clique	className,title,aria-label,disabled,onClick	{loading ? <Spinner /> : <RefreshCw size={17} />}
+apps/web/src/pages/CrmPage.tsx	286	clique	disabled,onClick	Tentar novamente
+apps/web/src/pages/CrmPage.tsx	379	spread	className,...spread,aria-label,title	<GripVertical size={17} />
+apps/web/src/pages/CrmPage.tsx	388	clique	className,onClick,aria-label	<div className="kanban-contact"> <Avatar contact={card.contact} /> <span> <stro
+apps/web/src/pages/CrmPage.tsx	429	clique	onClick,aria-label,title	<MessageSquare size={15} /> {card.unreadCount > 0 && <b>{card.unreadCount}</b>}
+apps/web/src/pages/CrmPage.tsx	465	clique	className,disabled,onClick	{limit >= 5000 ? 'Refine a busca para ver os demais' : `Carregar mais (${board.
+apps/web/src/pages/CrmPage.tsx	563	clique	className,title,aria-label,onClick	<MessageSquare size={19} />
+apps/web/src/pages/CrmPage.tsx	610	clique	type,className,disabled,onClick	Cancelar
+apps/web/src/pages/CrmPage.tsx	613	formulário	className,disabled	{busy ? <Spinner /> : <Check size={16} />} Salvar negociação
+apps/web/src/pages/CrmPage.tsx	629	clique	className,disabled,onClick	<ArrowRight size={15} /> Mover cartão
+apps/web/src/pages/CrmPage.tsx	695	clique	key,type,aria-label,style,onClick,className	{choice === color && <Check size={15} />}
+apps/web/src/pages/CrmPage.tsx	729	clique	type,className,onClick	Cancelar
+apps/web/src/pages/CrmPage.tsx	732	formulário	className,disabled	{busy ? <Spinner /> : <Plus size={16} />} Salvar etapa
+apps/web/src/pages/CrmPage.tsx	783	clique	className,aria-label,onClick	<Pencil size={16} />
+apps/web/src/pages/CrmPage.tsx	790	clique	className,aria-label,onClick	<Trash2 size={16} />
+apps/web/src/pages/CrmPage.tsx	803	clique	className,onClick	Fechar
+apps/web/src/pages/CrmPage.tsx	806	clique	className,onClick	<Plus size={16} /> Nova etapa
+apps/web/src/pages/CrmPage.tsx	830	clique	className,disabled,onClick	Cancelar
+apps/web/src/pages/CrmPage.tsx	833	clique	className,disabled,onClick	{busy ? <Spinner /> : <Trash2 size={15} />} Excluir etapa
+apps/web/src/pages/flows/FlowEditor.tsx	206	clique	className,aria-label,onClick	<ArrowLeft size={20} />
+apps/web/src/pages/flows/FlowEditor.tsx	232	clique	className,disabled,onClick	<FlaskConical size={16} /> Simular
+apps/web/src/pages/flows/FlowEditor.tsx	236	clique	className,disabled,onClick	<Save size={16} /> Salvar
+apps/web/src/pages/flows/FlowEditor.tsx	240	clique	className,disabled,onClick	<Upload size={16} /> Publicar
+apps/web/src/pages/flows/FlowEditor.tsx	251	clique	className,key,disabled,onClick	<Plus size={14} /> {blockNames[type]}
+apps/web/src/pages/flows/FlowInspector.tsx	71	clique	className,aria-label,onClick	<X size={18} />
+apps/web/src/pages/flows/FlowInspector.tsx	185	clique	className,aria-label,onClick	<Trash2 size={14} />
+apps/web/src/pages/flows/FlowInspector.tsx	194	clique	className,onClick	<Plus size={14} /> Adicionar regra
+apps/web/src/pages/flows/FlowInspector.tsx	256	clique	key,aria-pressed,onClick	{day}
+apps/web/src/pages/flows/FlowInspector.tsx	444	clique	className,onClick	<Trash2 size={15} /> Remover bloco
+apps/web/src/pages/flows/FlowSimulation.tsx	86	clique	type,className,onClick	Fechar
+apps/web/src/pages/flows/FlowSimulation.tsx	89	formulário	className,disabled	{busy ? <Spinner /> : <FlaskConical size={16} />} Executar simulação
+apps/web/src/pages/FlowsPage.tsx	89	clique	className,onClick	<Plus size={17} /> Novo fluxo
+apps/web/src/pages/FlowsPage.tsx	95	clique	className,onClick	Meus fluxos
+apps/web/src/pages/FlowsPage.tsx	98	clique	className,onClick	Execuções recentes
+apps/web/src/pages/FlowsPage.tsx	101	clique	className,onClick	Por inatividade
+apps/web/src/pages/FlowsPage.tsx	115	clique	className,aria-label,onClick	<RefreshCw size={16} />
+apps/web/src/pages/FlowsPage.tsx	152	clique	className,disabled,onClick	Editar <ArrowRight size={15} />
+apps/web/src/pages/FlowsPage.tsx	166	clique	className,disabled,aria-label,title,onClick	{flow.enabled ? <Pause size={17} /> : <Play size={17} />}
+apps/web/src/pages/FlowsPage.tsx	179	clique	className,disabled,aria-label,title,onClick	{flow.archived ? <RotateCcw size={17} /> : <Archive size={17} />}
+apps/web/src/pages/FlowsPage.tsx	198	clique	className,onClick	Criar meu primeiro fluxo
+apps/web/src/pages/FlowsPage.tsx	223	clique	className,disabled,onClick	<Square size={13} /> Cancelar
+apps/web/src/pages/FlowsPage.tsx	263	clique	type,className,onClick	Cancelar
+apps/web/src/pages/FlowsPage.tsx	266	formulário	className,disabled	Criar fluxo
+apps/web/src/pages/FlowsPage.tsx	284	clique	className,onClick	Voltar
+apps/web/src/pages/FlowsPage.tsx	287	clique	className,disabled,onClick	<Play size={15} /> Ativar fluxo
+apps/web/src/pages/HelpCenter.tsx	128	clique	className,onClick	<BookOpen size={15} /> Abrir seção <ArrowRight size={15} />
+apps/web/src/pages/LibraryPage.tsx	122	clique	className,onClick	<Plus size={17} /> {tab === 'FUNNEL' ? 'Criar funil' : tab === 'PIX' ? 'Cadastr
+apps/web/src/pages/LibraryPage.tsx	147	clique	className,key,onClick	<Icon size={17} /> {name}
+apps/web/src/pages/LibraryPage.tsx	174	clique	className,onClick	Organizar categorias
+apps/web/src/pages/LibraryPage.tsx	188	clique	className,onClick	Editar resposta
+apps/web/src/pages/LibraryPage.tsx	197	clique	className,onClick	Fechar
+apps/web/src/pages/LibraryPage.tsx	223	clique	className,aria-label,onClick	<Star size={17} fill={asset.isFavorite ? 'currentColor' : 'none'} />
+apps/web/src/pages/LibraryPage.tsx	232	clique	className,onClick	{asset.name}
+apps/web/src/pages/LibraryPage.tsx	249	clique	className,aria-label,onClick	<Pencil size={15} />
+apps/web/src/pages/LibraryPage.tsx	256	clique	className,aria-label,title,onClick	<Copy size={15} />
+apps/web/src/pages/LibraryPage.tsx	264	clique	className,aria-label,onClick	<Trash2 size={15} />
+apps/web/src/pages/LibraryPage.tsx	296	clique	className,aria-label,onClick	<Pencil size={15} />
+apps/web/src/pages/LibraryPage.tsx	314	clique	className,onClick	Editar macro
+apps/web/src/pages/LibraryPage.tsx	331	clique	className,aria-label,onClick	<Trash2 size={15} />
+apps/web/src/pages/LibraryPage.tsx	385	clique	className,disabled,onClick	Cancelar
+apps/web/src/pages/LibraryPage.tsx	388	clique	className,disabled,onClick	{actionBusy && <Spinner />} {assetAction.kind === 'duplicate' ? 'Confirmar dupl
+apps/web/src/pages/LibraryPage.tsx	565	clique	type,className,onClick	Cancelar
+apps/web/src/pages/LibraryPage.tsx	568	formulário	className,disabled	{busy && <Spinner />} Salvar resposta
+apps/web/src/pages/LibraryPage.tsx	668	clique	type,className,disabled,aria-label,onClick	<ArrowUp size={14} />
+apps/web/src/pages/LibraryPage.tsx	677	clique	type,className,disabled,aria-label,onClick	<ArrowDown size={14} />
+apps/web/src/pages/LibraryPage.tsx	686	clique	type,className,disabled,aria-label,onClick	<Trash2 size={14} />
+apps/web/src/pages/LibraryPage.tsx	698	clique	type,className,onClick	<Plus size={16} /> Adicionar etapa
+apps/web/src/pages/LibraryPage.tsx	712	clique	type,className,onClick	Cancelar
+apps/web/src/pages/LibraryPage.tsx	715	formulário	className,disabled	{busy && <Spinner />} Salvar funil
+apps/web/src/pages/LibraryPage.tsx	778	clique	type,className,onClick	Cancelar
+apps/web/src/pages/LibraryPage.tsx	781	formulário	className,disabled	{busy && <Spinner />} Salvar chave
+apps/web/src/pages/OperationsPages.tsx	153	clique	key,className,onClick	<Icon size={24} /> <h2>{title}</h2> <p>{text}</p> <span> Abrir <ArrowRight size
+apps/web/src/pages/OperationsPages.tsx	229	clique	className,disabled,onClick	<Upload size={16} /> Importar Excel / CSV
+apps/web/src/pages/OperationsPages.tsx	233	clique	className,disabled,onClick	Exportar históricos
+apps/web/src/pages/OperationsPages.tsx	236	clique	className,disabled,onClick	<Plus size={16} /> Novo contato
+apps/web/src/pages/OperationsPages.tsx	257	clique	key,onClick	<div> <strong>{chat.contact.name}</strong> <small>+{chat.contact.phoneNumber}</
+apps/web/src/pages/OperationsPages.tsx	274	clique	className,disabled,onClick	Anterior
+apps/web/src/pages/OperationsPages.tsx	278	clique	className,disabled,onClick	Próxima
+apps/web/src/pages/OperationsPages.tsx	328	clique	type,className,onClick	Cancelar
+apps/web/src/pages/OperationsPages.tsx	331	formulário	className,disabled	Criar contato
+apps/web/src/pages/OperationsPages.tsx	411	clique	className,disabled,onClick	{busy ? <Spinner /> : <Search size={15} />} Ler planilha
+apps/web/src/pages/OperationsPages.tsx	511	clique	className,onClick	Cancelar
+apps/web/src/pages/OperationsPages.tsx	514	clique	className,disabled,onClick	Importar {preview?.items.length ?? 0} contatos
+apps/web/src/pages/OperationsPages.tsx	653	clique	className,aria-label,onClick	<RefreshCw size={17} />
+apps/web/src/pages/OperationsPages.tsx	656	clique	className,disabled,onClick	<Plus size={16} /> {schedule ? 'Novo agendamento' : 'Nova campanha'}
+apps/web/src/pages/OperationsPages.tsx	709	clique	className,onClick	Financeiro
+apps/web/src/pages/OperationsPages.tsx	723	clique	className,onClick	Vincular vendas do CRM
+apps/web/src/pages/OperationsPages.tsx	724	clique	className,onClick	Ver envios
+apps/web/src/pages/OperationsPages.tsx	737	clique	className,disabled,onClick	<Play size={14} /> Ativar
+apps/web/src/pages/OperationsPages.tsx	743	clique	className,disabled,onClick	<Pause size={14} /> Pausar
+apps/web/src/pages/OperationsPages.tsx	749	clique	className,disabled,onClick	<Square size={13} /> Cancelar
+apps/web/src/pages/OperationsPages.tsx	826	formulário	className,disabled	Salvar valores
+apps/web/src/pages/OperationsPages.tsx	873	clique	className,onClick	Voltar
+apps/web/src/pages/OperationsPages.tsx	876	clique	className,disabled,onClick	Confirmar ativação
+apps/web/src/pages/OperationsPages.tsx	1298	clique	className,type,disabled,onClick	Subir
+apps/web/src/pages/OperationsPages.tsx	1312	clique	className,type,disabled,onClick	Descer
+apps/web/src/pages/OperationsPages.tsx	1326	clique	className,type,disabled,onClick	Remover
+apps/web/src/pages/OperationsPages.tsx	1348	clique	type,className,disabled,onClick	Adicionar mensagem
+apps/web/src/pages/OperationsPages.tsx	1382	clique	type,className,disabled,onClick	{generating ? <Spinner /> : '✨'} Gerar variações com IA
+apps/web/src/pages/OperationsPages.tsx	1408	clique	type,className,disabled,onClick	Adicionar variação manual
+apps/web/src/pages/OperationsPages.tsx	1431	clique	type,className,onClick	Remover variação
+apps/web/src/pages/OperationsPages.tsx	1441	clique	type,className,onClick	Ver próxima variação na prévia
+apps/web/src/pages/OperationsPages.tsx	1533	clique	type,className,disabled,onClick	<Users size={15} /> Conferir público
+apps/web/src/pages/OperationsPages.tsx	1565	clique	type,className,onClick	Ver/Selecionar leads manualmente
+apps/web/src/pages/OperationsPages.tsx	1576	clique	type,className,onClick	{selectedLeads.length ? 'Desmarcar todos' : 'Selecionar todos'}
+apps/web/src/pages/OperationsPages.tsx	1620	clique	type,className,onClick	Cancelar
+apps/web/src/pages/OperationsPages.tsx	1623	formulário	className,disabled	{busy ? <Spinner /> : <Plus size={15} />} Salvar rascunho
+apps/web/src/pages/SandboxPage.tsx	148	clique	className,onClick	{name}
+apps/web/src/pages/SandboxPage.tsx	159	clique	className,onClick	<Sparkles size={15} /> Carregar dados de exemplo
+apps/web/src/pages/SandboxPage.tsx	162	clique	className,onClick	<Trash2 size={15} /> Limpar dados de exemplo
+apps/web/src/pages/SandboxPage.tsx	170	clique	key,className,onClick	{name}
+apps/web/src/pages/SandboxPage.tsx	179	clique	className,onClick	Carregar dados de exemplo
+apps/web/src/pages/SandboxPage.tsx	180	clique	className,onClick	Começar com cliente vazio
+apps/web/src/pages/SandboxPage.tsx	196	clique	key,className,onClick	<Avatar contact={{ name: contact.name, profilePicture: null } as any} /> <span>
+apps/web/src/pages/SandboxPage.tsx	206	clique	className,onClick	Voltar
+apps/web/src/pages/SandboxPage.tsx	209	clique	className,onClick	<Settings2 size={14} /> {panel ? 'Mensagens e recursos' : 'Mostrar recursos'}
+apps/web/src/pages/SandboxPage.tsx	216	clique	className,onClick	Reiniciar conversa
+apps/web/src/pages/SandboxPage.tsx	248	formulário	className	<Send size={15} /> Enviar no teste
+apps/web/src/pages/SandboxPage.tsx	255	clique	className,onClick	Voltar à conversa
+apps/web/src/pages/SandboxPage.tsx	260	clique	className,onClick	<Plus size={14} /> Criar resposta
+apps/web/src/pages/SandboxPage.tsx	263	clique	className,onClick	{resource.name}
+apps/web/src/pages/SandboxPage.tsx	295	clique	className,onClick	R$ {contact.value.toFixed(2)} · Editar
+apps/web/src/pages/SandboxPage.tsx	370	clique	className,onClick	Selecionar todos os correspondentes
+apps/web/src/pages/SandboxPage.tsx	371	clique	className,disabled,onClick	Criar rascunho
+apps/web/src/pages/SandboxPage.tsx	407	clique	className,onClick	Agendar lembrete
+apps/web/src/pages/SandboxPage.tsx	436	clique	className,onClick	Criar recurso
+apps/web/src/pages/SandboxPage.tsx	479	clique	className,onClick	Cadastrar atendente
+apps/web/src/pages/SandboxPage.tsx	487	clique	className,onClick	Solicitar transferência
+apps/web/src/pages/SandboxPage.tsx	527	formulário	className	Salvar fluxo de teste
+apps/web/src/pages/SandboxPage.tsx	528	clique	className,type,onClick	Testar no atendimento virtual
+apps/web/src/pages/SandboxPage.tsx	540	clique	className,onClick	Cancelar
+apps/web/src/pages/SandboxPage.tsx	541	clique	className,onClick	Confirmar
+apps/web/src/pages/SandboxPage.tsx	588	clique	className,type,onClick	Cancelar
+apps/web/src/pages/SandboxPage.tsx	589	formulário	className	Confirmar no teste
+apps/web/src/pages/SettingsPage.tsx	179	clique	className,onClick	Aplicar acesso
+apps/web/src/pages/SettingsPage.tsx	241	clique	type,className,onClick	Aplicar substituições deste backup
+apps/web/src/pages/SettingsPage.tsx	274	clique	className,disabled,onClick	{busy ? <Spinner /> : <Download size={16} />} Exportar JSON
+apps/web/src/pages/WorkspaceSettings.tsx	123	clique	className,onClick	<LogOut size={16} /> Sair da conta
+apps/web/src/pages/WorkspaceSettings.tsx	147	clique	key,className,onClick	{title}
+apps/web/src/pages/WorkspaceSettings.tsx	153	clique	className,type,onClick	Tentar salvar novamente
+apps/web/src/pages/WorkspaceSettings.tsx	161	clique	className,onClick	<Palette size={16} /> Abrir Personalização
+apps/web/src/pages/WorkspaceSettings.tsx	165	clique	className,onClick	Personalizar Atendimento com prévia
+apps/web/src/pages/WorkspaceSettings.tsx	199	clique	type,className,onClick	Remover logotipo
+apps/web/src/pages/WorkspaceSettings.tsx	222	clique	type,className,onClick	Remover ícone
+apps/web/src/pages/WorkspaceSettings.tsx	249	clique	className,onClick	Personalizar Atendimento com prévia
+apps/web/src/pages/WorkspaceSettings.tsx	370	formulário	className,disabled	Salvar perfil
+apps/web/src/pages/WorkspaceSettings.tsx	452	clique	className,onClick	<Bell size={15} /> Autorizar notificações do navegador
+apps/web/src/pages/WorkspaceSettings.tsx	484	clique	className,onClick	Marcar como lido
+apps/web/src/pages/WorkspaceSettings.tsx	591	formulário	className,disabled	Salvar negócio
+apps/web/src/pages/WorkspaceSettings.tsx	606	clique	className,onClick	Remover
+apps/web/src/pages/WorkspaceSettings.tsx	634	formulário	className,disabled	<Plus size={15} /> Adicionar
+apps/web/src/pages/WorkspaceSettings.tsx	652	formulário	className,disabled	Salvar regras de opt-out

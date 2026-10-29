@@ -43,6 +43,7 @@ const accounts = {
   alpha: { uid: 'customer-a', email: 'alpha@example.invalid' },
   beta: { uid: 'customer-b', email: 'beta@example.invalid' },
   staff: { uid: 'staff-user', email: 'staff@example.invalid' },
+  preferenceMember: { uid: 'preference-member', email: 'preference-member@example.invalid' },
 };
 const previous = { mode: env.AUTH_MODE, owner: env.OWNER_EMAIL, project: env.FIREBASE_PROJECT_ID };
 const hub = new RealtimeHub();
@@ -244,6 +245,71 @@ test('HTTP isola conexões, biblioteca, arquivos e preferências mesmo com ident
     .get('/api/attendance/library')
     .set('Authorization', 'Bearer alpha')
     .expect(403);
+});
+test('REQ-493/494/503/206/208/209/214/215/216: preferências fictícias persistem por usuário', async () => {
+  const route = '/api/operations/settings/preferences';
+  const image = 'data:image/png;base64,iVBORw0KGgo=';
+  const settings = {
+    pinnedResourceIds: ['same-asset', 'other-asset'],
+    pinnedButtonSettings: {
+      'same-asset': { label: 'Primeiro', category: 'Respostas', preview: 'never' },
+      'other-asset': { label: 'Segundo', category: 'Respostas', preview: 'always' },
+    },
+    showPinnedPreview: false,
+    menuLabels: { inbox: 'Conversas' },
+    folderLabels: { MESSAGE: 'Textos salvos' },
+    labelStyles: { 'label-a': { color: '#123456', icon: '★' } },
+    brandingLogo: image,
+    favicon: image,
+    density: 'expanded',
+    panelPosition: 'left',
+  };
+  await request(app).put(route).set('Authorization', 'Bearer alpha').send(settings).expect(200);
+  const saved = (await request(app).get(route).set('Authorization', 'Bearer alpha').expect(200)).body;
+  assert.deepEqual(saved, { ...settings, brandingName: 'noctua' });
+  const reopened = createSqliteClient(databaseUrl('alpha'));
+  try {
+    const row = await reopened.operationRecord.findUniqueOrThrow({
+      where: { id: `preferences:${accounts.alpha.uid}` },
+    });
+    assert.deepEqual(row.data, saved);
+  } finally {
+    await reopened.$disconnect();
+  }
+  assert.notDeepEqual(
+    (await request(app).get(route).set('Authorization', 'Bearer beta').expect(200)).body,
+    saved,
+  );
+  const removed = { ...settings, pinnedResourceIds: ['other-asset'] };
+  await request(app).put(route).set('Authorization', 'Bearer alpha').send(removed).expect(200);
+  assert.deepEqual(
+    (await request(app).get(route).set('Authorization', 'Bearer alpha').expect(200)).body.pinnedResourceIds,
+    ['other-asset'],
+  );
+  assert.equal(await alphaDb.asset.count({ where: { id: 'same-asset' } }), 1);
+
+  const binding = { email: accounts.preferenceMember.email, workspaceId: a, role: 'MEMBER', active: true };
+  await registry.operationRecord.upsert({
+    where: { id: `access-member:${accounts.preferenceMember.email}` },
+    create: { id: `access-member:${accounts.preferenceMember.email}`, kind: 'ACCESS_MEMBER', data: binding },
+    update: { data: binding },
+  });
+  const member = { email: accounts.preferenceMember.email, role: 'MEMBER', active: true };
+  await alphaDb.operationRecord.upsert({
+    where: { id: `team:${accounts.preferenceMember.email}` },
+    create: { id: `team:${accounts.preferenceMember.email}`, kind: 'TEAM', data: member },
+    update: { data: member },
+  });
+  await request(app).put(route).set('Authorization', 'Bearer preferenceMember').send({ density: 'medium' }).expect(200);
+  assert.equal(
+    (await request(app).get(route).set('Authorization', 'Bearer preferenceMember').expect(200)).body.density,
+    'medium',
+  );
+  assert.equal(
+    (await request(app).get(route).set('Authorization', 'Bearer alpha').expect(200)).body.density,
+    'expanded',
+  );
+  await request(app).get(route).expect(401);
 });
 test('atendente não recebe privilégio de outro papel nem mantém acesso depois da desativação', async () => {
   const centralId = `access-member:${accounts.staff.email}`;
