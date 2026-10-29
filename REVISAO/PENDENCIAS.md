@@ -1,12 +1,16 @@
 # Pendências — Noctua CRM
 
+## Acesso e operação, lote REQ-109 — 29/10/2026
+
+O usuário fechou a regra: continuar recebendo mensagens e manter funis, fluxos e agendamentos fora do horário; permitir texto de resposta automática, no máximo uma vez por lead por dia. A opção foi implementada desligada por padrão. Dois testes isolados passaram 1/1 cada: configuração, persistência, isolamento e permissões; resposta fictícia, reinício, limite diário e descarte de grupos, opt-out e evento atrasado. Tipagem servidor/web aprovada. Nenhum envio real, teste de Mensagens já aprovadas, migração de banco ou publicação. REQ-109 continua parcial até percurso visual após recarregar e entrega controlada autorizada. Prova e limites em `evidencias/resposta-fora-horario-2026-10-29.md`. Próximo lote independente: Chaves e operações, sem IA.
+
 ## Chaves e operações, diagnóstico REQ-695/696/697 — 29/10/2026
 
 Os três IDs passam de “não testado” a “parcial”: o próprio histórico já comprovava ativação, reserva/uso único e isolamento com contas Firebase fictícias. A interface e a API estão ligadas por AuthGate, ActivationPanel, access.routes e AccessService. Falta o percurso externo de cadastro, verificação de e-mail, ativação e recarregamento com segunda conta real; nenhum teste foi repetido nem chave/conta real criada. Ver `evidencias/ativacao-conta-historico-2026-10-29.md`. Contagem consolidada: 304 a verificar, 114 completos, 226 parciais, 0 não testados; demais estados inalterados.
 
 ## Regra de horário comercial informada pelo usuário — 29/10/2026
 
-Para REQ-109, o usuário esclareceu que mensagens recebidas devem continuar entrando e que funis, fluxos e agendamentos seguem normalmente fora do horário. Solicitou opção de resposta automática com texto configurável quando um lead escrever fora do horário. Ainda falta definir a frequência da resposta para mensagens repetidas do mesmo lead; a pergunta está pendente. Não implementar nem enviar mensagem real antes de fechar a regra e verificar em conector fictício. O código atual salva `settings:business.schedule`, mas não o usa para essa resposta.
+Para REQ-109, o usuário esclareceu que mensagens recebidas devem continuar entrando e que funis, fluxos e agendamentos seguem normalmente fora do horário. Solicitou opção de resposta automática com texto configurável quando um lead escrever fora do horário. Depois definiu o limite de uma resposta por lead por dia. O diagnóstico e a implementação local estão registrados no lote acima.
 
 ## Acesso e operação, diagnóstico REQ-126 — 29/10/2026
 
@@ -18,7 +22,7 @@ REQ-112/113 continuam parciais: caminhos de recuperação e verificação no Fir
 
 ## Acesso e operação, lotes REQ-103/107/109 — 29/10/2026
 
-REQ-103/107 seguem parciais após leitura das ligações de ordem/visibilidade e da prova anterior de preferências; falta o percurso visual e a conferência após recarregar. Nenhum teste antigo foi repetido. REQ-109 segue parcial: teste novo e isolado passou 1/1 para gravação/leitura, persistência em segunda conexão SQLite, isolamento entre espaços e 403 para atendente. A primeira tentativa isolada encontrou fixture sem atendente (402); após preparar o fixture, repetiu-se apenas esse teste novo. O encerramento automático já tinha prova e não foi testado de novo. O horário comercial é salvo, mas não foi identificada aplicação no servidor; sua função exata depende de decisão de regra de negócio. REQ-108 também segue parcial após leitura de código: assinatura é acrescentada ao enviar, mas o rascunho visível não mostra o texto final. Conforme REQ-661, nenhum teste funcional de Mensagens ou envio foi feito. Ver `evidencias/menu-negocio-2026-10-29.md`. Próximo lote: outras lacunas de Acesso que possam ser verificadas sem login externo; REQ-105/106/109 aguardam decisões de comportamento antes de correção.
+Registro histórico anterior à decisão de REQ-109: REQ-103/107 seguem parciais após leitura das ligações de ordem/visibilidade e da prova anterior de preferências; falta o percurso visual e a conferência após recarregar. Nenhum teste antigo foi repetido. REQ-109 segue parcial: teste novo e isolado passou 1/1 para gravação/leitura, persistência em segunda conexão SQLite, isolamento entre espaços e 403 para atendente. A primeira tentativa isolada encontrou fixture sem atendente (402); após preparar o fixture, repetiu-se apenas esse teste novo. O encerramento automático já tinha prova e não foi testado de novo. O horário comercial era salvo, mas ainda não havia aplicação identificada no servidor; sua função exata dependia de decisão de regra de negócio. REQ-108 também segue parcial após leitura de código: assinatura é acrescentada ao enviar, mas o rascunho visível não mostra o texto final. Conforme REQ-661, nenhum teste funcional de Mensagens ou envio foi feito. Ver `evidencias/menu-negocio-2026-10-29.md`. A decisão e implementação posteriores constam no lote REQ-109 acima.
 
 ## Acesso e operação, lote REQ-105/106 — 29/10/2026
 

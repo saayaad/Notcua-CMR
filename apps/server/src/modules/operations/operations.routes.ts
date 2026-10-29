@@ -35,6 +35,7 @@ import type { Batch, Delivery } from './delivery.worker.js';
 import { toolboxRoutes } from './toolbox.routes.js';
 import { macroRoutes } from './macros.routes.js';
 import { createSystemBackup, type SystemBackup } from './system-backups.js';
+import { businessHoursReplySchema } from './business-hours-reply.js';
 import { inactivityRoutes } from './inactivity.js';
 import { standardReplyRoutes } from './standard-replies.js';
 import { nextActionRoutes } from './next-actions.js';
@@ -217,6 +218,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     const key = z.enum(['business', 'preferences', 'departments', 'shortcuts', 'watermarks', 'optout']).parse(req.params.key);
     if (key !== 'preferences') admin(res.locals.identity.role);
     let data = z.record(z.string().max(100), z.json()).parse(req.body);
+    if (key === 'business') businessHoursReplySchema.parse(data);
     if (key === 'watermarks') {
       const mark = z.object({
         id: z.string().min(1).max(100), name: z.string().trim().min(1).max(80),

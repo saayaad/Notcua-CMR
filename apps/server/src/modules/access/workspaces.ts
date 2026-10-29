@@ -22,6 +22,7 @@ import { SequenceService } from '../attendance/sequence.service.js';
 import { FlowEngine } from '../flows/flow.engine.js';
 import { DeliveryWorker } from '../operations/delivery.worker.js';
 import { BusinessWorker } from '../operations/business.worker.js';
+import { BusinessHoursReplyWorker } from '../operations/business-hours-reply.js';
 import { AiWorker } from '../operations/ai.worker.js';
 import { BackupWorker } from '../operations/system-backups.js';
 import { InactivityWorker } from '../operations/inactivity.js';
@@ -76,6 +77,7 @@ export async function buildWorkspaceRuntime(
   const flows = new FlowEngine(db, whatsapp, messaging);
   const deliveries = new DeliveryWorker(db, whatsapp, messaging, sequences, flows);
   const business = new BusinessWorker(db, whatsapp);
+  const businessHoursReply = new BusinessHoursReplyWorker(db, messaging);
   const ai = new AiWorker(db, whatsapp, messaging, check);
   const backups = new BackupWorker(db);
   const inactivity = new InactivityWorker(db, flows, whatsapp);
@@ -83,6 +85,7 @@ export async function buildWorkspaceRuntime(
   await sequences.start();
   await flows.start();
   await deliveries.start();
+  await businessHoursReply.start();
   business.start();
   ai.start();
   backups.start();
@@ -98,6 +101,7 @@ export async function buildWorkspaceRuntime(
         flows.stop(),
         deliveries.stop(),
         business.stop(),
+        businessHoursReply.stop(),
         ai.stop(),
         backups.stop(),
         inactivity.stop(),

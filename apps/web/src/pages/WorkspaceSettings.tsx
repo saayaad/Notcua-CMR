@@ -508,14 +508,22 @@ export function WorkspaceSettings({
             <div className="surface">
               <h2>Funcionamento da empresa</h2>
               <form
+                key={`business-${JSON.stringify(data)}`}
                 onSubmit={(event) => {
                   event.preventDefault();
                   const form = new FormData(event.currentTarget);
+                  if (form.has('afterHoursReplyEnabled') &&
+                    (!form.has('scheduleEnabled') || !String(form.get('afterHoursReplyText') ?? '').trim())) {
+                    notify('Defina o horário e escreva a mensagem antes de ativar a resposta automática.', true);
+                    return;
+                  }
                   void save('/operations/settings/business', {
                     company: form.get('company'),
                     schedule: form.get('scheduleEnabled')
                       ? { days: [1, 2, 3, 4, 5], minTime: form.get('minTime'), maxTime: form.get('maxTime') }
                       : null,
+                    afterHoursReplyEnabled: form.has('afterHoursReplyEnabled'),
+                    afterHoursReplyText: String(form.get('afterHoursReplyText') ?? '').trim(),
                     autoCloseMinutes: Number(form.get('autoCloseMinutes') || 0),
                     distribution: form.has('distribution'),
                   });
@@ -548,6 +556,21 @@ export function WorkspaceSettings({
                   </label>
                 </div>
                 <p>Horário de São Paulo. Cada fluxo também pode ter seu próprio horário de funcionamento.</p>
+                <label className="checkbox">
+                  <input name="afterHoursReplyEnabled" type="checkbox" defaultChecked={Boolean(data.afterHoursReplyEnabled)} />
+                  Responder automaticamente ao lead fora do horário
+                </label>
+                <label>
+                  Mensagem fora do horário
+                  <textarea
+                    name="afterHoursReplyText"
+                    rows={4}
+                    maxLength={2000}
+                    defaultValue={String(data.afterHoursReplyText ?? '')}
+                    placeholder="Ex.: Recebemos sua mensagem. Retornaremos no próximo horário de atendimento."
+                  />
+                  <small className="muted">Uma resposta por lead a cada dia fora do horário. Funis, fluxos e agendamentos continuam normalmente.</small>
+                </label>
                 <label className="checkbox">
                   <input name="distribution" type="checkbox" defaultChecked={Boolean(data.distribution)} />
                   Distribuir conversas sem responsável por rodízio entre atendentes ativos e online

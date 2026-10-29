@@ -369,6 +369,8 @@ test('REQ-109: configuração do negócio persiste com isolamento e permissão d
   const business = {
     company: 'Empresa fictícia',
     schedule: { days: [1, 2, 3, 4, 5], minTime: '08:00', maxTime: '18:00' },
+    afterHoursReplyEnabled: true,
+    afterHoursReplyText: 'Voltaremos no próximo horário.',
     autoCloseMinutes: 10,
     distribution: false,
   };
@@ -390,6 +392,11 @@ test('REQ-109: configuração do negócio persiste com isolamento e permissão d
     .set('Authorization', 'Bearer staff')
     .send(business)
     .expect(403);
+  await request(app)
+    .put('/api/operations/settings/business')
+    .set('Authorization', 'Bearer alpha')
+    .send({ ...business, afterHoursReplyText: '' })
+    .expect(422);
 
   const reopened = createSqliteClient(databaseUrl('alpha'));
   try {

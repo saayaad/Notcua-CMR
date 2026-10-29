@@ -49,6 +49,8 @@ export interface BusinessSettings {
   objective?: string;
   social?: string;
   schedule?: { days: number[]; minTime: string; maxTime: string };
+  afterHoursReplyEnabled?: boolean;
+  afterHoursReplyText?: string;
   autoCloseMinutes?: number;
   distribution?: boolean;
 }
