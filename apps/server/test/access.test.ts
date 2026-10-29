@@ -318,6 +318,31 @@ test('REQ-110/111: setores e equipe persistem com isolamento e permissão de adm
     await reopened.$disconnect();
   }
 });
+test('REQ-104: perfil persiste por usuário e fica isolado entre espaços', async () => {
+  const profile = {
+    name: 'Operador fictício',
+    company: 'Empresa de teste',
+    segment: 'Atendimento',
+    employees: '3',
+    objective: 'Conferir persistência',
+    social: '',
+    phone: '62999999999',
+    completed: true,
+  };
+  await request(app).put('/api/operations/me').set('Authorization', 'Bearer alpha').send(profile).expect(200);
+  const alpha = await request(app).get('/api/operations/me').set('Authorization', 'Bearer alpha').expect(200);
+  const beta = await request(app).get('/api/operations/me').set('Authorization', 'Bearer beta').expect(200);
+  assert.deepEqual(alpha.body.profile, profile);
+  assert.notDeepEqual(beta.body.profile, profile);
+
+  const reopened = createSqliteClient(databaseUrl('alpha'));
+  try {
+    const saved = await reopened.operationRecord.findUniqueOrThrow({ where: { id: `profile:${accounts.alpha.uid}` } });
+    assert.deepEqual(saved.data, profile);
+  } finally {
+    await reopened.$disconnect();
+  }
+});
 test('renovação mantém a operação; revogar a licença atual bloqueia acesso sem apagar arquivos', async () => {
   const previous = await access.workspace(a);
   const renewal = await access.create(accounts.owner, { label: 'Renovação', months: 3 });

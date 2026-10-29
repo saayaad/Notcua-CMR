@@ -1,5 +1,9 @@
 # Pendências — Noctua CRM
 
+## Acesso e operação, lote REQ-104 — 29/10/2026
+
+Um teste novo e exclusivo de REQ-104 passou 1/1: perfil fictício gravado, lido após reabrir SQLite descartável e isolado de outro espaço. Tipagem aprovada. O requisito permanece parcial porque falta o percurso visual com recarregamento. Nenhuma suíte anterior, conta real ou banco de produção foi tocado. Prova por arquivo/função/linha em `evidencias/perfil-operador-2026-10-29.md`. Próximo lote P1: verificar as lacunas específicas de privacidade/notificações sem repetir os testes de preferências já aprovados; os efeitos do navegador aguardam acesso visual permitido.
+
 ## Acesso e operação, lote REQ-110/111 — 29/10/2026
 
 Um teste novo e exclusivo de REQ-110/111 passou 1/1: setor e membro fictícios foram gravados, lidos em outra conexão SQLite, isolados de outro espaço e protegidos contra alteração por atendente (403). Tipagem do servidor aprovada. Nenhuma suíte antiga foi repetida, nenhum e-mail enviado. Ambos permanecem parciais: falta o percurso visual; REQ-111 também depende de decisão sobre o fluxo e o serviço de convite privado. Prova por arquivo/função/linha em `evidencias/acesso-setores-equipe-2026-10-29.md`. Próximo lote P1: demais configurações de acesso e suas permissões; manter REQ-098/099/540 pendentes até prova de login novo e configuração pública local.
