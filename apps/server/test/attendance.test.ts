@@ -371,6 +371,45 @@ test('funil aguarda o intervalo, usa snapshot e pode ser cancelado sem enviar a 
   assert.equal((await db.sequenceRun.findUniqueOrThrow({ where: { id: run.id } })).status, 'CANCELLED');
 });
 
+test('macro espera antes do texto e aplica tempo de digitação configurado', async () => {
+  await db.macro.create({
+    data: {
+      id: 'macro-delayed-text-test',
+      name: 'Texto com espera',
+      actions: {
+        create: {
+          position: 0,
+          type: 'TEXT',
+          text: 'Mensagem após espera',
+          waitMs: 60_000,
+          composingMs: 120,
+        },
+      },
+    },
+  });
+  const sendsBefore = socket.sends.length;
+  const presenceBefore = socket.presence.length;
+  const run = await sequences.enqueue(
+    sessionId,
+    conversationId,
+    'MACRO',
+    'macro-delayed-text-test',
+    'macro-delayed-text-request',
+  );
+  assert.ok(run.nextRunAt.getTime() > Date.now() + 50_000);
+  await sequences.flush();
+  assert.equal(socket.sends.length, sendsBefore);
+  assert.ok(socket.presence.slice(presenceBefore).includes('composing'));
+
+  await db.sequenceRun.update({ where: { id: run.id }, data: { nextRunAt: new Date(0) } });
+  const started = Date.now();
+  await sequences.flush();
+  assert.ok(Date.now() - started >= 80);
+  assert.equal(socket.sends.length, sendsBefore + 1);
+  assert.deepEqual(socket.sends.at(-1)?.content, { text: 'Mensagem após espera' });
+  assert.equal((await db.sequenceRun.findUniqueOrThrow({ where: { id: run.id } })).status, 'COMPLETED');
+});
+
 test('funil envia texto, áudio de voz e imagem em ordem com atraso entre etapas', async () => {
   const ffmpeg = createRequire(import.meta.url)('ffmpeg-static') as string;
   const wav = execFileSync(ffmpeg, [

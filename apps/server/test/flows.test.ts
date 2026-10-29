@@ -364,6 +364,41 @@ test('fluxos enviam áudio de voz, imagem e documento pelos formatos corretos no
   assert.equal(attachment.fileName, 'proposta-teste.pdf');
 });
 
+test('nós de áudio e imagem aguardam o atraso configurado antes do envio', async () => {
+  for (const scenario of [
+    { kind: 'audio' as const, assetId: 'voice', text: 'áudio atrasado' },
+    { kind: 'media' as const, assetId: 'image', text: 'imagem atrasada' },
+  ]) {
+    const value: FlowGraph = {
+      nodes: [
+        node(`start-${scenario.kind}`, 'start', {
+          keywordRules: [{ rule: 'equals', keyword: scenario.text }],
+          nextNodeIds: [`message-${scenario.kind}`],
+        }),
+        node(`message-${scenario.kind}`, scenario.kind, {
+          itemId: scenario.assetId,
+          simulationDelay: 60_000,
+        }),
+      ],
+    };
+    await prepare(value);
+    const chat = await contact();
+    const before = socket.sends.length;
+    await incoming(chat.id, scenario.text);
+    await drain();
+    assert.equal(socket.sends.length, before);
+
+    const run = await db.flowExecution.findFirst({ where: { conversationId: chat.id } });
+    assert.ok(run?.nextRunAt);
+    assert.ok(run.nextRunAt.getTime() > Date.now() + 50_000);
+    await db.flowExecution.update({ where: { id: run.id }, data: { nextRunAt: new Date(0) } });
+    await drain();
+    assert.equal(socket.sends.length, before + 1);
+    const sent = socket.sends.at(-1) as { audio?: Buffer; image?: Buffer };
+    assert.ok(Buffer.isBuffer(scenario.kind === 'audio' ? sent.audio : sent.image));
+  }
+});
+
 test('resposta rápida entra na espera sem se perder e o caminho compatível é consumido uma vez', async () => {
   await prepare(graph(true));
   const chat = await contact();

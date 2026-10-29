@@ -2,6 +2,10 @@
 
 ## Retomada em 29/10/2026
 
+REQ-045: novo teste isolado de macro com espera de 60 segundos e tempo de digitação de 120 ms passou 1/1. Nenhuma mensagem saiu antes do prazo; depois de tornar o agendamento vencido no banco descartável, o conector fictício recebeu o texto uma vez e a execução terminou. Falta conferir os controles e a presença na interface e no aparelho de teste.
+
+REQ-064/065: novo caso isolado de atraso de 60 segundos para áudio e imagem passou 1/1. O conector fictício não enviou antes do prazo; após adiantar somente o relógio do agendamento no banco descartável, enviou cada mídia uma vez. Permanecem parciais até conferir o editor e o recebimento em aparelho real. Os casos de atraso zero aprovados anteriormente não foram repetidos.
+
 Dois cenários novos sem IA passaram 2/2 em banco descartável e WhatsApp fictício: REQ-120, primeira entrada após saída anterior e bloqueio da segunda entrada; REQ-124, etiqueta permitida exigida e etiqueta excluída prioritária. Permanecem parciais por faltar configuração e observação na interface. A suíte completa existente não foi repetida; `.github/workflows/checks.yml` já executa tipagem, compilação e testes automaticamente em cada push ou pull request.
 
 Continuação automática sem IA: REQ-121 ganhou caso isolado para a virada do dia em São Paulo. Uma mensagem às 23:59:59 do dia anterior não bloqueou o primeiro gatilho do dia atual; teste 1/1 aprovado em banco descartável e conector WhatsApp fictício. A configuração pela interface e a conexão real continuam pendentes. Os testes aprovados antes desta rodada não foram repetidos. A automação da conversa continuará pelas lacunas não IA sem usar dados de produção nem enviar mensagens.
