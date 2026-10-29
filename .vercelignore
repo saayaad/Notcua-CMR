@@ -23,3 +23,6 @@ apps/server/.env*
 *.log.*
 apps/web/dist
 apps/server/dist
+Relatorio de diagnostico Noctua 2026-10-29.docx
+build_relatorio_diagnostico.py
+render_relatorio/

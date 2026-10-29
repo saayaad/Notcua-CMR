@@ -18,6 +18,7 @@ export const menuGroups = [
     name: 'Relacionamentos',
     items: [
       ['contacts', 'Contatos'],
+      ['spreadsheets', 'Planilhas'],
       ['crm', 'CRM e negócios'],
     ],
   },

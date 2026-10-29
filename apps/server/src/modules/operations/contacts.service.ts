@@ -132,26 +132,39 @@ export class ContactsService {
           .regex(/^\d{1,3}$/)
           .default('55'),
         phoneColumn: z.number().int().min(0).max(100).optional(),
-        nameColumn: z.number().int().min(0).max(100).optional(),
+        nameColumn: z.number().int().min(-1).max(100).optional(),
+        sheetIndex: z.number().int().min(0).max(100).default(0),
       })
       .parse(raw);
     const bytes = Buffer.from(input.base64.replace(/^data:[^,]*,/, ''), 'base64');
     if (bytes.length > 10 * 1024 * 1024) throw new AppError(413, 'A planilha deve ter até 10 MiB.');
     const book = new ExcelJS.Workbook();
     try {
-      if (/\.csv$/i.test(input.filename)) {
+      if (/\.json$/i.test(input.filename)) {
+        const records: unknown = JSON.parse(bytes.toString('utf8').replace(/^\uFEFF/, ''));
+        if (!Array.isArray(records) || records.length > 5000 || !records.every((row) => row && typeof row === 'object' && !Array.isArray(row)))
+          throw new AppError(422, 'JSON deve conter até 5.000 contatos em uma lista de objetos.');
+        const headers = [...new Set(records.flatMap((row) => Object.keys(row as Record<string, unknown>)))].slice(0, 100);
+        const target = book.addWorksheet('Contatos');
+        target.addRow(headers);
+        for (const record of records) target.addRow(headers.map((key) => {
+          const value = (record as Record<string, unknown>)[key];
+          return value == null ? '' : typeof value === 'string' ? value : String(value);
+        }));
+      } else if (/\.csv$/i.test(input.filename)) {
         const text = bytes.toString('utf8').replace(/^\uFEFF/, '');
         const delimiter = csvDelimiter(text);
         await book.csv.read(Readable.from([text]), { parserOptions: { delimiter, trim: true } });
       } else if (/\.xlsx$/i.test(input.filename)) await book.xlsx.load(bytes as never);
       else if (/\.xls$/i.test(input.filename)) {
         const legacy = XLSX.read(bytes, { type: 'buffer', cellFormula: false, cellHTML: false, sheetRows: 5002 });
-        const source = legacy.Sheets[legacy.SheetNames[0] ?? ''];
+        const source = legacy.Sheets[legacy.SheetNames[input.sheetIndex] ?? ''];
         if (!source?.['!ref']) throw new AppError(422, 'A planilha está vazia.');
         const range = XLSX.utils.decode_range(source['!fullref'] ?? source['!ref']);
         if (range.e.r >= 5001 || range.e.c >= 100)
           throw new AppError(422, 'Divida a planilha em arquivos de até 5.000 linhas e 100 colunas.');
-        const target = book.addWorksheet('Contatos');
+        for (const name of legacy.SheetNames) book.addWorksheet(name);
+        const target = book.worksheets[input.sheetIndex]!;
         for (let row = range.s.r; row <= range.e.r; row++) {
           for (let col = range.s.c; col <= range.e.c; col++) {
             const cell = source[XLSX.utils.encode_cell({ r: row, c: col })];
@@ -164,9 +177,10 @@ export class ContactsService {
       else throw new Error();
     } catch (error) {
       if (error instanceof AppError) throw error;
-      throw new AppError(422, 'Não foi possível ler. Use .xls, .xlsx ou .csv válido e sem senha.');
+      throw new AppError(422, 'Não foi possível ler. Use .xls, .xlsx, .csv ou .json válido e sem senha.');
     }
-    const sheet = book.worksheets[0];
+    const sheets = book.worksheets.map((worksheet) => worksheet.name);
+    const sheet = book.worksheets[input.sheetIndex];
     if (!sheet) throw new AppError(422, 'A planilha está vazia.');
     if (sheet.rowCount > 5001 || sheet.columnCount > 100)
       throw new AppError(422, 'Divida a planilha em arquivos de até 5.000 linhas e 100 colunas.');
@@ -178,11 +192,14 @@ export class ContactsService {
       rows.push(values);
       rowNumbers.push(row.number);
     });
-    if (!rows.length) throw new AppError(422, 'A planilha está vazia.');
+    if (!rows.length) {
+      if (sheets.length > 1) return { headers: [], sheets, sheetIndex: input.sheetIndex, phoneColumn: 0, nameColumn: 0, items: [], rejected: [], total: 0, inferred: true };
+      throw new AppError(422, 'A planilha está vazia.');
+    }
     const headerIndex = rows
       .slice(0, 15)
       .findIndex((row) =>
-        row.some((cell) => /^(telefone|celular|whatsapp|phone|phone_number|número|numero)(\s|$)/i.test(cell)),
+        row.some((cell) => /^(telefone|celular|whatsapp|phone|phone_number|número|numero)(\s|$)|\bleads?\s*\(?(número|numero|telefone|celular|whatsapp)\b/i.test(cell)),
       );
     const headers = headerIndex >= 0 ? rows[headerIndex]! : rows[0]!.map((_, index) => `Coluna ${index + 1}`);
     const find = (pattern: RegExp) => headers.findIndex((value) => pattern.test(value));
@@ -201,15 +218,21 @@ export class ContactsService {
                 ).length,
             }))
             .sort((a, b) => b.score - a.score)[0]?.col ?? 0));
-    const nameColumn = input.nameColumn ?? Math.max(0, find(/nome|name|cliente|contato/i));
+    const preferredName = find(/^(saved name|public name|nome|nome completo|cliente|contato)$/i);
+    const nameColumn = input.nameColumn ?? (preferredName >= 0 ? preferredName : find(/nome|name|cliente|contato/i));
     const tagCol = find(/tags|etiqueta|segmento/i);
     const emailCol = find(/e-?mail/i);
     const consentCol = find(/opt.?in|consentimento/i);
     const items: z.infer<typeof leadSchema>[] = [];
     const rejected: { row: number; reason: string }[] = [];
     const seen = new Set<string>();
+    let emptyTemplateRows = 0;
     for (const [index, row] of candidate.entries()) {
       const sourceRow = rowNumbers[index + Math.max(0, headerIndex + 1)]!;
+      if (!(row[phoneColumn] ?? '').trim() && !(nameColumn >= 0 ? row[nameColumn] ?? '' : '').trim() && !(emailCol >= 0 ? row[emailCol] ?? '' : '').trim()) {
+        emptyTemplateRows++;
+        continue;
+      }
       const phone = normalizeLeadPhone(row[phoneColumn] ?? '', input.countryCode, input.areaCode);
       if (!phone) {
         rejected.push({
@@ -224,7 +247,7 @@ export class ContactsService {
       }
       seen.add(phone);
       items.push({
-        name: nameColumn !== phoneColumn && row[nameColumn] ? row[nameColumn]!.slice(0, 100) : phone,
+        name: nameColumn >= 0 && nameColumn !== phoneColumn && row[nameColumn] ? row[nameColumn]!.slice(0, 100) : phone,
         phoneNumber: phone,
         tags:
           tagCol >= 0
@@ -240,11 +263,13 @@ export class ContactsService {
     }
     return {
       headers,
+      sheets,
+      sheetIndex: input.sheetIndex,
       phoneColumn,
       nameColumn,
       items,
       rejected,
-      total: candidate.length,
+      total: candidate.length - emptyTemplateRows,
       inferred: headerIndex < 0,
     };
   }

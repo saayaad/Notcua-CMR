@@ -174,12 +174,40 @@ interface Lead {
 }
 interface ImportPreview {
   headers: string[];
+  sheets: string[];
+  sheetIndex: number;
   phoneColumn: number;
   nameColumn: number;
   items: Lead[];
   rejected: { row: number; reason: string }[];
   total: number;
   inferred: boolean;
+}
+export function SpreadsheetsPage({ sessionId, onCampaign }: { sessionId: string; onCampaign: () => void }) {
+  const { request, notify } = useApi();
+  const [lists, setLists] = useState<{ id: string; name: string; count: number }[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [revision, setRevision] = useState(0);
+  useEffect(() => {
+    if (!sessionId) return;
+    const controller = new AbortController();
+    void request<{ items: typeof lists }>(`/operations/sessions/${sessionId}/lead-lists`, 'GET', undefined, controller.signal)
+      .then((result) => setLists(result.items))
+      .catch((error) => { if (!controller.signal.aborted) notify(errorMessage(error), true); });
+    return () => controller.abort();
+  }, [sessionId, revision, request, notify]);
+  return <main className="workspace-page operations-page">
+    <div className="page-heading"><div><p className="eyebrow">IMPORTAÇÃO DE LEADS</p><h1>Planilhas</h1>
+      <p>Importe Excel ou CSV, confira os números e use a lista em uma campanha.</p></div>
+      <button className="button primary" disabled={!sessionId} onClick={() => setImporting(true)}><Upload size={16} />Adicionar planilha</button>
+    </div>
+    <div className="contacts-table">{lists.map((list) => <button key={list.id} onClick={onCampaign}>
+      <div><strong>{list.name}</strong><small>{list.count} leads · selecione esta lista no público da campanha</small></div>
+      <span>Preparar campanha</span><ArrowRight size={16} />
+    </button>)}</div>
+    {!lists.length && <p className="operation-empty">Nenhuma planilha importada nesta conexão.</p>}
+    {importing && <LeadImport sessionId={sessionId} onClose={() => setImporting(false)} onImported={() => { setImporting(false); setRevision((value) => value + 1); }} />}
+  </main>;
 }
 export function ContactsPage({ sessionId, onOpen }: { sessionId: string; onOpen: (id: string) => void }) {
   const { request, notify } = useApi();
@@ -355,7 +383,8 @@ function LeadImport({
   const [countryCode, setCountryCode] = useState('55');
   const [areaCode, setAreaCode] = useState('');
   const [listName, setListName] = useState('');
-  const inspect = async (phoneColumn?: number, nameColumn?: number) => {
+  const [sheetIndex, setSheetIndex] = useState(0);
+  const inspect = async (phoneColumn?: number, nameColumn?: number, selectedSheet = sheetIndex) => {
     if (!file) return;
     setBusy(true);
     try {
@@ -367,6 +396,7 @@ function LeadImport({
           areaCode,
           phoneColumn,
           nameColumn,
+          sheetIndex: selectedSheet,
         }),
       );
     } catch (error) {
@@ -382,17 +412,18 @@ function LeadImport({
       </p>
       <label className="file-upload">
         <Upload size={22} />
-        {file?.name ?? 'Escolher .xls, .xlsx ou .csv de até 10 MiB'}
+        {file?.name ?? 'Escolher .xls, .xlsx, .csv ou .json de até 10 MiB'}
         <input
           type="file"
-          accept=".xls,.xlsx,.csv"
+          accept=".xls,.xlsx,.csv,.json"
           disabled={busy}
           onChange={(event) => {
             const chosen = event.target.files?.[0];
             if (chosen && chosen.size <= 10 * 1024 * 1024) {
               setFile(chosen);
-              setListName((current) => current || chosen.name.replace(/\.(xls|xlsx|csv)$/i, '').slice(0, 100));
+              setListName((current) => current || chosen.name.replace(/\.(xls|xlsx|csv|json)$/i, '').slice(0, 100));
               setPreview(null);
+              setSheetIndex(0);
             } else notify('Escolha um arquivo de até 10 MiB.', true);
           }}
         />
@@ -435,6 +466,11 @@ function LeadImport({
       </label>
       {preview && (
         <>
+          {preview.sheets.length > 1 && <label>Aba do arquivo
+            <Select value={preview.sheetIndex} disabled={busy} onChange={(event) => { const index = Number(event.target.value); setSheetIndex(index); void inspect(undefined, undefined, index); }}>
+              {preview.sheets.map((name, index) => <option key={index} value={index}>{name}</option>)}
+            </Select>
+          </label>}
           <div className="form-grid">
             <label>
               Coluna do telefone
@@ -457,6 +493,7 @@ function LeadImport({
                 value={preview.nameColumn}
                 onChange={(event) => void inspect(preview.phoneColumn, Number(event.target.value))}
               >
+                <option value={-1}>Usar telefone (sem coluna de nome)</option>
                 {preview.headers.map((header, index) => (
                   <option key={index} value={index}>
                     {header || `Coluna ${index + 1}`}

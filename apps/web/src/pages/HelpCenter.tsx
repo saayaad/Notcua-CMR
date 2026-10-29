@@ -1,7 +1,6 @@
 import { BookOpen, ArrowRight, Wifi, Workflow, Send, Users } from 'lucide-react';
 import { useAiFeatures } from '../context/AiFeatures';
 import type { LucideIcon } from 'lucide-react';
-import type { Dispatch, SetStateAction } from 'react';
 
 const guides: {
   id: string;
@@ -80,8 +79,7 @@ const guides: {
 export function HelpCenter({
   onNavigate,
 }: {
-  onNavigate: Dispatch<
-    SetStateAction<
+  onNavigate: (view:
       | 'inbox'
       | 'library'
       | 'connections'
@@ -94,9 +92,7 @@ export function HelpCenter({
       | 'campaigns'
       | 'schedule'
       | 'sandbox'
-      | 'help'
-    >
-  >;
+      | 'help') => void;
 }) {
   const { enabled: aiEnabled } = useAiFeatures();
   return (

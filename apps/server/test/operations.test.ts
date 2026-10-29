@@ -215,6 +215,35 @@ test('Excel com título antes do cabeçalho é reconhecido e a importação é i
   assert.equal(await db.conversation.count({ where: { contactId: person.id, sessionId } }), 1);
   assert.equal(socket.sends.length, 0);
 });
+test('exportação WhatsApp e abas diferentes preservam nomes e números brasileiros', async () => {
+  const csv = 'Country Code,Country Name,Phone Number,Formatted Phone,Saved Name,Public Name\n"+55","Brazil (Brasil)","+556293383554","+55 62 9338-3554","Gustopher","Outro"\n"+55","Brazil (Brasil)","+5511999603868","+55 11 99960-3868","Edna Carvalho","Edna"';
+  const preview = await contacts.preview({ filename: 'WhatsApp_Contacts.csv', base64: Buffer.from(csv).toString('base64') });
+  assert.deepEqual(preview.items.map((item) => [item.name, item.phoneNumber]), [
+    ['Gustopher', '556293383554'], ['Edna Carvalho', '5511999603868'],
+  ]);
+  const json = await contacts.preview({ filename: 'WhatsApp_Contacts.json', base64: Buffer.from(JSON.stringify([
+    { 'Phone Number': '+556293383554', 'Saved Name': 'Gustopher' },
+  ])).toString('base64') });
+  assert.equal(json.items[0]?.name, 'Gustopher');
+  const book = new ExcelJS.Workbook();
+  book.addWorksheet('Resumo').addRow(['Sem contatos']);
+  const leads = book.addWorksheet('Captação manual');
+  leads.addRow(['Nome', 'Celular']);
+  leads.addRow(['Ana', '(62) 99999-1234']);
+  const otherSheet = await contacts.preview({ filename: 'leads.xlsx', sheetIndex: 1, base64: Buffer.from(await book.xlsx.writeBuffer()).toString('base64') });
+  assert.deepEqual(otherSheet.sheets, ['Resumo', 'Captação manual']);
+  assert.equal(otherSheet.items[0]?.phoneNumber, '5562999991234');
+});
+test('planilha de captação com LEADS (NÚMERO) usa telefone quando não há nome', async () => {
+  const preview = await contacts.preview({ filename: 'captacao.csv', base64: Buffer.from(
+    'DATA,LEADS (NÚMERO),QUANTIDADE,VALOR DE ENTRADA\n08/05/2026,31 8877-0744,1,"R$39,90"\n08/05/2026,21 97003-1033,1,"R$50,00"',
+  ).toString('base64') });
+  assert.equal(preview.phoneColumn, 1);
+  assert.equal(preview.nameColumn, -1);
+  assert.deepEqual(preview.items.map((item) => [item.name, item.phoneNumber]), [
+    ['553188770744', '553188770744'], ['5521970031033', '5521970031033'],
+  ]);
+});
 test('campanha começa em rascunho, congela recurso, respeita intervalo e não repete envio', async () => {
   const a = await makeContact('5511777770001');
   const b = await makeContact('5511777770002');
