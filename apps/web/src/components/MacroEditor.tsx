@@ -190,6 +190,9 @@ export function MacroEditor({
                 <button type="button" onClick={() => update(index, { type: 'UTILITY', command: 'PIN' })}>
                   Fixar conversa
                 </button>
+                <button type="button" onClick={() => update(index, { type: 'UTILITY', command: 'UNPIN' })}>
+                  Desafixar conversa
+                </button>
                 <button
                   type="button"
                   onClick={() => update(index, { type: 'UTILITY', command: 'MARK_UNREAD' })}
