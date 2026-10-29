@@ -1106,8 +1106,9 @@ test('cache de IA exige revisão e impede reutilizar nome de outro cliente', asy
       }));
     };
     const task = 'Responda à última mensagem do cliente.';
-    assert.equal((await generateSuggestion(db, first.id, task)).cached, undefined);
-    assert.equal((await generateSuggestion(db, second.id, task)).cached, undefined);
+    const wasCached = (result: Awaited<ReturnType<typeof generateSuggestion>>) => 'cached' in result && result.cached === true;
+    assert.equal(wasCached(await generateSuggestion(db, first.id, task)), false);
+    assert.equal(wasCached(await generateSuggestion(db, second.id, task)), false);
     assert.equal(calls, 2);
     const cache = await request(app).get('/api/operations/economy/cache').expect(200);
     const entry = cache.body.items.find((item: { sourceConversationId?: string }) => item.sourceConversationId === first.id);
@@ -1118,12 +1119,12 @@ test('cache de IA exige revisão e impede reutilizar nome de outro cliente', asy
     await request(app).put(`/api/operations/economy/cache/${entry.id}`)
       .send({ answer: 'Podemos conversar sobre o mascote.', approve: true }).expect(200);
     const reused = await generateSuggestion(db, third.id, task);
-    assert.equal(reused.cached, true);
+    assert.equal(wasCached(reused), true);
     assert.equal(reused.text, 'Podemos conversar sobre o mascote.');
     assert.equal(calls, 2);
     await request(app).put(`/api/operations/economy/cache/${entry.id}`)
       .send({ answer: 'Resposta em revisão.' }).expect(200);
-    assert.equal((await generateSuggestion(db, third.id, task)).cached, undefined);
+    assert.equal(wasCached(await generateSuggestion(db, third.id, task)), false);
     assert.equal(calls, 3);
   }));
 
