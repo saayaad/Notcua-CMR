@@ -2,6 +2,8 @@
 
 ## Retomada em 29/10/2026
 
+Continuação automática sem IA: REQ-121 ganhou caso isolado para a virada do dia em São Paulo. Uma mensagem às 23:59:59 do dia anterior não bloqueou o primeiro gatilho do dia atual; teste 1/1 aprovado em banco descartável e conector WhatsApp fictício. A configuração pela interface e a conexão real continuam pendentes. Os testes aprovados antes desta rodada não foram repetidos. A automação da conversa continuará pelas lacunas não IA sem usar dados de produção nem enviar mensagens.
+
 O projeto principal foi recuperado em C:\Users\gusta\Documents\Notcua CMR\Notcua CMR, com banco, chaves e backups privados fora do Git. O site e a API voltaram a responder pela Vercel e pelo túnel temporário. Durante o diagnóstico, a conexão WhatsApp permanece desligada e nove entregas antigas têm execução adiada; o manifesto privado em .npm-cache/online-test-pause.json preserva os horários originais. Não reativar a fila sem revisar esses registros com o usuário.
 
 REQ-138 e REQ-139 passaram a parciais após conferir métricas de fila/IA, estado das conexões e reconexão Socket.IO na interface, com caminhos de servidor e testes isolados correspondentes. Falta observar números, queda e retorno reais pela interface. Contagem atual: 324 a verificar, 104 completos, 211 parciais, nenhum defeito classificado e 1 ausente.

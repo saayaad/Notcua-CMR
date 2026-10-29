@@ -636,3 +636,27 @@ test('primeira mensagem do dia ignora conversa anterior do mesmo dia e aceita hi
   await drain();
   assert.equal(socket.sends.length, beforeSecond);
 });
+
+test('primeira mensagem do dia respeita a virada da meia-noite em São Paulo', async () => {
+  const value = graph();
+  value.nodes[0]!.data.triggerMode = 'first-day';
+  await prepare(value);
+
+  const localDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(
+    new Date(),
+  );
+  const chat = await contact();
+  await db.chatMessage.create({
+    data: {
+      conversationId: chat.id,
+      direction: 'INBOUND',
+      status: 'DELIVERED',
+      text: 'Antes da meia-noite',
+      sentAt: new Date(`${localDay}T02:59:59.000Z`),
+    },
+  });
+  const before = socket.sends.length;
+  await incoming(chat.id, 'Depois da meia-noite');
+  await drain();
+  assert.equal(socket.sends.length, before + 1);
+});
