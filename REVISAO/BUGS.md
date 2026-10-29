@@ -12,13 +12,13 @@ Atualização: 27/10/2026. Nenhum defeito funcional novo confirmado na Fase 1 e 
 Os relatos do usuário estão individualizados em REQUISITOS.md (L-05, L-17, L-18, L-19, L-20, L-23 e L-24). Relatórios anteriores dizem que alguns foram corrigidos, mas não ganham status 🔧 nesta revisão sem reteste próprio.
 IDs BUG-001 em diante serão atribuídos a defeitos concretos na Fase 2. Não converter observação ambiental em bug do produto.
 
-## BUG-002 — Resumo para de acompanhar conversas longas
+## BUG-002 — Resumo parava de acompanhar conversas longas (reprodução corrigida localmente em 29/10/2026)
 
 Prioridade alta; esforço estimado M. `apps/server/src/modules/operations/ai.service.ts:27–31, 62–70`: a consulta carrega no máximo 60 mensagens, mas a atualização compara o tamanho dessa janela com `covered`. Depois de criar um resumo com `covered=57`, novas mensagens não fazem `60 - 57` atingir o intervalo de 10. Configurar intervalo acima de 60 também impede o primeiro resumo.
 
 Reprodução em 27/10/2026: execução real de `generateSuggestion` com repositório em memória e provedor inteiramente fictício, primeiro com 60 e depois com 90 mensagens. Houve 1 resumo antes e 1 depois, `covered=57`, demonstrando que o resumo ficou parado. Zero chamadas externas; nenhuma leitura de conversa real. Script de diagnóstico ignorado pelo Git: `.npm-cache/audit-ai-economy.mts`.
 
-Correção planejada: avançar por identificador/horário estável das mensagens cobertas, incluindo o resumo anterior e somente o trecho novo; distinguir total da conversa de tamanho da janela. Retestar mais de 100 mensagens, intervalo 100, retomada depois de reiniciar e falha do provedor. Ainda não corrigido nesta fase de auditoria. REQ-433/434.
+Correção local: o disparo do resumo agora considera a contagem completa de mensagens, processa o próximo trecho cronológico em lotes de até 100 e inclui o resumo anterior no pedido. O teste com provedor fictício confirmou avanço de 57 para 87 e 157 mensagens e disparo com intervalo 100. A cobertura é persistida no banco temporário e uma nova chamada sem mensagens adicionais não repete o resumo. Ainda falta verificar histórico inserido fora de ordem, reinício do servidor, falha do provedor e interface real; o marcador atual é uma contagem, não um cursor estável. Evidência: `evidencias/resumo-ia-2026-10-29.json`. REQ-433/434.
 
 ## BUG-003 — Cache não exigia aprovação e podia reutilizar saudação personalizada (corrigido localmente em 29/10/2026)
 
@@ -67,7 +67,7 @@ Arquivo: apps/web/src/context/PreferencesContext.tsx:245. O PUT automático desc
 - **BUG-001 corrigido:** preferências não descartam mais falha silenciosamente. Há aviso, rascunho local preservado, retry e fila serial contra sobrescrita por requisição lenta. A leitura inicial precisa concluir antes da gravação. Teste UI com 503 fictício exibiu aviso e retry, depois salvou e persistiu após reload; dois testes novos aprovados. A API mantém a recusa a configuração extensa.
 - **LAC-002 corrigida:** sugestões da agenda mostram as etiquetas recebidas no contato. UI mostrou nome, telefone, iniciais e RM1.
 - **BUG-004 corrigido:** no tema claro, balões do Sandbox usavam fallback escuro porque --panel/--border não existem no tema global. sandbox.css agora usa --surface2/--line. Capturas claro/escuro conferidas, com texto legível.
-- BUG-002/003 e INT-001 continuam abertos e com testes funcionais de IA adiados por solicitação do usuário. Os textos anteriores descrevem o estado histórico antes deste lote.
+- Naquele lote, BUG-002/003 e INT-001 continuavam abertos e os testes funcionais de IA estavam adiados por solicitação do usuário. As correções posteriores de BUG-002/003 estão registradas acima; INT-001 permanece aberto.
 
 ## BUG-005 — Prévia de texto mostrava marcadores literalmente — corrigido
 

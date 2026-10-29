@@ -1089,6 +1089,58 @@ test('provedores Claude e Gemini contabilizam tokens e limites bloqueiam antes d
     assert.equal(calls, 2);
   }));
 
+test('resumo de IA avança além de 60 mensagens e aceita intervalo de 100', async () =>
+  aiTest(async () => {
+    await configureAi();
+    const previous = await record<object | null>(db, 'settings:ai-economy', null);
+    const economy = (summaryEvery: number) => ({ enabled: true, semanticCache: false, rag: false, cacheDays: 14, summaryEvery, systems: { autoReply: true, copilot: true, summaries: true } });
+    const addMessages = async (chatId: string, start: number, end: number) => {
+      await db.chatMessage.createMany({ data: Array.from({ length: end - start }, (_, offset) => {
+        const number = start + offset;
+        return { conversationId: chatId, direction: 'INBOUND' as const, text: `Mensagem fictícia ${number}`, sentAt: new Date(Date.UTC(2026, 0, 1, 10, 0, number)) };
+      }) });
+    };
+    let summaries = 0;
+    const summaryInputs: string[] = [];
+    globalThis.fetch = async (_url, options) => {
+      const body = JSON.parse(String(options?.body));
+      if (body.instructions.includes('Resuma fatos')) {
+        summaries++;
+        summaryInputs.push(body.input);
+        return new Response(JSON.stringify({ output: [{ content: [{ type: 'output_text', text: `Resumo ${summaries}` }] }] }));
+      }
+      return new Response(JSON.stringify({ output: [{ content: [{ type: 'output_text', text: 'Sugestão fictícia' }] }] }));
+    };
+    try {
+      await putRecord(db, 'settings:ai-economy', 'AI_ECONOMY_SETTINGS', economy(10));
+      const long = await makeContact('5511777770065');
+      await addMessages(long.id, 0, 60);
+      await generateSuggestion(db, long.id, 'Sugira uma resposta.');
+      assert.equal((await record<{ covered: number }>(db, `conversation-summary:${long.id}`, { covered: 0 })).covered, 57);
+      await addMessages(long.id, 60, 90);
+      await generateSuggestion(db, long.id, 'Sugira uma resposta.');
+      assert.equal((await record<{ covered: number }>(db, `conversation-summary:${long.id}`, { covered: 0 })).covered, 87);
+      assert.match(summaryInputs[1] ?? '', /Resumo 1/);
+      assert.equal(summaries, 2);
+      await addMessages(long.id, 90, 160);
+      await generateSuggestion(db, long.id, 'Sugira uma resposta.');
+      assert.equal((await record<{ covered: number }>(db, `conversation-summary:${long.id}`, { covered: 0 })).covered, 157);
+      assert.match(summaryInputs[2] ?? '', /Resumo 2/);
+      assert.equal(summaries, 3);
+      await generateSuggestion(db, long.id, 'Sugira uma resposta.');
+      assert.equal(summaries, 3);
+      await putRecord(db, 'settings:ai-economy', 'AI_ECONOMY_SETTINGS', economy(100));
+      const hundred = await makeContact('5511777770066');
+      await addMessages(hundred.id, 0, 100);
+      await generateSuggestion(db, hundred.id, 'Sugira uma resposta.');
+      assert.equal((await record<{ covered: number }>(db, `conversation-summary:${hundred.id}`, { covered: 0 })).covered, 97);
+      assert.equal(summaries, 4);
+    } finally {
+      if (previous) await putRecord(db, 'settings:ai-economy', 'AI_ECONOMY_SETTINGS', previous);
+      else await db.operationRecord.deleteMany({ where: { id: 'settings:ai-economy' } });
+    }
+  }));
+
 test('cache de IA exige revisão e impede reutilizar nome de outro cliente', async () =>
   aiTest(async () => {
     await configureAi();

@@ -4,9 +4,11 @@
 
 O projeto principal foi recuperado em C:\Users\gusta\Documents\Notcua CMR\Notcua CMR, com banco, chaves e backups privados fora do Git. O site e a API voltaram a responder pela Vercel e pelo túnel temporário. Durante o diagnóstico, a conexão WhatsApp permanece desligada e nove entregas antigas têm execução adiada; o manifesto privado em .npm-cache/online-test-pause.json preserva os horários originais. Não reativar a fila sem revisar esses registros com o usuário.
 
+BUG-002 teve a reprodução corrigida localmente em 29/10/2026: resumo avançou com 60, 90 e 160 mensagens e intervalo 100 em banco/provedor fictícios. A implementação ainda usa contagem, portanto histórico inserido fora de ordem e reinício do servidor precisam de validação. REQ-433 passou a parcial; evidência: evidencias/resumo-ia-2026-10-29.json. Contagem atual: 326 a verificar, 104 completos, 209 parciais, nenhum defeito classificado e 1 ausente.
+
 Publicação autorizada em 29/10/2026: commit `aa343a7` no `main`, Vercel marcou a publicação como concluída e a checagem do GitHub passou por tipagem e compilação. A correção posterior BUG-004 está local enquanto termina o novo reteste e ainda precisa de publicação separada.
 
-BUG-004 corrigido localmente: transcrição/descrição salva não chegava à sugestão de IA antes do primeiro resumo. Teste com áudio/vídeo e provedores fictícios confirmou a ligação após o ajuste; REQ-140 e REQ-141 passaram a parciais. Falta validar com mídia real e interface autenticada. Evidência: evidencias/media-contexto-2026-10-29.json. Contagem atual: 326 a verificar, 104 completos, 208 parciais, 1 com defeito e 1 ausente.
+BUG-004 corrigido localmente: transcrição/descrição salva não chegava à sugestão de IA antes do primeiro resumo. Teste com áudio/vídeo e provedores fictícios confirmou a ligação após o ajuste; REQ-140 e REQ-141 passaram a parciais. Falta validar com mídia real e interface autenticada. Evidência: evidencias/media-contexto-2026-10-29.json. A contagem consolidada está acima.
 
 BUG-003 corrigido no código local em 29/10/2026: cache de IA só reutiliza resposta aprovada explicitamente; dados pessoais impedem a aprovação; entradas antigas sem origem verificável ficam inativas. Teste com três clientes fictícios, compilação de servidor/interface e suíte completa de 184 testes passaram. Falta verificar o percurso visual publicado. Evidência: evidencias/cache-ia-2026-10-29.json.
 
@@ -83,7 +85,7 @@ Decisão de escopo em 27/10/2026: produção de vídeos/Drive permanece no Creat
 
 - 49 registros receberam classificação individual nesta rodada. Contagens atuais estão no início deste documento e no livro; os registros parciais descrevem exatamente o que falta executar pela interface.
 - Menu contextual implementado por autorização posterior, compilado com ícones e conferido em fundo, Biblioteca e edição de texto. A revisão de cada módulo/dispositivo ainda está aberta; checklist dentro de MENU-CONTEXTO.md.
-- BUG-002: resumo estaciona após atingir a janela de 60 mensagens. Reproduzido com 60 → 90 mensagens fictícias. Prioridade Alta, esforço M, depende de teste de cursor/continuidade e reinício.
+- BUG-002: resumo estacionava após atingir a janela de 60 mensagens. Reproduzido com 60 → 90 mensagens fictícias; a correção local e os limites restantes estão na atualização de 29/10/2026 acima.
 - BUG-003: defeito reproduzido entre duas conversas fictícias nesta auditoria; correção local e novo teste constam na retomada de 29/10/2026 acima. Nenhum cache real foi apagado.
 - INT-001: controles de economia de campanhas/treinamento/comprovantes/resumo diário são salvos sem consumidor localizado. Prioridade Alta, esforço G, ligar controles por técnica e por sistema e testar os quatro motores com provedor fictício.
 - LAC-001: embeddings/índice vetorial ausentes e estimativa diária não exposta. Prioridade Média, esforço G para índice e M para métricas, sem contratação/ativação de cobrança.

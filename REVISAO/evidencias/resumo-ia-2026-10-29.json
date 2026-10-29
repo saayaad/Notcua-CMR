@@ -1,0 +1,17 @@
+{
+  "date": "2026-10-29",
+  "issue": "BUG-002",
+  "requirements": ["REQ-433", "REQ-434"],
+  "finding": "A janela de leitura de 60 mensagens impedia atualizar o resumo após a cobertura inicial de 57 e impedia disparo com intervalo configurado em 100.",
+  "change": "O disparo usa a contagem completa da conversa e resume o próximo trecho cronológico, com o resumo anterior, em lote limitado a 100 mensagens.",
+  "checks": [
+    "A reprodução anterior falhou antes da correção: 60 para 90 mensagens manteve cobertura 57.",
+    "Após a correção, cobertura avançou para 57, 87 e 157 com 60, 90 e 160 mensagens.",
+    "Nova chamada sem mensagens adicionais não gerou resumo duplicado.",
+    "Intervalo configurado em 100 disparou resumo e cobriu as primeiras 97 mensagens, deixando as três últimas no contexto recente.",
+    "Teste isolado, tipagem e compilação de servidor/interface passaram.",
+    "Suíte completa do servidor: 186 testes aprovados, zero falhas."
+  ],
+  "environment": "Banco temporário, mensagens fictícias e provedor simulado; nenhuma chamada externa de IA.",
+  "remaining": "Validar histórico fora de ordem, reinício do servidor, falha do provedor e interface autenticada com modelo real."
+}
