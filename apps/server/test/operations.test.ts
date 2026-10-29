@@ -43,10 +43,11 @@ import { inflateRawSync } from 'node:zlib';
 class FakeSocket implements WhatsappSocket {
   lookupCalls = 0;
   lookupFails = false;
+  lookupStrict = false;
   async onWhatsApp(...numbers: string[]) {
     this.lookupCalls++;
     if (this.lookupFails) throw new Error('Consulta indisponível');
-    return numbers.filter(phone => phone.endsWith('1')).map(phone => ({ jid: `${phone}@s.whatsapp.net`, exists: true }));
+    return numbers.filter(phone => !this.lookupStrict || phone.endsWith('1')).map(phone => ({ jid: `${phone}@s.whatsapp.net`, exists: true }));
   }
   ev = makeEventBuffer(pino({ level: 'silent' }));
   user = { id: '5511000000000@s.whatsapp.net' };
@@ -147,6 +148,7 @@ test('CSV detecta colunas, normaliza DDI, informa duplicados e não grava durant
   assert.equal(await db.contact.count(), 0);
 });
 test('validação consulta sem enviar, reutiliza cache, separa ausência de falha e isola conexão', async () => {
+  socket.lookupStrict = true;
   const url = `/api/operations/sessions/${sessionId}/validate-numbers`;
   const sends = socket.sends.length;
   const before = socket.lookupCalls;
@@ -166,6 +168,7 @@ test('validação consulta sem enviar, reutiliza cache, separa ausência de falh
   await request(app).post(`/api/operations/sessions/${otherSession}/validate-numbers`).send({ phoneNumbers: ['5511999990001'] }).expect(409);
   await request(app).post(url).send({ phoneNumbers: ['número inválido'] }).expect(422);
   assert.equal(socket.sends.length, sends);
+  socket.lookupStrict = false;
 });
 
 test('XLS binário legado preserva nome acentuado, telefone numérico e linha de duplicata', async () => {
@@ -267,6 +270,18 @@ test('união de contatos atualiza listas importadas para a conversa preservada',
   const list = await record<{ conversationIds: string[] }>(db, 'lead-list:merge-test', { conversationIds: [] });
   assert.deepEqual(list.conversationIds, [canonical.id]);
   assert.equal(await db.conversation.count({ where: { id: duplicate.id } }), 0);
+});
+test('teste de abordagens distribui mensagem principal e variações e registra relatório', async () => {
+  const chats = await Promise.all([71, 72, 73, 74, 75].map((end) => makeContact(`55117777700${end}`)));
+  const batch = await draft(chats.map((chat) => chat.id), {
+    kind: 'text', text: 'Mensagem 1', textVariations: ['Mensagem 2', 'Mensagem 3'],
+  });
+  const tasks = await db.deliveryTask.findMany({ where: { batchId: batch.id }, orderBy: { conversationId: 'asc' } });
+  assert.deepEqual(tasks.map((task) => (task.payload as { snapshot: { text: string } }).snapshot.text),
+    ['Mensagem 1', 'Mensagem 2', 'Mensagem 3', 'Mensagem 1', 'Mensagem 2']);
+  const report = await request(app).get(`/api/operations/sessions/${sessionId}/batches/${batch.id}/approaches`).expect(200);
+  assert.deepEqual(report.body.items.map((item: { assigned: number }) => item.assigned), [2, 2, 1]);
+  assert.deepEqual(report.body.items.map((item: { sent: number }) => item.sent), [0, 0, 0]);
 });
 test('campanha começa em rascunho, congela recurso, respeita intervalo e não repete envio', async () => {
   const a = await makeContact('5511777770001');

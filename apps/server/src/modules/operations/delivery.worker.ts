@@ -22,12 +22,14 @@ export interface Batch {
   sentCount?: number;
   investmentInCents?: number;
   attributedRevenueInCents?: number;
+  approaches?: string[];
 }
 export interface Delivery {
   kind: 'text' | 'asset' | 'funnel' | 'flow' | 'reminder' | 'sequence';
   steps?: { snapshot: Record<string, unknown>; waitSeconds: number }[];
   stepIndex?: number;
   text?: string;
+  approachIndex?: number;
   assetId?: string;
   funnelId?: string;
   flowId?: string;

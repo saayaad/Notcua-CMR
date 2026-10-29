@@ -20,5 +20,6 @@ export function chooseCampaignText(
   index: number,
   seed: string,
 ) {
-  return expandSpintax(variants?.length ? variants[index % variants.length]! : text, seed);
+  const approaches = [text, ...(variants ?? [])];
+  return expandSpintax(approaches[index % approaches.length]!, seed);
 }

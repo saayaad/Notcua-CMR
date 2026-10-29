@@ -599,7 +599,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
             .max(30)
             .optional(),
           text: z.string().max(10000).optional(),
-          textVariations: z.array(z.string().trim().min(1).max(10000)).max(5).default([]),
+          textVariations: z.array(z.string().trim().min(1).max(10000)).max(4).default([]),
           assetId: id.optional(),
           funnelId: id.optional(),
           flowId: id.optional(),
@@ -715,6 +715,8 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       investmentInCents: input.mode === 'CAMPAIGN' ? input.investmentInCents : 0,
       attributedRevenueInCents: input.mode === 'CAMPAIGN' ? input.attributedRevenueInCents : 0,
       count: people.length,
+      ...(delivery.kind === 'text' && input.mode === 'CAMPAIGN' && input.delivery.textVariations.length
+        ? { approaches: [delivery.text!, ...input.delivery.textVariations] } : {}),
       createdAt: new Date().toISOString(),
     };
     await db.$transaction(
@@ -729,6 +731,8 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
               delivery.kind === 'text'
                 ? {
                     ...delivery,
+                    approachIndex: input.delivery.textVariations.length
+                      ? index % (input.delivery.textVariations.length + 1) : undefined,
                     snapshot: {
                       kind: 'text',
                       text: chooseCampaignText(
@@ -855,6 +859,54 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     });
     const contacts = new Map(chats.map((chat) => [chat.id, chat.contact]));
     res.json({ items: items.map((item) => ({ ...item, contact: contacts.get(item.conversationId) ?? null })) });
+  });
+  router.get('/sessions/:sessionId/batches/:batchId/approaches', async (req, res) => {
+    const sessionId = id.parse(req.params.sessionId);
+    const batchId = id.parse(req.params.batchId);
+    const batch = await record<Batch | null>(db, batchId, null);
+    if (!batch || batch.sessionId !== sessionId || !batch.approaches?.length)
+      throw new AppError(404, 'Teste de abordagens não encontrado nesta conexão.');
+    const tasks = await db.deliveryTask.findMany({ where: { sessionId, batchId }, select: { id: true, conversationId: true, status: true, payload: true } });
+    const outbound = await db.chatMessage.findMany({
+      where: { id: { in: tasks.map((task) => `out:delivery:${task.id}`) } },
+      select: { id: true, sentAt: true, status: true },
+    });
+    const messages = new Map(outbound.map((message) => [message.id, message]));
+    const responses = await db.chatMessage.findMany({
+      where: { conversationId: { in: tasks.map((task) => task.conversationId) }, direction: 'INBOUND' },
+      select: { conversationId: true, sentAt: true },
+    });
+    const latestReplyByConversation = new Map<string, Date>();
+    for (const reply of responses) {
+      const latest = latestReplyByConversation.get(reply.conversationId);
+      if (!latest || reply.sentAt > latest) latestReplyByConversation.set(reply.conversationId, reply.sentAt);
+    }
+    const attributed = await db.operationRecord.findMany({ where: { kind: 'CAMPAIGN_ATTRIBUTION' } });
+    const attributedIds = attributed.filter((row) => (row.data as { campaignId?: string }).campaignId === batchId)
+      .map((row) => (row.data as { conversationId?: string }).conversationId).filter((value): value is string => Boolean(value));
+    const sales = await db.crmOpportunity.findMany({
+      where: { conversationId: { in: attributedIds }, status: 'WON' },
+      select: { conversationId: true, valueInCents: true },
+    });
+    const salesByConversation = new Map(sales.map((sale) => [sale.conversationId, sale.valueInCents]));
+    const items = batch.approaches.map((text, index) => ({ index, text, assigned: 0, sent: 0, delivered: 0, read: 0, replied: 0, sales: 0, revenueInCents: 0 }));
+    for (const task of tasks) {
+      const index = (task.payload as { approachIndex?: number }).approachIndex;
+      if (index === undefined || !items[index]) continue;
+      const row = items[index]!;
+      row.assigned++;
+      const message = messages.get(`out:delivery:${task.id}`);
+      if (message && ['SENT', 'DELIVERED', 'READ'].includes(message.status)) {
+        row.sent++;
+        if (['DELIVERED', 'READ'].includes(message.status)) row.delivered++;
+        if (message.status === 'READ') row.read++;
+        const latestReply = latestReplyByConversation.get(task.conversationId);
+        if (latestReply && latestReply > message.sentAt) row.replied++;
+        const sale = salesByConversation.get(task.conversationId);
+        if (sale !== undefined) { row.sales++; row.revenueInCents += sale; }
+      }
+    }
+    res.json({ items });
   });
   router.get('/ai', async (_req, res) => {
     admin(res.locals.identity.role);

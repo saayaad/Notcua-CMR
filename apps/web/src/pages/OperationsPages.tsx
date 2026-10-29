@@ -592,7 +592,9 @@ interface BatchRow {
   manualRevenueInCents?: number;
   revenueSource?: 'MANUAL' | 'CRM';
   crmSales?: number;
+  approaches?: string[];
 }
+interface ApproachResult { index: number; text: string; assigned: number; sent: number; delivered: number; read: number; replied: number; sales: number; revenueInCents: number }
 const batchStatus: Record<string, string> = {
   DRAFT: 'Rascunho',
   ACTIVE: 'Ativo / agendado',
@@ -626,6 +628,7 @@ export function CampaignsPage({
   const [financeBatch, setFinanceBatch] = useState('');
   const [finance, setFinance] = useState({ investment: '0.00', revenue: '0.00', revenueSource: 'MANUAL' as 'MANUAL' | 'CRM' });
   const [revenueBatch, setRevenueBatch] = useState('');
+  const [approachReport, setApproachReport] = useState<{ name: string; items: ApproachResult[] } | null>(null);
   useEffect(() => setSearch(initialSearch), [initialSearch]);
   useEffect(() => {
     if (!sessionId) return;
@@ -765,6 +768,11 @@ export function CampaignsPage({
                     </button>
                   )}
                   {!schedule && <button className="button" onClick={() => setRevenueBatch(item.id)}>Vincular vendas do CRM</button>}
+                  {!schedule && item.approaches?.length && <button className="button" onClick={() => {
+                    void request<{ items: ApproachResult[] }>(`/operations/sessions/${sessionId}/batches/${item.id}/approaches`)
+                      .then((data) => setApproachReport({ name: item.name, items: data.items }))
+                      .catch((error) => notify(errorMessage(error), true));
+                  }}>Resultados por mensagem</button>}
                   <button
                     className="button"
                     onClick={() =>
@@ -881,6 +889,13 @@ export function CampaignsPage({
           ) && <p className="muted">Nenhuma campanha corresponde a “{search}”.</p>}
       </div>
       {revenueBatch && <CampaignRevenue sessionId={sessionId} campaignId={revenueBatch} onClose={() => setRevenueBatch('')} onSaved={() => { setRevenueBatch(''); setTick(value => value + 1); }}/>}
+      {approachReport && <Modal title={`Resultados por mensagem · ${approachReport.name}`} onClose={() => setApproachReport(null)} wide>
+        <p className="muted">Enviadas = aceitas pelo conector. Entregues e lidas dependem da confirmação do WhatsApp. Vendas incluem apenas negócios ganhos vinculados à campanha.</p>
+        <div className="batch-list">{approachReport.items.map((row) => <section className="surface" key={row.index}>
+          <strong>Mensagem {row.index + 1}</strong><p>{row.text}</p>
+          <p>{row.assigned} atribuídos · {row.sent} enviados · {row.delivered} entregues · {row.read} lidos · {row.replied} responderam · {row.sales} vendas · {(row.revenueInCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+        </section>)}</div>
+      </Modal>}
       {!items.length && (
         <div className="operation-empty">
           <Send size={36} />
@@ -1074,7 +1089,7 @@ export function BatchEditor({
     .filter((asset): asset is Asset => Boolean(asset));
   const displayText =
     kind === 'text' || kind === 'reminder'
-      ? (variants[variantIndex] ?? message)
+      ? ([message, ...variants][variantIndex] ?? message)
       : kind === 'sequence'
         ? steps
             .filter((step) => step.kind === 'text')
@@ -1412,8 +1427,6 @@ export function BatchEditor({
                   value={message}
                   onChange={(event) => {
                     setMessage(event.target.value);
-                    setVariants([]);
-                    setVariantIndex(0);
                   }}
                   rows={4}
                   required
@@ -1446,21 +1459,21 @@ export function BatchEditor({
                     {generating ? <Spinner /> : '✨'}Gerar variações com IA
                   </button></AiOnly>
                   <p className="muted">
-                    As variações alternam entre contatos. Também aceita spintax, por exemplo {'{Olá|Oi}'}.
+                    Teste de abordagens: a mensagem principal é a 1; as mensagens seguintes alternam entre os leads em rodízio.
                     Variações e intervalos não garantem proteção contra bloqueios.
                   </p>
                   <button
                     type="button"
                     className="text-button"
-                    disabled={variants.length >= 5}
+                    disabled={variants.length >= 4}
                     onClick={() => setVariants((current) => [...current, message])}
                   >
-                    Adicionar variação manual
+                    Adicionar mensagem ao teste
                   </button>
                   {variants.map((text, index) => (
                     <div className="variation-editor" key={index}>
                       <label>
-                        Variação {index + 1}
+                        Mensagem {index + 2}
                         <textarea
                           maxLength={10000}
                           required
@@ -1485,9 +1498,9 @@ export function BatchEditor({
                     <button
                       type="button"
                       className="button small"
-                      onClick={() => setVariantIndex((index) => (index + 1) % variants.length)}
+                      onClick={() => setVariantIndex((index) => (index + 1) % (variants.length + 1))}
                     >
-                      Ver próxima variação na prévia
+                      Ver próxima mensagem na prévia
                     </button>
                   )}
                 </>
@@ -1603,6 +1616,13 @@ export function BatchEditor({
                 ? 'Consultando contatos…'
                 : `${preview?.count ?? 0} contatos correspondem ao filtro`}
             </strong>
+            {!schedule && kind === 'text' && variants.length > 0 && preview && <div className="surface">
+              <strong>Distribuição do teste de abordagens</strong>
+              <p className="muted">Cada lead recebe uma mensagem. A distribuição fica fixa ao salvar o rascunho.</p>
+              {[message, ...variants].map((text, index) => <p key={index}>
+                Mensagem {index + 1}: {selectedLeads.filter((_, leadIndex) => leadIndex % (variants.length + 1) === index).length} lead(s) · {text.slice(0, 100)}{text.length > 100 ? '…' : ''}
+              </p>)}
+            </div>}
             {preview && (
               <>
                 <span>{selectedLeads.length} selecionados para esta campanha</span>
