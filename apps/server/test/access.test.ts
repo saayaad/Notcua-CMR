@@ -265,6 +265,59 @@ test('atendente não recebe privilégio de outro papel nem mantém acesso depois
   });
   await request(app).get('/api/attendance/library').set('Authorization', 'Bearer staff').expect(403);
 });
+test('REQ-110/111: setores e equipe persistem com isolamento e permissão de administrador', async () => {
+  const departments = { items: [{ name: 'Suporte de teste', label: '' }] };
+  await request(app)
+    .put('/api/operations/settings/departments')
+    .set('Authorization', 'Bearer alpha')
+    .send(departments)
+    .expect(200);
+  assert.deepEqual(
+    (await request(app).get('/api/operations/settings/departments').set('Authorization', 'Bearer alpha').expect(200)).body,
+    departments,
+  );
+  assert.deepEqual(
+    (await request(app).get('/api/operations/directory').set('Authorization', 'Bearer alpha').expect(200)).body.departments,
+    departments.items,
+  );
+  assert.notDeepEqual(
+    (await request(app).get('/api/operations/settings/departments').set('Authorization', 'Bearer beta').expect(200)).body,
+    departments,
+  );
+
+  const member = {
+    email: accounts.staff.email,
+    name: 'Atendente de teste',
+    role: 'MEMBER',
+    active: true,
+    department: departments.items[0]!.name,
+    avatar: '',
+  };
+  await request(app).put('/api/operations/team').set('Authorization', 'Bearer alpha').send(member).expect(200);
+  const listed = await request(app).get('/api/operations/team').set('Authorization', 'Bearer alpha').expect(200);
+  assert.ok(listed.body.items.some((item: { email: string; department: string }) =>
+    item.email === member.email && item.department === member.department));
+
+  await request(app)
+    .put('/api/operations/settings/departments')
+    .set('Authorization', 'Bearer staff')
+    .send({ items: [] })
+    .expect(403);
+  await request(app).get('/api/operations/team').set('Authorization', 'Bearer staff').expect(403);
+  await request(app).put('/api/operations/team').set('Authorization', 'Bearer staff').send(member).expect(403);
+
+  const reopened = createSqliteClient(databaseUrl('alpha'));
+  try {
+    const savedDepartments = await reopened.operationRecord.findUniqueOrThrow({ where: { id: 'settings:departments' } });
+    const savedMember = await reopened.operationRecord.findUniqueOrThrow({ where: { id: `team:${member.email}` } });
+    assert.deepEqual(savedDepartments.data, departments);
+    assert.deepEqual(savedMember.data, member);
+    const binding = await registry.operationRecord.findUniqueOrThrow({ where: { id: `access-member:${member.email}` } });
+    assert.deepEqual(binding.data, { email: member.email, workspaceId: a, role: 'MEMBER', active: true });
+  } finally {
+    await reopened.$disconnect();
+  }
+});
 test('renovação mantém a operação; revogar a licença atual bloqueia acesso sem apagar arquivos', async () => {
   const previous = await access.workspace(a);
   const renewal = await access.create(accounts.owner, { label: 'Renovação', months: 3 });

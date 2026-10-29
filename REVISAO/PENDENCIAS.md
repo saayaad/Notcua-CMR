@@ -1,5 +1,15 @@
 # Pendências — Noctua CRM
 
+## Acesso e operação, lote REQ-110/111 — 29/10/2026
+
+Um teste novo e exclusivo de REQ-110/111 passou 1/1: setor e membro fictícios foram gravados, lidos em outra conexão SQLite, isolados de outro espaço e protegidos contra alteração por atendente (403). Tipagem do servidor aprovada. Nenhuma suíte antiga foi repetida, nenhum e-mail enviado. Ambos permanecem parciais: falta o percurso visual; REQ-111 também depende de decisão sobre o fluxo e o serviço de convite privado. Prova por arquivo/função/linha em `evidencias/acesso-setores-equipe-2026-10-29.md`. Próximo lote P1: demais configurações de acesso e suas permissões; manter REQ-098/099/540 pendentes até prova de login novo e configuração pública local.
+
+## Backups, lote de diagnóstico — 29/10/2026
+
+REQ-089/090 passam de “não testado” a “parcial” para refletir os testes anteriores em SQLite descartável e a leitura atual dos conversores. O arquivo histórico na conexão Teste, os nove agendamentos de Sutofly e o relatório de importação continuam sem prova operacional; nenhuma importação foi repetida. Metadados locais mostram cinco pares de backup do banco principal e três espaços com banco/chave, mas nenhum arquivo `.db` nos diretórios de backup desses espaços. O exportador JSON da Biblioteca não cobre o sistema inteiro. Ver `evidencias/cobertura-backups-2026-10-29.md` por arquivo, função, linha e limite.
+
+Decisão necessária antes de qualquer correção de cobertura: destino privado fora deste PC, abrangência dos dados da plataforma e processo de restauração. Até essa decisão, não alterar bancos nem fazer cópia/exportação para serviço externo. Contagem consolidada: 304 a verificar, 114 completos, 223 parciais, 3 não testados; demais estados inalterados. Próximo lote independente, P1: Acesso e operação, começando por permissões e persistência com prova ainda incompleta. REQ-540 depende da recuperação da configuração pública correta.
+
 ## Retomada em 29/10/2026
 
 Etapa Infraestrutura, lote 3: REQ-524 concluído pelo login real do proprietário já registrado, ligação AuthGate/Firebase Admin e prova isolada de tokens; REQ-525 concluído pela correspondência exata dos quatro nomes públicos entre .env.example, código e guia. REQ-540 parcial: a cópia local não contém apps/web/.env nem .env.local, então o Vite local não recebe os quatro identificadores públicos. A publicação Vercel pode continuar configurada, mas isso não preenche automaticamente o ambiente local. Não foi feito login novo nem copiada credencial administrativa. Próximo lote: diagnosticar como recuperar a configuração pública correta e validar o iniciador sem reiniciar a operação em uso. Contagem consolidada: 304 a verificar, 114 completos, 221 parciais; demais estados inalterados.
