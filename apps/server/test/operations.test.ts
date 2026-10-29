@@ -1089,7 +1089,7 @@ test('provedores Claude e Gemini contabilizam tokens e limites bloqueiam antes d
     assert.equal(calls, 2);
   }));
 
-test('resumo de IA avança além de 60 mensagens e aceita intervalo de 100', async () =>
+test('resumo de IA avança além de 60 mensagens e retoma após reinício ou importação histórica', async () =>
   aiTest(async () => {
     await configureAi();
     const previous = await record<object | null>(db, 'settings:ai-economy', null);
@@ -1129,12 +1129,38 @@ test('resumo de IA avança além de 60 mensagens e aceita intervalo de 100', asy
       assert.equal(summaries, 3);
       await generateSuggestion(db, long.id, 'Sugira uma resposta.');
       assert.equal(summaries, 3);
+      const saved = await record<{ covered: number; cursor?: { sentAt: string; id: string } }>(db, `conversation-summary:${long.id}`, { covered: 0 });
+      assert.ok(saved.cursor?.id);
+      const reopened = createSqliteClient(url);
+      try {
+        await generateSuggestion(reopened, long.id, 'Sugira uma resposta.');
+        assert.equal(summaries, 3);
+      } finally {
+        await reopened.$disconnect();
+      }
       await putRecord(db, 'settings:ai-economy', 'AI_ECONOMY_SETTINGS', economy(100));
       const hundred = await makeContact('5511777770066');
       await addMessages(hundred.id, 0, 100);
       await generateSuggestion(db, hundred.id, 'Sugira uma resposta.');
       assert.equal((await record<{ covered: number }>(db, `conversation-summary:${hundred.id}`, { covered: 0 })).covered, 97);
       assert.equal(summaries, 4);
+      await putRecord(db, 'settings:ai-economy', 'AI_ECONOMY_SETTINGS', economy(10));
+      await db.chatMessage.create({ data: {
+        conversationId: long.id, direction: 'INBOUND', text: 'Mensagem histórica importada',
+        sentAt: new Date(Date.UTC(2025, 0, 1)),
+      } });
+      await generateSuggestion(db, long.id, 'Sugira uma resposta.');
+      assert.equal(summaries, 5);
+      assert.match(summaryInputs[4] ?? '', /Mensagem histórica importada/);
+      assert.doesNotMatch(summaryInputs[4] ?? '', /\[Resumo anterior\]/);
+      assert.equal((await record<{ covered: number }>(db, `conversation-summary:${long.id}`, { covered: 0 })).covered, 100);
+      const legacy = await makeContact('5511777770067');
+      await addMessages(legacy.id, 0, 10);
+      await putRecord(db, `conversation-summary:${legacy.id}`, 'AI_CONVERSATION_SUMMARY', { text: 'Resumo antigo sem cursor', covered: 7 });
+      await generateSuggestion(db, legacy.id, 'Sugira uma resposta.');
+      assert.equal(summaries, 6);
+      assert.doesNotMatch(summaryInputs[5] ?? '', /Resumo antigo sem cursor/);
+      assert.ok((await record<{ cursor?: { id: string } }>(db, `conversation-summary:${legacy.id}`, {})).cursor?.id);
     } finally {
       if (previous) await putRecord(db, 'settings:ai-economy', 'AI_ECONOMY_SETTINGS', previous);
       else await db.operationRecord.deleteMany({ where: { id: 'settings:ai-economy' } });

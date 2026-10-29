@@ -2,16 +2,18 @@
   "date": "2026-10-29",
   "issue": "BUG-002",
   "requirements": ["REQ-433", "REQ-434"],
-  "finding": "A janela de leitura de 60 mensagens impedia atualizar o resumo após a cobertura inicial de 57 e impedia disparo com intervalo configurado em 100.",
-  "change": "O disparo usa a contagem completa da conversa e resume o próximo trecho cronológico, com o resumo anterior, em lote limitado a 100 mensagens.",
+  "finding": "A janela de leitura de 60 mensagens impedia atualizar o resumo após a cobertura inicial de 57. Além disso, guardar apenas a contagem permitia ignorar uma mensagem histórica inserida antes do trecho já resumido.",
+  "change": "O disparo usa a contagem completa da conversa e resume o próximo trecho cronológico, em lote limitado a 100 mensagens. O registro agora guarda a data e o ID da última mensagem coberta; se o prefixo cronológico mudar, o resumo antigo é invalidado e reconstruído. Registros legados sem cursor também são reconstruídos na próxima sugestão.",
   "checks": [
     "A reprodução anterior falhou antes da correção: 60 para 90 mensagens manteve cobertura 57.",
     "Após a correção, cobertura avançou para 57, 87 e 157 com 60, 90 e 160 mensagens.",
-    "Nova chamada sem mensagens adicionais não gerou resumo duplicado.",
+    "Nova chamada sem mensagens adicionais não gerou resumo duplicado, inclusive com novo cliente Prisma aberto sobre o mesmo banco.",
     "Intervalo configurado em 100 disparou resumo e cobriu as primeiras 97 mensagens, deixando as três últimas no contexto recente.",
+    "Inserção fictícia com data anterior ao primeiro resumo invalidou o conteúdo antigo e fez a nova síntese incluir a mensagem histórica.",
+    "Resumo legado sem cursor foi reconstruído sem reaproveitar seu texto anterior.",
     "Teste isolado, tipagem e compilação de servidor/interface passaram.",
     "Suíte completa do servidor: 186 testes aprovados, zero falhas."
   ],
   "environment": "Banco temporário, mensagens fictícias e provedor simulado; nenhuma chamada externa de IA.",
-  "remaining": "Validar histórico fora de ordem, reinício do servidor, falha do provedor e interface autenticada com modelo real."
+  "remaining": "Validar reinício completo do servidor, falha do provedor durante reconstrução, edições de mídia já resumida e interface autenticada com modelo real. A reconstrução de resumos legados ou invalidados consome uma nova chamada de IA."
 }
