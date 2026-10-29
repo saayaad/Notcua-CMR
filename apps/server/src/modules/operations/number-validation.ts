@@ -11,6 +11,7 @@ type Result = {
   phoneNumber: string;
   status: 'REGISTERED' | 'NOT_REGISTERED' | 'UNKNOWN';
   canonicalPhone?: string;
+  suggestedPhone?: string;
   checkedAt: string;
   cached?: boolean;
 };
@@ -59,6 +60,18 @@ export function numberValidationRoutes(db: PrismaClient, whatsapp: WhatsappServi
                 ? { canonicalPhone: registered.jid.split('@')[0]!.split(':')[0] }
                 : {}),
             };
+            if (!registered && /^55\d{10,11}$/.test(phoneNumber)) {
+              const local = phoneNumber.slice(4);
+              const alternate = local.length === 8 ? `${phoneNumber.slice(0, 4)}9${local}`
+                : local.length === 9 && local.startsWith('9') ? `${phoneNumber.slice(0, 4)}${local.slice(1)}` : '';
+              if (alternate) {
+                try {
+                  const alternateFound = (await socket.onWhatsApp(alternate))?.find((item) => item.exists);
+                  if (alternateFound) result.suggestedPhone = alternateFound.jid?.endsWith('@s.whatsapp.net')
+                    ? alternateFound.jid.split('@')[0]!.split(':')[0] : alternate;
+                } catch { /* Preserve the original result if the second lookup fails. */ }
+              }
+            }
             await putRecord(db, key, 'WHATSAPP_NUMBER_CHECK', result);
           }
         } catch {

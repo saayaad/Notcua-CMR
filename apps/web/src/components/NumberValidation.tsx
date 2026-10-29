@@ -6,6 +6,7 @@ type Check = {
   phoneNumber: string;
   status: 'REGISTERED' | 'NOT_REGISTERED' | 'UNKNOWN';
   canonicalPhone?: string;
+  suggestedPhone?: string;
   checkedAt: string;
   cached?: boolean;
 };
@@ -15,12 +16,14 @@ export function NumberValidation({
   disabled,
   onBusyChange,
   onRemove,
+  onReplace,
 }: {
   sessionId: string;
   phoneNumbers: string[];
   disabled: boolean;
   onBusyChange: (value: boolean) => void;
   onRemove: (numbers: string[]) => void;
+  onReplace?: (changes: { from: string; to: string }[]) => void;
 }) {
   const { request } = useApi();
   const [checks, setChecks] = useState<Check[]>([]);
@@ -80,6 +83,8 @@ export function NumberValidation({
     }
   };
   const absent = checks.filter((item) => item.status === 'NOT_REGISTERED').map((item) => item.phoneNumber);
+  const alternatives = checks.filter((item) => item.status === 'NOT_REGISTERED' && item.suggestedPhone)
+    .map((item) => ({ from: item.phoneNumber, to: item.suggestedPhone! }));
   return (
     <section className="surface" aria-label="Validação de números WhatsApp">
       <h3>Conferir contas WhatsApp</h3>
@@ -119,6 +124,10 @@ export function NumberValidation({
             Remover {absent.length} sem conta da prévia
           </button>
         )}
+        {alternatives.length > 0 && onReplace && <button type="button" className="button" disabled={running || disabled}
+          onClick={() => onReplace(alternatives)}>
+          Usar {alternatives.length} número(s) com variação do 9
+        </button>}
       </div>
       {checks.length > 0 && (
         <>
@@ -138,6 +147,7 @@ export function NumberValidation({
                     ? 'Conta não encontrada'
                     : 'Consulta inconclusiva'}
                 {item.cached ? ' · resultado salvo' : ''}
+                {item.suggestedPhone ? ` · variante encontrada: +${item.suggestedPhone}` : ''}
               </p>
             ))}
           </details>

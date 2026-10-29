@@ -514,7 +514,7 @@ export default function App() {
               {!workspace.serverConnected
                 ? 'Servidor desconectado'
                 : connected
-                  ? 'WhatsApp conectado'
+                  ? `WhatsApp conectado: +${session?.phoneNumber ?? 'número indisponível'}`
                   : session?.status === 'AWAITING_QR'
                     ? 'Aguardando QR'
                     : session?.status === 'CONNECTING'
@@ -533,7 +533,7 @@ export default function App() {
                 </option>
                 {workspace.sessions.map((item) => (
                   <option key={item.id} value={item.id}>
-                    {item.name}
+                    {item.name}{item.phoneNumber ? ` · +${item.phoneNumber}` : ''}
                   </option>
                 ))}
               </Select>

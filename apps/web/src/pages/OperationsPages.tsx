@@ -466,9 +466,9 @@ function LeadImport({
       </label>
       {preview && (
         <>
-          {preview.sheets.length > 1 && <label>Aba do arquivo
+          {(preview.sheets?.length ?? 0) > 1 && <label>Aba do arquivo
             <Select value={preview.sheetIndex} disabled={busy} onChange={(event) => { const index = Number(event.target.value); setSheetIndex(index); void inspect(undefined, undefined, index); }}>
-              {preview.sheets.map((name, index) => <option key={index} value={index}>{name}</option>)}
+              {preview.sheets?.map((name, index) => <option key={index} value={index}>{name}</option>)}
             </Select>
           </label>}
           <div className="form-grid">
@@ -537,7 +537,14 @@ function LeadImport({
               placeholder="Ex.: Leads outubro"
             />
           </label>
-          <NumberValidation sessionId={sessionId} phoneNumbers={preview.items.map(item => item.phoneNumber)} disabled={busy} onBusyChange={setBusy} onRemove={numbers => {
+          <NumberValidation sessionId={sessionId} phoneNumbers={preview.items.map(item => item.phoneNumber)} disabled={busy} onBusyChange={setBusy} onReplace={changes => {
+            const replacements = new Map(changes.map(({ from, to }) => [from, to]));
+            setPreview(current => current ? { ...current, items: current.items.map(item => ({ ...item,
+              phoneNumber: replacements.get(item.phoneNumber) ?? item.phoneNumber,
+              name: item.name === item.phoneNumber ? replacements.get(item.phoneNumber) ?? item.name : item.name,
+            })).filter((item, index, items) => items.findIndex(other => other.phoneNumber === item.phoneNumber) === index) } : null);
+            notify(`${changes.length} número(s) substituído(s) pela variante confirmada no WhatsApp. Revise a prévia antes de importar.`);
+          }} onRemove={numbers => {
             const excluded = new Set(numbers);
             setPreview(current => current ? { ...current, items: current.items.filter(item => !excluded.has(item.phoneNumber)) } : null);
             notify(`${numbers.length} número(s) sem conta removido(s) da prévia. Nenhum contato existente foi apagado.`);

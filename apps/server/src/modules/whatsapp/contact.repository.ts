@@ -22,6 +22,19 @@ async function mergeContacts(tx: Tx, from: Contact, into: Contact): Promise<void
     });
     if (!target) await tx.conversation.update({ where: { id: chat.id }, data: { contactId: into.id } });
     else {
+      const lists = await tx.operationRecord.findMany({ where: { kind: 'LEAD_LIST' } });
+      for (const list of lists) {
+        const data = list.data as { conversationIds?: string[]; [key: string]: unknown };
+        if (!Array.isArray(data.conversationIds) || !data.conversationIds.includes(chat.id)) continue;
+        await tx.operationRecord.update({
+          where: { id: list.id },
+          data: { data: {
+            ...data,
+            conversationIds: [...new Set(data.conversationIds.map((id) => id === chat.id ? target.id : id))],
+          } as Prisma.InputJsonValue },
+        });
+      }
+      await tx.deliveryTask.updateMany({ where: { conversationId: chat.id }, data: { conversationId: target.id } });
       const messages = await tx.chatMessage.findMany({
         where: { conversationId: chat.id },
         select: { id: true, whatsappMessageId: true },

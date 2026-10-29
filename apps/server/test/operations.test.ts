@@ -38,6 +38,7 @@ import { generateSuggestion } from '../src/modules/operations/ai.service.js';
 import { aiUsage, meteredCall, providerResponse } from '../src/modules/operations/ai-provider.js';
 import { preprocessMedia } from '../src/modules/operations/ai-media.js';
 import { SyncService } from '../src/modules/whatsapp/sync.service.js';
+import { resolveContact } from '../src/modules/whatsapp/contact.repository.js';
 import { inflateRawSync } from 'node:zlib';
 class FakeSocket implements WhatsappSocket {
   lookupCalls = 0;
@@ -151,10 +152,10 @@ test('validação consulta sem enviar, reutiliza cache, separa ausência de falh
   const before = socket.lookupCalls;
   const result = await request(app).post(url).send({ phoneNumbers: ['5511999990001', '5511999990002'] }).expect(200);
   assert.deepEqual(result.body.items.map((item: any) => item.status), ['REGISTERED', 'NOT_REGISTERED']);
-  assert.equal(socket.lookupCalls, before + 2);
+  assert.equal(socket.lookupCalls, before + 3);
   const cached = await request(app).post(url).send({ phoneNumbers: ['5511999990001'] }).expect(200);
   assert.equal(cached.body.items[0].cached, true);
-  assert.equal(socket.lookupCalls, before + 2);
+  assert.equal(socket.lookupCalls, before + 3);
   socket.lookupFails = true;
   try {
     const failed = await request(app).post(url).send({ phoneNumbers: ['5511999990003', '5511999990004'] }).expect(200);
@@ -243,6 +244,29 @@ test('planilha de captação com LEADS (NÚMERO) usa telefone quando não há no
   assert.deepEqual(preview.items.map((item) => [item.name, item.phoneNumber]), [
     ['553188770744', '553188770744'], ['5521970031033', '5521970031033'],
   ]);
+});
+test('importação reutiliza identidade WhatsApp já sincronizada para variante do número', async () => {
+  const chat = await makeContact('556293383554', 'Contato sincronizado');
+  await db.whatsappIdentity.create({ data: { jid: '5562993383554@s.whatsapp.net', contactId: chat.contactId } });
+  const imported = await contacts.import(sessionId, { items: [{
+    name: 'Nome da planilha', phoneNumber: '5562993383554', tags: [], email: '', optIn: false,
+  }], listName: 'Variações verificadas' });
+  assert.equal(await db.contact.count({ where: { phoneNumber: { in: ['556293383554', '5562993383554'] } } }), 1);
+  assert.equal(await db.conversation.count({ where: { contactId: chat.contactId, sessionId } }), 1);
+  assert.equal(imported.imported, 1);
+});
+test('união de contatos atualiza listas importadas para a conversa preservada', async () => {
+  const canonical = await makeContact('5511777770701');
+  const duplicate = await makeContact('5511777770702');
+  await putRecord(db, 'lead-list:merge-test', 'LEAD_LIST', {
+    name: 'Teste de união', sessionId, conversationIds: [duplicate.id],
+  });
+  await db.$transaction((tx) => resolveContact(tx, {
+    jid: '5511777770701@s.whatsapp.net', alternateJid: '5511777770702@s.whatsapp.net',
+  }), { timeout: 30_000 });
+  const list = await record<{ conversationIds: string[] }>(db, 'lead-list:merge-test', { conversationIds: [] });
+  assert.deepEqual(list.conversationIds, [canonical.id]);
+  assert.equal(await db.conversation.count({ where: { id: duplicate.id } }), 0);
 });
 test('campanha começa em rascunho, congela recurso, respeita intervalo e não repete envio', async () => {
   const a = await makeContact('5511777770001');

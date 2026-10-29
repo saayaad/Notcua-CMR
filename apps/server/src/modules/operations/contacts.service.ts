@@ -289,13 +289,17 @@ export class ContactsService {
       await this.db.$transaction(
         async (tx) => {
           for (const lead of input.items.slice(offset, offset + 50)) {
-            const existing = await tx.contact.findUnique({ where: { phoneNumber: lead.phoneNumber } });
+            const jid = `${lead.phoneNumber}@s.whatsapp.net`;
+            const alias = await tx.whatsappIdentity.findUnique({ where: { jid } });
+            const existing = alias
+              ? await tx.contact.findUnique({ where: { id: alias.contactId } })
+              : await tx.contact.findUnique({ where: { phoneNumber: lead.phoneNumber } });
             const metadata = {
               ...((existing?.metadata as object) ?? {}),
+              importedFromSpreadsheet: true,
               ...(lead.email ? { email: lead.email } : {}),
               ...(lead.optIn ? { optIn: true, optInAt: new Date().toISOString() } : {}),
             };
-            const jid = `${lead.phoneNumber}@s.whatsapp.net`;
             const contact = existing
               ? await tx.contact.update({ where: { id: existing.id }, data: { metadata: json(metadata) } })
               : await tx.contact.create({

@@ -95,6 +95,31 @@ export class MessagingService {
       }
       const socket = this.whatsapp.connectedSocket(sessionId);
       if (!socket.sendMessage) throw new AppError(503, 'O serviço de envio não está disponível.');
+      // Imported/manual contacts have no inbound history. Verify their phone with WhatsApp
+      // before treating a socket acknowledgement as a successful send.
+      if ((chat.contact.metadata as { importedFromSpreadsheet?: boolean }).importedFromSpreadsheet &&
+        !chat.firstInboundAt && !chat.jid.endsWith('@lid') && socket.onWhatsApp) {
+        const number = chat.jid.split('@')[0]!.split(':')[0]!;
+        if (/^55\d{10,11}$/.test(number)) {
+          let found: Awaited<ReturnType<NonNullable<typeof socket.onWhatsApp>>>;
+          try { found = await socket.onWhatsApp(number); }
+          catch { throw new AppError(503, 'Não foi possível verificar este número no WhatsApp. Tente novamente antes de enviar.'); }
+          const registered = found?.find((item) => item.exists);
+          if (!registered) {
+            const local = number.slice(4);
+            const alternate = local.length === 8 ? `${number.slice(0, 4)}9${local}`
+              : local.length === 9 && local.startsWith('9') ? `${number.slice(0, 4)}${local.slice(1)}` : '';
+            let alternateExists = false;
+            if (alternate) {
+              try { alternateExists = Boolean((await socket.onWhatsApp(alternate))?.find((item) => item.exists)); }
+              catch { /* The original number remains unconfirmed. */ }
+            }
+            throw new AppError(422, alternateExists
+              ? `Este número não está no WhatsApp. A variante com ${local.length === 8 ? 'o nono dígito' : 'oito dígitos'} está cadastrada: +${alternate}. Revise o contato antes de enviar.`
+              : 'Este número não está cadastrado no WhatsApp. Revise o DDD e o nono dígito antes de enviar.');
+          }
+        }
+      }
       const hour = Number(
         new Intl.DateTimeFormat('en-GB', {
           timeZone: 'America/Sao_Paulo',
