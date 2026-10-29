@@ -20,13 +20,13 @@ Reprodução em 27/10/2026: execução real de `generateSuggestion` com reposit�
 
 Correção planejada: avançar por identificador/horário estável das mensagens cobertas, incluindo o resumo anterior e somente o trecho novo; distinguir total da conversa de tamanho da janela. Retestar mais de 100 mensagens, intervalo 100, retomada depois de reiniciar e falha do provedor. Ainda não corrigido nesta fase de auditoria. REQ-433/434.
 
-## BUG-003 — Cache não exige aprovação e pode reutilizar saudação personalizada
+## BUG-003 — Cache não exigia aprovação e podia reutilizar saudação personalizada (corrigido localmente em 29/10/2026)
 
 Prioridade alta; esforço M. `apps/server/src/modules/operations/ai.service.ts:39–50,109–110`: respostas produzidas pelo modelo são incluídas diretamente em `AI_SEMANTIC_CACHE`, sem aprovação, e a busca não exige estado aprovado ou resposta genérica. O filtro exclui alguns números/valores, mas não nomes. A interface anuncia respostas “aprovadas”.
 
 Reprodução isolada: dois clientes fictícios fizeram a mesma pergunta. A primeira resposta simulada foi “Oi, Joana! Podemos conversar sobre o mascote.”; na segunda conversa o método retornou exatamente essa resposta com `cached=true`, sem chamada ao provedor e sem qualquer etapa de aprovação. Isso demonstra o defeito com dados fictícios; não afirma vazamento ocorrido na operação real.
 
-Correção planejada: separar sugestão e publicação no cache, exigir aprovação explícita, impedir reutilização de dados personalizados e invalidar entradas antigas sem aprovação. Incluir teste de isolamento entre operações e dois clientes com perguntas iguais. A mudança nas regras de publicação/limpeza de entradas antigas será apresentada no lote de correções; nenhum cache real foi alterado. REQ-424/425/442.
+Correção local: respostas geradas entram como pendentes; somente a aprovação explícita por administrador libera reutilização. A aprovação exige conversa de origem e recusa o nome do cliente, saudações com nome e padrões de contato/valores. Editar sem aprovar retira a aprovação. Entradas antigas sem origem verificável ficam inativas e não podem ser aprovadas; nenhuma linha da base real foi apagada ou alterada. Teste isolado com três clientes fictícios aprovou o caminho de revisão e bloqueou a saudação personalizada. Falta percurso visual publicado; REQ-424 permanece parcial. Evidência: `evidencias/cache-ia-2026-10-29.json`. REQ-424/425/442.
 
 ## INT-001 — Opções da economia sem integração completa
 

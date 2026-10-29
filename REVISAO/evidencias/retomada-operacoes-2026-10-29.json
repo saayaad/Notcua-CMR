@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-29",
+  "scope": [
+    "REQ-132",
+    "REQ-134",
+    "REQ-135",
+    "REQ-142",
+    "REQ-145",
+    "REQ-148",
+    "REQ-149",
+    "REQ-150"
+  ],
+  "tests": {
+    "isolated": [
+      "público combina várias listas e etiquetas com inatividade e seleção manual",
+      "campanha começa em rascunho, congela recurso, respeita intervalo e não repete envio",
+      "perfil e anotações são preservados e o histórico é exportado como ZIP",
+      "sequência de campanha congela recursos, preserva ordem e aplica pausa por lote",
+      "exportação estruturada ordena por horário, separa papéis e protege CSV",
+      "importação extrai telefone misturado com texto, exige DDD e cria lista segmentável",
+      "fila ativa no servidor executa sem requisição do painel",
+      "última interação conserva o horário mais recente após sincronização fora de ordem"
+    ],
+    "passed": 8,
+    "failed": 0,
+    "environment": "Banco temporário e conector WhatsApp fictício; sem chamada de IA nem envio real."
+  },
+  "browser": "A aba publicada não autorizou observação pelo controle do navegador; percurso visual permanece pendente.",
+  "production": "WhatsApp desconectado e nove entregas antigas adiadas para teste de acesso; horários originais preservados em .npm-cache/online-test-pause.json (ignorado pelo Git).",
+  "limits": [
+    "REQ-150: sequência de campanha com recurso textual apenas; mídias reais ainda pendentes.",
+    "REQ-142: teste confirmou o worker sem painel, mas falta observar o caso na instalação publicada com painel fechado.",
+    "REQ-145: falta conferir atualização e segmentação na interface autenticada."
+  ]
+}

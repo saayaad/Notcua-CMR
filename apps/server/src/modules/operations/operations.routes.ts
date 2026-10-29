@@ -23,7 +23,7 @@ import { synchronizeTeamAccess } from '../../http/auth.js';
 import { json } from '../backups/validation.js';
 import { ContactsService, leadSchema } from './contacts.service.js';
 import { hasConfiguredKey, record, putRecord, type AgentSettings } from './records.js';
-import { generateSuggestion } from './ai.service.js';
+import { generateSuggestion, reusableCacheAnswer } from './ai.service.js';
 import { aiControl, setAiControl } from './ai-control.js';
 import { aiUsage } from './ai-provider.js';
 import { preprocessMedia } from './ai-media.js';
@@ -987,9 +987,19 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     const cacheId = id.parse(req.params.cacheId);
     const current = await db.operationRecord.findFirst({ where: { id: cacheId, kind: 'AI_SEMANTIC_CACHE' } });
     if (!current) throw new AppError(404, 'Resposta do cache não encontrada.');
-    const input = z.object({ answer: z.string().trim().min(1).max(4000) }).parse(req.body);
-    await putRecord(db, cacheId, 'AI_SEMANTIC_CACHE', { ...(current.data as object), answer: input.answer, editedAt: new Date().toISOString() });
-    res.json({ saved: true });
+    const input = z.object({ answer: z.string().trim().min(1).max(4000), approve: z.boolean().optional() }).parse(req.body);
+    const data = current.data as { sourceConversationId?: string };
+    let approvedAt: string | undefined;
+    if (input.approve) {
+      if (!data.sourceConversationId) throw new AppError(422, 'Entrada antiga sem origem verificável. Gere uma nova resposta para aprovar.');
+      const source = await db.conversation.findUnique({ where: { id: data.sourceConversationId }, include: { contact: true } });
+      if (!source) throw new AppError(422, 'Conversa de origem não encontrada. Gere uma nova resposta para aprovar.');
+      if (!reusableCacheAnswer(input.answer, source.contact.name))
+        throw new AppError(422, 'Remova nomes e dados pessoais da resposta antes de aprovar o cache.');
+      approvedAt = new Date().toISOString();
+    }
+    await putRecord(db, cacheId, 'AI_SEMANTIC_CACHE', { ...data, answer: input.answer, editedAt: new Date().toISOString(), approvedAt });
+    res.json({ saved: true, approved: Boolean(approvedAt) });
   });
   router.delete('/economy/cache/:cacheId', async (req, res) => {
     admin(res.locals.identity.role);

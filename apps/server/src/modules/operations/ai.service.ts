@@ -16,6 +16,13 @@ function similarity(left: Set<string>, right: Set<string>) {
   const overlap = [...left].filter((word) => right.has(word)).length;
   return overlap / (left.size + right.size - overlap);
 }
+export function reusableCacheAnswer(answer: string, sourceName = '') {
+  const normalized = answer.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+  const firstName = sourceName.trim().split(/\s+/)[0]?.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+  if (firstName && firstName.length >= 3 && new RegExp(`\\b${firstName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'u').test(normalized)) return false;
+  if (/\b(?:oi|olá|bom dia|boa tarde|boa noite)[,! ]+\p{Lu}[\p{L}]{2,}\b/u.test(answer)) return false;
+  return !/R\$|\b\d{2,}\b|\+?\d{8,}|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/i.test(answer);
+}
 export interface KnowledgeExample {
   turns: { role: 'user' | 'assistant'; content: string; sentAt: string }[];
   conversationId: string;
@@ -41,8 +48,8 @@ export async function generateSuggestion(db: PrismaClient, conversationId: strin
   if (cacheEligible && questionWords.size >= 2) {
     const rows = await db.operationRecord.findMany({ where: { kind: 'AI_SEMANTIC_CACHE' }, orderBy: { updatedAt: 'desc' }, take: 1000 });
     const cutoff = Date.now() - Math.max(1, economy.cacheDays) * 86_400_000;
-    const candidate = rows.map((row) => ({ row, data: row.data as { question?: string; answer?: string; createdAt?: string; system?: string; hits?: number } }))
-      .filter(({ data }) => data.system === 'autoReply' && data.question && data.answer && Date.parse(data.createdAt ?? '') >= cutoff)
+    const candidate = rows.map((row) => ({ row, data: row.data as { question?: string; answer?: string; createdAt?: string; approvedAt?: string; system?: string; hits?: number } }))
+      .filter(({ data }) => data.system === 'autoReply' && data.question && data.answer && Date.parse(data.approvedAt ?? '') > 0 && reusableCacheAnswer(data.answer) && Date.parse(data.createdAt ?? '') >= cutoff)
       .map(({ row, data }) => ({ row, data, score: similarity(questionWords, keywords(data.question!)) }))
       .sort((a, b) => b.score - a.score)[0];
     if (candidate && candidate.score >= (questionWords.size <= 4 ? 0.88 : 0.76)) {
@@ -108,8 +115,8 @@ export async function generateSuggestion(db: PrismaClient, conversationId: strin
     `Tarefa: ${task}\n${historyContext}`,
     route,
   );
-  if (cacheEligible && questionWords.size >= 2 && !/R\$|\b\d{2,}\b|\+?\d{8,}/i.test(response.text)) {
-    await putRecord(db, `ai-semantic-cache:${randomUUID()}`, 'AI_SEMANTIC_CACHE', { question: latestInbound!.text, answer: response.text.slice(0, 4000), system: systemName, createdAt: new Date().toISOString(), hits: 0 });
+  if (cacheEligible && questionWords.size >= 2) {
+    await putRecord(db, `ai-semantic-cache:${randomUUID()}`, 'AI_SEMANTIC_CACHE', { question: latestInbound!.text, answer: response.text.slice(0, 4000), system: systemName, sourceConversationId: conversationId, createdAt: new Date().toISOString(), hits: 0 });
   }
   return response;
 }

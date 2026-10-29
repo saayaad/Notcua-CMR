@@ -1,0 +1,17 @@
+{
+  "date": "2026-10-29",
+  "issue": "BUG-003",
+  "requirements": ["REQ-424", "REQ-425", "REQ-442"],
+  "change": "Respostas geradas aguardam aprovação explícita de administrador antes de reutilização; edição em rascunho retira aprovação; entradas legadas sem origem verificável não são reutilizadas.",
+  "checks": [
+    "Primeira resposta com nome de cliente não foi reutilizada na segunda conversa.",
+    "Aprovação de saudação com nome foi recusada.",
+    "Resposta genérica revisada foi reutilizada na terceira conversa.",
+    "Edição como rascunho impediu a reutilização posterior.",
+    "Teste isolado em banco temporário com provedor de IA fictício passou.",
+    "Compilação de servidor e interface passou.",
+    "Suíte completa do servidor passou: 184 testes, zero falhas."
+  ],
+  "data": "Somente três clientes fictícios; nenhuma chamada externa de IA e nenhuma alteração no banco real.",
+  "remaining": "Conferir revisão, aprovação, recarregamento e uso na interface publicada e autenticada."
+}

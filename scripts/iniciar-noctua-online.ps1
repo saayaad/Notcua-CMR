@@ -80,21 +80,20 @@ try {
     Invoke-WebRequest -Uri $DownloadUrl -OutFile $Cloudflared
   }
   $Signature = $null
-  for ($Attempt = 0; $Attempt -lt 3; $Attempt++) {
+  $SignatureError = $null
+  for ($Attempt = 0; $Attempt -lt 10; $Attempt++) {
     try {
-      Import-Module Microsoft.PowerShell.Security -ErrorAction Stop
       $Signature = Get-AuthenticodeSignature -FilePath $Cloudflared -ErrorAction Stop
-      break
+      if ($Signature.Status -eq 'Valid' -and $Signature.SignerCertificate.Subject -match 'Cloudflare') { break }
+      $SignatureError = "Status: $($Signature.Status); signatário: $($Signature.SignerCertificate.Subject)"
     } catch {
-      if ($Attempt -eq 2) {
-        throw 'Não consegui verificar a assinatura da Cloudflare. Tente iniciar novamente em instantes.'
-      }
-      Start-Sleep -Seconds 2
+      $SignatureError = $_.Exception.Message
     }
+    if ($Attempt -lt 9) { Start-Sleep -Seconds 2 }
   }
   if ($Signature.Status -ne 'Valid' -or $Signature.SignerCertificate.Subject -notmatch 'Cloudflare') {
     Remove-Item -LiteralPath $Cloudflared -Force -ErrorAction SilentlyContinue
-    throw 'A assinatura do programa Cloudflare não foi validada. O arquivo foi descartado por segurança.'
+    throw "A assinatura do programa Cloudflare não foi validada. O arquivo foi descartado por segurança. $SignatureError"
   }
 
   Write-Step '3 de 5 — Preparando o acesso à Vercel'

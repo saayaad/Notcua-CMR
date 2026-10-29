@@ -270,6 +270,16 @@ test('primeira mensagem nova etiqueta uma vez; histórico, grupos, replays e eve
   assert.equal(await db.contact.count({ where: { phoneNumber: '5511444440000' } }), 0);
 });
 
+test('última interação conserva o horário mais recente após sincronização fora de ordem', async () => {
+  const jid = '5511777770099@s.whatsapp.net';
+  const latest = 1_792_800_000;
+  await sync.messagesUpsert(sessionId, [message(jid, 'recent', false, 'Recente', latest)], false);
+  await sync.messagesUpsert(sessionId, [message(jid, 'older', false, 'Antiga', latest - 3600)], false);
+  await sync.chatsUpsert(sessionId, [{ id: jid, conversationTimestamp: latest - 7200 }], true);
+  const chat = await db.conversation.findFirstOrThrow({ where: { sessionId, contact: { phoneNumber: '5511777770099' } } });
+  assert.equal(chat.lastMessageAt?.getTime(), latest * 1000);
+});
+
 test('exclusão recebida preserva texto e só marca a conversa de origem', async () => {
   const firstJid = '5511777771001@s.whatsapp.net';
   const secondJid = '5511777771002@s.whatsapp.net';

@@ -351,6 +351,31 @@ test('reinício marca envio incerto como falha e não o reenvia', async () => {
     await restarted.stop();
   }
 });
+test('fila ativa no servidor executa sem requisição do painel', async () => {
+  const chat = await makeContact('5511777770098');
+  const item = await draft([chat.id], { kind: 'text', text: 'Fila automática' });
+  await request(app)
+    .put(`/api/operations/sessions/${sessionId}/batches/${item.id}`)
+    .send({ status: 'ACTIVE' })
+    .expect(200);
+  const automatic = new DeliveryWorker(db, whatsapp, messaging, sequences);
+  const before = socket.sends.length;
+  try {
+    await automatic.start();
+    const deadline = Date.now() + 5000;
+    let status = '';
+    while (Date.now() < deadline) {
+      status = (await db.deliveryTask.findFirstOrThrow({ where: { batchId: item.id } })).status;
+      if (status === 'COMPLETED') break;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    assert.equal(socket.sends.length, before + 1);
+    assert.equal(status, 'COMPLETED');
+  } finally {
+    await automatic.stop();
+  }
+});
+
 test('macros criadas executam texto, espera, etiqueta e atribuição em ordem', async () => {
   const chat = await makeContact('5511777770007');
   const label = await db.label.findFirstOrThrow({ where: { sessionId } });
@@ -823,6 +848,36 @@ test('importação extrai telefone misturado com texto, exige DDD e cria lista s
     .expect(404);
 });
 
+test('público combina várias listas e etiquetas com inatividade e seleção manual', async () => {
+  const first = await makeContact('5511888810001', 'Público A');
+  const second = await makeContact('5511888810002', 'Público B');
+  const third = await makeContact('5511888810003', 'Público C');
+  const firstLabel = await db.label.create({ data: { id: 'audience-label-a', sessionId, name: 'Público A' } });
+  const secondLabel = await db.label.create({ data: { id: 'audience-label-b', sessionId, name: 'Público B' } });
+  await db.contactLabel.createMany({ data: [
+    { contactId: first.contactId, labelId: firstLabel.id },
+    { contactId: second.contactId, labelId: secondLabel.id },
+  ] });
+  await db.conversation.updateMany({
+    where: { id: { in: [first.id, third.id] } },
+    data: { lastMessageAt: new Date(Date.now() - 12 * 86400000) },
+  });
+  await db.conversation.update({
+    where: { id: second.id }, data: { lastMessageAt: new Date() },
+  });
+  const listIds = ['lead-list:audience-a', 'lead-list:audience-b'];
+  await putRecord(db, listIds[0]!, 'LEAD_LIST', { sessionId, conversationIds: [first.id] });
+  await putRecord(db, listIds[1]!, 'LEAD_LIST', { sessionId, conversationIds: [second.id, third.id] });
+  const base = { listIds, labelIds: [firstLabel.id, secondLabel.id], inactiveDays: 10 };
+  const url = `/api/operations/sessions/${sessionId}/audience`;
+  const and = await request(app).post(url).send({ ...base, match: 'AND' }).expect(200);
+  assert.deepEqual(and.body.items.map((item: { id: string }) => item.id), [first.id]);
+  const or = await request(app).post(url).send({ ...base, match: 'OR' }).expect(200);
+  assert.equal(or.body.count, 3);
+  const selected = await request(app).post(url).send({ ...base, match: 'OR', conversationIds: [second.id] }).expect(200);
+  assert.deepEqual(selected.body.items.map((item: { id: string }) => item.id), [second.id]);
+});
+
 test('sequência de campanha congela recursos, preserva ordem e aplica pausa por lote', async () => {
   const chat = await makeContact('5511777770031', 'Pessoa Sequência');
   const asset = await db.asset.create({
@@ -1032,6 +1087,44 @@ test('provedores Claude e Gemini contabilizam tokens e limites bloqueiam antes d
     await configureAi({ monthlyBudget: 0.000001, inputPrice: 1, outputPrice: 1 });
     await assert.rejects(generateSuggestion(db, chat.id, 'Sugira.'), /Orçamento mensal/);
     assert.equal(calls, 2);
+  }));
+
+test('cache de IA exige revisão e impede reutilizar nome de outro cliente', async () =>
+  aiTest(async () => {
+    await configureAi();
+    const first = await makeContact('5511777770061', 'Joana Exemplo');
+    const second = await makeContact('5511777770062', 'Pedro Exemplo');
+    const third = await makeContact('5511777770063', 'Ana Exemplo');
+    for (const chat of [first, second, third])
+      await db.chatMessage.create({ data: { conversationId: chat.id, direction: 'INBOUND', text: 'Como funciona mascote?', sentAt: new Date() } });
+    let calls = 0;
+    globalThis.fetch = async () => {
+      calls++;
+      return new Response(JSON.stringify({
+        output: [{ content: [{ type: 'output_text', text: calls === 1 ? 'Oi, Joana! Podemos conversar sobre o mascote.' : 'Resposta nova.' }] }],
+        usage: { input_tokens: 12, output_tokens: 8 },
+      }));
+    };
+    const task = 'Responda à última mensagem do cliente.';
+    assert.equal((await generateSuggestion(db, first.id, task)).cached, undefined);
+    assert.equal((await generateSuggestion(db, second.id, task)).cached, undefined);
+    assert.equal(calls, 2);
+    const cache = await request(app).get('/api/operations/economy/cache').expect(200);
+    const entry = cache.body.items.find((item: { sourceConversationId?: string }) => item.sourceConversationId === first.id);
+    assert.ok(entry);
+    assert.equal(entry.approvedAt, undefined);
+    await request(app).put(`/api/operations/economy/cache/${entry.id}`)
+      .send({ answer: 'Oi, Joana! Podemos conversar sobre o mascote.', approve: true }).expect(422);
+    await request(app).put(`/api/operations/economy/cache/${entry.id}`)
+      .send({ answer: 'Podemos conversar sobre o mascote.', approve: true }).expect(200);
+    const reused = await generateSuggestion(db, third.id, task);
+    assert.equal(reused.cached, true);
+    assert.equal(reused.text, 'Podemos conversar sobre o mascote.');
+    assert.equal(calls, 2);
+    await request(app).put(`/api/operations/economy/cache/${entry.id}`)
+      .send({ answer: 'Resposta em revisão.' }).expect(200);
+    assert.equal((await generateSuggestion(db, third.id, task)).cached, undefined);
+    assert.equal(calls, 3);
   }));
 
 test('conhecimento aprovado conserva contexto cliente e ordem do vendedor', async () =>
