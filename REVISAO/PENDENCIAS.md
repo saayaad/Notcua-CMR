@@ -2,6 +2,8 @@
 
 ## Retomada em 29/10/2026
 
+REQ-199/200/201/203 passaram de “a verificar” a “parcial” após leitura do CSS e da importação em main.tsx. Reset, tipografia, shell e unidades flexíveis estão definidos; zoom, rolagem e proporções em navegadores reais seguem sem prova. Contagem consolidada: 320 a verificar, 104 completos, 215 parciais; demais estados inalterados. Nenhum teste já aprovado foi repetido nesta classificação.
+
 REQ-045: novo teste isolado de macro com espera de 60 segundos e tempo de digitação de 120 ms passou 1/1. Nenhuma mensagem saiu antes do prazo; depois de tornar o agendamento vencido no banco descartável, o conector fictício recebeu o texto uma vez e a execução terminou. Falta conferir os controles e a presença na interface e no aparelho de teste.
 
 REQ-064/065: novo caso isolado de atraso de 60 segundos para áudio e imagem passou 1/1. O conector fictício não enviou antes do prazo; após adiantar somente o relógio do agendamento no banco descartável, enviou cada mídia uma vez. Permanecem parciais até conferir o editor e o recebimento em aparelho real. Os casos de atraso zero aprovados anteriormente não foram repetidos.
