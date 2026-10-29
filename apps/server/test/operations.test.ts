@@ -1172,6 +1172,37 @@ test('conhecimento aprovado conserva contexto cliente e ordem do vendedor', asyn
     await generateSuggestion(db, chat.id, 'Orçamento especial');
   }));
 
+test('transcrição de áudio e descrição de vídeo entram no contexto da sugestão', async () =>
+  aiTest(async () => {
+    const chat = await makeContact('5511777770064');
+    const audio = await db.storedFile.create({ data: { sha256: 'd'.repeat(64), filename: 'fala.ogg', mimeType: 'audio/ogg', byteLength: 5, data: Buffer.from('audio') } });
+    const video = await db.storedFile.create({ data: { sha256: 'e'.repeat(64), filename: 'cena.mp4', mimeType: 'video/mp4', byteLength: 5, data: Buffer.from('video') } });
+    const first = await db.chatMessage.create({ data: { conversationId: chat.id, direction: 'INBOUND', type: 'audioMessage', fileId: audio.id, sentAt: new Date('2026-01-01T10:00:00Z') } });
+    const second = await db.chatMessage.create({ data: { conversationId: chat.id, direction: 'INBOUND', type: 'videoMessage', fileId: video.id, sentAt: new Date('2026-01-01T10:01:00Z') } });
+    await configureAi({ provider: 'openai', mediaModel: 'modelo-midia-ficticio', transcriptionModel: 'modelo-audio-ficticio' });
+    globalThis.fetch = async (url, options) => {
+      assert.match(String(url), /audio\/transcriptions/);
+      assert.equal((options?.body as FormData).get('model'), 'modelo-audio-ficticio');
+      return new Response(JSON.stringify({ text: 'Transcrição fictícia do áudio.' }));
+    };
+    assert.equal((await preprocessMedia(db, messaging, sessionId, chat.id, first.id)).text, 'Transcrição fictícia do áudio.');
+    await configureAi({ provider: 'gemini', mediaModel: 'modelo-midia-ficticio' });
+    let suggestionInput = '';
+    globalThis.fetch = async (_url, options) => {
+      const body = JSON.parse(String(options?.body));
+      if (body.contents[0].parts[1]?.inlineData) {
+        assert.equal(body.contents[0].parts[1].inlineData.data, Buffer.from('video').toString('base64'));
+        return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'Descrição fictícia do vídeo.' }] } }] }));
+      }
+      suggestionInput = body.contents[0].parts[0].text;
+      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'Sugestão fictícia.' }] } }] }));
+    };
+    assert.equal((await preprocessMedia(db, messaging, sessionId, chat.id, second.id)).text, 'Descrição fictícia do vídeo.');
+    await generateSuggestion(db, chat.id, 'Sugira uma resposta.');
+    assert.match(suggestionInput, /Transcrição fictícia do áudio/);
+    assert.match(suggestionInput, /Descrição fictícia do vídeo/);
+  }));
+
 test('análise de mídia usa conteúdo explícito, cache e impede visualização única', async () =>
   aiTest(async () => {
     const chat = await makeContact('5511777770036');

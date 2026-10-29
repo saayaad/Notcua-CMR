@@ -101,7 +101,7 @@ export async function generateSuggestion(db: PrismaClient, conversationId: strin
   const relevant = relevantExamples.join('\n---\n').slice(0, 4800);
   const historyContext = compactSummary?.text
     ? `[Resumo aprovado da conversa até ${compactSummary.covered} mensagens]\n${compactSummary.text}\n\n[Mensagens mais recentes]\n${lastThree.join('\n')}`
-    : ordered.slice(-10).map((message) => `${message.direction === 'INBOUND' ? 'Cliente' : 'Atendente'}: ${[message.text, message.caption].filter(Boolean).join('\n') || '[Mídia analisada]'}`).join('\n').slice(-9000);
+    : lines.slice(-10).join('\n').slice(-9000);
   const route: 'fast' | 'deep' = systemName === 'summaries'
     ? 'fast'
     : /pre[cç]o|valor|negocia|fech|or[cç]amento|contrato|personaliz|reclama|reembolso/i.test(`${task} ${latestInbound?.text ?? ''}`)

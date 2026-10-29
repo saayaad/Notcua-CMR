@@ -28,6 +28,10 @@ Reprodução isolada: dois clientes fictícios fizeram a mesma pergunta. A prime
 
 Correção local: respostas geradas entram como pendentes; somente a aprovação explícita por administrador libera reutilização. A aprovação exige conversa de origem e recusa o nome do cliente, saudações com nome e padrões de contato/valores. Editar sem aprovar retira a aprovação. Entradas antigas sem origem verificável ficam inativas e não podem ser aprovadas; nenhuma linha da base real foi apagada ou alterada. Teste isolado com três clientes fictícios aprovou o caminho de revisão e bloqueou a saudação personalizada. Falta percurso visual publicado; REQ-424 permanece parcial. Evidência: `evidencias/cache-ia-2026-10-29.json`. REQ-424/425/442.
 
+## BUG-004 — Sugestão inicial ignorava texto analisado de mídia (corrigido localmente em 29/10/2026)
+
+`preprocessMedia` gravava transcrições e descrições em `ai-media`, mas `generateSuggestion` usava esse texto somente nas linhas do resumo. Antes de existir resumo, o contexto da sugestão substituía a mídia por um marcador genérico. A correção usa as linhas já enriquecidas pela análise no histórico recente. Teste isolado com áudio e vídeo fictícios confirmou que ambos os textos chegam ao pedido de sugestão; tipagem passou. Nenhum provedor externo foi chamado. Falta conferir mídia real e interface autenticada. Evidência: `evidencias/media-contexto-2026-10-29.json`. REQ-140/141.
+
 ## INT-001 — Opções da economia sem integração completa
 
 Prioridade alta; esforço G. Verificação estática: `EconomySettings.tsx:9,60–70` exibe sete sistemas e `operations.routes.ts:956–963` salva todos. No servidor, somente `ai.service.ts` consulta `settings:ai-economy`; seu classificador reconhece `autoReply`, `summaries` e `copilot`. Não há consumidor encontrado para `systems.campaigns`, `training`, `receipts` ou `dailyDigest`. Esses quatro controles não comprovaram o efeito prometido. Não é evidência de que as funções de campanha/treinamento em si não existam. REQ-419–422.

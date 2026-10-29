@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-29",
+  "issue": "BUG-004",
+  "requirements": ["REQ-140", "REQ-141"],
+  "finding": "Antes do primeiro resumo, a sugestão de IA não recebia transcrições ou descrições já armazenadas para mensagens de mídia.",
+  "change": "O histórico recente da sugestão passou a usar as linhas enriquecidas com ai-media.",
+  "tests": [
+    "Áudio fictício seguiu para o endpoint simulado de transcrição.",
+    "Vídeo fictício seguiu para o endpoint simulado de descrição.",
+    "Os dois textos analisados apareceram no pedido simulado de sugestão, mesmo sem resumo prévio.",
+    "O teste isolado, a tipagem e a compilação de servidor e interface passaram.",
+    "Suíte completa do servidor: 185 testes aprovados, zero falhas."
+  ],
+  "environment": "Banco temporário, arquivos de bytes fictícios e provedores simulados; sem chamada externa de IA.",
+  "remaining": "Validar arquivos de mídia reais, integração configurada, interface autenticada e persistência após recarregar."
+}
