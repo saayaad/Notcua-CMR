@@ -593,6 +593,8 @@ interface BatchRow {
   revenueSource?: 'MANUAL' | 'CRM';
   crmSales?: number;
   approaches?: string[];
+  followUpCount?: number;
+  ctaKeyword?: string;
 }
 interface ApproachResult { index: number; text: string; assigned: number; sent: number; delivered: number; read: number; replied: number; sales: number; revenueInCents: number }
 const batchStatus: Record<string, string> = {
@@ -725,6 +727,11 @@ export function CampaignsPage({
                     {item.counts.find((row) => row.status === 'COMPLETED')?._count ?? 0} encaminhados ·{' '}
                     {item.counts.find((row) => row.status === 'FAILED')?._count ?? 0} falhas
                   </p>
+                  {!schedule && (item.followUpCount || item.ctaKeyword) && <small>
+                    {item.followUpCount ? `${item.followUpCount} follow-up(s) por lead` : ''}
+                    {item.followUpCount && item.ctaKeyword ? ' · ' : ''}
+                    {item.ctaKeyword ? `CTA: ${item.ctaKeyword}` : ''}
+                  </small>}
                   <small>{new Date(item.createdAt).toLocaleString('pt-BR')}</small>
                   {!schedule && (
                     <div className="campaign-financial-summary">
@@ -984,6 +991,10 @@ export function BatchEditor({
   const { preferences } = usePreferences();
   const [message, setMessage] = useState('');
   const [variants, setVariants] = useState<string[]>([]);
+  const [followUps, setFollowUps] = useState<{ id: string; waitMinutes: number; text: string }[]>([]);
+  const [ctaEnabled, setCtaEnabled] = useState(false);
+  const [ctaKeyword, setCtaKeyword] = useState('');
+  const [ctaReplyText, setCtaReplyText] = useState('');
   const [generating, setGenerating] = useState(false);
   const [variantIndex, setVariantIndex] = useState(0);
   const [selectedAssets, setSelectedAssets] = useState<string[]>([]);
@@ -1127,6 +1138,10 @@ export function BatchEditor({
               delivery: {
                 kind: kind === 'asset' && selectedAssets.length > 1 ? 'sequence' : kind,
                 textVariations: kind === 'text' ? variants : undefined,
+                followUps: !schedule && kind === 'text'
+                  ? followUps.map(({ waitMinutes, text }) => ({ waitMinutes, text })) : undefined,
+                cta: !schedule && kind === 'text' && ctaEnabled
+                  ? { keyword: ctaKeyword, replyText: ctaReplyText } : undefined,
                 steps:
                   kind === 'asset' && selectedAssets.length > 1
                     ? selectedAssets.map((assetId) => ({ kind: 'asset', assetId, waitSeconds: 1 }))
@@ -1503,6 +1518,35 @@ export function BatchEditor({
                       Ver próxima mensagem na prévia
                     </button>
                   )}
+                  {!schedule && <fieldset className="surface">
+                    <legend>Resposta automática por CTA</legend>
+                    <label><input type="checkbox" checked={ctaEnabled} onChange={(event) => setCtaEnabled(event.target.checked)} /> Ativar resposta por palavra-chave</label>
+                    {ctaEnabled && <>
+                      <label>Palavra-chave esperada
+                        <input value={ctaKeyword} onChange={(event) => setCtaKeyword(event.target.value)} maxLength={100} required placeholder="Ex.: QUERO" />
+                      </label>
+                      <label>Mensagem após a resposta
+                        <textarea value={ctaReplyText} onChange={(event) => setCtaReplyText(event.target.value)} maxLength={10000} required rows={3} placeholder="Ex.: Ótimo! Vou te passar os detalhes…" />
+                      </label>
+                      <small className="muted">Inclua a palavra-chave no texto de cada abordagem. A resposta do lead deve ser apenas essa palavra ou frase; maiúsculas, acentos e pontuação são ignorados. Cada lead recebe esta resposta automática uma vez por campanha.</small>
+                    </>}
+                  </fieldset>}
+                  {!schedule && <fieldset className="surface">
+                    <legend>Follow-up se o lead não responder</legend>
+                    <p className="muted">O prazo de cada etapa começa após a mensagem anterior. Qualquer resposta do lead cancela as etapas restantes para ele.</p>
+                    {followUps.map((step, index) => <div className="variation-editor" key={step.id}>
+                      <strong>Follow-up {index + 1}</strong>
+                      <label>Esperar (minutos)
+                        <input type="number" min={1} max={43200} required value={step.waitMinutes} onChange={(event) => setFollowUps((current) => current.map((item) => item.id === step.id ? { ...item, waitMinutes: Number(event.target.value) } : item))} />
+                      </label>
+                      <label>Mensagem
+                        <textarea required maxLength={10000} value={step.text} onChange={(event) => setFollowUps((current) => current.map((item) => item.id === step.id ? { ...item, text: event.target.value } : item))} />
+                      </label>
+                      <button type="button" className="text-button" onClick={() => setFollowUps((current) => current.filter((item) => item.id !== step.id))}>Remover follow-up</button>
+                    </div>)}
+                    <button type="button" className="button small" disabled={followUps.length >= 100} onClick={() => setFollowUps((current) => [...current, { id: crypto.randomUUID(), waitMinutes: 1440, text: '' }])}>Adicionar follow-up</button>
+                    <small className="muted">Até 100 etapas por campanha.</small>
+                  </fieldset>}
                 </>
               )}
             </div>

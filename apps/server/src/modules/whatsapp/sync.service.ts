@@ -1,4 +1,5 @@
 import { requestsHuman, setAiControl } from '../operations/ai-control.js';
+import { queueCampaignResponse } from '../operations/campaign-response.js';
 import {
   BufferJSON,
   getContentType,
@@ -259,7 +260,12 @@ export class SyncService {
                 const batch = await tx.operationRecord.findUnique({ where: { id: batchId } });
                 if (!batch) continue;
                 const current = batch.data as { status?: string; [key: string]: unknown };
-                await tx.operationRecord.update({ where: { id: batchId }, data: { data: messageJson({ ...current, status: 'CANCELLED', cancelReason: 'Contato pediu para parar mensagens.', cancelledAt: new Date().toISOString() }) } });
+                const remaining = await tx.deliveryTask.count({ where: { batchId, status: 'QUEUED' } });
+                await tx.operationRecord.update({ where: { id: batchId }, data: { data: messageJson({
+                  ...current,
+                  status: current.mode === 'CAMPAIGN' ? (remaining ? current.status : 'COMPLETED') : 'CANCELLED',
+                  ...(current.mode === 'CAMPAIGN' ? {} : { cancelReason: 'Contato pediu para parar mensagens.', cancelledAt: new Date().toISOString() }),
+                }) } });
               }
             }
           }
@@ -300,16 +306,23 @@ export class SyncService {
               rawPayload: messageJson(entry),
             },
           });
+          const campaignCta = inbound && live && text?.trim() && Math.abs(Date.now() - sentAt.getTime()) <= 300_000
+            ? await queueCampaignResponse(tx, sessionId, chat.id, text, sentAt) : false;
           if (inbound && live && Math.abs(Date.now() - sentAt.getTime()) <= 300_000)
             await tx.flowInboxEvent.create({
-              data: { messageId: createdMessage.id, conversationId: chat.id, receivedAt: new Date() },
+              data: { messageId: createdMessage.id, conversationId: chat.id, receivedAt: new Date(),
+                ...(campaignCta ? { processedAt: new Date(), outcome: 'campaign-cta' } : {}) },
             });
           if (inbound && live) {
             const pending = await tx.deliveryTask.findMany({
               where: { conversationId: chat.id, status: 'QUEUED' },
               select: { id: true, batchId: true, payload: true },
             });
-            const followUps = pending.filter((task) => (task.payload as { followUp?: boolean }).followUp);
+            const followUps = pending.filter((task) => {
+              const data = task.payload as { followUp?: boolean; sourceMessageAt?: string };
+              return data.followUp && data.sourceMessageAt &&
+                sentAt.getTime() >= new Date(data.sourceMessageAt).getTime() - 1000;
+            });
             for (const followUp of followUps) {
               await tx.deliveryTask.updateMany({
                 where: { batchId: followUp.batchId, conversationId: chat.id, status: 'QUEUED' },
@@ -318,9 +331,14 @@ export class SyncService {
               const batch = await tx.operationRecord.findUnique({ where: { id: followUp.batchId } });
               if (batch) {
                 const current = batch.data as { status?: string; [key: string]: unknown };
+                const remaining = await tx.deliveryTask.count({ where: { batchId: followUp.batchId, status: 'QUEUED' } });
                 await tx.operationRecord.update({
                   where: { id: followUp.batchId },
-                  data: { data: messageJson({ ...current, status: 'CANCELLED', cancelReason: 'O cliente respondeu.', cancelledAt: new Date().toISOString() }) },
+                  data: { data: messageJson({
+                    ...current,
+                    status: current.mode === 'CAMPAIGN' ? (remaining ? current.status : 'COMPLETED') : 'CANCELLED',
+                    ...(current.mode === 'CAMPAIGN' ? {} : { cancelReason: 'O cliente respondeu.', cancelledAt: new Date().toISOString() }),
+                  }) },
                 });
               }
             }

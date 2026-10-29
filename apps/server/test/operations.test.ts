@@ -283,6 +283,101 @@ test('teste de abordagens distribui mensagem principal e variações e registra 
   assert.deepEqual(report.body.items.map((item: { assigned: number }) => item.assigned), [2, 2, 1]);
   assert.deepEqual(report.body.items.map((item: { sent: number }) => item.sent), [0, 0, 0]);
 });
+test('campanha envia follow-ups em sequência e interrompe ao receber resposta', async () => {
+  const chat = await makeContact('5511777770876');
+  const batch = await draft([chat.id], {
+    kind: 'text', text: 'Mensagem inicial',
+    followUps: [{ waitMinutes: 60, text: 'Primeiro retorno' }, { waitMinutes: 120, text: 'Segundo retorno' }],
+  });
+  await request(app).put(`/api/operations/sessions/${sessionId}/batches/${batch.id}`)
+    .send({ status: 'ACTIVE' }).expect(200);
+  const before = socket.sends.length;
+  await worker.flush();
+  assert.equal(socket.sends.length, before + 1);
+  let task = await db.deliveryTask.findFirstOrThrow({ where: { batchId: batch.id } });
+  assert.equal(task.status, 'QUEUED');
+  assert.equal((task.payload as { followUpIndex: number }).followUpIndex, 0);
+  await db.deliveryTask.update({ where: { id: task.id }, data: { runAt: new Date(0) } });
+  await putRecord(db, batch.id, 'BATCH', { ...await record<Batch>(db, batch.id, batch), nextAllowedAt: new Date(0).toISOString() });
+  await worker.flush();
+  assert.equal(socket.sends.length, before + 2);
+  assert.deepEqual(socket.sends.at(-1), { text: 'Primeiro retorno' });
+  task = await db.deliveryTask.findUniqueOrThrow({ where: { id: task.id } });
+  assert.equal((task.payload as { followUpIndex: number }).followUpIndex, 1);
+  const sync = new SyncService(db, silentPublisher);
+  await sync.messagesUpsert(sessionId, [{
+    key: { id: 'campaign-followup-answer', remoteJid: '5511777770876@s.whatsapp.net', fromMe: false },
+    message: { conversation: 'Tenho interesse' }, messageTimestamp: Math.floor(Date.now() / 1000),
+  }], true);
+  task = await db.deliveryTask.findUniqueOrThrow({ where: { id: task.id } });
+  assert.equal(task.status, 'CANCELLED');
+  assert.equal((await record<Batch>(db, batch.id, batch)).status, 'COMPLETED');
+  await worker.flush();
+  assert.equal(socket.sends.length, before + 2);
+});
+test('resposta de um lead não cancela follow-ups dos demais', async () => {
+  const first = await makeContact('5511777770878');
+  const second = await makeContact('5511777770879');
+  const batch = await draft([first.id, second.id], {
+    kind: 'text', text: 'Início', followUps: [{ waitMinutes: 60, text: 'Retorno' }],
+  });
+  await request(app).put(`/api/operations/sessions/${sessionId}/batches/${batch.id}`)
+    .send({ status: 'ACTIVE' }).expect(200);
+  const before = socket.sends.length;
+  await worker.flush();
+  await putRecord(db, batch.id, 'BATCH', { ...await record<Batch>(db, batch.id, batch), nextAllowedAt: new Date(0).toISOString() });
+  await worker.flush();
+  assert.equal(socket.sends.length, before + 2);
+  const sync = new SyncService(db, silentPublisher);
+  await sync.messagesUpsert(sessionId, [{
+    key: { id: 'campaign-first-replied', remoteJid: '5511777770878@s.whatsapp.net', fromMe: false },
+    message: { conversation: 'Recebi' }, messageTimestamp: Math.floor(Date.now() / 1000) + 2,
+  }], true);
+  const tasks = await db.deliveryTask.findMany({ where: { batchId: batch.id } });
+  assert.equal(tasks.find((task) => task.conversationId === first.id)?.status, 'CANCELLED');
+  const other = tasks.find((task) => task.conversationId === second.id)!;
+  assert.equal(other.status, 'QUEUED');
+  assert.equal((await record<Batch>(db, batch.id, batch)).status, 'ACTIVE');
+  await db.deliveryTask.update({ where: { id: other.id }, data: { runAt: new Date(0) } });
+  await putRecord(db, batch.id, 'BATCH', { ...await record<Batch>(db, batch.id, batch), nextAllowedAt: new Date(0).toISOString() });
+  await worker.flush();
+  assert.equal(socket.sends.length, before + 3);
+  assert.equal((await record<Batch>(db, batch.id, batch)).status, 'COMPLETED');
+});
+test('CTA responde uma vez à palavra-chave da campanha e ignora outras mensagens', async () => {
+  const chat = await makeContact('5511777770877');
+  const batch = await draft([chat.id], {
+    kind: 'text', text: 'Responda QUERO', cta: { keyword: 'Quero', replyText: 'Vou te enviar os detalhes.' },
+  });
+  await request(app).put(`/api/operations/sessions/${sessionId}/batches/${batch.id}`)
+    .send({ status: 'ACTIVE' }).expect(200);
+  const before = socket.sends.length;
+  await worker.flush();
+  assert.equal(socket.sends.length, before + 1);
+  const sync = new SyncService(db, silentPublisher);
+  await sync.messagesUpsert(sessionId, [{
+    key: { id: 'campaign-cta-wrong', remoteJid: '5511777770877@s.whatsapp.net', fromMe: false },
+    message: { conversation: 'Tenho interesse' }, messageTimestamp: Math.floor(Date.now() / 1000) + 2,
+  }], true);
+  assert.equal(await db.operationRecord.count({ where: { id: `cta:${batch.id}:${chat.id}` } }), 0);
+  await sync.messagesUpsert(sessionId, [{
+    key: { id: 'campaign-cta-correct', remoteJid: '5511777770877@s.whatsapp.net', fromMe: false },
+    message: { conversation: 'QUERO!' }, messageTimestamp: Math.floor(Date.now() / 1000) + 3,
+  }], true);
+  assert.equal(await db.operationRecord.count({ where: { id: `cta:${batch.id}:${chat.id}` } }), 1);
+  const ctaInbound = await db.chatMessage.findFirstOrThrow({ where: { conversationId: chat.id, whatsappMessageId: 'campaign-cta-correct' } });
+  const ctaEvent = await db.flowInboxEvent.findUniqueOrThrow({ where: { messageId: ctaInbound.id } });
+  assert.equal(ctaEvent.outcome, 'campaign-cta');
+  assert.ok(ctaEvent.processedAt);
+  await worker.flush();
+  assert.equal(socket.sends.length, before + 2);
+  assert.deepEqual(socket.sends.at(-1), { text: 'Vou te enviar os detalhes.' });
+  await sync.messagesUpsert(sessionId, [{
+    key: { id: 'campaign-cta-again', remoteJid: '5511777770877@s.whatsapp.net', fromMe: false },
+    message: { conversation: 'quero' }, messageTimestamp: Math.floor(Date.now() / 1000) + 4,
+  }], true);
+  assert.equal(await db.operationRecord.count({ where: { id: `cta:${batch.id}:${chat.id}` } }), 1);
+});
 test('campanha começa em rascunho, congela recurso, respeita intervalo e não repete envio', async () => {
   const a = await makeContact('5511777770001');
   const b = await makeContact('5511777770002');

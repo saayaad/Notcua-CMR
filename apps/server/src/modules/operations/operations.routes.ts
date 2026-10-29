@@ -600,6 +600,14 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
             .optional(),
           text: z.string().max(10000).optional(),
           textVariations: z.array(z.string().trim().min(1).max(10000)).max(4).default([]),
+          followUps: z.array(z.object({
+            waitMinutes: z.number().int().min(1).max(43200),
+            text: z.string().trim().min(1).max(10000),
+          })).max(100).default([]),
+          cta: z.object({
+            keyword: z.string().trim().min(1).max(100),
+            replyText: z.string().trim().min(1).max(10000),
+          }).optional(),
           assetId: id.optional(),
           funnelId: id.optional(),
           flowId: id.optional(),
@@ -620,6 +628,9 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       throw new AppError(422, 'O intervalo máximo deve ser maior ou igual ao mínimo.');
     if ((input.mode === 'REMINDER') !== (input.delivery.kind === 'reminder'))
       throw new AppError(422, 'Use um lembrete somente no modo de lembrete.');
+    if ((input.delivery.followUps.length || input.delivery.cta) &&
+      (input.mode !== 'CAMPAIGN' || input.delivery.kind !== 'text'))
+      throw new AppError(422, 'CTA e follow-ups automáticos estão disponíveis apenas para campanhas de texto.');
     const people = await audience(sessionId, input.audience);
     if (!people.length) throw new AppError(422, 'Nenhum contato corresponde ao público escolhido.');
     if (input.mode !== 'CAMPAIGN' && people.length !== 1)
@@ -715,6 +726,8 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       investmentInCents: input.mode === 'CAMPAIGN' ? input.investmentInCents : 0,
       attributedRevenueInCents: input.mode === 'CAMPAIGN' ? input.attributedRevenueInCents : 0,
       count: people.length,
+      ...(input.delivery.followUps.length ? { followUpCount: input.delivery.followUps.length } : {}),
+      ...(input.delivery.cta ? { ctaKeyword: input.delivery.cta.keyword } : {}),
       ...(delivery.kind === 'text' && input.mode === 'CAMPAIGN' && input.delivery.textVariations.length
         ? { approaches: [delivery.text!, ...input.delivery.textVariations] } : {}),
       createdAt: new Date().toISOString(),
