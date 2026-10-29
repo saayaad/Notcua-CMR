@@ -1,5 +1,9 @@
 # Pendências — Noctua CRM
 
+## Conexões e Etiquetas e leads, lote de dez IDs — 29/10/2026
+
+REQ-017/018/019/020/021 e REQ-596/597/598/599/600 foram diagnosticados por leitura das ligações e das provas anteriores. Todos permanecem parciais: os testes fictícios de contatos, etiquetas, venda, confirmação e ROI já existiam; faltam as verificações específicas de conexão real ou percurso visual com recarga. REQ-018 recebeu teste novo 1/1 para persistência de foto fictícia após reabrir SQLite; tipagem aprovada. Nenhum teste concluído foi repetido. O ID da etiqueta de REQ-021 é gerado pelo servidor; se o pedido exigir um identificador editável, a regra precisa de decisão antes de alteração. Ver `evidencias/conexoes-etiquetas-lote10-2026-10-29.md` para prova por arquivo/função/linha, limites e dependências. Contagem geral inalterada: 114 completos, 539 pendentes ativos, 50 substituídos/cancelados. Próximo lote sugerido: REQ-601/602 e oito IDs de Atendimento sem IA.
+
 ## Acesso e operação, lote REQ-109 — 29/10/2026
 
 O usuário fechou a regra: continuar recebendo mensagens e manter funis, fluxos e agendamentos fora do horário; permitir texto de resposta automática, no máximo uma vez por lead por dia. A opção foi implementada desligada por padrão. Dois testes isolados passaram 1/1 cada: configuração, persistência, isolamento e permissões; resposta fictícia, reinício, limite diário e descarte de grupos, opt-out e evento atrasado. Tipagem servidor/web aprovada. Nenhum envio real, teste de Mensagens já aprovadas, migração de banco ou publicação. REQ-109 continua parcial até percurso visual após recarregar e entrega controlada autorizada. Prova e limites em `evidencias/resposta-fora-horario-2026-10-29.md`. Próximo lote independente: Chaves e operações, sem IA.
