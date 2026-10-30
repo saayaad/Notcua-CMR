@@ -36,3 +36,14 @@
 - Sem defeito de produto confirmado neste lote. REQ-300–306 permanecem local por falta de provedor real, conforme decisão já registrada; REQ-327 exige leitura física de QR em aparelho.
 - Script `scripts/iniciar-noctua-online.ps1` permanece alterado e fora do commit. Mudança seleciona a pasta de interface em `Documents\ChatGPT\Noctua` quando ela existe, senão usa o repositório; roda o CLI Vercel nessa pasta e lê os vínculos de projeto dali. Isso muda a origem potencial de uma publicação. Não publicar.
 - Próximo módulo: Sandbox e suporte, REQ-328–356. REQ-357–359 já estão completas e serão preservadas.
+
+## Sandbox e suporte — lote REQ-328–356 — 30/10/2026
+
+- Playwright `e2e/sandbox-support.spec.ts`: 9/9 testes aprovados em três viewports (27 execuções). Cobre abertura do simulador por Autoatendimento e Configurações, texto/áudio com endpoints de IA interceptados, contexto, objeção, calibração, reset, campanha/segmentação, transferência, CRM/SLA, agenda, Biblioteca e quatro guias.
+- Suíte de operações do servidor: 52/52 aprovados; novo teste REQ-335 valida persistência de calibração como `AI_KNOWLEDGE` e apaga o registro dentro do SQLite temporário. Nenhuma chave real usada.
+- 21 REQs mudaram: 18 `COMPLETO`, 3 `COMPLETO-LOCAL` (REQ-330/331/334, recursos dependentes de provedor). Não solicitar chave de IA; isso está decidido no protocolo. Totais: 149 A VERIFICAR, 286 COMPLETO, 41 COMPLETO-LOCAL, 163 PARCIAL; demais estados mantidos.
+- BUG-021 resolvido: WAV passou de sinais sem fala a voz sintética em português com transcrição correspondente. Nenhum recurso ou dependência instalado.
+- Erros e correções: seletores de `<select>` tentaram operar combobox customizado; corrigidos para usar `role=option`. Nome `Fechar` encontrou botão do modal e notificação; seletor agora é `Fechar janela`. Formulário da campanha confundiu `Nome` com `Mensagem ({{nome}})`; busca exige nome exato. O quadro mobile escondia a lista; sequência seleciona e abre o painel de recursos. A espera de presença era não determinística; relógio do Chromium controla os sinais. Vite travou sem responder; reiniciado na mesma porta `5180` com `VITE_API_URL=http://127.0.0.1:3340`, sem novo servidor e sem reset do banco.
+- Nenhum envio externo. A campanha simulada foi pausada antes do primeiro ciclo; calibração de UI foi interceptada e o teste de servidor limpou seu registro temporário. Banco `.audit/noctua-audit.db` não foi resetado.
+- Próximo módulo: IA e mídia, iniciando REQ-360. IA real continua desligada e sem chave; testar apenas simulação local e registrar dependência de provedor como COMPLETO-LOCAL, conforme decisão existente.
+

@@ -197,6 +197,23 @@ test('CSV reconhece separador após título, ignora vírgulas entre aspas e info
   await assert.rejects(() => contacts.preview({ filename: 'vazia.xlsx', base64: Buffer.from(bytes).toString('base64') }), /planilha está vazia/);
 });
 
+test('REQ-335 calibração do simulador persiste exemplo aprovado sem chamar provedor', async () => {
+  const response = await request(app).post('/api/operations/simulator/calibrations').send({
+    question: 'Pergunta fictícia sobre prazo',
+    originalReply: 'Resposta original fictícia',
+    correctedReply: 'Resposta corrigida fictícia e acolhedora',
+  }).expect(201);
+  try {
+    assert.equal(response.body.saved, true);
+    const stored = await db.operationRecord.findUniqueOrThrow({ where: { id: response.body.id } });
+    assert.equal(stored.kind, 'AI_KNOWLEDGE');
+    assert.equal((stored.data as { source: string }).source, 'simulator-calibration');
+    assert.equal((stored.data as { turns: { role: string; content: string }[] }).turns[1]?.content, 'Resposta corrigida fictícia e acolhedora');
+  } finally {
+    await db.operationRecord.delete({ where: { id: response.body.id } });
+  }
+});
+
 test('REQ-131: Excel despadronizado é reconhecido e a importação é idempotente', async () => {
   const book = new ExcelJS.Workbook();
   const sheet = book.addWorksheet('Leads');

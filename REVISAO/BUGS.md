@@ -140,3 +140,12 @@ A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, po
 - Correção: mostrar a contagem regressiva prevista junto ao aviso explícito de que aguarda a conexão. Não indica que um envio ocorrerá sem conexão.
 - Validação: Playwright com dados e rotas fictícios verificou progresso, contagem e aviso de desconexão, pausa, retomada e cancelamento sem envio; evidências em `REVISAO/evidencias/REQ-283/` a `REQ-288/`.
 - Estado: corrigido localmente em 30/10/2026.
+
+## BUG-021 — Áudio de demonstração não tinha fala nem transcrição
+
+- REQ: REQ-344.
+- Reprodução: carregar o Espaço de Teste e abrir Atendimento ou Biblioteca; o WAV antigo tocava dois sinais sem fala e dizia explicitamente que não havia transcrição.
+- Resultado: o exemplo não demonstrava um áudio falado com texto verificável.
+- Correção: substituído por fala sintética pt-BR gerada localmente pelo Microsoft SAPI; texto de exemplo agora corresponde ao áudio.
+- Validação: Playwright confirma o player e a transcrição coincidente em 1366×768, 1920×1080 e 390×844.
+- Estado: corrigido localmente em 30/10/2026.

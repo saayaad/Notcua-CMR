@@ -117,3 +117,12 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - 25 REQs mudaram: 17 COMPLETO e 8 COMPLETO-LOCAL. Evidências em `REVISAO/evidencias/REQ-298/`–`REQ-327/`. `.audit/noctua-audit.db` preservado; servidor do usuário respondeu HTTP 200 em `127.0.0.1:3340/atendimento`.
 - Próximo módulo: Sandbox e suporte, REQ-328–356. Preservar REQ-357–359 já completas. Siga usando os serviços existentes; não resetar banco nem tocar em produção.
 - `scripts/iniciar-noctua-online.ps1` continua fora do commit: muda a raiz usada para CLI Vercel e arquivos de vínculo, portanto pode mudar a origem da publicação. Nenhuma publicação foi executada.
+
+## Ponto de retomada — 30/10/2026 — após Sandbox e suporte
+
+- REQ-328–356 avaliadas; 21 estados mudaram (18 COMPLETO, 3 COMPLETO-LOCAL). REQ-357–359 preservadas. Playwright: 9/9 casos (27 execuções em três viewports); operações: 52/52.
+- BUG-021 fechado: fala pt-BR sintética no áudio de exemplo e transcrição coincidente. Evidências em `REVISAO/evidencias/REQ-328/`–`REQ-356/` para os itens testados.
+- Contagem global: 149 A VERIFICAR; 286 COMPLETO; 41 COMPLETO-LOCAL; 163 PARCIAL; canceladas/substituídas e bloqueios mantidos.
+- Front e API do usuário em `127.0.0.1:5180` / `127.0.0.1:3340`; Vite aponta ao endereço de API fornecido via `VITE_API_URL`. SQLite `.audit/noctua-audit.db` não foi resetado. Nenhuma produção tocada.
+- Próximo módulo: IA e mídia, REQ-360. Não solicitar chave; IA real não está disponível. Prova permitida: provedores simulados locais; recursos que dependem de chave ficam COMPLETO-LOCAL.
+

@@ -1,0 +1,9 @@
+{
+  "req": "REQ-354",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "guides": 4,
+  "illustrated": true,
+  "actionable": true
+}

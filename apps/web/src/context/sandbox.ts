@@ -24,7 +24,7 @@ export function exampleSandbox(now = Date.now()): SandboxState {
   const resources: TestResource[] = [
     { id: 'welcome', name: 'Boas-vindas', kind: 'text', text: 'Olá, #nome! Como podemos ajudar no seu projeto?', category: 'Atendimento' },
     { id: 'deadline', name: 'Prazo de entrega', kind: 'text', text: 'Após a aprovação, o prazo estimado é de 2 dias úteis.', category: 'Produção' },
-    { id: 'voice', name: 'Áudio de demonstração', kind: 'audio', text: '[Sinal sonoro de demonstração: duas notas de teste, sem fala.]', url: '/sandbox-media/audio.wav', category: 'Atendimento' },
+    { id: 'voice', name: 'Áudio de demonstração', kind: 'audio', text: 'Transcrição fictícia: “Olá! Este é um áudio de demonstração. O prazo estimado é de dois dias úteis.”', url: '/sandbox-media/audio.wav', category: 'Atendimento' },
     { id: 'photo', name: 'Prévia de projeto', kind: 'image', text: 'Imagem ilustrativa de um projeto fictício.', url: image, category: 'Portfólio' },
     { id: 'video', name: 'Vídeo de demonstração', kind: 'video', text: 'Padrão de cores e movimento para testar o reprodutor.', url: '/sandbox-media/video.mp4', category: 'Portfólio' }
   ];
