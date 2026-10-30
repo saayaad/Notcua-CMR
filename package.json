@@ -28,9 +28,14 @@
     "db:studio": "npm run db:studio -w @noctua/server",
     "backup:import": "npm run backup:import -w @noctua/server --",
     "backup:export": "npm run backup:export -w @noctua/server --",
+    "audit:dev": "node e2e/scripts/audit-dev.mjs",
+    "audit:reset": "node e2e/scripts/audit-reset.mjs",
+    "audit:ledger": "node e2e/scripts/audit-ledger.mjs",
+    "audit:test": "playwright test -c e2e/playwright.config.ts",
     "format": "prettier --write \"apps/*/src/**/*.{ts,tsx,css}\" \"apps/*/test/**/*.ts\" \"apps/*/*.ts\" \"docs/**/*.md\" \"*.json\""
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "concurrently": "^9.2.1",
     "prettier": "^3.9.10"
   }
