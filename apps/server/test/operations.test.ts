@@ -527,13 +527,84 @@ test('REQ-130: chaves fictícias permitem CRUD cifrado sem expor os valores', as
   }
 });
 
-test('modelos de marca d’água validam tamanho, posição, selo local e modelo ativo', async () => {
+test('REQ-376/REQ-377/REQ-378/REQ-379 valida modelos de marca d’água e persiste após nova leitura', async () => {
   const value = { enabledByDefault: false, activeId: 'marca-teste', marks: [{ id: 'marca-teste', name: 'Teste', text: 'Amostra', opacity: 42, position: 'center' }] };
   const result = await request(app).put('/api/operations/settings/watermarks').send(value).expect(200);
   assert.equal(result.body.marks[0].size, 100);
+  const persisted = await request(app).get('/api/operations/settings/watermarks').expect(200);
+  assert.deepEqual(persisted.body.marks, result.body.marks);
+  assert.equal(persisted.body.activeId, 'marca-teste');
   await request(app).put('/api/operations/settings/watermarks').send({ ...value, activeId: 'inexistente' }).expect(422);
   await request(app).put('/api/operations/settings/watermarks').send({ ...value, marks: [{ ...value.marks[0], size: 999 }] }).expect(422);
   await request(app).put('/api/operations/settings/watermarks').send({ ...value, marks: [{ ...value.marks[0], imageData: 'https://externo.example/selo.png' }] }).expect(422);
+});
+
+test('REQ-360/REQ-361/REQ-362/REQ-363/REQ-364/REQ-370/REQ-371/REQ-372 roteia modelos simulados e salva estúdio por cliente', async () => {
+  const originalKeyFile = env.WHATSAPP_KEY_FILE;
+  const originalFetch = globalThis.fetch;
+  const previous = await db.operationRecord.findUnique({ where: { id: 'integration:ai' } });
+  const keyFile = join(dir, 'client-ai-fake-provider.key');
+  const imageData = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/2ioAAAAASUVORK5CYII=';
+  const calls: { url: string; body?: Record<string, any> }[] = [];
+  env.WHATSAPP_KEY_FILE = keyFile;
+  try {
+    await request(app).put('/api/operations/ai').send({
+      provider: 'gemini', apiKey: 'fake-local-audit-key-never-valid', model: 'audit-base',
+      fastModel: 'audit-flash', reasoningModel: 'audit-pro', imageModel: 'audit-image',
+      instructions: '', knowledge: '', style: '', enabled: false,
+    }).expect(200);
+    globalThis.fetch = async (input, options) => {
+      const url = String(input);
+      const body = options?.body ? JSON.parse(String(options.body)) as Record<string, any> : undefined;
+      calls.push({ url, body });
+      if (url.includes('/interactions')) return new Response(JSON.stringify({ output_image: { data: imageData } }), { status: 200 });
+      return new Response(JSON.stringify({
+        candidates: [{ content: { parts: [{ text: 'Resposta de IA simulada.' }] } }],
+        usageMetadata: { promptTokenCount: 20, candidatesTokenCount: 8 },
+      }), { status: 200 });
+    };
+
+    const phoneSuffix = String(Date.now() % 10_000_000).padStart(7, '0');
+    const fastChat = await makeContact(`551199${phoneSuffix}1`, 'Cliente Flash Fictício');
+    const deepChat = await makeContact(`551198${phoneSuffix}2`, 'Cliente Pro Fictício');
+    await request(app).post(`/api/operations/sessions/${sessionId}/contacts/${fastChat.id}/ai`)
+      .send({ consent: true, task: 'Sugira uma resposta curta para uma dúvida simples.' }).expect(200);
+    assert.match(calls.at(-1)!.url, /\/models\/audit-flash:generateContent$/);
+    await request(app).post(`/api/operations/sessions/${sessionId}/contacts/${deepChat.id}/ai`)
+      .send({ consent: true, task: 'Negocie o preço e avalie a objeção de orçamento.' }).expect(200);
+    assert.match(calls.at(-1)!.url, /\/models\/audit-pro:generateContent$/);
+
+    const firstMessage = await request(app).post(`/api/operations/client-ai/sessions/${sessionId}/contacts/${fastChat.id}/ai-thread/messages`)
+      .send({ text: 'O cliente Ana prefere apresentação objetiva e cores roxas.' }).expect(200);
+    assert.equal(firstMessage.body.entries[1].text, 'Resposta de IA simulada.');
+    await request(app).post(`/api/operations/client-ai/sessions/${sessionId}/contacts/${fastChat.id}/ai-thread/images`)
+      .send({ prompt: 'Crie arte de apresentação do cliente.', template: 'product', aspectRatio: '9:16', reference: { data: Buffer.from('referência de teste').toString('base64'), mimeType: 'image/png' } }).expect(201);
+    const imageCall = calls.at(-1)!;
+    assert.match(imageCall.url, /\/v1beta\/interactions$/);
+    assert.equal(imageCall.body?.model, 'audit-image');
+    assert.equal(imageCall.body?.input[0].text.includes('proporção 9:16'), true);
+    assert.equal(imageCall.body?.input[1].type, 'image');
+    await request(app).post(`/api/operations/client-ai/sessions/${sessionId}/contacts/${fastChat.id}/ai-thread/messages`)
+      .send({ text: 'Edite a imagem anterior preservando as preferências.' }).expect(200);
+    const editInput = calls.at(-1)!.body?.contents[0].parts[0].text as string;
+    assert.match(editInput, /cores roxas/);
+    assert.match(editInput, /Imagem product · 9:16/);
+    assert.match(editInput, /Edite a imagem anterior/);
+
+    const firstThread = await request(app).get(`/api/operations/client-ai/sessions/${sessionId}/contacts/${fastChat.id}/ai-thread`).expect(200);
+    const secondThread = await request(app).get(`/api/operations/client-ai/sessions/${sessionId}/contacts/${deepChat.id}/ai-thread`).expect(200);
+    assert.equal(firstThread.body.entries.length, 6);
+    assert.equal(secondThread.body.entries.length, 0);
+    const imageEntry = firstThread.body.entries.find((entry: { kind: string; fileId?: string }) => entry.kind === 'image');
+    assert.equal(imageEntry?.fileId !== undefined, true);
+    const storedFile = await db.storedFile.findUniqueOrThrow({ where: { id: imageEntry.fileId } });
+    assert.equal(Buffer.from(storedFile.data).toString('base64'), imageData);
+  } finally {
+    globalThis.fetch = originalFetch;
+    env.WHATSAPP_KEY_FILE = originalKeyFile;
+    if (previous) await db.operationRecord.upsert({ where: { id: previous.id }, create: { ...previous, data: previous.data! }, update: { data: previous.data! } });
+    else await db.operationRecord.deleteMany({ where: { id: 'integration:ai' } });
+  }
 });
 
 test('REQ-152: catálogo simulado filtra modelos e rejeita número de projeto como modelo', async () => {

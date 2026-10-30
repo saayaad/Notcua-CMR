@@ -2,7 +2,7 @@ import { optimizeImage, createVideoWatermark, type Watermark } from '../image-pr
 import { captureMicrophone } from '../microphone';
 import { usePreferences } from '../context/PreferencesContext';
 import { useEffect, useRef, useState } from 'react';
-import { Send, Paperclip, Mic, Square, Trash2, Zap, Smile, Eye, FileText, MessageSquare } from 'lucide-react';
+import { Send, Paperclip, Mic, Square, Trash2, Zap, Smile, Eye, FileText, MessageSquare, ImagePlus } from 'lucide-react';
 import { errorMessage, useApi } from '../context/ApiContext';
 import { AiOnly, useAiFeatures } from '../context/AiFeatures';
 import { Modal, Spinner } from './ui';
@@ -26,6 +26,7 @@ export function Composer({
   onSent,
   onQuick,
   onSummarize,
+  onOpenClientAi,
   sessionId,
   conversationId,
   library,
@@ -39,6 +40,7 @@ export function Composer({
   onSent: () => void;
   onQuick: () => void;
   onSummarize: () => void;
+  onOpenClientAi: () => void;
   onInternalNote: (text: string) => Promise<void>;
 }) {
   const { request, notify } = useApi();
@@ -438,6 +440,9 @@ export function Composer({
         </button>
         <AiOnly><button className="mobile-summary-trigger" onClick={onSummarize}>
           <WandSparkles size={14} /> Resumir conversa
+        </button></AiOnly>
+        <AiOnly><button className="mobile-client-ai-trigger" onClick={onOpenClientAi}>
+          <ImagePlus size={14} /> Estúdio de IA
         </button></AiOnly>
         <AiOnly><button
           className={`copilot-trigger ${copilotOpen ? 'selected' : ''}`}

@@ -126,3 +126,12 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Front e API do usuário em `127.0.0.1:5180` / `127.0.0.1:3340`; Vite aponta ao endereço de API fornecido via `VITE_API_URL`. SQLite `.audit/noctua-audit.db` não foi resetado. Nenhuma produção tocada.
 - Próximo módulo: IA e mídia, REQ-360. Não solicitar chave; IA real não está disponível. Prova permitida: provedores simulados locais; recursos que dependem de chave ficam COMPLETO-LOCAL.
 
+
+## Ponto de retomada — 30/10/2026 — após IA e mídia
+
+- REQ-360–391 fechadas: 15 `COMPLETO`, 16 `COMPLETO-LOCAL`, 1 `DEFEITO` (REQ-381). BUG-022 aberto para compressão de vídeo ausente; BUG-023 corrigido para atalho móvel do Estúdio de IA.
+- `e2e/ai-media.spec.ts`: 24/24 aprovações Playwright em 1366×768, 1920×1080 e 390×844; rotas de upload, envio e provedor foram simuladas. Servidor: 208/208. Typecheck e build web passaram; build mantém aviso de bundle principal 597 kB.
+- Teste registrou aviso React de `src` vazio. Recibo de leitura da conversa fictícia retornava HTTP 409 porque a conexão de WhatsApp está desconectada; fixture passou a interceptar essa rota. Nenhuma página sofreu erro e as provas foram repetidas.
+- API e front existentes responderam HTTP 200 em `127.0.0.1:3340/atendimento` e `127.0.0.1:5180/`. Banco `.audit/noctua-audit.db` não foi resetado. Sem chave de IA real; nenhum serviço externo foi chamado.
+- Próximo módulo: Automações, começando REQ-392. Continuar em local e fechar cada lote com ledger, evidências, commit e push em `auditoria-reqs`.
+- `scripts/iniciar-noctua-online.ps1` permanece fora do commit; diff preexistente não foi alterado nesta auditoria. O arquivo `npx` não existe na raiz.

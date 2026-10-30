@@ -622,6 +622,7 @@ body,
 .composer-shortcuts .copilot-trigger { color: var(--accent); }
 .composer-shortcuts .copilot-trigger.selected { background: var(--accent-bg); }
 .composer-shortcuts .mobile-summary-trigger { display: none; }
+.composer-shortcuts .mobile-client-ai-trigger { display: none; }
 .chat-tools-control { opacity: .82; }
 @media (max-width: 760px) {
   .chat-header .chat-tools-control { display: none; }
@@ -633,6 +634,7 @@ body,
   .composer-shortcuts { gap: .3rem; }
   .composer-shortcuts button { gap: .25rem; padding-inline: .35rem; font-size: .68rem; }
   .composer-shortcuts .mobile-summary-trigger { display: inline-flex; }
+  .composer-shortcuts .mobile-client-ai-trigger { display: inline-flex; }
 }
 .campaign-financial-summary { display: flex; flex-wrap: wrap; gap: .35rem .8rem; margin-top: .55rem; font-size: .75rem; }
 .campaign-financial-summary > span { color: var(--muted); }

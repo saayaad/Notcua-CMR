@@ -195,3 +195,10 @@ Sem chave de IA autorizada, não serão repetidos os cenários que cadastram, ed
 - REQ-194–197 ficaram como decisão, pois “todas as telas”, “padronizar”, “animar páginas” e “todos os botões” não definem inventário nem tolerâncias objetivas. Cada linha registra a pergunta mínima necessária para fechar o aceite.
 - Produção permaneceu somente leitura; uploads, cadastros, agendamentos, arquivos, campanhas e preferências foram exercitados exclusivamente no SQLite local descartável, sem envio de WhatsApp e sem chave real de IA.
 - Contagens após o lote: **196 A VERIFICAR; 183 COMPLETO; 15 COMPLETO-LOCAL; 245 PARCIAL; 50 canceladas/substituídas; 9 decisões; 4 desconectadas; 1 ausente**. O ledger contém 703 IDs únicos, sem lacunas ou duplicatas.
+
+## Lote IA e mídia — REQ-360–391 — 30/10/2026
+
+- Fechado: 15 COMPLETO, 16 COMPLETO-LOCAL, 1 DEFEITO (REQ-381). BUG-022 documenta vídeo sem compressão; BUG-023 registra atalho móvel do Estúdio de IA corrigido.
+- Prova: Playwright 24/24 em três viewports; servidor 208/208; typecheck/build passaram. 96 arquivos de evidência individuais. Nenhuma falha E2E; aviso React `src` vazio preservado no JSON. HTTP 409 da conexão fictícia foi isolado no fixture.
+- IA executada apenas com provedor simulado; nenhuma chamada externa. Banco `.audit/noctua-audit.db` não resetado.
+- Próximo: Automações, REQ-392.

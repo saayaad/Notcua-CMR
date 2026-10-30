@@ -1,0 +1,13 @@
+{
+  "req": "REQ-378",
+  "result": "APROVADO",
+  "project": "desktop-1920",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "consoleErrors": [],
+  "emptySourceElements": [],
+  "savedMarks": 2,
+  "textAndTransparentPng": true,
+  "opacity": 67,
+  "size": 150,
+  "position": "center"
+}

@@ -630,6 +630,7 @@ export function ChatPane({
               setSummary('');
               setSummaryOpen(true);
             }}
+            onOpenClientAi={() => setClientAiOpen(true)}
           />
         </div>
       </div>

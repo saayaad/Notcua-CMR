@@ -149,3 +149,21 @@ A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, po
 - Correção: substituído por fala sintética pt-BR gerada localmente pelo Microsoft SAPI; texto de exemplo agora corresponde ao áudio.
 - Validação: Playwright confirma o player e a transcrição coincidente em 1366×768, 1920×1080 e 390×844.
 - Estado: corrigido localmente em 30/10/2026.
+
+## BUG-022 — Vídeo anexado não passa por compressão
+
+- REQ: REQ-381.
+- Reprodução: em Atendimento, anexar um WebM sintético maior que o limite desejado e confirmar a prévia.
+- Resultado: o upload recebe os mesmos bytes do arquivo original; a marca d’água é preparada, mas não há transcodificação.
+- Causa: `Composer.tsx` aplica otimização de imagem, enquanto o ramo de vídeo envia o arquivo original.
+- Reteste: Playwright comparou os bytes do vídeo antes e depois; resultado idêntico. As rotas de upload e envio foram interceptadas.
+- Estado: defeito aberto; exige caminho de transcodificação compatível com navegador e formatos aceitos pelo conector.
+
+## BUG-023 — Atalho do Estúdio de IA não aparecia no celular
+
+- REQ: REQ-365.
+- Reprodução: em 390×844, abrir conversa e procurar o Estúdio de IA nas ações do Atendimento.
+- Resultado: a ação ficava dentro do menu de ações oculto; não havia atalho visível para abrir o recurso.
+- Correção: atalho móvel “Estúdio de IA” chama o mesmo modal e handler do desktop.
+- Reteste: Playwright abriu e usou o Estúdio em 390×844; evidência em `REVISAO/evidencias/REQ-365/mobile-390.png`.
+- Estado: corrigido localmente em 30/10/2026.

@@ -1,0 +1,18 @@
+{
+  "req": "REQ-371",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "consoleErrors": [
+    "An empty string (\"\") was passed to the %s attribute. This may cause the browser to download the whole page again over the network. To fix this, either do not render the element at all or pass null to %s instead of an empty string. src src :: [\"An empty string (\\\"\\\") was passed to the %s attribute. This may cause the browser to download the whole page again over the network. To fix this, either do not render the element at all or pass null to %s instead of an empty string.\",\"src\",\"src\"]"
+  ],
+  "emptySourceElements": [],
+  "contactsWithIndependentThreads": 5,
+  "persistedEntries": 6,
+  "generatedImage": "simulada",
+  "scriptUsesConversationScope": true,
+  "imagePreparationShowsApprovalWatermark": true,
+  "generatedImageUploadBytes": 10389,
+  "uploadMime": "image/png",
+  "localSendRouteIntercepted": true
+}

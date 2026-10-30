@@ -1,0 +1,31 @@
+{
+  "req": "REQ-362",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "consoleErrors": [],
+  "emptySourceElements": [],
+  "routingConfig": {
+    "model": "gemini-test-base",
+    "instructions": "",
+    "knowledge": "",
+    "style": "",
+    "fallbackText": "",
+    "mediaModel": "gemini-test-media",
+    "transcriptionModel": "",
+    "fastModel": "gemini-audit-flash",
+    "reasoningModel": "gemini-audit-pro",
+    "imageModel": "gemini-audit-image",
+    "dailyLimit": 100,
+    "dailyTokenLimit": 0,
+    "maxOutputTokens": 1200,
+    "monthlyBudget": 0,
+    "inputPrice": 0,
+    "outputPrice": 0,
+    "provider": "gemini",
+    "enabled": false,
+    "mediaEnabled": false
+  },
+  "provider": "simulado",
+  "keyUsed": false
+}
