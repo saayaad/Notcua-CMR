@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { authenticatedFetch } from '../../web/src/context/authenticated-request.js';
 
-test('requisição usa o token atual do Firebase em vez do valor antigo da interface', async () => {
+test('REQ-098/REQ-099: requisição autenticada usa o token Firebase atual', async () => {
   const originalFetch = globalThis.fetch;
   try {
     globalThis.fetch = async (_url, init) => {

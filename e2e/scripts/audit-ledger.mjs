@@ -34,6 +34,14 @@ for (const file of testFiles) {
 
 const external = /WhatsApp real|iPhone|Android|aparelho|dispositivo físico|segundo monitor|2º monitor|janela externa real|e-mail real|chave real|conta real|Vercel|Firebase|túnel|produção/i;
 const visual = /exibir|mostrar|abrir|interface|tela|botão|modal|layout|painel|menu|tooltip|arrastar|redimensionar|prévia|visualizar|tema|cor|ícone|responsiv/i;
+const typeOverrides = {
+  'REQ-098': 'C', 'REQ-099': 'C', 'REQ-100': 'C', 'REQ-101': 'A', 'REQ-102': 'B',
+  'REQ-103': 'B', 'REQ-104': 'B', 'REQ-105': 'B', 'REQ-106': 'B', 'REQ-107': 'B',
+  'REQ-108': 'B', 'REQ-109': 'B', 'REQ-110': 'B', 'REQ-111': 'C', 'REQ-112': 'C',
+  'REQ-113': 'C', 'REQ-114': 'B', 'REQ-115': 'B', 'REQ-116': 'B', 'REQ-117': 'A',
+  'REQ-118': 'C', 'REQ-119': 'A', 'REQ-120': 'A', 'REQ-121': 'A', 'REQ-122': 'A',
+  'REQ-123': 'A', 'REQ-124': 'A', 'REQ-125': 'C', 'REQ-126': 'D', 'REQ-127': 'B',
+};
 const rows = [];
 for (const line of source.split(/\r?\n/)) {
   if (!/^\| REQ-\d+ \|/.test(line)) continue;
@@ -42,6 +50,7 @@ for (const line of source.split(/\r?\n/)) {
   const tests = links.get(id) ?? [];
   let tipo = estado.includes('DECISÃO') ? 'D' : /DESCONECTADO|AUSENTE/.test(estado) ? 'E'
     : external.test(`${criterioOriginal} ${observacao}`) ? 'C' : visual.test(pedido) ? 'B' : 'A';
+  tipo = typeOverrides[id] ?? tipo;
   if (id === 'REQ-410') tipo = 'D';
   const criterio = criterioOriginal || `Comprovar que ${pedido.replace(/\.$/, '').toLowerCase()}.`;
   const resultado = estado.includes('COMPLETO') ? 'APROVADO' : estado.includes('CANCELADO') ? 'FORA_DO_ESCOPO'

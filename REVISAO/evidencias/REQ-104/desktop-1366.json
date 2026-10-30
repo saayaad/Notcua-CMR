@@ -1,0 +1,12 @@
+{
+  "req": "REQ-104",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "viewport": {
+    "width": 1366,
+    "height": 768
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "name": "Operador desktop-1366",
+  "company": "Empresa desktop-1366"
+}

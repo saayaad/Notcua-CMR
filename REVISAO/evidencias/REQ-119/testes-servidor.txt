@@ -1,0 +1,22 @@
+✔ REQ-113: token fictício de e-mail não confirmado é recusado antes do acesso (346.049ms)
+✔ REQ-110/111: setores e equipe persistem com isolamento e permissão de administrador (444.4881ms)
+✔ REQ-104: perfil persiste por usuário e fica isolado entre espaços (54.6852ms)
+✔ REQ-109: configuração do negócio persiste com isolamento e permissão de administrador (86.5976ms)
+✔ REQ-098/REQ-099: requisição autenticada usa o token Firebase atual (28.4728ms)
+✔ REQ-109: resposta fora do horário usa dia de São Paulo, persiste limite diário e ignora grupos/opt-out (3917.6845ms)
+✔ REQ-125: fluxos enviam documento pelo formato correto no conector fictício (2400.9871ms)
+✔ REQ-123: comparações começa/não contém respeitam o filtro de grupos (0.7643ms)
+✔ REQ-119/REQ-122: fluxo manual aplica etiqueta inicial somente quando iniciado (1052.8589ms)
+✔ REQ-121: primeira mensagem do dia ignora histórico antigo e bloqueia repetição no dia (1091.7709ms)
+✔ REQ-120: primeira mensagem absoluta ignora saídas antigas e bloqueia segunda entrada (1076.7296ms)
+✔ REQ-124: filtro de etiquetas do fluxo exige permitida e rejeita excluída (1197.9418ms)
+✔ REQ-117: lembrete interno produz aviso sem enviar ao WhatsApp, inclusive em contato opt-out (323.1999ms)
+✔ REQ-114/REQ-115: perfil e anotações são preservados e o histórico é exportado como ZIP (182.9458ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 89432.6615

@@ -1,0 +1,20 @@
+{
+  "req": "REQ-103",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "before": [
+    "Mensageria",
+    "Relacionamentos",
+    "Conta"
+  ],
+  "after": [
+    "Relacionamentos",
+    "Mensageria",
+    "Conta"
+  ]
+}

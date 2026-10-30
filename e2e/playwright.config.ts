@@ -20,7 +20,8 @@ export default defineConfig({
   ],
   webServer: {
     command: 'npm run audit:dev',
-    url: 'http://127.0.0.1:5180/atendimento',
+    cwd: '..',
+    url: 'http://127.0.0.1:3340/health',
     reuseExistingServer: false,
     timeout: 120_000,
   },

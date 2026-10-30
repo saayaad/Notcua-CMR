@@ -303,7 +303,7 @@ test('atraso e snapshot publicado preservam a mensagem mesmo após editar a bibl
   await db.asset.update({ where: { id: 'hello' }, data: { text: 'Olá, #nome! Deseja continuar?' } });
 });
 
-test('fluxos enviam áudio de voz, imagem e documento pelos formatos corretos no conector fictício', async () => {
+test('REQ-125: fluxos enviam documento pelo formato correto no conector fictício', async () => {
   const audioGraph: FlowGraph = {
     nodes: [
       node('audio-start', 'start', {
@@ -592,7 +592,7 @@ test('reinício mantém a espera por resposta e retoma o caminho uma única vez'
   }
 });
 
-test('comparações começa/não contém e gatilho por qualquer mensagem respeitam o filtro de grupos', () => {
+test('REQ-123: comparações começa/não contém respeitam o filtro de grupos', () => {
   const person = { isGroup: false, isSavedContact: false };
   const at = new Date();
   assert.equal(
@@ -628,7 +628,7 @@ test('comparações começa/não contém e gatilho por qualquer mensagem respeit
   );
 });
 
-test('fluxo manual não dispara por mensagem e aplica etiqueta inicial somente ao iniciar', async () => {
+test('REQ-119/REQ-122: fluxo manual aplica etiqueta inicial somente quando iniciado', async () => {
   const label = await db.label.create({
     data: { id: `initial:${randomUUID()}`, sessionId, name: 'Fluxo iniciado', color: '#a68bfa' },
   });
@@ -648,7 +648,7 @@ test('fluxo manual não dispara por mensagem e aplica etiqueta inicial somente a
   assert.equal(socket.sends.length, before + 1);
 });
 
-test('primeira mensagem do dia ignora conversa anterior do mesmo dia e aceita histórico antigo', async () => {
+test('REQ-121: primeira mensagem do dia ignora histórico antigo e bloqueia repetição no dia', async () => {
   const value = graph();
   value.nodes[0]!.data.triggerMode = 'first-day';
   await prepare(value);
@@ -696,7 +696,7 @@ test('primeira mensagem do dia respeita a virada da meia-noite em São Paulo', a
   assert.equal(socket.sends.length, before + 1);
 });
 
-test('primeira mensagem absoluta ignora saídas antigas e bloqueia segunda entrada', async () => {
+test('REQ-120: primeira mensagem absoluta ignora saídas antigas e bloqueia segunda entrada', async () => {
   const value = graph();
   value.nodes[0]!.data.triggerMode = 'first';
   await prepare(value);
@@ -732,7 +732,7 @@ test('primeira mensagem absoluta ignora saídas antigas e bloqueia segunda entra
   assert.equal(socket.sends.length, beforeSecond);
 });
 
-test('filtro de etiquetas do fluxo exige permitida e rejeita excluída', async () => {
+test('REQ-124: filtro de etiquetas do fluxo exige permitida e rejeita excluída', async () => {
   const allowed = await db.label.create({
     data: { id: `allowed:${randomUUID()}`, sessionId, name: 'Permitida', color: '#a68bfa' },
   });

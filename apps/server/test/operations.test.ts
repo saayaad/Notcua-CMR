@@ -313,7 +313,7 @@ test('agendamento futuro e cancelamento impedem envios e preservam escopo da con
   await worker.flush();
   assert.equal(socket.sends.length, before);
 });
-test('lembrete interno produz aviso sem enviar ao WhatsApp, inclusive em contato opt-out', async () => {
+test('REQ-117: lembrete interno produz aviso sem enviar ao WhatsApp, inclusive em contato opt-out', async () => {
   const chat = await makeContact('5511777770004');
   const item = await draft([chat.id], { kind: 'reminder', text: 'Retornar ligação' }, 'REMINDER');
   await request(app)
@@ -415,7 +415,7 @@ test('macros criadas executam texto, espera, etiqueta e atribuição em ordem', 
   assert.equal(await db.contactLabel.count({ where: { contactId: chat.contactId, labelId: label.id } }), 1);
   assert.equal(await db.contactLabel.count({ where: { contactId: chat.contactId, labelId: removedLabel.id } }), 0);
 });
-test('perfil e anotações são preservados e o histórico é exportado como ZIP', async () => {
+test('REQ-114/REQ-115: perfil e anotações são preservados e o histórico é exportado como ZIP', async () => {
   const chat = await makeContact('5511777770008');
   await request(app)
     .put(`/api/operations/sessions/${sessionId}/contacts/${chat.id}`)

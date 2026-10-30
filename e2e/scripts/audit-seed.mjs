@@ -94,10 +94,16 @@ try {
   await db.storedFile.create({
     data: { id: fileId, sha256: createHash('sha256').update(png).digest('hex'), filename: 'imagem-auditoria.png', mimeType: 'image/png', byteLength: png.length, data: png },
   });
+  const pdf = Buffer.from('%PDF-1.4\n% arquivo fictício da auditoria\n%%EOF\n');
+  const pdfFileId = `audit-file-${createHash('sha256').update(pdf).digest('hex').slice(0, 12)}`;
+  await db.storedFile.create({
+    data: { id: pdfFileId, sha256: createHash('sha256').update(pdf).digest('hex'), filename: 'documento-auditoria.pdf', mimeType: 'application/pdf', byteLength: pdf.length, data: pdf },
+  });
   await db.asset.createMany({ data: [
     { id: 'audit-asset-welcome', kind: 'MESSAGE', name: 'Boas-vindas da auditoria', text: 'Olá, #nome! Esta é uma resposta fictícia.', metadata: { category: 'Auditoria' } },
     { id: 'audit-asset-budget', kind: 'MESSAGE', name: 'Orçamento fictício', text: 'O orçamento fictício está pronto.', metadata: { category: 'Auditoria' } },
     { id: 'audit-asset-image', kind: 'MEDIA', name: 'Imagem fictícia', caption: 'Imagem gerada para teste local.', fileId, metadata: { category: 'Auditoria' } },
+    { id: 'audit-asset-document', kind: 'DOCUMENT', name: 'Documento fictício', caption: 'Documento gerado para teste local.', fileId: pdfFileId, metadata: { category: 'Auditoria' } },
   ] });
   await db.funnel.create({
     data: {
@@ -134,7 +140,8 @@ try {
     ['settings:departments', 'SETTINGS', { items: [{ name: 'Comercial', label: 'audit-label-budget' }, { name: 'Suporte', label: '' }] }],
     ['team:admin@example.com', 'TEAM', { email: 'admin@example.com', name: 'Administrador Exemplo', role: 'ADMIN', department: 'Comercial', active: true }],
     ['team:membro@example.com', 'TEAM', { email: 'membro@example.com', name: 'Membro Exemplo', role: 'MEMBER', department: 'Suporte', active: true }],
-    ['preferences:local', 'PREFERENCES', { brandingName: 'noctua', theme: 'dark', density: 'comfortable' }],
+    ['profile:local', 'PROFILE', { name: 'Operador Auditoria', company: 'Empresa Exemplo', segment: 'Testes locais', employees: '3', objective: 'Auditar requisitos', social: '', phone: '5511999999904', completed: true }],
+    ['preferences:local', 'PREFERENCES', { brandingName: 'noctua', theme: 'dark', density: 'compact', attendanceCustomizationVersion: 3 }],
     ['settings:features', 'FEATURES', { aiEnabled: false }],
     ['integration:ai', 'AI_SETTINGS', { provider: 'gemini', model: 'modelo-falso-auditoria', instructions: '', knowledge: '', style: '', enabled: false }],
     ['settings:business', 'BUSINESS_SETTINGS', { company: 'Empresa Exemplo', segment: 'Testes locais', distribution: false }],

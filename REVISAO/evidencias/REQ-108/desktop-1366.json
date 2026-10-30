@@ -1,0 +1,11 @@
+{
+  "req": "REQ-108",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "viewport": {
+    "width": 1366,
+    "height": 768
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "text": "Texto fictício\n\nEquipe desktop-1366"
+}

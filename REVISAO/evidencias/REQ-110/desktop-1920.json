@@ -1,0 +1,11 @@
+{
+  "req": "REQ-110",
+  "result": "APROVADO",
+  "project": "desktop-1920",
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "department": "Auditoria desktop-1920"
+}

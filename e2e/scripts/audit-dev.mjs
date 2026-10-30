@@ -23,10 +23,14 @@ const common = {
   WHATSAPP_KEY_FILE: whatsappKeyFile,
   WHATSAPP_SYNC_PHOTOS: 'false',
   VITE_API_URL: 'http://127.0.0.1:3340',
+  VITE_FIREBASE_API_KEY: 'fake-audit-key',
+  VITE_FIREBASE_AUTH_DOMAIN: 'audit.invalid',
+  VITE_FIREBASE_PROJECT_ID: 'noctua-audit-local',
+  VITE_FIREBASE_APP_ID: '1:000000000000:web:auditlocal',
 };
 const children = [
-  spawn(process.execPath, [npmCli, 'run', 'dev', '-w', '@noctua/server'], { cwd: root, env: common, stdio: 'inherit' }),
-  spawn(process.execPath, [npmCli, 'run', 'dev', '-w', '@noctua/web', '--', '--port', '5180'], { cwd: root, env: common, stdio: 'inherit' }),
+  spawn(process.execPath, [npmCli, 'run', 'dev', '-w', '@noctua/server'], { cwd: root, env: common, stdio: ['ignore', 'inherit', 'inherit'] }),
+  spawn(process.execPath, [npmCli, 'run', 'dev', '-w', '@noctua/web', '--', '--port', '5180'], { cwd: root, env: common, stdio: ['ignore', 'inherit', 'inherit'] }),
 ];
 
 let stopping = false;

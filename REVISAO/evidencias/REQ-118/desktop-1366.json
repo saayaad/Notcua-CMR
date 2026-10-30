@@ -1,0 +1,11 @@
+{
+  "req": "REQ-118",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "viewport": {
+    "width": 1366,
+    "height": 768
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "href": "https://calendar.google.com/calendar/render?action=TEMPLATE&text=Atendimento%3A%20Contato%20desktop-1366&details=Retorno%20de%20atendimento%20Noctua"
+}
