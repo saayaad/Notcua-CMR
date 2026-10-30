@@ -260,7 +260,7 @@ test('horário considera São Paulo, dias úteis e a madrugada de uma janela not
   assert.equal(scheduleMatches(data, new Date('2026-10-24T22:00:00-03:00')), false);
 });
 
-test('mensagens live geram eventos uma vez; histórico, mensagens antigas e eco de saída não disparam', async () => {
+test('REQ-129: triagem inicial reage uma vez à mensagem nova e ignora histórico/eco', async () => {
   await prepare(graph());
   const jid = '5511000000999@s.whatsapp.net';
   const message = (id: string, fromMe: boolean, at = Math.floor(Date.now() / 1000)): WAMessage => ({

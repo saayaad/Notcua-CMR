@@ -105,6 +105,22 @@ try {
     { id: 'audit-asset-image', kind: 'MEDIA', name: 'Imagem fictícia', caption: 'Imagem gerada para teste local.', fileId, metadata: { category: 'Auditoria' } },
     { id: 'audit-asset-document', kind: 'DOCUMENT', name: 'Documento fictício', caption: 'Documento gerado para teste local.', fileId: pdfFileId, metadata: { category: 'Auditoria' } },
   ] });
+  await db.chatMessage.create({
+    data: {
+      id: 'audit-message-media-image',
+      conversationId: 'audit-conversation-1',
+      direction: 'INBOUND',
+      status: 'READ',
+      type: 'image',
+      caption: 'Imagem fictícia da auditoria.',
+      fileId,
+      sentAt: new Date(now.getTime() + 60_000),
+    },
+  });
+  await db.conversation.update({
+    where: { id: 'audit-conversation-1' },
+    data: { lastMessageAt: new Date(now.getTime() + 60_000) },
+  });
   await db.funnel.create({
     data: {
       id: 'audit-funnel',

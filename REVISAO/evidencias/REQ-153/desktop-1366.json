@@ -1,0 +1,10 @@
+{
+  "req": "REQ-153",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "model": "modelo-desktop-1366",
+  "dailyTokenLimit": 4321,
+  "monthlyBudget": 3.25,
+  "rules": "Regra absoluta desktop-1366"
+}

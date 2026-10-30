@@ -197,7 +197,7 @@ test('CSV reconhece separador após título, ignora vírgulas entre aspas e info
   await assert.rejects(() => contacts.preview({ filename: 'vazia.xlsx', base64: Buffer.from(bytes).toString('base64') }), /planilha está vazia/);
 });
 
-test('Excel com título antes do cabeçalho é reconhecido e a importação é idempotente', async () => {
+test('REQ-131: Excel despadronizado é reconhecido e a importação é idempotente', async () => {
   const book = new ExcelJS.Workbook();
   const sheet = book.addWorksheet('Leads');
   sheet.addRow(['Lista de interessados']);
@@ -218,7 +218,7 @@ test('Excel com título antes do cabeçalho é reconhecido e a importação é i
   assert.equal(await db.conversation.count({ where: { contactId: person.id, sessionId } }), 1);
   assert.equal(socket.sends.length, 0);
 });
-test('campanha começa em rascunho, congela recurso, respeita intervalo e não repete envio', async () => {
+test('REQ-135: campanha congela conteúdo, respeita intervalo e não repete envio', async () => {
   const a = await makeContact('5511777770001');
   const b = await makeContact('5511777770002');
   await db.asset.create({ data: { id: 'op-text', name: 'Texto', kind: 'MESSAGE', text: 'Original #nome' } });
@@ -286,7 +286,7 @@ test('pós-envio remove etiqueta sem destino, preserva os outros vínculos e sin
   }
 });
 
-test('agendamento futuro e cancelamento impedem envios e preservam escopo da conexão', async () => {
+test('REQ-128: agendamento futuro e cancelamento impedem envios e preservam escopo', async () => {
   const chat = await makeContact('5511777770003');
   const item = await draft(
     [chat.id],
@@ -354,7 +354,7 @@ test('reinício marca envio incerto como falha e não o reenvia', async () => {
     await restarted.stop();
   }
 });
-test('fila ativa no servidor executa sem requisição do painel', async () => {
+test('REQ-142: fila ativa no servidor executa sem requisição do painel', async () => {
   const chat = await makeContact('5511777770098');
   const item = await draft([chat.id], { kind: 'text', text: 'Fila automática' });
   await request(app)
@@ -467,7 +467,7 @@ test('Firebase rejeita ausência de token sem usar a liberação do modo local',
   }
 });
 
-test('chaves Gemini permitem cadastrar, editar, ordenar, desativar e excluir sem expor os valores', async () => {
+test('REQ-130: chaves fictícias permitem CRUD cifrado sem expor os valores', async () => {
   const previous = await db.operationRecord.findUnique({ where: { id: 'integration:ai' } });
   const previousKeyFile = env.WHATSAPP_KEY_FILE;
   env.WHATSAPP_KEY_FILE = join(dir, 'keys-manager-test.key');
@@ -519,7 +519,7 @@ test('modelos de marca d’água validam tamanho, posição, selo local e modelo
   await request(app).put('/api/operations/settings/watermarks').send({ ...value, marks: [{ ...value.marks[0], imageData: 'https://externo.example/selo.png' }] }).expect(422);
 });
 
-test('catálogo Gemini pagina, filtra modelos de geração e rejeita número de projeto como modelo', async () => {
+test('REQ-152: catálogo simulado filtra modelos e rejeita número de projeto como modelo', async () => {
   const originalKeyFile = env.WHATSAPP_KEY_FILE;
   const originalFetch = globalThis.fetch;
   const previous = await db.operationRecord.findUnique({ where: { id: 'integration:ai' } });
@@ -663,7 +663,7 @@ test('backup integral usa snapshot consistente e inclui a chave sem expor caminh
   }
 });
 
-test('fixação e atribuição persistem na conversa e o filtro Minhas respeita o responsável', async () => {
+test('REQ-157: atribuição persiste e o filtro por responsável respeita o operador', async () => {
   const chat = await makeContact('5511777770012');
   await request(app)
     .put(`/api/operations/sessions/${sessionId}/contacts/${chat.id}`)
@@ -809,7 +809,7 @@ test('editar macro importada preserva o arquivo original e suas opções', async
   assert.equal(action.fileId, file.id);
   assert.equal(action.waitMs, 1000);
 });
-test('importação extrai telefone misturado com texto, exige DDD e cria lista segmentável', async () => {
+test('REQ-146/REQ-148: importação normaliza telefone, exige DDD e cria lista segmentável', async () => {
   const preview = await contacts.preview({
     filename: 'irregular.csv',
     areaCode: '11',
@@ -851,7 +851,7 @@ test('importação extrai telefone misturado com texto, exige DDD e cria lista s
     .expect(404);
 });
 
-test('público combina várias listas e etiquetas com inatividade e seleção manual', async () => {
+test('REQ-134/REQ-149: público combina listas, etiquetas e inatividade com lógica E/OU', async () => {
   const first = await makeContact('5511888810001', 'Público A');
   const second = await makeContact('5511888810002', 'Público B');
   const third = await makeContact('5511888810003', 'Público C');
@@ -881,7 +881,7 @@ test('público combina várias listas e etiquetas com inatividade e seleção ma
   assert.deepEqual(selected.body.items.map((item: { id: string }) => item.id), [second.id]);
 });
 
-test('sequência de campanha congela recursos, preserva ordem e aplica pausa por lote', async () => {
+test('REQ-150/REQ-151: sequência usa variáveis, preserva ordem e aplica pausa por lote', async () => {
   const chat = await makeContact('5511777770031', 'Pessoa Sequência');
   const asset = await db.asset.create({
     data: { id: 'sequence-frozen', name: 'Segunda', kind: 'MESSAGE', text: 'Segundo original' },
@@ -977,7 +977,7 @@ async function inbound(chatId: string, text: string) {
   return message;
 }
 
-test('assumir durante geração impede envio da IA e mantém pausa após mensagem manual', async () =>
+test('REQ-143: assumir durante geração impede envio da IA e mantém pausa após mensagem manual', async () =>
   aiTest(async () => {
     const chat = await makeContact('5511777770032');
     await configureAi({ enabled: true });
@@ -1006,7 +1006,7 @@ test('assumir durante geração impede envio da IA e mantém pausa após mensage
     );
   }));
 
-test('pedido por humano e mensagem pelo celular pausam a IA; histórico antigo não pausa', async () => {
+test('REQ-144: pedido por humano pausa a IA e histórico antigo não pausa', async () => {
   assert.equal(requestsHuman('Gostaria de falar com uma pessoa'), true);
   assert.equal(requestsHuman('Quero saber os preços'), false);
   const sync = new SyncService(db, silentPublisher);
@@ -1051,7 +1051,7 @@ test('pedido por humano e mensagem pelo celular pausam a IA; histórico antigo n
   assert.equal((await aiControl(db, chat.id)).paused, true);
 });
 
-test('provedores Claude e Gemini contabilizam tokens e limites bloqueiam antes da chamada', async () =>
+test('REQ-130/REQ-153: provedores simulados contabilizam tokens e limites bloqueiam antes da chamada', async () =>
   aiTest(async () => {
     const chat = await makeContact('5511777770034');
     let calls = 0;
@@ -1234,7 +1234,7 @@ test('cache de IA exige revisão e impede reutilizar nome de outro cliente', asy
     assert.equal(calls, 3);
   }));
 
-test('conhecimento aprovado conserva contexto cliente e ordem do vendedor', async () =>
+test('REQ-133/REQ-155: conhecimento aprovado conserva contexto e ordem do vendedor', async () =>
   aiTest(async () => {
     const chat = await makeContact('5511777770035');
     await db.chatMessage.createMany({
@@ -1278,7 +1278,7 @@ test('conhecimento aprovado conserva contexto cliente e ordem do vendedor', asyn
     await generateSuggestion(db, chat.id, 'Orçamento especial');
   }));
 
-test('transcrição de áudio e descrição de vídeo entram no contexto da sugestão', async () =>
+test('REQ-140/REQ-141: transcrição de áudio e descrição de vídeo entram no contexto simulado', async () =>
   aiTest(async () => {
     const chat = await makeContact('5511777770064');
     const audio = await db.storedFile.create({ data: { sha256: 'd'.repeat(64), filename: 'fala.ogg', mimeType: 'audio/ogg', byteLength: 5, data: Buffer.from('audio') } });
@@ -1545,7 +1545,7 @@ test('pré-processamento gera análise, reaproveita resultado e interrompe após
   assert.equal(calls, 2);
 }));
 
-test('exportação estruturada ordena por horário, separa papéis e protege CSV', async () => {
+test('REQ-132/REQ-158: exportação inclui mídias, cronologia, papéis e formatos estruturados', async () => {
   const chat = await makeContact('5511777770038');
   await db.chatMessage.createMany({
     data: [
@@ -1565,8 +1565,34 @@ test('exportação estruturada ordena por horário, separa papéis e protege CSV
       },
     ],
   });
+  for (const [index, media] of [
+    { type: 'audio', filename: 'audio.ogg', mimeType: 'audio/ogg', data: Buffer.from('audio-ficticio') },
+    { type: 'image', filename: 'imagem.png', mimeType: 'image/png', data: Buffer.from('imagem-ficticia') },
+    { type: 'video', filename: 'video.mp4', mimeType: 'video/mp4', data: Buffer.from('video-ficticio') },
+  ].entries()) {
+    const file = await db.storedFile.create({
+      data: {
+        id: `export-media-file-${index}`,
+        sha256: `export-media-sha-${index}`,
+        filename: media.filename,
+        mimeType: media.mimeType,
+        byteLength: media.data.length,
+        data: media.data,
+      },
+    });
+    await db.chatMessage.create({
+      data: {
+        id: `export-media-${media.type}`,
+        conversationId: chat.id,
+        direction: 'INBOUND',
+        type: media.type,
+        fileId: file.id,
+        sentAt: new Date(`2026-01-01T00:0${index + 2}:00Z`),
+      },
+    });
+  }
   const exported = await request(app)
-    .get(`/api/operations/sessions/${sessionId}/history-export?ids=${chat.id}`)
+    .get(`/api/operations/sessions/${sessionId}/history-export?ids=${chat.id}&media=true`)
     .buffer(true)
     .parse((res, callback) => {
       const chunks: Buffer[] = [];
@@ -1581,12 +1607,16 @@ test('exportação estruturada ordena por horário, separa papéis e protege CSV
     .map((line) => JSON.parse(line));
   assert.deepEqual(
     turns.map((turn) => turn.role),
-    ['user', 'assistant'],
+    ['user', 'assistant', 'user', 'user', 'user'],
   );
   assert.equal(turns[0].content, '=formula');
   assert.match(files.get('dialogo.csv')!, /'=formula/);
   assert.ok(files.has('conversa.jsonl'));
   assert.ok(files.has('dialogo.txt'));
+  const mediaFiles = [...files.keys()].filter((name) => name.startsWith('midias/'));
+  assert.ok(mediaFiles.some((name) => name.endsWith('.ogg')), 'REQ-132 inclui áudio disponível');
+  assert.ok(mediaFiles.some((name) => name.endsWith('.png')), 'REQ-132 inclui imagem disponível');
+  assert.ok(mediaFiles.some((name) => name.endsWith('.mp4')), 'REQ-132 inclui vídeo disponível');
   await request(app)
     .get(`/api/operations/sessions/${otherSession}/history-export?ids=${chat.id}`)
     .expect(404);

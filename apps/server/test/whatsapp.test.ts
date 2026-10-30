@@ -270,7 +270,7 @@ test('primeira mensagem nova etiqueta uma vez; histórico, grupos, replays e eve
   assert.equal(await db.contact.count({ where: { phoneNumber: '5511444440000' } }), 0);
 });
 
-test('última interação conserva o horário mais recente após sincronização fora de ordem', async () => {
+test('REQ-145: última interação conserva o horário mais recente após sincronização fora de ordem', async () => {
   const jid = '5511777770099@s.whatsapp.net';
   const latest = 1_792_800_000;
   await sync.messagesUpsert(sessionId, [message(jid, 'recent', false, 'Recente', latest)], false);
@@ -395,7 +395,7 @@ test('rotas entregam painel, dados paginados e configuração; validam origem, s
     .expect(404);
 });
 
-test('Socket.io autentica, entrega estado atual ao reconectar e não aceita token inválido', async () => {
+test('REQ-139: Socket.io entrega estado atual ao reconectar e rejeita token inválido', async () => {
   const server = createServer(createApp(db, service));
   const originalToken = env.API_TOKEN;
   env.API_TOKEN = 'socket-test-token';

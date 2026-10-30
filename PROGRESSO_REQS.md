@@ -172,3 +172,13 @@ Sem chave de IA autorizada, não serão repetidos os cenários que cadastram, ed
 - No caminho `Personalizar → HUD, atalhos, botões e aparência`, as abas Painéis, Botões, Funções, Atalhos, Mensagens fixadas, Teclas de atalho e Posição livre, além de Prévia/Cancelar/Confirmar, renderizaram na sessão atual. Nada foi confirmado ou salvo.
 - Uma varredura de implementações pendentes não encontrou marcadores `TODO`/`FIXME` de funcionalidade no código do produto. As exceções localizadas são validações ou mensagens de erro deliberadas; a ausência confirmada permanece REQ-430 (índice vetorial local).
 - Evidências: `req660-687-context-menu-readonly.{json,png}` e `req214-216-492-514-hud-readonly-current.{json,png}` em `C:\Users\gusta\.codex\playwright-noctua-diagnostic\evidence`.
+
+## Protocolo local — lote Operação e IA (REQ-128–158) — 30/10/2026
+
+- O lote local encerrou 30 pendências: **24 COMPLETO** e **6 COMPLETO-LOCAL**; REQ-147 já estava completa e não foi refeita.
+- Playwright local: **18/18 aprovados** em 1366×768, 1920×1080 e 390×844.
+- Servidor local: **19/19 aprovados** com SQLite temporário, mensageria fictícia e provedores simulados.
+- IA real permanece opcional, desligada e fora do escopo. REQ-130, 140, 141 e 152 não devem voltar a solicitar chave; a eventual prova real está isolada em `REVISAO/CHECKLIST-MANUAL.md`.
+- REQ-139 e REQ-150 ficaram COMPLETO-LOCAL porque a última prova depende, respectivamente, de reconexão WhatsApp real e recebimento multimídia em aparelho.
+- Evidências individuais foram gravadas em `REVISAO/evidencias/REQ-128/` a `REQ-158/`, exceto REQ-147, preservada da auditoria anterior.
+- Contagens após o lote: 222 A VERIFICAR; 156 COMPLETO; 13 COMPLETO-LOCAL; 252 PARCIAL; 50 canceladas/substituídas; 5 decisões; 4 desconectadas; 1 ausente.

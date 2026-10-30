@@ -1,0 +1,27 @@
+✔ REQ-129: triagem inicial reage uma vez à mensagem nova e ignora histórico/eco (1269.4894ms)
+✔ REQ-131: Excel despadronizado é reconhecido e a importação é idempotente (286.4475ms)
+✔ REQ-135: campanha congela conteúdo, respeita intervalo e não repete envio (1778.1527ms)
+✔ REQ-128: agendamento futuro e cancelamento impedem envios e preservam escopo (137.6937ms)
+✔ REQ-142: fila ativa no servidor executa sem requisição do painel (1851.9384ms)
+✔ REQ-130: chaves fictícias permitem CRUD cifrado sem expor os valores (257.1766ms)
+✔ REQ-152: catálogo simulado filtra modelos e rejeita número de projeto como modelo (115.3885ms)
+✔ REQ-157: atribuição persiste e o filtro por responsável respeita o operador (74.9605ms)
+✔ REQ-146/REQ-148: importação normaliza telefone, exige DDD e cria lista segmentável (99.1744ms)
+✔ REQ-134/REQ-149: público combina listas, etiquetas e inatividade com lógica E/OU (209.9075ms)
+✔ REQ-150/REQ-151: sequência usa variáveis, preserva ordem e aplica pausa por lote (2475.3618ms)
+✔ REQ-143: assumir durante geração impede envio da IA e mantém pausa após mensagem manual (982.5172ms)
+✔ REQ-144: pedido por humano pausa a IA e histórico antigo não pausa (114.7893ms)
+✔ REQ-130/REQ-153: provedores simulados contabilizam tokens e limites bloqueiam antes da chamada (226.995ms)
+✔ REQ-133/REQ-155: conhecimento aprovado conserva contexto e ordem do vendedor (123.8759ms)
+✔ REQ-140/REQ-141: transcrição de áudio e descrição de vídeo entram no contexto simulado (278.9854ms)
+✔ REQ-132/REQ-158: exportação inclui mídias, cronologia, papéis e formatos estruturados (162.3749ms)
+✔ REQ-145: última interação conserva o horário mais recente após sincronização fora de ordem (98.9393ms)
+✔ REQ-139: Socket.io entrega estado atual ao reconectar e rejeita token inválido (73.2503ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 32860.0495

@@ -1,0 +1,10 @@
+{
+  "req": "REQ-154",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "model": "modelo-mobile-390",
+  "dailyTokenLimit": 4321,
+  "monthlyBudget": 3.25,
+  "rules": "Regra absoluta mobile-390"
+}
