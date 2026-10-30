@@ -1,0 +1,13 @@
+{
+  "req": "REQ-402",
+  "date": "2026-10-30",
+  "result": "APROVADO",
+  "test": "REQ-402/REQ-403: resumo às 08h prioriza conversa aguardando e intenção de fechamento uma vez ao dia",
+  "database": "SQLite temporário de operations.test.ts",
+  "assertions": [
+    "horário America/Sao_Paulo após 08:00",
+    "lead aguardando aparece primeiro",
+    "resumo de prioridade de compra incluído",
+    "marcador impede duplicação diária"
+  ]
+}

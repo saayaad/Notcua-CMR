@@ -1,0 +1,6 @@
+{
+  "req": "REQ-401",
+  "result": "DECISÃO",
+  "question": "Quais eventos CTWA/referral devem gerar webhook, para qual endpoint e quais métricas precisam ser coletadas?",
+  "reason": "“Preparar expansão futura” não define eventos, destino, esquema, autenticação, volume ou retenção; não inventar integração."
+}

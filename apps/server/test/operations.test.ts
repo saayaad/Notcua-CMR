@@ -148,7 +148,7 @@ test('CSV detecta colunas, normaliza DDI, informa duplicados e não grava durant
   assert.equal(result.rejected.length, 2);
   assert.equal(await db.contact.count(), 0);
 });
-test('validação consulta sem enviar, reutiliza cache, separa ausência de falha e isola conexão', async () => {
+test('REQ-406/REQ-407: validação consulta sem enviar, reutiliza cache, separa ausência de falha e isola conexão', async () => {
   const url = `/api/operations/sessions/${sessionId}/validate-numbers`;
   const sends = socket.sends.length;
   const before = socket.lookupCalls;
@@ -168,6 +168,37 @@ test('validação consulta sem enviar, reutiliza cache, separa ausência de falh
   await request(app).post(`/api/operations/sessions/${otherSession}/validate-numbers`).send({ phoneNumbers: ['5511999990001'] }).expect(409);
   await request(app).post(url).send({ phoneNumbers: ['número inválido'] }).expect(422);
   assert.equal(socket.sends.length, sends);
+});
+
+test('REQ-392/REQ-393/REQ-394: follow-up individual agenda etapas e cancela todas após resposta', async () => {
+  const chat = await makeContact('5511777770310', 'Follow-up fictício');
+  await request(app).post(`/api/attendance/sessions/${sessionId}/conversations/${chat.id}/send`)
+    .send({ requestId: 'audit-follow-up-source', kind: 'text', text: 'Orçamento fictício', composingMs: 0 }).expect(201);
+  const sendsBeforeReply = socket.sends.length;
+  const created = await request(app)
+    .post(`/api/operations/sessions/${sessionId}/conversations/${chat.id}/follow-ups`)
+    .send({ steps: [
+      { waitMinutes: 1, text: 'Primeiro retorno fictício' },
+      { waitMinutes: 60, text: 'Segundo retorno fictício' },
+    ] })
+    .expect(201);
+  assert.equal(created.body.scheduled, 2);
+  const task = await db.deliveryTask.findFirstOrThrow({ where: { batchId: created.body.id } });
+  assert.equal(task.status, 'QUEUED');
+  assert.equal(task.runAt.getTime() >= Date.now() + 50_000, true);
+  const payload = task.payload as { followUp?: boolean; steps?: Array<unknown> };
+  assert.equal(payload.followUp, true);
+  assert.equal(payload.steps?.length, 2);
+  const sync = new SyncService(db, silentPublisher);
+  await sync.messagesUpsert(sessionId, [{
+    key: { id: 'audit-follow-up-reply', remoteJid: '5511777770310@s.whatsapp.net', fromMe: false },
+    message: { conversation: 'Quero tirar uma dúvida' }, messageTimestamp: Math.floor(Date.now() / 1000),
+  }], true);
+  const tasks = await db.deliveryTask.findMany({ where: { batchId: created.body.id } });
+  assert.equal(tasks.length, 1);
+  assert.equal(tasks[0]?.status, 'CANCELLED');
+  assert.equal((await record<Batch>(db, created.body.id, { status: '' } as Batch)).status, 'CANCELLED');
+  assert.equal(socket.sends.length, sendsBeforeReply);
 });
 
 test('XLS binário legado preserva nome acentuado, telefone numérico e linha de duplicata', async () => {
@@ -225,6 +256,7 @@ test('REQ-131: Excel despadronizado é reconhecido e a importação é idempoten
     base64: Buffer.from(await book.xlsx.writeBuffer()).toString('base64'),
   });
   assert.equal(result.items[0]!.name, 'Beatriz');
+  const sendsBeforeImport = socket.sends.length;
   await contacts.import(sessionId, { items: result.items, extraTag: 'Outubro' });
   await contacts.import(sessionId, { items: result.items, extraTag: 'Outubro' });
   const person = await db.contact.findUniqueOrThrow({
@@ -233,7 +265,7 @@ test('REQ-131: Excel despadronizado é reconhecido e a importação é idempoten
   });
   assert.equal(person.labels.length, 2);
   assert.equal(await db.conversation.count({ where: { contactId: person.id, sessionId } }), 1);
-  assert.equal(socket.sends.length, 0);
+  assert.equal(socket.sends.length, sendsBeforeImport);
 });
 test('REQ-135: campanha congela conteúdo, respeita intervalo e não repete envio', async () => {
   const a = await makeContact('5511777770001');
@@ -300,6 +332,39 @@ test('pós-envio remove etiqueta sem destino, preserva os outros vínculos e sin
       name: 'Inválido', mode: 'SCHEDULE', audience: { conversationIds: [chat.id] },
       delivery: { kind: 'text', text: 'Não enviar', labelTransition },
     }).expect(422);
+  }
+});
+
+test('REQ-395/REQ-396/REQ-397: campanha, remarketing e agendamento trocam etiquetas após concluir', async () => {
+  const scenarios = [
+    { name: 'Campanha fictícia', mode: 'CAMPAIGN', phone: '5511777770321' },
+    { name: 'Remarketing fictício', mode: 'CAMPAIGN', phone: '5511777770322' },
+    { name: 'Agendamento fictício', mode: 'SCHEDULE', phone: '5511777770323' },
+  ] as const;
+  const items: Array<{ chatId: string; sourceId: string; targetId: string; batchId: string }> = [];
+  for (const [index, scenario] of scenarios.entries()) {
+    const chat = await makeContact(scenario.phone, scenario.name);
+    const source = await db.label.create({ data: { id: `req397-source-${index}`, sessionId, name: `Origem ${index}` } });
+    const target = await db.label.create({ data: { id: `req397-target-${index}`, sessionId, name: `Destino ${index}` } });
+    await db.contactLabel.create({ data: { contactId: chat.contactId, labelId: source.id } });
+    const batch = await draft([chat.id], {
+      kind: 'text', text: `Mensagem local: ${scenario.name}`,
+      labelTransition: { fromLabelId: source.id, toLabelId: target.id },
+    }, scenario.mode, scenario.mode === 'SCHEDULE' ? new Date(Date.now() - 1000).toISOString() : undefined);
+    const current = await record<Batch>(db, batch.id, batch);
+    await putRecord(db, batch.id, 'BATCH', { ...current, name: scenario.name });
+    await request(app).put(`/api/operations/sessions/${sessionId}/batches/${batch.id}`)
+      .send({ status: 'ACTIVE' }).expect(200);
+    items.push({ chatId: chat.id, sourceId: source.id, targetId: target.id, batchId: batch.id });
+  }
+  const beforeSends = socket.sends.length;
+  await worker.flush();
+  assert.equal(socket.sends.length, beforeSends + scenarios.length);
+  for (const item of items) {
+    const chat = await db.conversation.findUniqueOrThrow({ where: { id: item.chatId } });
+    assert.equal(await db.contactLabel.findUnique({ where: { contactId_labelId: { contactId: chat.contactId, labelId: item.sourceId } } }), null);
+    assert.ok(await db.contactLabel.findUnique({ where: { contactId_labelId: { contactId: chat.contactId, labelId: item.targetId } } }));
+    assert.equal((await record<Batch>(db, item.batchId, { status: '' } as Batch)).status, 'COMPLETED');
   }
 });
 
@@ -473,6 +538,35 @@ test('encerramento automático não fecha conversa quando a última mensagem é 
   await new BusinessWorker(db, whatsapp).flush();
   assert.equal((await db.conversation.findUniqueOrThrow({ where: { id: a.id } })).status, 'CLOSED');
   assert.equal((await db.conversation.findUniqueOrThrow({ where: { id: b.id } })).status, 'OPEN');
+});
+
+test('REQ-402/REQ-403: resumo às 08h prioriza conversa aguardando e intenção de fechamento uma vez ao dia', async () => {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23',
+  }).formatToParts(now);
+  const part = (type: string) => parts.find((entry) => entry.type === type)?.value ?? '';
+  assert.ok(Number(part('hour')) >= 8, 'teste exige horário local após 08h');
+  const day = `${part('year')}-${part('month')}-${part('day')}`;
+  await putRecord(db, 'night-summary:last-run', 'STATE', { day: '2000-01-01' });
+  await putRecord(db, 'settings:business', 'SETTINGS', {});
+  const awaiting = await makeContact('5511777770331', 'Lead aguardando fictício');
+  const closing = await makeContact('5511777770332', 'Lead fechamento fictício');
+  const earlier = new Date(now.getTime() - 60_000);
+  await db.chatMessage.create({ data: { conversationId: awaiting.id, direction: 'INBOUND', status: 'SENT', text: 'Pode me ajudar?', sentAt: now } });
+  await db.conversation.update({ where: { id: awaiting.id }, data: { lastMessageAt: now } });
+  await db.chatMessage.create({ data: { conversationId: closing.id, direction: 'OUTBOUND', status: 'SENT', text: 'Enviei o preço e prazo fictícios.', sentAt: earlier } });
+  await db.conversation.update({ where: { id: closing.id }, data: { lastMessageAt: earlier } });
+  const business = new BusinessWorker(db, whatsapp);
+  await business.flush();
+  const key = `night-summary:${sessionId}:${day}`;
+  const notice = await record<{ title?: string; text?: string }>(db, key, {});
+  assert.match(notice.title ?? '', /prioridade de hoje/);
+  assert.match(notice.text ?? '', /Lead aguardando fictício/);
+  assert.match(notice.text ?? '', /Lead fechamento fictício/);
+  assert.ok((notice.text ?? '').indexOf('Lead aguardando fictício') < (notice.text ?? '').indexOf('Lead fechamento fictício'));
+  await business.flush();
+  assert.equal(await db.operationRecord.count({ where: { id: key } }), 1);
 });
 test('Firebase rejeita ausência de token sem usar a liberação do modo local', async () => {
   const previous = env.AUTH_MODE;

@@ -1,0 +1,12 @@
+{
+  "req": "REQ-396",
+  "date": "2026-10-30",
+  "result": "APROVADO",
+  "test": "REQ-395/REQ-396/REQ-397: campanha, remarketing e agendamento trocam etiquetas após concluir",
+  "database": "SQLite temporário de operations.test.ts",
+  "assertions": [
+    "remarketing fictício executa campanha em segunda rodada",
+    "troca de etiquetas após conclusão",
+    "nenhum WhatsApp real"
+  ]
+}

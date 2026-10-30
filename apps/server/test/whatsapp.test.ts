@@ -270,6 +270,63 @@ test('primeira mensagem nova etiqueta uma vez; histórico, grupos, replays e eve
   assert.equal(await db.contact.count({ where: { phoneNumber: '5511444440000' } }), 0);
 });
 
+test('REQ-398/REQ-399/REQ-400: referral CTWA conserva campanha, descrição e etiqueta de anúncio', async () => {
+  const sync = new SyncService(db, silentPublisher);
+  const label = await db.label.create({ data: { id: 'req400-anuncio-label', sessionId, name: 'Anúncio' } });
+  const jid = '5511777771030@s.whatsapp.net';
+  await sync.messagesUpsert(sessionId, [{
+    key: { remoteJid: jid, id: 'req398-referral', fromMe: false },
+    message: { extendedTextMessage: {
+      text: 'Tenho interesse nesta oferta.',
+      contextInfo: { externalAdReply: { title: 'Campanha de teste', body: 'Oferta local de auditoria', sourceUrl: 'https://example.com/anuncio' } },
+    } },
+    messageTimestamp: Math.floor(Date.now() / 1000),
+  } as unknown as WAMessage], true);
+  const contact = await db.contact.findUniqueOrThrow({ where: { phoneNumber: '5511777771030' }, include: { labels: true } });
+  const referral = (contact.metadata as { adReferral?: { source?: string; title?: string; body?: string; url?: string } }).adReferral;
+  assert.equal(referral?.source, 'WhatsApp Ads');
+  assert.equal(referral?.title, 'Campanha de teste');
+  assert.equal(referral?.body, 'Oferta local de auditoria');
+  assert.equal(referral?.url, 'https://example.com/anuncio');
+  assert.ok(contact.labels.some((item) => item.labelId === label.id));
+});
+
+test('REQ-411/REQ-412/REQ-413: opt-out normaliza pedido, cancela fila futura e etiqueta contato', async () => {
+  const sync = new SyncService(db, silentPublisher);
+  const jid = '5511777771031@s.whatsapp.net';
+  await sync.messagesUpsert(sessionId, [message(jid, 'req411-initial', false, 'Olá')], true);
+  const contact = await db.contact.findUniqueOrThrow({ where: { phoneNumber: '5511777771031' } });
+  const chat = await db.conversation.findUniqueOrThrow({ where: { sessionId_contactId: { sessionId, contactId: contact.id } } });
+  const blocked = await db.label.create({ data: { id: 'req413-opt-out-label', sessionId, name: 'Bloqueado/Opt-out' } });
+  await db.operationRecord.upsert({
+    where: { id: 'settings:opt-out' },
+    create: { id: 'settings:opt-out', kind: 'SETTINGS', data: { terms: ['parar', 'sair', 'não quero mais'] } },
+    update: { data: { terms: ['parar', 'sair', 'não quero mais'] } },
+  });
+  const queued = [
+    { batchId: 'req412-campaign-queue', mode: 'CAMPAIGN', payload: { kind: 'text', text: 'Não enviar' } },
+    { batchId: 'req412-schedule-queue', mode: 'SCHEDULE', payload: { kind: 'sequence', steps: [] } },
+    { batchId: 'req412-reminder-queue', mode: 'REMINDER', payload: { kind: 'reminder', text: 'Lembrete interno' } },
+  ];
+  for (const [index, batch] of queued.entries()) {
+    await db.operationRecord.create({ data: { id: batch.batchId, kind: 'BATCH', data: { name: batch.batchId, sessionId, status: 'ACTIVE', mode: batch.mode } } });
+    await db.deliveryTask.create({
+      data: { id: `req412-task-${index}`, batchId: batch.batchId, sessionId, conversationId: chat.id, status: 'QUEUED', payload: batch.payload, runAt: new Date(Date.now() + 60_000) },
+    });
+  }
+  await sync.messagesUpsert(sessionId, [{
+    key: { remoteJid: jid, id: 'req411-opt-out', fromMe: false },
+    message: { conversation: 'NÃO QUERO MAIS, obrigado.' },
+    messageTimestamp: Math.floor(Date.now() / 1000),
+  }], true);
+  const updated = await db.contact.findUniqueOrThrow({ where: { id: contact.id }, include: { labels: true } });
+  assert.equal((updated.metadata as { optOut?: boolean }).optOut, true);
+  assert.ok(updated.labels.some((item) => item.labelId === blocked.id));
+  assert.equal(await db.deliveryTask.findUniqueOrThrow({ where: { id: 'req412-task-0' } }).then((task) => task.status), 'CANCELLED');
+  assert.equal(await db.deliveryTask.findUniqueOrThrow({ where: { id: 'req412-task-1' } }).then((task) => task.status), 'CANCELLED');
+  assert.equal(await db.deliveryTask.findUniqueOrThrow({ where: { id: 'req412-task-2' } }).then((task) => task.status), 'QUEUED');
+});
+
 test('REQ-145: última interação conserva o horário mais recente após sincronização fora de ordem', async () => {
   const jid = '5511777770099@s.whatsapp.net';
   const latest = 1_792_800_000;

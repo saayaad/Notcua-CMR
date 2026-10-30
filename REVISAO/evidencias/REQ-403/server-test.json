@@ -1,0 +1,11 @@
+{
+  "req": "REQ-403",
+  "date": "2026-10-30",
+  "result": "APROVADO",
+  "test": "REQ-402/REQ-403: resumo às 08h prioriza conversa aguardando e intenção de fechamento uma vez ao dia",
+  "database": "SQLite temporário de operations.test.ts",
+  "assertions": [
+    "sinal preço/prazo inclui lead pronto para fechamento",
+    "aviso interno local, sem mensagem externa"
+  ]
+}

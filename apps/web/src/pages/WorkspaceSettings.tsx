@@ -647,7 +647,7 @@ export function WorkspaceSettings({
                 const terms = String(new FormData(event.currentTarget).get('terms') ?? '').split(/[,\n]/).map((term) => term.trim()).filter(Boolean);
                 void save('/operations/settings/optout', { terms });
               }}>
-                <label>Palavras ou frases, separadas por vírgula ou linha<textarea name="terms" rows={6} defaultValue={Array.isArray(data.terms) ? (data.terms as string[]).join(', ') : 'parar, sair, cancelar, remover, não quero mais, não me envie, pare'} /></label>
+                <label>Palavras ou frases, separadas por vírgula ou linha<textarea key={JSON.stringify(data.terms ?? null)} name="terms" rows={6} defaultValue={Array.isArray(data.terms) ? (data.terms as string[]).join(', ') : 'parar, sair, cancelar, remover, não quero mais, não me envie, pare'} /></label>
                 <small className="muted">A comparação ignora maiúsculas, acentos e pontuação inicial, e evita bloquear por uma palavra no meio de uma frase.</small>
                 <button className="button primary" disabled={busy}>Salvar regras de opt-out</button>
               </form>

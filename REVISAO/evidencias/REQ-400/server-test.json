@@ -1,0 +1,11 @@
+{
+  "req": "REQ-400",
+  "date": "2026-10-30",
+  "result": "APROVADO",
+  "test": "REQ-398/REQ-399/REQ-400: referral CTWA conserva campanha, descrição e etiqueta de anúncio",
+  "database": "SQLite temporário de whatsapp.test.ts",
+  "assertions": [
+    "etiqueta Anúncio ligada ao contato fictício",
+    "nenhuma etiqueta ou contato real alterado"
+  ]
+}

@@ -93,6 +93,10 @@ const typeOverrides = {
   'REQ-380': 'B', 'REQ-381': 'B', 'REQ-382': 'B', 'REQ-383': 'C', 'REQ-384': 'C',
   'REQ-385': 'C', 'REQ-386': 'C', 'REQ-387': 'B', 'REQ-388': 'B', 'REQ-389': 'C',
   'REQ-390': 'C', 'REQ-391': 'C',
+  'REQ-392': 'C', 'REQ-393': 'C', 'REQ-394': 'C', 'REQ-395': 'C', 'REQ-396': 'C',
+  'REQ-397': 'C', 'REQ-398': 'C', 'REQ-399': 'B', 'REQ-400': 'C', 'REQ-401': 'D',
+  'REQ-402': 'A', 'REQ-403': 'A', 'REQ-406': 'C', 'REQ-407': 'C', 'REQ-408': 'E',
+  'REQ-409': 'E', 'REQ-410': 'D', 'REQ-411': 'C', 'REQ-412': 'C', 'REQ-413': 'C',
 };
 const rows = [];
 for (const line of source.split(/\r?\n/)) {

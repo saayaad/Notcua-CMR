@@ -1,0 +1,11 @@
+{
+  "req": "REQ-412",
+  "date": "2026-10-30",
+  "result": "APROVADO",
+  "test": "REQ-411/REQ-412/REQ-413: opt-out normaliza pedido, cancela fila futura e etiqueta contato",
+  "database": "SQLite temporário de whatsapp.test.ts",
+  "assertions": [
+    "filas de campanha e agendamento canceladas",
+    "lembrete interno preservado"
+  ]
+}

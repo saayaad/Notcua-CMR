@@ -167,3 +167,13 @@ A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, po
 - Correção: atalho móvel “Estúdio de IA” chama o mesmo modal e handler do desktop.
 - Reteste: Playwright abriu e usou o Estúdio em 390×844; evidência em `REVISAO/evidencias/REQ-365/mobile-390.png`.
 - Estado: corrigido localmente em 30/10/2026.
+
+## BUG-024 — Regras de opt-out salvas não apareciam após carregamento assíncrono
+
+- REQ: REQ-411.
+- Reprodução: abrir Configurações → Opt-out e envios quando a API retorna termos personalizados.
+- Resultado: o `<textarea>` mantinha os termos padrão mesmo após a resposta; uma edição poderia substituir a configuração salva por valores antigos.
+- Causa: `defaultValue` era aplicado antes da carga e o elemento não era remontado quando os dados chegavam.
+- Correção: chave do `<textarea>` acompanha a lista carregada e remonta o campo com os termos persistidos.
+- Reteste: Playwright local salva termos no fixture, recarrega e confirma o mesmo valor em desktop e celular; nenhum envio ocorreu.
+- Estado: corrigido localmente em 30/10/2026.

@@ -202,3 +202,11 @@ Sem chave de IA autorizada, não serão repetidos os cenários que cadastram, ed
 - Prova: Playwright 24/24 em três viewports; servidor 208/208; typecheck/build passaram. 96 arquivos de evidência individuais. Nenhuma falha E2E; aviso React `src` vazio preservado no JSON. HTTP 409 da conexão fictícia foi isolado no fixture.
 - IA executada apenas com provedor simulado; nenhuma chamada externa. Banco `.audit/noctua-audit.db` não resetado.
 - Próximo: Automações, REQ-392.
+
+## Lote Automações — REQ-392–413 — 30/10/2026
+
+- Fechado: 2 COMPLETO, 14 COMPLETO-LOCAL, 2 AUSENTE, 1 DECISÃO e REQ-410 cancelada; 404–405 preservadas.
+- Playwright 15/15 em três viewports; servidor 213/213; typecheck e build passaram. Correção BUG-024 permite carregar regras de opt-out após resposta assíncrona; reteste pós-reload passou.
+- Falhas resolvidas: seletores duplicados e fixture de conversas vazia ajustados no E2E; formulário inicial de follow-up já vinha com duas etapas; teste REQ-131 foi isolado para comparar apenas envios criados durante o próprio caso.
+- Evidências em `REVISAO/evidencias/REQ-392/` a `REQ-413/`; 408/409 documentam função ausente; REQ-401 inclui pergunta de escopo; REQ-410 registra decisão já aprovada.
+- Próximo: Economia de IA, REQ-414. Nenhuma chave real.

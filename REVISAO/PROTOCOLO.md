@@ -135,3 +135,14 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - API e front existentes responderam HTTP 200 em `127.0.0.1:3340/atendimento` e `127.0.0.1:5180/`. Banco `.audit/noctua-audit.db` não foi resetado. Sem chave de IA real; nenhum serviço externo foi chamado.
 - Próximo módulo: Automações, começando REQ-392. Continuar em local e fechar cada lote com ledger, evidências, commit e push em `auditoria-reqs`.
 - `scripts/iniciar-noctua-online.ps1` permanece fora do commit; diff preexistente não foi alterado nesta auditoria. O arquivo `npx` não existe na raiz.
+
+## Ponto de retomada — 30/10/2026 — após Automações
+
+- REQ-392–413 avaliadas: 2 `COMPLETO` (402–403), 14 `COMPLETO-LOCAL`, 2 `AUSENTE` (408–409), 1 `DECISÃO` (401), 1 cancelada (410). REQ-404–405 permaneceram intactas.
+- Playwright: 15/15 em 1366×768, 1920×1080 e 390×844; rechecagem dos marcadores AUSENTE: 3/3. Servidor integral: 213/213. Typecheck e build web passaram; bundle 597,29 kB gera aviso >500 kB.
+- Correção BUG-024: textarea de opt-out não refletia termos assíncronos. `key` baseada nos dados carregados força aplicação de configuração persistida; teste visual salva e confirma após reload. Primeiro regressão apontou também asserção global frágil em REQ-131; teste agora compara o delta de envios do próprio caso e a regressão integral passou.
+- BUG-022 segue aberto para compressão de vídeo; BUG-023 e BUG-024 corrigidos localmente. Referral, opt-out, envio e validação usaram somente eventos, provedores e conectores fictícios.
+- REQ-401 aguarda definição de eventos, destino do webhook e métricas. REQ-408/409 não possuem seleção multiconexão ou failover. REQ-410 foi cancelada pela decisão explícita da seção 6.
+- API/front existentes responderam HTTP 200. `.audit/noctua-audit.db` preservado; produção só leitura.
+- Próximo módulo: Economia de IA, REQ-414. Provedor simulado; não solicitar chave real.
+- `scripts/iniciar-noctua-online.ps1` continua fora do commit. O arquivo raiz `npx` não existe.
