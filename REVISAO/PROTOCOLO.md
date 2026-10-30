@@ -180,3 +180,12 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Regressão visual final `e2e/personalization-attendance.spec.ts`: 36/36; typecheck passou. Ledger: 354 com teste vinculado, 349 sem. Evidências em `REVISAO/evidencias/REQ-507/`–`REQ-519/`.
 - REQ-510 confirmou arraste para colisão, encaixe e persistência sem sobreposição no desktop; mobile manteve o layout responsivo encaixado. Todos os writes de preferência foram interceptados pelo fixture, `.audit/noctua-audit.db` preservado.
 - Sem defeitos novos. Próximo módulo: L-20, começando REQ-520; inspeção de infra permanece read-only conforme protocolo. Script Vercel fora do commit.
+
+## Ponto de retomada — 30/10/2026 — após L-20 Infraestrutura
+
+- REQ-521/526 receberam prova local: corpo de backup >100 MiB importado pela API persistente em SQLite temporário; IA sem ativação não faz chamada externa nem reserva custo. Ambas `COMPLETO-LOCAL` conforme política de serviços gratuitos e IA opcional.
+- REQ-535/538/539/543 foram fechadas com documentação operacional e/ou publicação histórica verificável. L-20 registrou 6 alterações de estado no total; a ledger conta 356 com teste vinculado e 347 sem.
+- API local `127.0.0.1:3340/atendimento` respondeu 200; arquivo `npx` na raiz não existe. Não houve acesso ao `.audit/noctua-audit.db`, a valores de `.env`, Vercel, Firebase, túnel, WhatsApp real ou produção.
+- `scripts/iniciar-noctua-online.ps1` continua modificado e fora de staging/commit; não executar nem publicar com ele.
+- Bloqueios conhecidos reunidos para avaliação final: REQ-523 hospedagem persistente/API sem PC; REQ-527 escopo das contas conectadas; REQ-530 conexão WhatsApp real; REQ-533/541 partida controlada do iniciador, que publica; REQ-534 saída do console; REQ-540 identificadores públicos Firebase locais; REQ-542 publicação na branch de produção.
+- Próximo lote: L-21, chaves de IA e geração, REQ-544 em diante. Usar somente provedor simulado; a decisão de não exigir chave real e pausar a IA sem cota permanece válida.

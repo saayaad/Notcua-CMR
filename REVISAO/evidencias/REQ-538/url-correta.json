@@ -1,0 +1,13 @@
+{
+  "req": "REQ-538",
+  "date": "2026-10-30",
+  "method": "read-only source and historical deployment evidence inspection",
+  "expected": "https://notcua.vercel.app/atendimento",
+  "artifacts": [
+    "scripts/iniciar-noctua-online.ps1",
+    "LEIA-ME - Noctua Online.txt",
+    "REVISAO/evidencias/reinicio-2026-10-28.json"
+  ],
+  "result": "PASS",
+  "sideEffects": "No production request made during this audit."
+}

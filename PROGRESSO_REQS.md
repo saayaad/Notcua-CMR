@@ -221,3 +221,11 @@ Sem chave de IA autorizada, não serão repetidos os cenários que cadastram, ed
 - Evidências individuais em `REVISAO/evidencias/REQ-414/` a `REQ-443/`; todas as escritas ocorreram em rotas mockadas E2E ou SQLite temporário da suíte. Banco `.audit/noctua-audit.db` preservado. API/front existentes confirmados HTTP 200.
 - Pendências técnicas visíveis: REQ-425/BUG-025, REQ-430 embeddings locais ausentes, REQ-419–422 sem consumidores. A IA real segue desativada e não foi chamada.
 - Próximo módulo: Ferramentas laterais e respostas padrão, REQ-444–469. REQ-461–464 e REQ-466 têm formato/aceite ambíguo; seguir evidências e deixar decisão explícita no ledger, sem envio real.
+## Auditoria L-20 — Infraestrutura (REQ-520–543) — 30/10/2026
+
+- Auditoria local/estática sem Vercel CLI, Firebase, túnel ou produção; `http://127.0.0.1:3340/atendimento` respondeu HTTP 200. O arquivo raiz `npx` não existe.
+- Provas focais aprovadas em bancos temporários descartáveis: REQ-521 enviou corpo JSON >100 MiB pela API, recebeu 202 e confirmou importação completa de mídia de 76 MiB; REQ-526 confirmou IA desativada sem chave, sem chamada externa e sem reserva/custo. Não foi aberto nem alterado `.audit/noctua-audit.db`.
+- Estados atualizados: REQ-521 e REQ-526 `COMPLETO-LOCAL`; REQ-535, 538, 539 e 543 `COMPLETO`. Evidências individuais em `REVISAO/evidencias/REQ-521/`, `REQ-526/`, `REQ-535/`, `REQ-538/`, `REQ-539/` e `REQ-543/`.
+- Requisitos preservados como parciais/pendentes quando a prova exigiria ação proibida ou informação do proprietário: persistência sem PC para API (REQ-523), conta/configuração conectada de escopo ainda não determinado (REQ-527), reconexão de conta WhatsApp real (REQ-530), partida controlada do iniciador (REQ-533/541), saída de console (REQ-534), identificadores públicos Firebase locais (REQ-540), e publicação (REQ-542).
+- `npm run audit:ledger`: 356 REQs com teste vinculado, 347 sem. Totais: 369 COMPLETO, 87 COMPLETO-LOCAL, 93 PARCIAL, 70 A VERIFICAR, 51 substituídos/cancelados, 23 decisões (2 confirmadas), 4 desconectados, 3 defeitos e 3 ausentes.
+- Próximo lote: L-21, chaves de IA e geração (REQ-544 em diante). Não repetir pedido de chave real; usar apenas provedor simulado e respeitar a decisão gratuita registrada no protocolo.

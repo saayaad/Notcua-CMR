@@ -1,0 +1,10 @@
+{
+  "req": "REQ-539",
+  "date": "2026-10-30",
+  "method": "read-only Git remote and historical deployment record inspection",
+  "repository": "saayaad/Notcua-CMR",
+  "vercelProject": "noctua-crm",
+  "artifact": "REVISAO/evidencias/publicacao-2026-10-29.json",
+  "result": "PASS",
+  "sideEffects": "No Vercel account settings read or changed."
+}

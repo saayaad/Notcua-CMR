@@ -1,0 +1,16 @@
+{
+  "req": "REQ-543",
+  "date": "2026-10-30",
+  "method": "read-only documentation and prior incident evidence inspection",
+  "artifacts": [
+    "LEIA-ME - Noctua Online.txt",
+    "docs/operacao.md",
+    "REVISAO/evidencias/reinicio-2026-10-28.json"
+  ],
+  "assertions": [
+    "Guide says keep the PC, internet connection and terminal window open",
+    "Prior incident shows API offline when PC/tunnel stopped and health 200 after recovery"
+  ],
+  "result": "PASS",
+  "sideEffects": "No new tunnel or production connection started."
+}

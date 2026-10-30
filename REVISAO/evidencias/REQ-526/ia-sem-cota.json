@@ -1,0 +1,15 @@
+{
+  "req": "REQ-526",
+  "date": "2026-10-30",
+  "environment": "isolated server test with temporary SQLite database and no external provider",
+  "command": "npx tsx --import ./test/setup-env.mjs --test --test-name-pattern=\"REQ-526\" test/ai-feature.test.ts",
+  "result": "PASS",
+  "assertions": [
+    "AI is disabled by default",
+    "generation rejected while disabled",
+    "no provider request attempted",
+    "no cache/reservation/cost written"
+  ],
+  "decision": "REVISAO/PROTOCOLO.md section 6: only free services; when quota is unavailable, AI pauses and the rest of the app continues.",
+  "scope": "No AI key, billing account, external provider or production service used."
+}

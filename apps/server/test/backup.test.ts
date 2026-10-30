@@ -280,7 +280,7 @@ async function waitForImport(app: ReturnType<typeof createApp>, id: string) {
   }
   throw new Error('Importação não concluiu no tempo de teste.');
 }
-test('upload de backup maior que 40 MiB aceita mídia maior que 20 MiB e processa em segundo plano', async () => {
+test('REQ-521 upload de backup acima de 100 MiB aceita mídia grande via API e processa em segundo plano', async () => {
   const oldLimit = env.BODY_LIMIT_MB;
   env.BODY_LIMIT_MB = 1;
   const app = createApp(db);
@@ -290,12 +290,12 @@ test('upload de backup maior que 40 MiB aceita mídia maior que 20 MiB e process
         {
           id: 'large-backup-file',
           name: 'Mídia grande fictícia',
-          base64: 'data:video/mp4;base64,' + Buffer.alloc(31 * 1024 * 1024, 65).toString('base64'),
+          base64: 'data:video/mp4;base64,' + Buffer.alloc(76 * 1024 * 1024, 65).toString('base64'),
         },
       ],
     };
     const body = JSON.stringify(payload);
-    assert.ok(Buffer.byteLength(body) > 40 * 1024 * 1024);
+    assert.ok(Buffer.byteLength(body) > 100 * 1024 * 1024);
     const response = await request(app)
       .post('/api/backups/upload')
       .set('Content-Type', 'application/json')
@@ -309,7 +309,7 @@ test('upload de backup maior que 40 MiB aceita mídia maior que 20 MiB e process
       where: { id: 'large-backup-file' },
       include: { file: true },
     });
-    assert.equal(asset.file?.byteLength, 31 * 1024 * 1024);
+    assert.equal(asset.file?.byteLength, 76 * 1024 * 1024);
   } finally {
     env.BODY_LIMIT_MB = oldLimit;
   }

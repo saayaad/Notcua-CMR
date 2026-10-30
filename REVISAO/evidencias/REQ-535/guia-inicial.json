@@ -1,0 +1,12 @@
+{
+  "req": "REQ-535",
+  "date": "2026-10-30",
+  "method": "read-only documentation inspection",
+  "artifact": "LEIA-ME - Noctua Online.txt",
+  "assertions": [
+    "First-use instructions say log in to Vercel if prompted",
+    "First-use instructions name project noctua-crm"
+  ],
+  "result": "PASS",
+  "sideEffects": "No Vercel CLI or deployment command executed."
+}

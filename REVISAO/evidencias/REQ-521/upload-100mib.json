@@ -1,0 +1,14 @@
+{
+  "req": "REQ-521",
+  "date": "2026-10-30",
+  "environment": "isolated Node test with temporary SQLite files under OS temp directory",
+  "command": "npx tsx --import ./test/setup-env.mjs --test --test-name-pattern=\"REQ-521\" test/backup.test.ts",
+  "result": "PASS",
+  "assertions": [
+    "JSON request body exceeds 100 MiB",
+    "upload endpoint returns HTTP 202",
+    "asynchronous import completes",
+    "76 MiB media bytes persist exactly in disposable test database"
+  ],
+  "scope": "No .audit database or live server database opened by this test; no production service accessed."
+}

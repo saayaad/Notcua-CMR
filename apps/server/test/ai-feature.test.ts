@@ -67,7 +67,7 @@ after(async () => {
   assert.equal(networkAttempts, 0);
 });
 
-test('I.A. começa oculta e bloqueia geração, cache e reserva antes de chamar qualquer provedor', async () => {
+test('REQ-526 IA sem ativação permanece parada, sem chamada externa, cache ou reserva', async () => {
   assert.equal((await request(app).get('/operations/features').expect(200)).body.aiEnabled, false);
   await assert.rejects(requireAiFeature(db), /desabilitada/);
   await assert.rejects(generateSuggestion(db, 'ficticio', 'Sugira'), /desabilitada/);
