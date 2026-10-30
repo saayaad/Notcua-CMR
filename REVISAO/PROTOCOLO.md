@@ -165,3 +165,11 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Evidências visuais em `REVISAO/evidencias/REQ-444/` até `REQ-487/` para os itens exercitados. `.audit/noctua-audit.db` preservado, organização temporária restaurada e nenhuma mensagem enviada.
 - Próximo lote pela lista: L-18, REQ-488 em diante. Continuar com o ambiente local existente, sem reset e sem acesso de escrita à produção.
 - `scripts/iniciar-noctua-online.ps1` permanece fora do commit por alterar a raiz de execução dos comandos Vercel; mudança já explicada. O arquivo `npx` não está na raiz.
+
+## Ponto de retomada — 30/10/2026 — após Atendimento e Personalização
+
+- Lote REQ-488–503 avaliado: 15 `COMPLETO`; REQ-499 em `DECISÃO` quanto a remover também teclas numéricas configuráveis.
+- Playwright `e2e/personalization-attendance.spec.ts`: 15/15 testes (45 execuções) nos três viewports; evidências em `REVISAO/evidencias/REQ-488/`–`REQ-503/`. Ledger: 342 com teste vinculado, 361 sem.
+- As preferências visuais foram interceptadas no fixture de teste. Nenhum dado foi escrito no banco `.audit`, nenhuma mensagem foi enviada e nenhuma produção foi acessada.
+- Correção no teste: informar a versão 3 de personalização para a normalização não ocultar todos os atalhos; seletores corrigidos para os nomes e destinos reais, com validação mobile responsiva.
+- Próximo lote: L-19, iniciando REQ-507. Manter local, sem reset do banco; script Vercel permanece fora do commit.

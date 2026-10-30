@@ -62,3 +62,11 @@
 - Próximo módulo pela ordem da lista: L-18, iniciando em REQ-488. Banco `.audit/noctua-audit.db` preservado; nenhuma produção acessada para escrita.
 
 - Ledger regenerado após a suíte: 326 REQs com teste vinculado e 377 sem. `scripts/iniciar-noctua-online.ps1` segue fora do commit, conforme explicado ao usuário; o arquivo `npx` não existe na raiz.
+
+## Atendimento e Personalização — lote REQ-488–503 — 30/10/2026
+
+- Playwright `e2e/personalization-attendance.spec.ts`: 15/15 testes passaram em três viewports (45 execuções). Cobriu destino de atalhos, exclusão mútua entre lateral/janela, abas do editor, filtros por tipo/categoria, seleção/removal de fixados, configuração independente, seleção inicial vazia, posição livre após reload, teclas persistentes, densidade compacta e prévia antes de envio.
+- 15 REQs foram para `COMPLETO`; REQ-499 permanece `DECISÃO`: confirmar se “remover opção de números para ordenar” abrange só numeração da lista ou também teclas numéricas configuráveis.
+- Preferências foram interceptadas pelo Playwright em fixture e sobreviveram a reloads dentro do teste; nenhuma escrita no `.audit/noctua-audit.db`, envio de mensagem ou chamada de produção. Evidências individuais em `REVISAO/evidencias/REQ-488/`–`REQ-503/`.
+- Falhas e correções: fixture inicial não informava `attendanceCustomizationVersion=3`, então normalização ocultava atalhos; adicionada versão e visibilidade explícitas. Nomes de abas e destino do atalho foram ajustados aos rótulos reais do DOM. Em mobile, lateral fechada após salvar é o comportamento responsivo; expectativa foi atualizada. Posição livre testada nos campos reais e após recarga.
+- Ledger: 342 REQs com teste vinculado e 361 sem. Próximo módulo: L-19, REQ-507 em diante. O script `scripts/iniciar-noctua-online.ps1` segue fora do commit.

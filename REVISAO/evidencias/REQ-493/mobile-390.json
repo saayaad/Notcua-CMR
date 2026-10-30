@@ -1,0 +1,14 @@
+{
+  "req": "REQ-493",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "errors": [],
+  "startsEmpty": true,
+  "filteredTextCount": 2,
+  "filteredUncategorizedCount": 2,
+  "individuallyConfigured": "Áudio fictício",
+  "individuallyRemoved": true,
+  "previewPreferenceAvailable": true,
+  "messageSent": false
+}
