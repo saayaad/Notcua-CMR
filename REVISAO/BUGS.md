@@ -96,3 +96,11 @@ Na página publicada, uma aba mantida aberta tentou importar um arquivo JavaScri
 ## BUG-011 — Iniciador falhou ao carregar verificador de assinatura após reinício — correção parcial em 28/10/2026
 
 A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, pois o PowerShell não carregou `Microsoft.PowerShell.Security` automaticamente. O mesmo módulo e a assinatura válida da Cloudflare funcionaram na execução interativa seguinte, que restaurou site, API e túnel. O iniciador passou a importar o módulo explicitamente e repetir a tentativa até três vezes antes de falhar; não remove o executável por falha de importação. Parser e assinatura aprovados. Falta repetir o teste com outro desligamento real para confirmar que o erro transitório foi eliminado. Evidência: `evidencias/reinicio-2026-10-28.json`.
+
+
+## BUG-016 — Lista de conversas quase inacessível no layout em linhas
+- Reprodução: em Atendimento, escolher layout de painéis “linhas” numa altura de viewport comum.
+- Resultado observado: a lista recebia no máximo 12rem e os filtros ocupavam a maior parte da área, escondendo conversas.
+- Correção: elevar a altura calculada da lista para clamp(20rem, 42vh, 26rem).
+- Validação: teste REQ-216 em Chromium Playwright e teste unitário attendance-layout; viewport desktop e móvel aprovados.
+- Estado: corrigido localmente em 30/10/2026.

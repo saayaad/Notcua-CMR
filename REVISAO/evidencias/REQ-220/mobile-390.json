@@ -1,0 +1,11 @@
+{
+  "req": "REQ-220",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "backdropFilter": "blur(12px)",
+  "borderColor": "rgb(42, 43, 55)",
+  "boxShadow": "none",
+  "activeTransform": "matrix(0.99057, 0, 0, 0.99057, 0, 0)",
+  "modalAnimation": "noctua-modal-in 180ms"
+}

@@ -1,0 +1,15 @@
+{
+  "req": "REQ-216",
+  "result": "APROVADO",
+  "project": "desktop-1920",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "densitiesPreviewed": [
+    "compact",
+    "medium",
+    "expanded"
+  ],
+  "persisted": "medium",
+  "layout": "rows",
+  "shortcuts": "left",
+  "toastProgressSeconds": 4.5
+}

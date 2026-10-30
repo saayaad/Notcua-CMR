@@ -284,8 +284,18 @@ test('REQ-224/REQ-225/REQ-226/REQ-227/REQ-228/REQ-229 percorre resultados da bus
   await page.getByRole('button', { name: /Boas-vindas da auditoria.*Biblioteca/ }).click();
   await expect(page.getByText('Boas-vindas da auditoria', { exact: true }).first()).toBeVisible();
   await saveEvidence(page, 'REQ-228', info, { resource: 'Boas-vindas da auditoria' });
+  await page.keyboard.press('Escape');
 
   search = await openSearch(page);
+  await search.fill('cores');
+  await page.getByRole('button', { name: /Cores, tema e identidade.*Personalização/ }).click();
+  await expect(page.getByRole('heading', { name: 'Identidade e cores' })).toBeVisible();
+  await saveEvidence(page, 'REQ-229', info, { setting: 'Cores, tema e identidade' });
+});
+
+test('REQ-229 abre uma configuração de Personalização pelo resultado da busca global', async ({ page }, info) => {
+  await openApp(page);
+  const search = await openSearch(page, true);
   await search.fill('cores');
   await page.getByRole('button', { name: /Cores, tema e identidade.*Personalização/ }).click();
   await expect(page.getByRole('heading', { name: 'Identidade e cores' })).toBeVisible();
@@ -317,10 +327,10 @@ test('REQ-230/REQ-231/REQ-232/REQ-233 move card, persiste valor e mostra retorno
   await saveEvidence(page, ['REQ-230', 'REQ-231'], info, { contact: 'Ana Exemplo', target, value });
 
   await page.getByRole('button', { name: 'Visão geral', exact: true }).click();
-  const labelFinance = page.locator('.label-finance').getByText(/Clientes.*1 vendas.*Receita.*100,00.*Investimento.*20,00/s);
+  const labelFinance = page.locator('.label-finance').getByText(/Cliente.*1 vendas.*Receita.*100,00.*Investimento.*20,00/s);
   await expect(labelFinance).toBeVisible();
   await expect(page.locator('.label-finance')).toContainText('Retorno estimado: 400%');
-  await saveEvidence(page, 'REQ-232', info, { label: 'Clientes', revenue: 100, investment: 20, roi: 400 });
+  await saveEvidence(page, 'REQ-232', info, { label: 'Cliente', revenue: 100, investment: 20, roi: 400 });
 
   await page.getByRole('button', { name: 'Campanhas', exact: true }).click();
   const campaign = page.locator('article.surface').filter({ has: page.getByRole('heading', { name: 'Campanha Auditoria' }) });

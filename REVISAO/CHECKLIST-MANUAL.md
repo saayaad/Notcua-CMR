@@ -101,3 +101,26 @@ Os requisitos abaixo estão aprovados com provedor simulado e em estado **COMPLE
 1. Com provedor real autorizado, consultar o catálogo e escolher um modelo compatível.
 2. Salvar, recarregar e confirmar que o modelo permanece selecionado e responde a uma solicitação fictícia.
 3. Registrar catálogo e persistência e excluir a chave real ao terminar.
+
+
+## Personalização — provas externas pendentes (30/10/2026)
+
+### Monitores físicos — REQ-202
+1. Abrir Atendimento em monitor HD, Full HD e ultrawide.
+2. Conferir cortes, sobreposição e rolagem; capturar cada resolução.
+3. Registrar navegador, resolução e resultado por monitor.
+
+### Zoom do navegador — REQ-203
+1. Em desktop real, testar zoom em 80%, 100%, 125% e 150%.
+2. Conferir navegação, modais e atendimento sem sobreposição.
+3. Anexar capturas e anotar zoom/resolução.
+
+### Navegadores — REQ-204
+1. Abrir as rotas principais em Chrome, Edge, Firefox e Safari.
+2. Conferir login, busca, atendimento e configurações.
+3. Registrar versão, erros visuais e capturas; Safari requer Apple.
+
+### Dois dispositivos — REQ-217
+1. Entrar com a mesma conta de teste em dois dispositivos.
+2. Mudar uma preferência no primeiro e aguardar sincronização no segundo.
+3. Recarregar ambos e confirmar o valor persistido.

@@ -1,0 +1,11 @@
+{
+  "req": "REQ-217",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "menuName": "Atender mobile-390",
+  "folderName": "Respostas mobile-390",
+  "secondContext": true,
+  "logo": true,
+  "favicon": true
+}

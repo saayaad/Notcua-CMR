@@ -1,0 +1,30 @@
+{
+  "req": "REQ-202",
+  "result": "APROVADO",
+  "project": "desktop-1920",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "base": {
+    "boxSizing": "border-box",
+    "margin": "0px",
+    "padding": "0px",
+    "pseudoBoxSizing": "border-box",
+    "fontSize": "16px",
+    "textAdjust": "100%",
+    "smoothing": "antialiased",
+    "shellWidth": 1920,
+    "shellHeight": 1080,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "units": {
+      "rem": true,
+      "percent": true,
+      "fr": true,
+      "minmax": true,
+      "clamp": true
+    }
+  },
+  "scaleChecks": [],
+  "engine": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.7390.37 Safari/537.36"
+}
