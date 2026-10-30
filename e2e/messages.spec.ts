@@ -89,3 +89,32 @@ test('REQ-236/REQ-237/REQ-238/REQ-239 configura HUD pelo cabeçalho e persiste d
   await expect(page.locator('.chat-header button[title]').first()).toHaveAttribute('title', /Agendar mensagem|Arquivar conversa/);
   await evidence(page, ['REQ-236', 'REQ-237', 'REQ-238', 'REQ-239'], info, { density: 'expanded', persisted: true, tooltip: true });
 });
+
+test('REQ-243/REQ-244/REQ-245 exibe verde, amarelo e vermelho nos limites de espera', async ({ page, request }, info) => {
+  await page.goto('/atendimento');
+  await expect(page.locator('.app-shell')).toBeVisible();
+  const currentResponse = await request.get('http://127.0.0.1:3340/api/operations/settings/preferences');
+  expect(currentResponse.ok()).toBeTruthy();
+  const current = await currentResponse.json();
+  const setThresholds = async (yellow: number, red: number) => {
+    const response = await request.put('http://127.0.0.1:3340/api/operations/settings/preferences', {
+      data: { ...current, waitingTimer: true, waitingYellow: yellow, waitingRed: red },
+    });
+    expect(response.ok()).toBeTruthy();
+    await page.reload();
+    await expect(page.locator('.app-shell')).toBeVisible();
+  };
+  const ana = page.locator('button.chat-item').filter({ hasText: 'Ana Exemplo' });
+  await setThresholds(130, 140);
+  await expect(ana.locator('.wait-age')).toHaveClass(/wait-age(?!.*warning|.*urgent)/);
+  await evidence(page, ['REQ-243'], info, { contact: 'Ana Exemplo', class: 'wait-age', threshold: 'under 5 min' });
+  await setThresholds(100, 140);
+  await expect(ana.locator('.wait-age')).toHaveClass(/warning/);
+  await evidence(page, ['REQ-244'], info, { contact: 'Ana Exemplo', class: 'warning', threshold: '5–15 min' });
+  await setThresholds(100, 120);
+  await expect(ana.locator('.wait-age')).toHaveClass(/urgent/);
+  await expect(ana).toHaveClass(/sla-urgent/);
+  await evidence(page, ['REQ-245'], info, { contact: 'Ana Exemplo', class: 'urgent', threshold: 'over 15 min' });
+  const restored = await request.put('http://127.0.0.1:3340/api/operations/settings/preferences', { data: current });
+  expect(restored.ok()).toBeTruthy();
+});

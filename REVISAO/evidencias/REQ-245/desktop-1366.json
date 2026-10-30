@@ -1,0 +1,9 @@
+{
+  "req": "REQ-245",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "contact": "Ana Exemplo",
+  "class": "urgent",
+  "threshold": "over 15 min"
+}

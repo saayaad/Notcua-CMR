@@ -99,5 +99,6 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - O usuário confirmou que os servidores já estão rodando em `127.0.0.1:5180` e `127.0.0.1:3340`; não iniciar outro servidor nem resetar o banco.
 - Banco confirmado por cadeia de processos: PID que escuta 3340 tem como ancestral `node e2e/scripts/audit-dev.mjs`; esse script define `DATABASE_URL` para `.audit/noctua-audit.db`. Health local respondeu `ok`.
 - `e2e/playwright.config.ts` agora oferece `AUDIT_USE_RUNNING_SERVER=1` para omitir o webServer do Playwright e reutilizar os endereços existentes.
-- `e2e/messages.spec.ts` está em progresso e ainda não foi commitado. Os primeiros testes de arquivamento/restauração (REQ-241/242), nota interna (REQ-247/249) e Biblioteca rápida (REQ-254–256) atingiram duas tentativas sem passar; não repetir. O teste de HUD (REQ-236–239) também atingiu duas tentativas sem passar. Registrar bloqueios/defeitos com cuidado e continuar os demais requisitos do módulo.
-- Não foi iniciada publicação, reset do banco ou novo servidor nesta retomada.
+- `e2e/messages.spec.ts` segue em progresso. REQ-243/244/245 passaram em Chromium 1366×768 e geraram evidências; thresholds no banco .audit foram restaurados aos padrões 5/15, timer ligado.
+- Arquivamento/restauração (REQ-241/242), nota interna (REQ-247/249), Biblioteca rápida (REQ-254–256) e HUD (REQ-236–239) já atingiram duas tentativas sem passar; não repetir. Registrar bloqueios no lote e prosseguir com os demais requisitos do módulo.
+- Neste ponto, lote de Mensagens ainda não está fechado; ledger/status não foram regenerados. Sem publicação, reset do banco ou novo servidor nesta retomada.
