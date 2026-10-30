@@ -131,3 +131,12 @@ A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, po
 - Correção: no evento de exclusão, o servidor tenta copiar imagem/áudio do payload Baileys para `StoredFile` (limite 20 MiB) antes de gravar o selo; mídias de visualização única são ignoradas e falha de download conserva o tombstone/metadados.
 - Validação: `REQ-267 arquiva a cópia fictícia...` em banco temporário confirmou arquivo e marca após evento de exclusão; integração externa segue no checklist manual.
 - Estado: corrigido localmente em 30/10/2026.
+
+## BUG-020 — Contagem do próximo envio desaparecia quando a conexão estava indisponível
+
+- REQ: REQ-284.
+- Reprodução: abrir o monitor de campanha com uma execução ativa, tarefa futura e conexão WhatsApp indisponível.
+- Resultado: o monitor mostrava apenas “Aguardando conexão do WhatsApp”, escondendo o horário estimado da próxima tentativa apesar de `nextTaskAt`/`nextAllowedAt` disponíveis.
+- Correção: mostrar a contagem regressiva prevista junto ao aviso explícito de que aguarda a conexão. Não indica que um envio ocorrerá sem conexão.
+- Validação: Playwright com dados e rotas fictícios verificou progresso, contagem e aviso de desconexão, pausa, retomada e cancelamento sem envio; evidências em `REVISAO/evidencias/REQ-283/` a `REQ-288/`.
+- Estado: corrigido localmente em 30/10/2026.

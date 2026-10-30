@@ -101,3 +101,11 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Os serviços locais do usuário continuam ativos em `127.0.0.1:5180` e `127.0.0.1:3340`; usar `AUDIT_USE_RUNNING_SERVER=1`. Banco confirmado `.audit/noctua-audit.db`; não resetar nem subir serviços adicionais.
 - Próximo lote: módulo Campanhas e agenda, iniciando REQ-269. Não tocar em produção, Firebase, chaves reais, Vercel ou `.env.local`.
 - Conforme instrução mais recente do usuário/AGENTS.md, após cada falha registrar mensagem completa, corrigir uma causa real e retestar; não repetir o mesmo teste sem alteração e não parar pelo limite de tentativas antigo.
+
+## Ponto de retomada — 30/10/2026 — após Campanhas e agenda
+
+- Lote REQ-269–297 fechado: 25 `COMPLETO`, REQ-279 `COMPLETO-LOCAL`; REQ-272–274 preservadas. BUG-020 corrigido e anotado. Evidências individuais em `REVISAO/evidencias/REQ-269/`–`REQ-297/` (sem reexecutar 272–274).
+- Playwright final `e2e/campaigns.spec.ts`: 18/18 aprovados em 1366×768, 1920×1080 e 390×844; persistência pós-reload em rascunhos, contato/agendamento, equipe e Biblioteca. Dados exclusivamente fictícios no banco `.audit/noctua-audit.db`; rascunhos cancelados, nenhum envio.
+- Contagens após o lote: 179 A VERIFICAR; 251 COMPLETO; 30 COMPLETO-LOCAL; 178 PARCIAL; 50 cancelados/substituídos; 10 decisão; 4 desconectados; 0 com defeito; 1 ausente.
+- Próximo lote: REQ-298–327, módulo Exportação e operação. Retomar sem reiniciar os serviços locais; não resetar o banco.
+- Regressão final pós-lote Campanhas: servidor 206/206, typecheck aprovado, build aprovado com aviso de bundle >500 kB, Playwright 18/18 em três viewports.

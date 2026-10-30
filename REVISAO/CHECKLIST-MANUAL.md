@@ -150,3 +150,9 @@ Os requisitos abaixo estão aprovados com provedor simulado e em estado **COMPLE
 1. Em conexão descartável, receber uma imagem e um áudio comuns (não de visualização única) e confirmar a entrega ao Noctua.
 2. Apagar cada mídia no cliente remetente e verificar que o Noctua conserva a cópia legível após o evento de exclusão.
 3. Registrar capturas e remover os arquivos/conversa de teste. A cópia local já foi provada com downloader fictício; esta etapa só valida a integração WhatsApp.
+## REQ-279 — gerador de variações com provedor real (opcional)
+
+O comportamento foi aprovado localmente com provedor simulado e está marcado `COMPLETO-LOCAL`. Não solicitar chave ou contratação. Se o usuário decidir habilitar IA real no futuro:
+1. Configurar apenas uma chave descartável autorizada e validar máscara/modelo.
+2. Gerar quatro variações sem enviar a campanha e conferir conteúdo e logs.
+3. Remover a chave e registrar a prova sem expor o segredo.

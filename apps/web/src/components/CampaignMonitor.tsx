@@ -123,13 +123,13 @@ export function CampaignMonitor({ sessionId, connected }: { sessionId: string; c
               <small>
                 {item.status === 'PAUSED'
                   ? 'Pausada'
-                  : !connected
-                    ? 'Aguardando conexão do WhatsApp'
-                    : running
+                  : running
                       ? 'Envio em andamento'
                       : seconds
-                        ? `Próximo envio em ${seconds}s`
-                        : 'Preparando próximo envio'}
+                        ? `Próximo envio em ${seconds}s${connected ? '' : ' · aguardando conexão do WhatsApp'}`
+                        : connected
+                          ? 'Preparando próximo envio'
+                          : 'Aguardando conexão do WhatsApp'}
               </small>
               <div
                 className="campaign-pace"

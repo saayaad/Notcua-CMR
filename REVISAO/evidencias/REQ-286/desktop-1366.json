@@ -1,0 +1,16 @@
+{
+  "req": "REQ-286",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "sent": 1,
+  "total": 5,
+  "countdownVisible": true,
+  "safetyCopy": "estimativa; sem promessa de proteção",
+  "controls": [
+    "pause",
+    "resume",
+    "cancel"
+  ],
+  "sends": 0
+}

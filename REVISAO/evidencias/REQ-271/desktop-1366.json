@@ -1,0 +1,11 @@
+{
+  "req": "REQ-271",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "name": "Atendente desktop-1366",
+  "department": "Campanha desktop13661793374341969",
+  "email": "req271-desktop13661793374341969@example.com",
+  "avatar": true,
+  "presence": "Offline"
+}

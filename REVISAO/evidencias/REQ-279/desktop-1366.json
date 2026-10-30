@@ -1,0 +1,15 @@
+{
+  "req": "REQ-279",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "aiProvider": "stubbed local route",
+  "variants": 4,
+  "previewAlternated": "Oi, Ana! Temos uma condição especial.",
+  "intervals": [
+    25,
+    40
+  ],
+  "savedAsDraftAndReloaded": true,
+  "sends": 0
+}

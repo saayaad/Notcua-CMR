@@ -1,0 +1,23 @@
+{
+  "req": "REQ-278",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "nativeSelects": 0,
+  "modal": {
+    "height": 739.8502197265625,
+    "viewportHeight": 844,
+    "scroller": "layout",
+    "scrollerOverflowY": "auto",
+    "formScrollable": true,
+    "actionsVisible": true
+  },
+  "labelColors": {
+    "Novo lead": "#8B5CF6",
+    "Orçamento": "#F59E0B"
+  },
+  "selectedLists": 2,
+  "combinedLabels": 2,
+  "audienceCount": 2,
+  "manuallySelected": 1
+}

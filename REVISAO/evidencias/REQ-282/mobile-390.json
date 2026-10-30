@@ -1,0 +1,15 @@
+{
+  "req": "REQ-282",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "aiProvider": "stubbed local route",
+  "variants": 4,
+  "previewAlternated": "Oi, Ana! Temos uma condição especial.",
+  "intervals": [
+    25,
+    40
+  ],
+  "savedAsDraftAndReloaded": true,
+  "sends": 0
+}
