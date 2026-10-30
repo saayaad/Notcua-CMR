@@ -367,7 +367,7 @@ test('REQ-327/REQ-562 mostra necessidade de conectar com QR fictício sem tocar 
   expect(bounds.width).toBeLessThanOrEqual((await page.evaluate(() => innerWidth)) - 24);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(await page.evaluate(() => innerWidth));
   await expect(page.getByRole('button', { name: 'Conectar', exact: true })).toBeVisible();
-  await saveEvidence(page, ['REQ-327', 'REQ-562'], info, { qr: 'mocked local response; no WhatsApp connection', reconnectInstruction: true, connectButtonVisible: true, bounds, responsive: true });
+  await saveEvidence(page, ['REQ-562'], info, { qr: 'mocked local response; no WhatsApp connection', reconnectInstruction: true, connectButtonVisible: true, bounds, responsive: true });
 });
 
 test('REQ-326 filtra mensagens fixadas por categoria após salvar preferências', async ({ page }, info) => {
