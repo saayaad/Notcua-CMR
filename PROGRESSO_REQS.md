@@ -237,3 +237,12 @@ Sem chave de IA autorizada, não serão repetidos os cenários que cadastram, ed
 - Ajustes do teste: seletores da primeira rodada usaram nomes não exibidos (“Mostrar...” com painel já aberto e “Ocultar configurações...” em vez de “Ocultar chaves de API”); texto exato foi conferido no componente, o teste passou após correção. Um comando inicial do servidor procurou `test/operations.test.ts` na raiz do monorepo; repetido no diretório `apps/server`, passou. Sem defeito do produto.
 - `npm run audit:ledger`: 368 REQs com teste vinculado, 335 sem. Totais: 379 COMPLETO, 89 COMPLETO-LOCAL, 93 PARCIAL, 58 A VERIFICAR, 51 substituídos/cancelados, 23 decisões (2 confirmadas), 4 desconectados, 3 defeitos e 3 ausentes.
 - Próximo lote: L-22, Qualidade e documentação (REQ-556–573). REQ-573 continua adiada conforme §6; não solicitar Parte 8 de novo.
+
+## Auditoria L-22 — Qualidade e documentação (REQ-556–573) — 30/10/2026
+
+- Fechadas 16 REQs: 14 `COMPLETO`, 2 `COMPLETO-LOCAL` (REQ-565/566). REQ-567 virou `PRECISA DE DECISÃO` porque “enquanto dorme” não define horários, filas nem retomada automática. REQ-573 continua adiada até Parte 8 e fora da contagem.
+- Playwright REQ-562: 3/3 em desktop 1366×768, desktop 1920×1080 e mobile 390×844; QR/resposta foi fictício e o botão Conectar não foi acionado. Teste servidor REQ-570: 1/1, WAV sintético virou OGG/Opus PTT via socket fictício. Nenhuma mensagem externa enviada.
+- Checklist pessoal, formato Notion, arquitetura Mermaid, relatório por sistema e checkpoints foram verificados. Registros históricos de 25/26 de outubro confirmam escopo do contato autorizado, follow-up cancelado e reprodução de áudio no iPhone; não foram repetidos.
+- Evidências individuais em `REVISAO/evidencias/REQ-556/` a `REQ-572/`; procedimento físico REQ-565 em `REVISAO/CHECKLIST-MANUAL.md`. O conteúdo do checklist Notion foi atualizado: testes externos históricos não são autorização atual; produção segue somente leitura.
+- `npm run audit:ledger`: 370 REQs com teste vinculado, 333 sem. Totais: 393 COMPLETO, 91 COMPLETO-LOCAL, 93 PARCIAL, 41 A VERIFICAR, 51 substituídos/cancelados, 24 decisões (2 confirmadas), 4 desconectados, 3 defeitos e 3 ausentes.
+- Próximo lote: L-23, painéis encaixáveis e recuperação de controles (REQ-574 em diante).

@@ -180,7 +180,7 @@ test('REQ-265 ajusta a duração de digitando conforme o tamanho do texto', asyn
   assert.ok(longMs > shortMs + 800, `longa=${longMs} ms, curta=${shortMs} ms`);
 });
 
-test('conversão real de WAV produz OGG/Opus; PTT e visualização única chegam ao socket', async () => {
+test('REQ-570 conversão de áudio de voz WAV produz OGG/Opus e envia como PTT pelo socket fictício', async () => {
   const samples = 8000;
   const pcm = Buffer.alloc(samples * 2);
   const wav = Buffer.alloc(44 + pcm.length);
@@ -204,8 +204,8 @@ test('conversão real de WAV produz OGG/Opus; PTT e visualização única chegam
     voice: true,
   });
   const stored = await db.storedFile.findUniqueOrThrow({ where: { id: file.id } });
-  assert.equal(Buffer.from(stored.data).subarray(0, 4).toString(), 'OggS');
-  assert.ok(Buffer.from(stored.data).includes(Buffer.from('OpusHead')));
+  assert.equal(Buffer.from(stored.data).subarray(0, 4).toString(), 'OggS', 'REQ-570 converte voz WAV em contêiner OGG');
+  assert.ok(Buffer.from(stored.data).includes(Buffer.from('OpusHead')), 'REQ-570 codifica a trilha em Opus');
   await messaging.send(sessionId, conversationId, {
     requestId: 'ptt',
     kind: 'audio',
@@ -215,7 +215,7 @@ test('conversão real de WAV produz OGG/Opus; PTT e visualização única chegam
   });
   const content = socket.sends.at(-1)!.content;
   assert.ok('audio' in content);
-  assert.equal(content.ptt, true);
+  assert.equal(content.ptt, true, 'REQ-570 envia áudio de voz como nota PTT');
   assert.equal(content.viewOnce, true);
   const message = await db.chatMessage.findUniqueOrThrow({ where: { id: 'out:ptt' } });
   await assert.rejects(messaging.media(sessionId, conversationId, message.id), /visualização única/);

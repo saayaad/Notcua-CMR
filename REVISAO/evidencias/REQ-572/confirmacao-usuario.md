@@ -1,0 +1,1 @@
+Confirmação textual do usuário: “Sim, agora toca normalmente”. Refere-se à gravação de 16h36, entregue em 26/10/2026. Reproduzida no registro documental; nenhum áudio enviado nesta auditoria.

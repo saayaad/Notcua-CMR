@@ -1,11 +1,12 @@
 # Noctua — meu checklist de revisão
 
-Atualizado em 26/10/2026. Importe este Markdown no Notion para transformar os itens em caixas marcáveis. As caixas abaixo são para a SUA revisão; os testes já executados estão no relatório de verificação.
+Atualizado em 30/10/2026. Importe este Markdown no Notion para transformar os itens em caixas marcáveis. As caixas abaixo são para a SUA revisão; os testes já executados estão no relatório de verificação.
 
 ✅ Encontrado no código · 🟡 Parcial · ⬜ Não implementado · 🔌 Depende de serviço/configuração externa. Implementação não significa aprovação visual.
 
 **Antes dos testes de IA:** o Google recusou a geração com HTTP 403: nível gratuito indisponível neste projeto. A chave consulta modelos, mas isso não comprova cota de geração. Nenhum faturamento foi ativado.
-**Envios reais:** texto e áudio autorizados novamente somente para o contato de teste. Não envie para outros clientes durante a revisão.
+**Envios de produção:** a auditoria atual é somente leitura. Os envios ao contato autorizado descritos abaixo são registros históricos, não autorização para repetir. Testes novos usam somente o ambiente local e conectores fictícios.
+**IA:** conforme o protocolo, use apenas serviços gratuitos; a IA permanece opcional e sem chave real. Sem cota, ela pausa e o restante do app continua funcionando.
 
 ## Parte 1 — Estrutura global, personalização e CRM
 

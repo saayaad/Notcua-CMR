@@ -1,0 +1,1 @@
+REQ-570 APROVADO: apps/server/test/attendance.test.ts; WAV sintético convertido a OGG/Opus e entregue como PTT por socket fictício. DB temporário descartável; sem WhatsApp externo.

@@ -1,0 +1,1 @@
+Validação histórica reportada pelo usuário: após normalização da conversão, áudio PTT de 16h36 baixou e reproduziu normalmente no iPhone em 26/10/2026. Registro: docs/checklist-revisao-partes-1-a-7.md e docs/verification/relatorio-revisao-2026-10-26.md.

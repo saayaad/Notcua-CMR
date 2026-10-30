@@ -345,7 +345,7 @@ test('REQ-322 envia imagem fictícia à Biblioteca, categoriza e persiste após 
   }
 });
 
-test('REQ-327 mostra QR fictício sem conectar, em desktop e celular', async ({ page }, info) => {
+test('REQ-327/REQ-562 mostra necessidade de conectar com QR fictício sem tocar no WhatsApp', async ({ page }, info) => {
   const qrDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
   await page.route('**/api/whatsapp/sessions', async (route) => {
     const response = await route.fetch();
@@ -367,7 +367,7 @@ test('REQ-327 mostra QR fictício sem conectar, em desktop e celular', async ({ 
   expect(bounds.width).toBeLessThanOrEqual((await page.evaluate(() => innerWidth)) - 24);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(await page.evaluate(() => innerWidth));
   await expect(page.getByRole('button', { name: 'Conectar', exact: true })).toBeVisible();
-  await saveEvidence(page, ['REQ-327'], info, { qr: 'mocked local response; no WhatsApp connection', bounds, responsive: true });
+  await saveEvidence(page, ['REQ-327', 'REQ-562'], info, { qr: 'mocked local response; no WhatsApp connection', reconnectInstruction: true, connectButtonVisible: true, bounds, responsive: true });
 });
 
 test('REQ-326 filtra mensagens fixadas por categoria após salvar preferências', async ({ page }, info) => {

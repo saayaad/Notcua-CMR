@@ -156,3 +156,9 @@ O comportamento foi aprovado localmente com provedor simulado e está marcado `C
 1. Configurar apenas uma chave descartável autorizada e validar máscara/modelo.
 2. Gerar quatro variações sem enviar a campanha e conferir conteúdo e logs.
 3. Remover a chave e registrar a prova sem expor o segredo.
+
+## REQ-565 — conferência física do segundo monitor
+
+1. Em uma sessão local com dados de teste, abra o atendimento no primeiro monitor e registre a resolução/estado que deve permanecer intacto.
+2. Abra ou mova a janela de teste para o segundo monitor; use navegação e um painel/popout sem reposicionar nem ocultar a janela do primeiro monitor.
+3. Confira ambos os monitores, registre captura/foco/resoluções e feche a janela de teste. Não faça login real nem altere dados de produção.

@@ -197,3 +197,12 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Duas falhas iniciais de seletor e uma tentativa com caminho de teste errado foram corrigidas e repetidas com sucesso; progresso descreve causas. Nenhum BUG de produto surgiu.
 - Próximo lote: L-22, REQ-556–573. REQ-573 já está adiada até o proprietário enviar a Parte 8 e deve ficar fora da contagem, conforme §6.
 - `scripts/iniciar-noctua-online.ps1` permanece fora de staging e commit.
+
+## Ponto de retomada — 30/10/2026 — após L-22 Qualidade e documentação
+
+- REQ-556–572 fechadas ou classificadas; REQ-573 permanece adiada conforme §6. Totais após L-22: 393 COMPLETO, 91 COMPLETO-LOCAL, 93 PARCIAL, 41 A VERIFICAR, 51 substituídos/cancelados, 24 decisões (2 confirmadas), 4 desconectados, 3 defeitos, 3 ausentes; 370 com teste e 333 sem.
+- REQ-567 precisa de definição do período de sono, classes de fila e regra de retomada. Nenhum controle de envio foi alterado.
+- REQ-565 exige conferência física em dois monitores e está no CHECKLIST-MANUAL. REQ-566 foi retomada após reinício do PC, sem simular BSOD.
+- Prova de reconexão WhatsApp foi feita apenas com QR fictício na interface; botão não acionado. PTT testado em WAV fictício/socket. Áudio de iPhone e resposta de follow-up são provas históricas do contato de teste, não autorização para novos envios.
+- Próximo lote: L-23, painéis encaixáveis e recuperação de controles (REQ-574 em diante). Produção continua somente leitura.
+- `scripts/iniciar-noctua-online.ps1` permanece fora de staging/commit.
