@@ -52,6 +52,7 @@ class FakeSocket implements WhatsappSocket {
   ev = makeEventBuffer(pino({ level: 'silent' }));
   user = { id: '5511000000000@s.whatsapp.net' };
   sends: AnyMessageContent[] = [];
+  presenceUpdates: Array<{ type: string; jid?: string }> = [];
   async end() {}
   async logout() {}
   async profilePictureUrl() {
@@ -59,7 +60,7 @@ class FakeSocket implements WhatsappSocket {
   }
   async resyncAppState() {}
   async addChatLabel() {}
-  async sendPresenceUpdate() {}
+  async sendPresenceUpdate(type: string, jid?: string) { this.presenceUpdates.push({ type, jid }); }
   async sendMessage(
     jid: string,
     content: AnyMessageContent,
@@ -461,7 +462,7 @@ test('REQ-142: fila ativa no servidor executa sem requisição do painel', async
   }
 });
 
-test('macros criadas executam texto, espera, etiqueta e atribuição em ordem', async () => {
+test('REQ-460/467/468/469/470: macro combina resposta, etiquetas, presença, arquivamento e fixação', async () => {
   const chat = await makeContact('5511777770007');
   const label = await db.label.findFirstOrThrow({ where: { sessionId } });
   const removedLabel = await db.label.create({
@@ -473,18 +474,29 @@ test('macros criadas executam texto, espera, etiqueta e atribuição em ordem', 
     .send({
       name: 'Macro fictícia',
       actions: [
+        { type: 'UTILITY', command: 'WAIT', presence: 'composing', delayMs: 0, composingMs: 100 },
         { type: 'TEXT', text: 'Olá #nome', delayMs: 0, composingMs: 0 },
-        { type: 'UTILITY', command: 'WAIT', delayMs: 0 },
         { type: 'ADD_LABEL', labelId: label.id, delayMs: 0 },
         { type: 'REMOVE_LABEL', labelId: removedLabel.id, delayMs: 0 },
+        { type: 'UTILITY', command: 'CLEAR_LABELS', delayMs: 0 },
+        { type: 'UTILITY', command: 'WAIT', presence: 'recording', delayMs: 0, composingMs: 100 },
+        { type: 'UTILITY', command: 'ARCHIVE', delayMs: 0 },
+        { type: 'UTILITY', command: 'UNARCHIVE', delayMs: 0 },
+        { type: 'UTILITY', command: 'PIN', delayMs: 0 },
+        { type: 'UTILITY', command: 'UNPIN', delayMs: 0 },
         { type: 'UTILITY', command: 'TRANSFER', target: 'operador@example.com', delayMs: 0 },
       ],
     })
     .expect(201);
   const before = socket.sends.length;
+  const presenceBefore = socket.presenceUpdates.length;
   await sequences.enqueue(sessionId, chat.id, 'MACRO', result.body.id, 'macro-operations-test');
-  for (let i = 0; i < 6; i++) await sequences.flush();
+  for (let i = 0; i < 14; i++) await sequences.flush();
   assert.equal(socket.sends.length, before + 1);
+  const emittedPresence = socket.presenceUpdates.slice(presenceBefore).map((entry) => entry.type);
+  assert.ok(emittedPresence.includes('composing'));
+  assert.ok(emittedPresence.includes('recording'));
+  assert.ok(emittedPresence.includes('paused'));
   assert.equal(
     (await db.contact.findUniqueOrThrow({ where: { id: chat.contactId } })).metadata &&
       (
@@ -494,21 +506,32 @@ test('macros criadas executam texto, espera, etiqueta e atribuição em ordem', 
       ).assignedTo,
     'operador@example.com',
   );
-  assert.equal(await db.contactLabel.count({ where: { contactId: chat.contactId, labelId: label.id } }), 1);
+  assert.equal(await db.contactLabel.count({ where: { contactId: chat.contactId } }), 0);
   assert.equal(await db.contactLabel.count({ where: { contactId: chat.contactId, labelId: removedLabel.id } }), 0);
+  const finalChat = await db.conversation.findUniqueOrThrow({ where: { id: chat.id } });
+  assert.equal(finalChat.status, 'OPEN');
+  assert.equal(finalChat.pinned, false);
 });
-test('REQ-114/REQ-115: perfil e anotações são preservados e o histórico é exportado como ZIP', async () => {
+test('REQ-114/115/455/457/458: perfil completo e observações persistem; histórico exporta ZIP', async () => {
   const chat = await makeContact('5511777770008');
+  const profile = {
+    name: 'Perfil Fictício Completo', email: 'perfil@example.com', gender: 'Feminino', birthday: '1990-05-10',
+    language: 'pt-BR', source: 'Indicação fictícia', enteredAt: '2026-10-01', exitedAt: '2026-10-28',
+    company: 'Empresa de Teste', jobTitle: 'Analista', interests: 'Produto A; Produto B',
+    dealValue: '1250,50', observation: 'Observação sintética.',
+  };
   await request(app)
     .put(`/api/operations/sessions/${sessionId}/contacts/${chat.id}`)
-    .send({ company: 'Fictícia', email: 'exemplo@example.com' })
+    .send(profile)
     .expect(200);
   await request(app)
     .post(`/api/operations/sessions/${sessionId}/contacts/${chat.id}/notes`)
     .send({ text: 'Anotação fictícia.' })
     .expect(200);
   const contact = await db.contact.findUniqueOrThrow({ where: { id: chat.contactId } });
-  assert.equal((contact.metadata as { company: string }).company, 'Fictícia');
+  assert.equal(contact.name, profile.name);
+  assert.equal(contact.phoneNumber, '5511777770008');
+  assert.deepEqual(Object.fromEntries(Object.keys(profile).filter((key) => key !== 'name').map((key) => [key, (contact.metadata as Record<string, unknown>)[key]])), Object.fromEntries(Object.entries(profile).filter(([key]) => key !== 'name')));
   assert.equal((contact.metadata as { notes: unknown[] }).notes.length, 1);
   const exported = await request(app)
     .get(`/api/operations/sessions/${sessionId}/contacts/${chat.id}/export`)

@@ -1,0 +1,21 @@
+{
+  "req": "REQ-470",
+  "result": "APROVADO",
+  "project": "desktop-1920",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "consoleErrors": [],
+  "macroEditorOpenedFromToolsPanel": true,
+  "actionsComposed": [
+    "TEXT",
+    "CLEAR_LABELS",
+    "WAIT/recording",
+    "ARCHIVE",
+    "UNARCHIVE",
+    "PIN",
+    "UNPIN",
+    "MARK_UNREAD",
+    "TRANSFER"
+  ],
+  "apiWriteIntercepted": true,
+  "noRealMacroSavedOrSent": true
+}

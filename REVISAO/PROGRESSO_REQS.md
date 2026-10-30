@@ -47,3 +47,18 @@
 - Nenhum envio externo. A campanha simulada foi pausada antes do primeiro ciclo; calibração de UI foi interceptada e o teste de servidor limpou seu registro temporário. Banco `.audit/noctua-audit.db` não foi resetado.
 - Próximo módulo: IA e mídia, iniciando REQ-360. IA real continua desligada e sem chave; testar apenas simulação local e registrar dependência de provedor como COMPLETO-LOCAL, conforme decisão existente.
 
+
+## Atendimento — lote REQ-444–487 — 30/10/2026
+
+- Regressão visual final do lote: 30/30 passaram (10 cenários × 3 viewports). Suíte integral do servidor: 219/219 passaram; `npm run typecheck` e `npm run build` aprovados. Capturas e JSON de console em `REVISAO/evidencias/REQ-444/`, `446/`, `447/`, `449/`, `450/`, `452/`, `454/`, `455/`, `457/`, `458/`, `460/`, `464/`, `467/`, `468/`, `469/`, `470/`, `471/`, `473/`, `474/`, `476/`, `477/`, `478/`, `479/`, `480/`, `481/`, `483/`, `484/`, `485/`, `486/` e `487/`.
+- Ao encerrar, 25 REQs ficam `COMPLETO`, 14 `DECISÃO` e 1 `DEFEITO` (REQ-464/BUG-026); quatro completos preexistentes são preservados. BUG-027/028/029 corrigidos localmente.
+- REQ-446: corrigido limite mínimo do grid HUD de 21 rem para 15 rem, alinhado ao controle visual e validado em desktop; no celular, gaveta mantém largura responsiva ao viewport. REQ-444: guard impede consultar `/automation/sessions//flows` sem conexão e remove 404 no console.
+- REQ-450 comprovou criação, reordenação e reload no `.audit/noctua-audit.db`, restaurando a organização original em `finally`; REQ-454/460 comprovaram editor pelo painel e composição/salvamento interceptado, sem persistir macro no banco local. Macros executáveis foram verificadas em testes de servidor com SQLite temporário.
+- BUG-026: ação “PIX ou figurinha” não oferece sticker no seletor nem dispatch dedicado. Ficou como defeito registrado; nenhum envio ocorreu.
+- REQ-471/473 e 476–481: configurou em fixture as ações de macro, resposta padrão textual, áudio e imagem; recarregou e confirmou campos/recorrências com dois clientes. Nenhuma mensagem foi enviada.
+- BUG-029: configuração de navegação lateral cobria as abas Biblioteca/Fixados; o layout foi corrigido. REQ-484–486 passou nos três viewports e alternou todos os filtros.
+- REQs dependentes de decisão têm pergunta de uma linha na tabela `REVISAO/REQUISITOS.md`; não foram implementadas suposições de formato.
+- Erros dos testes corrigidos: seletor de navegação duplicado; inputs ocultos dos comboboxes customizados; summary repetido por ação na macro; tipo e comando armazenados em campos separados; campo de mensagem requerido; menu categoria inspecionado via roles acessíveis; largura do painel interpretada como gaveta no mobile; chamada de fluxo com sessão vazia bloqueada.
+- Próximo módulo pela ordem da lista: L-18, iniciando em REQ-488. Banco `.audit/noctua-audit.db` preservado; nenhuma produção acessada para escrita.
+
+- Ledger regenerado após a suíte: 326 REQs com teste vinculado e 377 sem. `scripts/iniciar-noctua-online.ps1` segue fora do commit, conforme explicado ao usuário; o arquivo `npx` não existe na raiz.

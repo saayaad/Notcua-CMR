@@ -1,0 +1,13 @@
+{
+  "req": "REQ-447",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "consoleErrors": [],
+  "initialWidth": 374,
+  "compactWidth": 374,
+  "hiddenThenShown": true,
+  "width15RemPersistedAfterReload": true,
+  "mobileDrawerUsesViewportWidth": true,
+  "preferencesFixture": true
+}

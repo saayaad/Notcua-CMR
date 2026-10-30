@@ -1,0 +1,14 @@
+{
+  "req": "REQ-450",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "consoleErrors": [],
+  "orderedCategories": [
+    "Categoria Beta Fixture 1793396585592",
+    "Categoria Alfa Fixture 1793396585592"
+  ],
+  "database": ".audit/noctua-audit.db",
+  "persistsAfterReload": true,
+  "restoredOriginalAfterTest": true
+}

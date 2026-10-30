@@ -37,3 +37,7 @@ test('REQ-216: blocos desencaixados não deixam área fantasma e a lista empilha
     'clamp(20rem,42vh,26rem) minmax(0,1fr)',
   );
 });
+test('REQ-446: o trilho de ferramentas respeita a largura compacta mínima configurada', () => {
+  const preferences = { hudPanelLayout: 'columns', hudListWidth: 17, hudToolsWidth: 15, panelPosition: 'right' };
+  assert.match(hudGrid(['list', 'chat', 'tools'], preferences)['--hud-columns'], /minmax\(15rem, min\(15rem, 34vw\)\)/);
+});

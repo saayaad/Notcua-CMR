@@ -1,0 +1,14 @@
+{
+  "req": "REQ-450",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "consoleErrors": [],
+  "orderedCategories": [
+    "Categoria Beta Fixture 1793396739858",
+    "Categoria Alfa Fixture 1793396739858"
+  ],
+  "database": ".audit/noctua-audit.db",
+  "persistsAfterReload": true,
+  "restoredOriginalAfterTest": true
+}

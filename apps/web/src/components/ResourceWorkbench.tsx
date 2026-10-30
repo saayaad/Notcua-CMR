@@ -24,6 +24,8 @@ import {
   Wallet,
   ChevronDown,
   Workflow,
+  BookOpen,
+  Pin,
 } from 'lucide-react';
 import type { Asset, Conversation, Funnel, Library, Macro, PixKey, Sequence } from '../types';
 import type { ToolIntent } from '../context/attendance';
@@ -166,6 +168,10 @@ export function ResourceWorkbench({
     }
   }, [quick, intent]);
   useEffect(() => {
+    if (!sessionId) {
+      setFlows([]);
+      return;
+    }
     if (!open && !catalogOpen && section === 'responses') return;
     void request<Record<string, number>>('/operations/toolbox/usage')
       .then(setUsage)
@@ -190,6 +196,10 @@ export function ResourceWorkbench({
     directRequests.current = {};
   }, [chat?.id, sessionId]);
   useEffect(() => {
+    if (!sessionId) {
+      setFlows([]);
+      return;
+    }
     if (!open && !catalogOpen && section === 'responses') return;
     const controller = new AbortController();
     void request<{ items: FlowSummary[] }>(
@@ -641,38 +651,42 @@ export function ResourceWorkbench({
       </header>
       <nav className="workbench-mode-tabs" aria-label="Conteúdos da lateral">
         <button aria-pressed={paneMode === 'library'} onClick={() => setPaneMode('library')}>
-          Biblioteca
+          <BookOpen size={15} />
+          <span>Biblioteca</span>
         </button>
         <button aria-pressed={paneMode === 'pinned'} onClick={() => setPaneMode('pinned')}>
-          Fixados
+          <Pin size={15} />
+          <span>Fixados</span>
         </button>
       </nav>
-      {paneMode === 'library' ? (
-        resourceCatalog
-      ) : (
-        <PinnedShelf
-          resources={ordered}
-          library={library}
-          chat={chat}
-          selectedKind={kind}
-          onKind={setKind}
-          connected={connected}
-          busy={busy}
-          onSend={(item, showPreview) => {
-            if (item.pix && showPreview) {
-              setPixInitial(item.id);
-              setPixSend(true);
-              return;
-            }
-            if (showPreview) {
-              openPreview({ ...item, name: preferences.pinnedButtonSettings[item.id]?.label || item.name });
-              return;
-            }
-            if (!directRequests.current[item.id]) directRequests.current[item.id] = crypto.randomUUID();
-            void send(item, directRequests.current[item.id]);
-          }}
-        />
-      )}
+      <div className="workbench-pane-content">
+        {paneMode === 'library' ? (
+          resourceCatalog
+        ) : (
+          <PinnedShelf
+            resources={ordered}
+            library={library}
+            chat={chat}
+            selectedKind={kind}
+            onKind={setKind}
+            connected={connected}
+            busy={busy}
+            onSend={(item, showPreview) => {
+              if (item.pix && showPreview) {
+                setPixInitial(item.id);
+                setPixSend(true);
+                return;
+              }
+              if (showPreview) {
+                openPreview({ ...item, name: preferences.pinnedButtonSettings[item.id]?.label || item.name });
+                return;
+              }
+              if (!directRequests.current[item.id]) directRequests.current[item.id] = crypto.randomUUID();
+              void send(item, directRequests.current[item.id]);
+            }}
+          />
+        )}
+      </div>
       {section !== 'responses' && (
         <Modal
           title={

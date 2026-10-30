@@ -39,7 +39,7 @@ export function hudGrid(
 ) {
   if (!order.length)
     return { '--hud-areas': 'none', '--hud-columns': 'minmax(0,1fr)', '--hud-rows': 'minmax(0,1fr)' };
-  const toolsWidth = `minmax(21rem, min(${value.hudToolsWidth}rem, 34vw))`;
+  const toolsWidth = `minmax(15rem, min(${value.hudToolsWidth}rem, 34vw))`;
   if (value.hudPanelLayout === 'rows') {
     const stack = order.filter((id) => id !== 'tools');
     const docked = order.includes('tools');

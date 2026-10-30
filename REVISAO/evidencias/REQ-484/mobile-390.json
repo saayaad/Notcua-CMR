@@ -1,0 +1,18 @@
+{
+  "req": "REQ-484",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "consoleErrors": [],
+  "lateralFunctionsConfigured": true,
+  "libraryAndPinnedTabsAvailable": true,
+  "filters": [
+    "text",
+    "audio",
+    "media",
+    "document",
+    "funnel",
+    "flow"
+  ],
+  "noResourceSent": true
+}

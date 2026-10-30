@@ -246,7 +246,7 @@ test('HTTP isola conexões, biblioteca, arquivos e preferências mesmo com ident
     .set('Authorization', 'Bearer alpha')
     .expect(403);
 });
-test('REQ-493/494/503/206/208/209/214/215/216: preferências fictícias persistem por usuário', async () => {
+test('REQ-446/447/449/493/494/503/206/208/209/214/215/216: largura, visibilidade, ordem e demais preferências persistem por usuário', async () => {
   const route = '/api/operations/settings/preferences';
   const image = 'data:image/png;base64,iVBORw0KGgo=';
   const settings = {
@@ -263,6 +263,11 @@ test('REQ-493/494/503/206/208/209/214/215/216: preferências fictícias persiste
     favicon: image,
     density: 'expanded',
     panelPosition: 'left',
+    toolsVisible: true,
+    toolsDocked: true,
+    toolsCompact: true,
+    hudToolsWidth: 15,
+    attendanceShortcutOrder: ['faq', 'client', 'schedule'],
     hudBlockPositions: { chat: { mode: 'floating', x: 12, y: 10, width: 40, height: 50 } },
   };
   await request(app).put(route).set('Authorization', 'Bearer alpha').send(settings).expect(200);

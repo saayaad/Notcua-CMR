@@ -186,3 +186,41 @@ A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, po
 - Causa: não existe embedding, índice vetorial nem classificador de intenção no cache. Embeddings locais também não estão implementados (REQ-430 AUSENTE).
 - Validação: teste do cache confirma revisão, expiração, isolamento e reutilização para equivalência lexical; não comprova compreensão semântica geral.
 - Estado: defeito aberto em 30/10/2026. Nenhum serviço ou modelo externo foi ativado.
+
+## BUG-026 — Macro anuncia figurinha, mas envia apenas recurso de imagem
+
+- REQ: REQ-464.
+- Reprodução: Atendimento → Ferramentas → Criar → Macros → Enviar mensagem → “PIX ou figurinha da biblioteca”.
+- Resultado: a ação muda para `ASSET`, mas o seletor de recursos não oferece tipo Figurinha. A biblioteca classifica mídia sem modalidade de figurinha e `macros.routes.ts` converte mídia em imagem.
+- Causa: não há tipo de recurso figurinha nem payload dedicado de figurinha no editor/execução da macro; o texto do atalho sugere suporte inexistente.
+- Reteste: Playwright local reproduziu o seletor sem opção Figurinha em Chromium desktop e mobile; nenhum envio foi feito.
+- Correção: pendente; demanda suporte explícito ao tipo sticker no modelo de recurso, seletor e dispatch, ou remoção do texto enganoso.
+- Estado: defeito aberto em 30/10/2026.
+
+## BUG-027 — Grid do HUD impedia reduzir o painel lateral a 15 rem
+
+- REQ: REQ-446.
+- Reprodução: Personalização → HUD → largura das ferramentas = 15 rem; manter painel encaixado e abrir em viewport desktop.
+- Resultado: o controle aceitava 15 rem, mas `hudGrid` limitava a coluna a 21 rem.
+- Correção: mínimo CSS da coluna passou a 15 rem; no celular o layout usa gaveta responsiva.
+- Reteste: persistência do limite via teste de servidor; Playwright mediu largura e conferiu reload em desktop nos viewports 1366 e 1920.
+- Estado: corrigido localmente em 30/10/2026.
+
+## BUG-028 — Biblioteca consulta fluxos sem sessão selecionada
+
+- REQ: REQ-444.
+- Reprodução: abrir Atendimento sem conexão selecionada enquanto o painel de ferramentas carrega.
+- Resultado: GET `/api/automation/sessions//flows` retornava 404 e registrava erro de console.
+- Correção: `ResourceWorkbench` limpa lista de fluxos e encerra o efeito quando `sessionId` está vazio.
+- Reteste: Playwright local confirmou console sem erros nos três viewports; API de fluxos não é chamada sem sessão.
+- Estado: corrigido localmente em 30/10/2026.
+
+## BUG-029 — Conteúdo da Biblioteca cobria a navegação lateral
+
+- REQ: REQ-484, REQ-485.
+- Reprodução: Personalizar Atendimento → Funções → Navegação na biblioteca completa = Ícones na lateral; abrir o painel de ferramentas.
+- Resultado: o conteúdo da Biblioteca ocupava a área das abas Biblioteca/Fixados e interceptava cliques.
+- Causa: o CSS posicionava um rail de classe antiga; o DOM atual usa `workbench-mode-tabs` e o conteúdo de fixados não tinha um contêiner único.
+- Correção: abas e conteúdo receberam áreas próprias do grid; Biblioteca e Fixados estão agrupados num contêiner de conteúdo.
+- Reteste: Playwright local clicou Biblioteca/Fixados e alternou todas as categorias em desktop e celular; teste passou 3/3 nos viewports.
+- Estado: corrigido localmente em 30/10/2026.

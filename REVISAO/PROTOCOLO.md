@@ -156,3 +156,12 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - REQ-425 segue em defeito: cache não entende equivalência semântica geral. REQ-430 sem embeddings; REQ-419–422 mostram flags sem consumidores. Nenhuma chave real foi solicitada.
 - Próximo módulo: Ferramentas laterais e respostas padrão, REQ-444–469. Avaliar critérios ambíguos por item e registrar decisões sem envio de WhatsApp.
 - `scripts/iniciar-noctua-online.ps1` permanece modificado previamente e fora de qualquer commit.
+
+## Ponto de retomada — 30/10/2026 — após Ferramentas laterais/Atendimento
+
+- Lote REQ-444–487 fechado: 25 `COMPLETO`, 14 `DECISÃO` e 1 `DEFEITO` (REQ-464/BUG-026); quatro itens já completos foram preservados.
+- Playwright `e2e/side-tools.spec.ts`: 30/30 em três viewports; suíte integral do servidor: 219/219; typecheck e build passaram. Ledger: 326 REQs com teste vinculado e 377 sem.
+- BUG-027/028/029 corrigidos localmente. BUG-026 permanece aberto: ação de macro anuncia figurinha, mas seletor/dispatch não oferece suporte a sticker.
+- Evidências visuais em `REVISAO/evidencias/REQ-444/` até `REQ-487/` para os itens exercitados. `.audit/noctua-audit.db` preservado, organização temporária restaurada e nenhuma mensagem enviada.
+- Próximo lote pela lista: L-18, REQ-488 em diante. Continuar com o ambiente local existente, sem reset e sem acesso de escrita à produção.
+- `scripts/iniciar-noctua-online.ps1` permanece fora do commit por alterar a raiz de execução dos comandos Vercel; mudança já explicada. O arquivo `npx` não está na raiz.
