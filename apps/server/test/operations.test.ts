@@ -977,7 +977,7 @@ async function inbound(chatId: string, text: string) {
   return message;
 }
 
-test('REQ-143: assumir durante geração impede envio da IA e mantém pausa após mensagem manual', async () =>
+test('REQ-143/REQ-307: assumir durante geração impede envio da IA e mantém pausa após mensagem manual', async () =>
   aiTest(async () => {
     const chat = await makeContact('5511777770032');
     await configureAi({ enabled: true });
@@ -1006,7 +1006,7 @@ test('REQ-143: assumir durante geração impede envio da IA e mantém pausa apó
     );
   }));
 
-test('REQ-144: pedido por humano pausa a IA e histórico antigo não pausa', async () => {
+test('REQ-144/REQ-308: pedido do cliente por humano pausa a IA e histórico antigo não pausa', async () => {
   assert.equal(requestsHuman('Gostaria de falar com uma pessoa'), true);
   assert.equal(requestsHuman('Quero saber os preços'), false);
   const sync = new SyncService(db, silentPublisher);
@@ -1234,7 +1234,7 @@ test('cache de IA exige revisão e impede reutilizar nome de outro cliente', asy
     assert.equal(calls, 3);
   }));
 
-test('REQ-133/REQ-155: conhecimento aprovado conserva contexto e ordem do vendedor', async () =>
+test('REQ-133/REQ-155/REQ-303/REQ-304/REQ-305/REQ-306: conhecimento aprovado conserva ordem, contexto, estilo e regras absolutas', async () =>
   aiTest(async () => {
     const chat = await makeContact('5511777770035');
     await db.chatMessage.createMany({
@@ -1263,11 +1263,16 @@ test('REQ-133/REQ-155: conhecimento aprovado conserva contexto e ordem do vended
       knowledge.turns.map((turn) => turn.role),
       ['user', 'assistant'],
     );
-    await configureAi();
+    await configureAi({
+      instructions: 'Não prometa prazo sem confirmação.',
+      style: 'Tom consultivo, calmo e direto.',
+    });
     globalThis.fetch = async (_url, options) => {
       const body = JSON.parse(String(options?.body));
       assert.match(body.instructions, /user: Quero um orçamento especial/);
       assert.match(body.instructions, /assistant: Primeiro confirmo/);
+      assert.match(body.instructions, /Não prometa prazo sem confirmação/);
+      assert.match(body.instructions, /Tom consultivo, calmo e direto/);
       return new Response(
         JSON.stringify({
           output: [{ content: [{ type: 'output_text', text: 'Sugestão' }] }],
@@ -1275,10 +1280,11 @@ test('REQ-133/REQ-155: conhecimento aprovado conserva contexto e ordem do vended
         }),
       );
     };
-    await generateSuggestion(db, chat.id, 'Orçamento especial');
+    const suggestion = await generateSuggestion(db, chat.id, 'Orçamento especial');
+    assert.equal(suggestion.text, 'Sugestão');
   }));
 
-test('REQ-140/REQ-141: transcrição de áudio e descrição de vídeo entram no contexto simulado', async () =>
+test('REQ-140/REQ-141/REQ-300/REQ-302: transcrição de áudio e descrição de vídeo entram no contexto simulado', async () =>
   aiTest(async () => {
     const chat = await makeContact('5511777770064');
     const audio = await db.storedFile.create({ data: { sha256: 'd'.repeat(64), filename: 'fala.ogg', mimeType: 'audio/ogg', byteLength: 5, data: Buffer.from('audio') } });
@@ -1517,7 +1523,7 @@ test('pré-processamento de histórico exige consentimento, isola conexão, reut
   assert.equal(end.body.total, 1);
 });
 
-test('pré-processamento gera análise, reaproveita resultado e interrompe após recusa do provedor', async () => aiTest(async () => {
+test('REQ-301: pré-processamento de imagem gera análise, reaproveita resultado e interrompe após recusa simulada', async () => aiTest(async () => {
   const chat = await makeContact('5511777770049');
   const file = await db.storedFile.create({ data: { sha256: 'c'.repeat(64), filename: 'imagem.png', mimeType: 'image/png', data: Buffer.from('png'), byteLength: 3 } });
   const first = await db.chatMessage.create({ data: { id: 'preprocess-real-a', direction: 'INBOUND', conversationId: chat.id, type: 'imageMessage', fileId: file.id } });
@@ -1545,7 +1551,7 @@ test('pré-processamento gera análise, reaproveita resultado e interrompe após
   assert.equal(calls, 2);
 }));
 
-test('REQ-132/REQ-158: exportação inclui mídias, cronologia, papéis e formatos estruturados', async () => {
+test('REQ-132/REQ-158/REQ-299/REQ-302/REQ-303: exportação inclui vídeo, cronologia, papéis e formatos estruturados', async () => {
   const chat = await makeContact('5511777770038');
   await db.chatMessage.createMany({
     data: [

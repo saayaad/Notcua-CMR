@@ -1,0 +1,12 @@
+{
+  "req": "REQ-310",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "format": ".xls",
+  "localDigits": "982297376",
+  "countryCode": "55",
+  "areaCode": "21",
+  "normalizedPhone": "5521982297376",
+  "persistedAfterReload": true
+}

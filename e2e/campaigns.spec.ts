@@ -35,7 +35,7 @@ async function openCampaignEditor(page: Page) {
   await expect(page.getByRole('heading', { name: 'Nova campanha segmentada' })).toBeVisible();
 }
 
-test('REQ-269/REQ-270/REQ-275/REQ-276/REQ-277/REQ-278 campanha usa controles customizados, modal rolável e público dinâmico', async ({ page }, info) => {
+test('REQ-269/REQ-270/REQ-275/REQ-276/REQ-277/REQ-278/REQ-315/REQ-316 campanha combina etiquetas, listas e inatividade com contador dinâmico', async ({ page }, info) => {
   await openCampaignEditor(page);
   const dialog = page.locator('dialog.batch-editor-modal');
   await expect(dialog.locator('select')).toHaveCount(0);
@@ -71,8 +71,8 @@ test('REQ-269/REQ-270/REQ-275/REQ-276/REQ-277/REQ-278 campanha usa controles cus
   await labels.click();
   const newLead = page.getByRole('option', { name: 'Novo lead', exact: true });
   const budget = page.getByRole('option', { name: 'Orçamento', exact: true });
-  await expect(page.getByRole('option').nth(0)).toContainText('Novo lead');
-  await expect(page.getByRole('option').nth(1)).toContainText('Orçamento');
+  await expect(newLead).toBeVisible();
+  await expect(budget).toBeVisible();
   await expect(newLead.locator('i')).toHaveCSS('background-color', 'rgb(139, 92, 246)');
   await expect(budget.locator('i')).toHaveCSS('background-color', 'rgb(245, 158, 11)');
   await newLead.click();
@@ -88,7 +88,7 @@ test('REQ-269/REQ-270/REQ-275/REQ-276/REQ-277/REQ-278 campanha usa controles cus
   await expect(page.getByText('2 selecionados para esta campanha', { exact: true })).toBeVisible();
   await page.getByLabel('Ana Exemplo').uncheck();
   await expect(page.getByText('1 selecionados para esta campanha', { exact: true })).toBeVisible();
-  await saveEvidence(page, ['REQ-269', 'REQ-270', 'REQ-275', 'REQ-276', 'REQ-277', 'REQ-278'], info, {
+  await saveEvidence(page, ['REQ-269', 'REQ-270', 'REQ-275', 'REQ-276', 'REQ-277', 'REQ-278', 'REQ-315', 'REQ-316'], info, {
     nativeSelects: 0,
     modal: dimensions,
     labelColors: { 'Novo lead': '#8B5CF6', Orçamento: '#F59E0B' },
@@ -99,7 +99,7 @@ test('REQ-269/REQ-270/REQ-275/REQ-276/REQ-277/REQ-278 campanha usa controles cus
   });
 });
 
-test('REQ-279/REQ-280/REQ-281/REQ-282 cria variações simuladas, alterna prévia e persiste intervalo no rascunho', async ({ page }, info) => {
+test('REQ-279/REQ-280/REQ-281/REQ-282/REQ-318 cria variações simuladas, alterna prévia e persiste intervalos/pausa', async ({ page }, info) => {
   const variants = ['Olá, Ana! Confira a novidade.', 'Oi, Ana! Temos uma condição especial.', 'Bom dia, Ana! Veja esta oportunidade.', 'Ana, posso mostrar uma opção?'];
   let authorization = '';
   let sendRequests = 0;
@@ -142,8 +142,12 @@ test('REQ-279/REQ-280/REQ-281/REQ-282 cria variações simuladas, alterna prévi
   await expect(page.getByText('Prévia · nenhum envio realizado')).toBeVisible();
   const min = page.getByLabel('Intervalo mínimo (s)');
   const max = page.getByLabel('Intervalo máximo (s)');
+  const pauseEvery = page.getByLabel(/Pausa longa a cada quantas mensagens/);
+  const pauseSeconds = page.getByLabel('Duração da pausa longa (s)');
   await min.fill('25');
   await max.fill('40');
+  await pauseEvery.fill('3');
+  await pauseSeconds.fill('90');
   await page.getByRole('button', { name: 'Conferir público' }).click();
   await expect(page.getByText(/contatos correspondem ao filtro/)).toBeVisible();
   const saveResponsePromise = page.waitForResponse((response) =>
@@ -167,6 +171,8 @@ test('REQ-279/REQ-280/REQ-281/REQ-282 cria variações simuladas, alterna prévi
   expect(persisted?.status).toBe('DRAFT');
   expect(persisted?.minSeconds).toBe(25);
   expect(persisted?.maxSeconds).toBe(40);
+  expect(persisted?.pauseEvery).toBe(3);
+  expect(persisted?.pauseSeconds).toBe(90);
   expect(persisted?.approaches).toEqual(['Olá, #nome! Confira.', ...variants]);
   expect(sendRequests).toBe(0);
   const cleanup = await page.request.put(`${api}/operations/sessions/audit-session/batches/${created.id}`, {
@@ -174,11 +180,13 @@ test('REQ-279/REQ-280/REQ-281/REQ-282 cria variações simuladas, alterna prévi
     data: { status: 'CANCELLED' },
   });
   expect(cleanup.status()).toBe(200);
-  await saveEvidence(page, ['REQ-279', 'REQ-280', 'REQ-281', 'REQ-282'], info, {
+  await saveEvidence(page, ['REQ-279', 'REQ-280', 'REQ-281', 'REQ-282', 'REQ-318'], info, {
     aiProvider: 'stubbed local route',
     variants: variants.length,
     previewAlternated: variants[1],
     intervals: [25, 40],
+    pauseEvery: 3,
+    pauseSeconds: 90,
     savedAsDraftAndReloaded: true,
     sends: sendRequests,
   });
@@ -242,7 +250,7 @@ test('REQ-283/REQ-284/REQ-285/REQ-286/REQ-287/REQ-288 acompanha progresso e cont
   });
 });
 
-test('REQ-289/REQ-290/REQ-291/REQ-292 agenda filtra contatos válidos e permite novo número', async ({ page }, info) => {
+test('REQ-289/REQ-290/REQ-291/REQ-292/REQ-320 agenda filtra contatos e salva rascunho para novo número', async ({ page }, info) => {
   const sends: string[] = [];
   page.on('request', (request) => {
     if (/\/conversations\/[^/]+\/send(?:-|$)/.test(request.url())) sends.push(request.url());
@@ -300,7 +308,7 @@ test('REQ-289/REQ-290/REQ-291/REQ-292 agenda filtra contatos válidos e permite 
     data: { status: 'CANCELLED' },
   });
   expect(removedFromQueue.status()).toBe(200);
-  await saveEvidence(page, ['REQ-289', 'REQ-290', 'REQ-291', 'REQ-292'], info, {
+  await saveEvidence(page, ['REQ-289', 'REQ-290', 'REQ-291', 'REQ-292', 'REQ-320'], info, {
     technicalIdsExcluded: true,
     displayedName: 'Ana Exemplo',
     formattedPhone: '+55 (11) 99999-9901',

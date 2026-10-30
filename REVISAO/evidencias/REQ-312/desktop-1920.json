@@ -1,0 +1,12 @@
+{
+  "req": "REQ-312",
+  "result": "APROVADO",
+  "project": "desktop-1920",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "format": ".xlsx",
+  "columnsManuallyMapped": true,
+  "previewCount": 1,
+  "phone": "558882208211",
+  "name": "Planilha XLSX 82208211",
+  "persistedAfterReload": true
+}

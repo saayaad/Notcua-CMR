@@ -1,0 +1,20 @@
+{
+  "req": "REQ-320",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "technicalIdsExcluded": true,
+  "displayedName": "Ana Exemplo",
+  "formattedPhone": "+55 (11) 99999-9901",
+  "labelsShown": [
+    "Novo lead"
+  ],
+  "queries": [
+    "name",
+    "partial phone",
+    "DDI"
+  ],
+  "fictionalNewNumber": "558882246939",
+  "scheduledDraftPersistedAfterReload": true,
+  "sends": 0
+}
