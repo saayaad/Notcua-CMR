@@ -19,7 +19,7 @@ test('teclas configuradas respeitam todas as modificadoras e ficam inativas quan
     true,
   );
 });
-test('blocos desencaixados não deixam uma área fantasma no grid', () => {
+test('REQ-216: blocos desencaixados não deixam área fantasma e a lista empilhada preserva altura útil', () => {
   const preferences = {
     hudPanelLayout: 'columns',
     hudListWidth: 17,
@@ -31,5 +31,9 @@ test('blocos desencaixados não deixam uma área fantasma no grid', () => {
   assert.equal(
     hudGrid(['list', 'chat', 'tools'], { ...preferences, hudPanelLayout: 'rows' })['--hud-areas'],
     '"list tools" "chat tools"',
+  );
+  assert.equal(
+    hudGrid(['list', 'chat', 'tools'], { ...preferences, hudPanelLayout: 'rows' })['--hud-rows'],
+    'clamp(20rem,42vh,26rem) minmax(0,1fr)',
   );
 });

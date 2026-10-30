@@ -1,0 +1,11 @@
+{
+  "req": "REQ-214",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "menuName": "Atender desktop-1366",
+  "folderName": "Respostas desktop-1366",
+  "secondContext": true,
+  "logo": true,
+  "favicon": true
+}

@@ -89,6 +89,10 @@ try {
       },
     });
   }
+  await db.crmOpportunity.update({
+    where: { conversationId: 'audit-conversation-3' },
+    data: { status: 'WON', valueInCents: 10_000, wonAt: now },
+  });
 
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64');
   const fileId = `audit-file-${createHash('sha256').update(png).digest('hex').slice(0, 12)}`;
@@ -176,6 +180,9 @@ try {
     ['settings:business', 'BUSINESS_SETTINGS', { company: 'Empresa Exemplo', segment: 'Testes locais', distribution: false }],
     ['lead-list:audit-new', 'LEAD_LIST', { sessionId, name: 'Lista Novos', conversationIds: ['audit-conversation-1', 'audit-conversation-2'] }],
     ['lead-list:audit-clients', 'LEAD_LIST', { sessionId, name: 'Lista Clientes', conversationIds: ['audit-conversation-2', 'audit-conversation-3'] }],
+    [`label-rule:${sessionId}:audit-label-client`, 'LABEL_RULE', { enabled: true, recordSale: true, askValue: false, fixedValueInCents: 10_000, internalNote: '', pinConversation: false, investmentInCents: 2_000 }],
+    ['label-sale:audit-conversation-3', 'LABEL_SALE', { sessionId, conversationId: 'audit-conversation-3', labelId: 'audit-label-client' }],
+    ['batch:audit-campaign', 'BATCH', { name: 'Campanha Auditoria', sessionId, status: 'COMPLETED', mode: 'CAMPAIGN', minSeconds: 30, maxSeconds: 60, count: 2, createdAt: now.toISOString(), investmentInCents: 2_000, attributedRevenueInCents: 10_000 }],
   ];
   for (const [id, kind, data] of records)
     await db.operationRecord.create({ data: { id, kind, data } });

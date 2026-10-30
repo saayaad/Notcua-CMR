@@ -51,7 +51,7 @@ export function hudGrid(
           ? `${toolsWidth} minmax(0,1fr)`
           : `minmax(0,1fr) ${toolsWidth}`
         : 'minmax(0,1fr)',
-      '--hud-rows': stack.map((id) => (id === 'chat' ? 'minmax(0,1fr)' : 'clamp(8rem,24vh,12rem)')).join(' '),
+      '--hud-rows': stack.map((id) => (id === 'chat' ? 'minmax(0,1fr)' : 'clamp(20rem,42vh,26rem)')).join(' '),
     };
   }
   return {
