@@ -7,6 +7,7 @@ import { record, putRecord } from './records.js';
 import { json } from '../backups/validation.js';
 import { FlowEngine } from '../flows/flow.engine.js';
 import { queueLabelChange } from '../whatsapp/label-changes.js';
+import { nextSendWindowAt, type SendWindow } from './send-window.js';
 export interface Batch {
   name: string;
   sessionId: string;
@@ -25,6 +26,8 @@ export interface Batch {
   approaches?: string[];
   followUpCount?: number;
   ctaKeyword?: string;
+  ctaKeywords?: string[];
+  sendWindow?: SendWindow;
 }
 export interface Delivery {
   kind: 'text' | 'asset' | 'funnel' | 'flow' | 'reminder' | 'sequence';
@@ -41,6 +44,8 @@ export interface Delivery {
   followUps?: { waitMinutes: number; text: string }[];
   followUpIndex?: number;
   cta?: { keyword: string; replyText: string };
+  ctas?: { keyword: string; replyText: string }[];
+  sourceCampaignId?: string;
   labelTransition?: { fromLabelId?: string; toLabelId?: string };
 }
 export class DeliveryWorker {
@@ -123,6 +128,13 @@ export class DeliveryWorker {
           (batch.nextAllowedAt && new Date(batch.nextAllowedAt) > new Date())
         )
           continue;
+        if (batch.sendWindow) {
+          const next = nextSendWindowAt(batch.sendWindow, new Date());
+          if (next.getTime() > Date.now()) {
+            await putRecord(this.db, task.batchId, 'BATCH', { ...batch, nextAllowedAt: next.toISOString() });
+            continue;
+          }
+        }
         const data = task.payload as unknown as Delivery;
         const chat = await this.db.conversation.findFirst({
           where: { id: task.conversationId, sessionId: task.sessionId },

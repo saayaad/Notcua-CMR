@@ -9,6 +9,17 @@ import {
   validScheduledContacts,
 } from '../../web/src/context/contact-search.js';
 import { chooseCampaignText, expandSpintax } from '../src/modules/operations/campaign-text.js';
+import { isInsideSendWindow, nextSendWindowAt } from '../src/modules/operations/send-window.js';
+
+test('janela de envio respeita dias, horário e fuso de Brasília', () => {
+  const window = { timezone: 'America/Sao_Paulo', days: [1, 2, 3, 4, 5], start: '09:00', end: '18:00' };
+  assert.equal(isInsideSendWindow(window, new Date('2026-10-30T15:30:00.000Z')), true);
+  assert.equal(isInsideSendWindow(window, new Date('2026-10-30T21:00:00.000Z')), false);
+  assert.equal(nextSendWindowAt(window, new Date('2026-10-30T21:30:00.000Z')).toISOString(),
+    '2026-11-02T12:00:00.000Z');
+  assert.equal(nextSendWindowAt(window, new Date('2026-10-30T11:59:01.000Z')).toISOString(),
+    '2026-10-30T12:00:00.000Z');
+});
 test('contatos técnicos e zero são removidos e o telefone brasileiro recebe uma única formatação', () => {
   assert.equal(cleanPhone('0'), '');
   assert.equal(cleanPhone('lid:113288486621283@lid'), '');

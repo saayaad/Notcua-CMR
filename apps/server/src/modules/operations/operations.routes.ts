@@ -1,4 +1,6 @@
 import { chooseCampaignText } from './campaign-text.js';
+import { normalizeCampaignKeyword } from './campaign-response.js';
+import { validTimezone } from './send-window.js';
 import { labelActionRoutes } from './label-actions.js';
 import { safetyRoutes } from './safety.routes.js';
 import { simulatorRoutes } from './simulator.routes.js';
@@ -608,6 +610,10 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
             keyword: z.string().trim().min(1).max(100),
             replyText: z.string().trim().min(1).max(10000),
           }).optional(),
+          ctas: z.array(z.object({
+            keyword: z.string().trim().min(1).max(100),
+            replyText: z.string().trim().min(1).max(10000),
+          })).max(20).default([]),
           assetId: id.optional(),
           funnelId: id.optional(),
           flowId: id.optional(),
@@ -621,6 +627,13 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
         attributedRevenueInCents: z.number().int().min(0).max(2_000_000_000).default(0),
         pauseEvery: z.number().int().min(0).max(5000).default(0),
         pauseSeconds: z.number().int().min(0).max(86400).default(0),
+        sendWindow: z.object({
+          timezone: z.string().refine(validTimezone, 'Escolha um fuso horário válido.'),
+          days: z.array(z.number().int().min(0).max(6)).min(1).max(7)
+            .refine((days) => new Set(days).size === days.length, 'Escolha cada dia apenas uma vez.'),
+          start: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+          end: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+        }).refine((window) => window.start < window.end, 'O fim do horário deve ser posterior ao início.').optional(),
         runAt: z.iso.datetime().optional(),
       })
       .parse(req.body);
@@ -628,15 +641,21 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       throw new AppError(422, 'O intervalo máximo deve ser maior ou igual ao mínimo.');
     if ((input.mode === 'REMINDER') !== (input.delivery.kind === 'reminder'))
       throw new AppError(422, 'Use um lembrete somente no modo de lembrete.');
-    if ((input.delivery.followUps.length || input.delivery.cta) &&
+    const ctas = [...input.delivery.ctas, ...(input.delivery.cta ? [input.delivery.cta] : [])];
+    const keywords = ctas.map((cta) => normalizeCampaignKeyword(cta.keyword));
+    if (ctas.length > 20 || keywords.some((keyword) => !keyword) || new Set(keywords).size !== keywords.length)
+      throw new AppError(422, 'As palavras-chave das CTAs devem ser distintas e conter letras ou números.');
+    if ((input.delivery.followUps.length || ctas.length) &&
       (input.mode !== 'CAMPAIGN' || input.delivery.kind !== 'text'))
       throw new AppError(422, 'CTA e follow-ups automáticos estão disponíveis apenas para campanhas de texto.');
+    if (input.sendWindow && input.mode !== 'CAMPAIGN')
+      throw new AppError(422, 'O horário permitido está disponível apenas para campanhas.');
     const people = await audience(sessionId, input.audience);
     if (!people.length) throw new AppError(422, 'Nenhum contato corresponde ao público escolhido.');
     if (input.mode !== 'CAMPAIGN' && people.length !== 1)
       throw new AppError(422, 'Selecione uma conversa para o agendamento individual.');
     const { steps, ...initialDelivery } = input.delivery;
-    const delivery: Delivery = { ...initialDelivery };
+    const delivery: Delivery = { ...initialDelivery, ctas };
     if (delivery.kind === 'sequence') {
       if (!steps?.length) throw new AppError(422, 'Adicione mensagens à sequência.');
       delivery.steps = [];
@@ -727,7 +746,8 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       attributedRevenueInCents: input.mode === 'CAMPAIGN' ? input.attributedRevenueInCents : 0,
       count: people.length,
       ...(input.delivery.followUps.length ? { followUpCount: input.delivery.followUps.length } : {}),
-      ...(input.delivery.cta ? { ctaKeyword: input.delivery.cta.keyword } : {}),
+      ...(ctas.length ? { ctaKeywords: ctas.map((cta) => cta.keyword) } : {}),
+      ...(input.sendWindow ? { sendWindow: input.sendWindow } : {}),
       ...(delivery.kind === 'text' && input.mode === 'CAMPAIGN' && input.delivery.textVariations.length
         ? { approaches: [delivery.text!, ...input.delivery.textVariations] } : {}),
       createdAt: new Date().toISOString(),

@@ -344,10 +344,13 @@ test('resposta de um lead não cancela follow-ups dos demais', async () => {
   assert.equal(socket.sends.length, before + 3);
   assert.equal((await record<Batch>(db, batch.id, batch)).status, 'COMPLETED');
 });
-test('CTA responde uma vez à palavra-chave da campanha e ignora outras mensagens', async () => {
+test('CTAs respondem uma vez por palavra-chave e ignoram outras mensagens', async () => {
   const chat = await makeContact('5511777770877');
   const batch = await draft([chat.id], {
-    kind: 'text', text: 'Responda QUERO', cta: { keyword: 'Quero', replyText: 'Vou te enviar os detalhes.' },
+    kind: 'text', text: 'Responda QUERO ou PREÇO', ctas: [
+      { keyword: 'Quero', replyText: 'Vou te enviar os detalhes.' },
+      { keyword: 'Preço', replyText: 'O valor é R$ 100.' },
+    ],
   });
   await request(app).put(`/api/operations/sessions/${sessionId}/batches/${batch.id}`)
     .send({ status: 'ACTIVE' }).expect(200);
@@ -377,6 +380,60 @@ test('CTA responde uma vez à palavra-chave da campanha e ignora outras mensagen
     message: { conversation: 'quero' }, messageTimestamp: Math.floor(Date.now() / 1000) + 4,
   }], true);
   assert.equal(await db.operationRecord.count({ where: { id: `cta:${batch.id}:${chat.id}` } }), 1);
+  await sync.messagesUpsert(sessionId, [{
+    key: { id: 'campaign-cta-second', remoteJid: '5511777770877@s.whatsapp.net', fromMe: false },
+    message: { conversation: 'PREÇO?' }, messageTimestamp: Math.floor(Date.now() / 1000) + 5,
+  }], true);
+  assert.equal(await db.operationRecord.count({ where: { id: `cta:${batch.id}:${chat.id}:1` } }), 1);
+  await worker.flush();
+  assert.equal(socket.sends.length, before + 3);
+  assert.deepEqual(socket.sends.at(-1), { text: 'O valor é R$ 100.' });
+});
+test('campanha aguarda horário permitido e rejeita CTAs repetidas', async () => {
+  const chat = await makeContact('5511777770880');
+  const window = { timezone: 'Etc/UTC', days: [(new Date().getUTCDay() + 1) % 7], start: '09:00', end: '10:00' };
+  const body = {
+    name: 'Janela de envio', mode: 'CAMPAIGN', audience: { conversationIds: [chat.id] },
+    delivery: { kind: 'text', text: 'Olá', ctas: [
+      { keyword: 'Preço', replyText: 'R$ 100' }, { keyword: 'preco!', replyText: 'R$ 200' },
+    ] },
+    sendWindow: window,
+  };
+  await request(app).post(`/api/operations/sessions/${sessionId}/batches`).send(body).expect(422);
+  const created = await request(app).post(`/api/operations/sessions/${sessionId}/batches`)
+    .send({ ...body, delivery: { kind: 'text', text: 'Olá' } }).expect(201);
+  await request(app).put(`/api/operations/sessions/${sessionId}/batches/${created.body.id}`)
+    .send({ status: 'ACTIVE' }).expect(200);
+  const before = socket.sends.length;
+  await worker.flush();
+  assert.equal(socket.sends.length, before);
+  const batch = await record<Batch>(db, created.body.id, created.body);
+  assert.equal(batch.status, 'ACTIVE');
+  assert.ok(batch.nextAllowedAt && new Date(batch.nextAllowedAt) > new Date());
+  assert.equal((await db.deliveryTask.findFirstOrThrow({ where: { batchId: created.body.id } })).status, 'QUEUED');
+});
+test('resposta da CTA também aguarda a janela de envio da campanha', async () => {
+  const chat = await makeContact('5511777770881');
+  const batch = await draft([chat.id], {
+    kind: 'text', text: 'Responda SIM', ctas: [{ keyword: 'SIM', replyText: 'Obrigado!' }],
+  });
+  await request(app).put(`/api/operations/sessions/${sessionId}/batches/${batch.id}`)
+    .send({ status: 'ACTIVE' }).expect(200);
+  await worker.flush();
+  const window = { timezone: 'Etc/UTC', days: [(new Date().getUTCDay() + 1) % 7], start: '09:00', end: '10:00' };
+  await putRecord(db, batch.id, 'BATCH', { ...await record<Batch>(db, batch.id, batch), sendWindow: window });
+  const before = socket.sends.length;
+  const sync = new SyncService(db, silentPublisher);
+  await sync.messagesUpsert(sessionId, [{
+    key: { id: 'campaign-window-cta', remoteJid: '5511777770881@s.whatsapp.net', fromMe: false },
+    message: { conversation: 'SIM' }, messageTimestamp: Math.floor(Date.now() / 1000) + 2,
+  }], true);
+  const ctaBatchId = `cta:${batch.id}:${chat.id}`;
+  assert.deepEqual((await record<Batch | null>(db, ctaBatchId, null))?.sendWindow, window);
+  await worker.flush();
+  assert.equal(socket.sends.length, before);
+  const response = await record<Batch | null>(db, ctaBatchId, null);
+  assert.ok(response?.nextAllowedAt && new Date(response.nextAllowedAt) > new Date());
 });
 test('campanha começa em rascunho, congela recurso, respeita intervalo e não repete envio', async () => {
   const a = await makeContact('5511777770001');

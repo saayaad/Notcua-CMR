@@ -595,8 +595,19 @@ interface BatchRow {
   approaches?: string[];
   followUpCount?: number;
   ctaKeyword?: string;
+  ctaKeywords?: string[];
+  sendWindow?: { timezone: string; days: number[]; start: string; end: string };
 }
 interface ApproachResult { index: number; text: string; assigned: number; sent: number; delivered: number; read: number; replied: number; sales: number; revenueInCents: number }
+const sendDayLabels = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+const sendTimezoneLabels: Record<string, string> = {
+  'America/Sao_Paulo': 'Brasília / São Paulo',
+  'America/Manaus': 'Manaus',
+  'America/Cuiaba': 'Cuiabá',
+  'America/Belem': 'Belém',
+  'America/Recife': 'Recife',
+  'America/Rio_Branco': 'Rio Branco',
+};
 const batchStatus: Record<string, string> = {
   DRAFT: 'Rascunho',
   ACTIVE: 'Ativo / agendado',
@@ -727,10 +738,13 @@ export function CampaignsPage({
                     {item.counts.find((row) => row.status === 'COMPLETED')?._count ?? 0} encaminhados ·{' '}
                     {item.counts.find((row) => row.status === 'FAILED')?._count ?? 0} falhas
                   </p>
-                  {!schedule && (item.followUpCount || item.ctaKeyword) && <small>
+                  {!schedule && (item.followUpCount || item.ctaKeywords?.length || item.ctaKeyword) && <small>
                     {item.followUpCount ? `${item.followUpCount} follow-up(s) por lead` : ''}
-                    {item.followUpCount && item.ctaKeyword ? ' · ' : ''}
-                    {item.ctaKeyword ? `CTA: ${item.ctaKeyword}` : ''}
+                    {item.followUpCount && (item.ctaKeywords?.length || item.ctaKeyword) ? ' · ' : ''}
+                    {(item.ctaKeywords?.length || item.ctaKeyword) ? `CTAs: ${(item.ctaKeywords ?? [item.ctaKeyword]).join(', ')}` : ''}
+                  </small>}
+                  {!schedule && item.sendWindow && <small>
+                    Envios: {item.sendWindow.days.map((day) => sendDayLabels[day]).join(', ')} · {item.sendWindow.start}–{item.sendWindow.end} · {sendTimezoneLabels[item.sendWindow.timezone] ?? item.sendWindow.timezone}
                   </small>}
                   <small>{new Date(item.createdAt).toLocaleString('pt-BR')}</small>
                   {!schedule && (
@@ -992,9 +1006,12 @@ export function BatchEditor({
   const [message, setMessage] = useState('');
   const [variants, setVariants] = useState<string[]>([]);
   const [followUps, setFollowUps] = useState<{ id: string; waitMinutes: number; text: string }[]>([]);
-  const [ctaEnabled, setCtaEnabled] = useState(false);
-  const [ctaKeyword, setCtaKeyword] = useState('');
-  const [ctaReplyText, setCtaReplyText] = useState('');
+  const [ctas, setCtas] = useState<{ id: string; keyword: string; replyText: string }[]>([]);
+  const [sendWindowEnabled, setSendWindowEnabled] = useState(false);
+  const [sendDays, setSendDays] = useState([1, 2, 3, 4, 5]);
+  const [sendStart, setSendStart] = useState('09:00');
+  const [sendEnd, setSendEnd] = useState('18:00');
+  const [sendTimezone, setSendTimezone] = useState('America/Sao_Paulo');
   const [generating, setGenerating] = useState(false);
   const [variantIndex, setVariantIndex] = useState(0);
   const [selectedAssets, setSelectedAssets] = useState<string[]>([]);
@@ -1123,6 +1140,10 @@ export function BatchEditor({
           onSubmit={(event) => {
             event.preventDefault();
             if (!preview) return;
+            if (!schedule && sendWindowEnabled && (!sendDays.length || sendStart >= sendEnd)) {
+              notify('Escolha ao menos um dia e um horário final posterior ao início.', true);
+              return;
+            }
             const data = new FormData(event.currentTarget);
             setBusy(true);
             void request(`/operations/sessions/${sessionId}/batches`, 'POST', {
@@ -1140,8 +1161,8 @@ export function BatchEditor({
                 textVariations: kind === 'text' ? variants : undefined,
                 followUps: !schedule && kind === 'text'
                   ? followUps.map(({ waitMinutes, text }) => ({ waitMinutes, text })) : undefined,
-                cta: !schedule && kind === 'text' && ctaEnabled
-                  ? { keyword: ctaKeyword, replyText: ctaReplyText } : undefined,
+                ctas: !schedule && kind === 'text'
+                  ? ctas.map(({ keyword, replyText }) => ({ keyword, replyText })) : undefined,
                 steps:
                   kind === 'asset' && selectedAssets.length > 1
                     ? selectedAssets.map((assetId) => ({ kind: 'asset', assetId, waitSeconds: 1 }))
@@ -1165,6 +1186,8 @@ export function BatchEditor({
               maxSeconds: Number(data.get('maxSeconds') || 45),
               pauseEvery: Number(data.get('pauseEvery') || 0),
               pauseSeconds: Number(data.get('pauseSeconds') || 0),
+              sendWindow: !schedule && sendWindowEnabled
+                ? { timezone: sendTimezone, days: sendDays, start: sendStart, end: sendEnd } : undefined,
               runAt: data.get('runAt') ? new Date(String(data.get('runAt'))).toISOString() : undefined,
             })
               .then(onSaved)
@@ -1519,17 +1542,20 @@ export function BatchEditor({
                     </button>
                   )}
                   {!schedule && <fieldset className="surface">
-                    <legend>Resposta automática por CTA</legend>
-                    <label><input type="checkbox" checked={ctaEnabled} onChange={(event) => setCtaEnabled(event.target.checked)} /> Ativar resposta por palavra-chave</label>
-                    {ctaEnabled && <>
+                    <legend>Respostas automáticas por CTA</legend>
+                    <p className="muted">Cadastre palavras-chave diferentes e a resposta de cada uma. Inclua as opções na mensagem da campanha.</p>
+                    {ctas.map((cta, index) => <div className="variation-editor" key={cta.id}>
+                      <strong>CTA {index + 1}</strong>
                       <label>Palavra-chave esperada
-                        <input value={ctaKeyword} onChange={(event) => setCtaKeyword(event.target.value)} maxLength={100} required placeholder="Ex.: QUERO" />
+                        <input value={cta.keyword} onChange={(event) => setCtas((current) => current.map((item) => item.id === cta.id ? { ...item, keyword: event.target.value } : item))} maxLength={100} required placeholder="Ex.: QUERO" />
                       </label>
                       <label>Mensagem após a resposta
-                        <textarea value={ctaReplyText} onChange={(event) => setCtaReplyText(event.target.value)} maxLength={10000} required rows={3} placeholder="Ex.: Ótimo! Vou te passar os detalhes…" />
+                        <textarea value={cta.replyText} onChange={(event) => setCtas((current) => current.map((item) => item.id === cta.id ? { ...item, replyText: event.target.value } : item))} maxLength={10000} required rows={3} placeholder="Ex.: Ótimo! Vou te passar os detalhes…" />
                       </label>
-                      <small className="muted">Inclua a palavra-chave no texto de cada abordagem. A resposta do lead deve ser apenas essa palavra ou frase; maiúsculas, acentos e pontuação são ignorados. Cada lead recebe esta resposta automática uma vez por campanha.</small>
-                    </>}
+                      <button type="button" className="text-button" onClick={() => setCtas((current) => current.filter((item) => item.id !== cta.id))}>Remover CTA</button>
+                    </div>)}
+                    <button type="button" className="button small" disabled={ctas.length >= 20} onClick={() => setCtas((current) => [...current, { id: crypto.randomUUID(), keyword: '', replyText: '' }])}>Adicionar CTA</button>
+                    <small className="muted">A resposta do lead deve ser apenas a palavra ou frase cadastrada. Maiúsculas, acentos e pontuação são ignorados. Cada CTA responde uma vez por lead.</small>
                   </fieldset>}
                   {!schedule && <fieldset className="surface">
                     <legend>Follow-up se o lead não responder</legend>
@@ -1619,6 +1645,32 @@ export function BatchEditor({
                   <input name="pauseSeconds" type="number" min={0} max={86400} defaultValue={300} />
                 </label>
               </div>
+              <fieldset className="surface">
+                <legend>Dias e horários permitidos</legend>
+                <label><input type="checkbox" checked={sendWindowEnabled} onChange={(event) => setSendWindowEnabled(event.target.checked)} /> Limitar horário dos envios</label>
+                {sendWindowEnabled && <>
+                  <div className="form-grid">
+                    <label>Início<input type="time" required value={sendStart} onChange={(event) => setSendStart(event.target.value)} /></label>
+                    <label>Fim<input type="time" required value={sendEnd} onChange={(event) => setSendEnd(event.target.value)} /></label>
+                  </div>
+                  <label>Fuso horário
+                    <Select value={sendTimezone} onChange={(event) => setSendTimezone(event.target.value)}>
+                      <option value="America/Sao_Paulo">Brasília / São Paulo</option>
+                      <option value="America/Manaus">Manaus</option>
+                      <option value="America/Cuiaba">Cuiabá</option>
+                      <option value="America/Belem">Belém</option>
+                      <option value="America/Recife">Recife</option>
+                      <option value="America/Rio_Branco">Rio Branco</option>
+                    </Select>
+                  </label>
+                  <div className="form-grid">
+                    {([['Domingo', 0], ['Segunda', 1], ['Terça', 2], ['Quarta', 3], ['Quinta', 4], ['Sexta', 5], ['Sábado', 6]] as const).map(([label, day]) =>
+                      <label key={day}><input type="checkbox" checked={sendDays.includes(day)} onChange={(event) => setSendDays((current) => event.target.checked ? [...current, day].sort() : current.filter((item) => item !== day))} /> {label}</label>)}
+                  </div>
+                  <small className="muted">Fora desses dias e horários, a campanha, os follow-ups e as respostas da CTA aguardam a próxima abertura. Início e fim devem ser no mesmo dia.</small>
+                  {['flow', 'funnel'].includes(kind) && <small className="muted">Para fluxos e funis, esta janela controla o início. As mensagens internas seguem a programação do próprio fluxo ou funil.</small>}
+                </>}
+              </fieldset>
             </>
           )}
           {kind !== 'reminder' && labels.length > 0 && (
