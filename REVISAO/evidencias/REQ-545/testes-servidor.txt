@@ -1,0 +1,5 @@
+REQ: REQ-545
+Resultado: APROVADO
+Teste: apps/server/test/operations.test.ts — CRUD com segredos Gemini fictícios, criptografia, listagem protegida, edição, ordenação e exclusão.
+Banco: SQLite temporário descartável criado em %TEMP%; .audit/noctua-audit.db não foi aberto.
+Produção/serviço externo: não acessado.

@@ -93,6 +93,36 @@ test('REQ-136 menu alcança chat, Kanban, campanhas, contatos, IA e conexões', 
   await saveEvidence(page, 'REQ-136', info, { paths: ['chat', 'crm', 'campaigns', 'contacts', 'connections', 'ai'] });
 });
 
+test('REQ-547/REQ-552/REQ-553/REQ-554 painel de chaves e orientação Gemini sem chamar o provedor', async ({ page }, info) => {
+  await page.route('**/api/operations/features', route => route.fulfill({ json: { aiEnabled: true, canManage: true } }));
+  await page.route('**/api/operations/ai', route => route.request().method() === 'GET'
+    ? route.fulfill({ json: { provider: 'gemini', model: 'modelo-ficticio', enabled: false, instructions: '', knowledge: '', style: '', fallbackText: '', mediaModel: '', transcriptionModel: '', fastModel: '', reasoningModel: '', imageModel: '', dailyLimit: 0, dailyTokenLimit: 0, maxOutputTokens: 1000, monthlyBudget: 0, inputPrice: 0, outputPrice: 0, usage: { todayTokens: 0, todayRequests: 0, monthCost: 0, unconfirmed: 0 } } })
+    : route.fulfill({ json: {} }));
+  await page.route('**/api/operations/ai/keys', route => route.fulfill({ json: {
+    provider: 'gemini',
+    primary: { configured: true, dailyQuotaExhausted: false },
+    items: [{ id: 'fake-key-id', label: 'Projeto Google B', enabled: true, dailyQuotaExhausted: true }],
+    lastUsed: null,
+  } }));
+  await openApp(page);
+  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
+  await page.getByRole('button', { name: 'Integração de IA', exact: true }).click();
+  await expect(page.getByText('Google AI Pro e a API são serviços separados.')).toBeVisible();
+  await expect(page.getByText(/Ativar faturamento da API pode gerar cobrança adicional/)).toBeVisible();
+  await expect(page.getByText('Modelos disponíveis na sua chave')).toBeVisible();
+  await expect(page.getByText(/identificador do modelo é diferente do número do projeto/)).toBeVisible();
+  await page.getByRole('button', { name: 'Ocultar chaves de API' }).click();
+  await expect(page.getByRole('button', { name: 'Mostrar configurações de chaves de API' })).toBeVisible();
+  await page.getByRole('button', { name: 'Mostrar configurações de chaves de API' }).click();
+  await expect(page.getByRole('heading', { name: 'Configurações de Chaves de API' })).toBeVisible();
+  await expect(page.getByText(/somente quando a Gemini confirmar esgotamento da cota diária/)).toBeVisible();
+  await expect(page.getByText('Cota diária esgotada; ignorada temporariamente')).toBeVisible();
+  await expect(page.getByPlaceholder('Insira uma chave nova; a atual nunca é exibida')).toBeVisible();
+  await expect(page.getByPlaceholder('A chave não será exibida após salvar')).toBeVisible();
+  for (const id of ['REQ-547', 'REQ-548', 'REQ-552', 'REQ-553', 'REQ-554'])
+    await saveEvidence(page, id, info, { keySettingsVisible: true, provider: 'Gemini', requestsMocked: true, writes: false });
+});
+
 test('REQ-137 chat mostra mídia, etiqueta e controle de pausa da IA simulada', async ({ page }, info) => {
   await enableSimulatedAi(page);
   await openApp(page);

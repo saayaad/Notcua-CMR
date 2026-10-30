@@ -16,6 +16,8 @@ import { geminiResponse, meteredCall } from '../src/modules/operations/ai-provid
 import { generateSuggestion } from '../src/modules/operations/ai.service.js';
 import { putRecord, record, type AgentSettings } from '../src/modules/operations/records.js';
 import { aiHeaderVisible, reorderVisibleHeaders } from '../../web/src/context/ai-visibility.js';
+import { CredentialCipher } from '../src/modules/whatsapp/credential-cipher.js';
+import { env } from '../src/config/env.js';
 
 const directory = await mkdtemp(join(tmpdir(), 'noctua-ai-feature-'));
 const url = `file:${join(directory, 'test.db').replace(/\\/g, '/')}`;
@@ -82,6 +84,59 @@ test('REQ-526 IA sem ativação permanece parada, sem chamada externa, cache ou 
   );
   assert.equal(callback, false);
   assert.equal(await db.operationRecord.count({ where: { kind: 'AI_USAGE' } }), 0);
+});
+
+test('REQ-546/REQ-555 alterna chaves só em cota diária e não confunde outros erros com cota', async () => {
+  await setAiFeature(db, true);
+  const previous = await record<AgentSettings | null>(db, 'integration:ai', null);
+  const previousKeyFile = env.WHATSAPP_KEY_FILE;
+  env.WHATSAPP_KEY_FILE = join(directory, 'gemini-rotation-test.key');
+  const cipher = await CredentialCipher.load(env.WHATSAPP_KEY_FILE);
+  const primary = 'fake-primary-key-not-real-00001';
+  const fallback = 'fake-fallback-key-not-real-00002';
+  const data: AgentSettings = {
+    ...config,
+    encryptedKey: cipher.encrypt(primary).toString('base64'),
+    fallbackKeys: [{ id: 'fallback-1', label: 'Projeto de teste B', enabled: true, encryptedKey: cipher.encrypt(fallback).toString('base64') }],
+  };
+  const guardedFetch = globalThis.fetch;
+  try {
+    await putRecord(db, 'integration:ai', 'INTEGRATION', data);
+    const used: string[] = [];
+    globalThis.fetch = async (_input, init) => {
+      used.push(new Headers(init?.headers).get('x-goog-api-key') ?? '');
+      if (used.length === 1) return new Response(JSON.stringify({ error: { message: 'Daily requests per day quota exceeded', details: [{ reason: 'RATE_LIMIT_EXCEEDED_PER_DAY' }] } }), { status: 429 });
+      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'geração simulada' }] } }] }), { status: 200 });
+    };
+    const result = await geminiResponse(db, data, 'https://example.invalid/generate', { method: 'POST' });
+    assert.equal(used.length, 2, 'REQ-546 tenta a próxima chave após o esgotamento diário');
+    assert.deepEqual(used, [primary, fallback], 'REQ-546 usa a ordem cadastrada');
+    assert.equal((await record<{ until: number }>(db, 'ai-key-quota:primary', { until: 0 })).until > Date.now(), true, 'REQ-546 marca somente a chave diária esgotada');
+    assert.equal(result.candidates[0].content.parts[0].text, 'geração simulada');
+
+    for (const failure of [
+      { status: 429, message: 'Too many requests per minute', reason: 'RATE_LIMIT_EXCEEDED_PER_MINUTE' },
+      { status: 400, message: 'Invalid API key', reason: 'API_KEY_INVALID' },
+      { status: 404, message: 'Model not found', reason: 'MODEL_NOT_FOUND' },
+    ]) {
+      await db.operationRecord.deleteMany({ where: { id: { startsWith: 'ai-key-quota:' } } });
+      const callsBefore = used.length;
+      globalThis.fetch = async (_input, init) => {
+        used.push(new Headers(init?.headers).get('x-goog-api-key') ?? '');
+        return new Response(JSON.stringify({ error: { message: failure.message, details: [{ reason: failure.reason }] } }), { status: failure.status });
+      };
+      await assert.rejects(geminiResponse(db, data, 'https://example.invalid/generate', { method: 'POST' }));
+      assert.equal(used.length - callsBefore, 1, 'REQ-555 chave alternativa não é tentada por erro não diário');
+      assert.equal(await db.operationRecord.findUnique({ where: { id: 'ai-key-quota:primary' } }), null, 'REQ-555 erro não diário não marca cota diária');
+    }
+  } finally {
+    globalThis.fetch = guardedFetch;
+    env.WHATSAPP_KEY_FILE = previousKeyFile;
+    await db.operationRecord.deleteMany({ where: { id: { startsWith: 'ai-key-quota:' } } });
+    if (previous) await putRecord(db, 'integration:ai', 'INTEGRATION', previous);
+    else await db.operationRecord.deleteMany({ where: { id: 'integration:ai' } });
+    await setAiFeature(db, false);
+  }
 });
 
 test('administrador habilita e persiste sem chave nova nem ativar o robô; configurações ficam preservadas', async () => {

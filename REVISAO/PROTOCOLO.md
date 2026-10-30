@@ -189,3 +189,11 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - `scripts/iniciar-noctua-online.ps1` continua modificado e fora de staging/commit; não executar nem publicar com ele.
 - Bloqueios conhecidos reunidos para avaliação final: REQ-523 hospedagem persistente/API sem PC; REQ-527 escopo das contas conectadas; REQ-530 conexão WhatsApp real; REQ-533/541 partida controlada do iniciador, que publica; REQ-534 saída do console; REQ-540 identificadores públicos Firebase locais; REQ-542 publicação na branch de produção.
 - Próximo lote: L-21, chaves de IA e geração, REQ-544 em diante. Usar somente provedor simulado; a decisão de não exigir chave real e pausar a IA sem cota permanece válida.
+
+## Ponto de retomada — 30/10/2026 — após L-21 chaves de IA
+
+- REQ-544–555 foram avaliadas: 10 `COMPLETO`, 2 `COMPLETO-LOCAL`; ledger: 368 com teste, 335 sem. Testes: servidor 2/2, Playwright 3/3 em três viewports, typecheck aprovado.
+- Chaves/API e respostas de cota foram fictícias; integração de UI mockada. Nenhum segredo real, chamada externa ou faturamento. Não pedir novamente chave de IA: usar simulador e respeitar serviços gratuitos/IA opcional.
+- Duas falhas iniciais de seletor e uma tentativa com caminho de teste errado foram corrigidas e repetidas com sucesso; progresso descreve causas. Nenhum BUG de produto surgiu.
+- Próximo lote: L-22, REQ-556–573. REQ-573 já está adiada até o proprietário enviar a Parte 8 e deve ficar fora da contagem, conforme §6.
+- `scripts/iniciar-noctua-online.ps1` permanece fora de staging e commit.

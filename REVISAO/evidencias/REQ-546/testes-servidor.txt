@@ -1,0 +1,6 @@
+REQ: REQ-546
+Resultado: APROVADO
+Teste: apps/server/test/ai-feature.test.ts — resposta de cota diária simulada, rotação ordenada; erro por minuto, chave inválida e modelo inexistente não rodam para próxima chave nem gravam cota diária.
+Chaves e arquivo de cifra: fictícios e temporários; fetch foi substituído por mock.
+Banco: SQLite temporário descartável criado em %TEMP%; .audit/noctua-audit.db não foi aberto.
+Produção/serviço externo: não acessado.

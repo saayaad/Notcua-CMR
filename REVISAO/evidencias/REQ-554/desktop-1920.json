@@ -1,0 +1,10 @@
+{
+  "req": "REQ-554",
+  "result": "APROVADO",
+  "project": "desktop-1920",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "keySettingsVisible": true,
+  "provider": "Gemini",
+  "requestsMocked": true,
+  "writes": false
+}

@@ -601,7 +601,7 @@ test('Firebase rejeita ausência de token sem usar a liberação do modo local',
   }
 });
 
-test('REQ-130: chaves fictícias permitem CRUD cifrado sem expor os valores', async () => {
+test('REQ-544/REQ-545/REQ-548/REQ-549/REQ-550/REQ-551 chaves fictícias cobrem cadastrar, listar sem segredo, editar, ordenar e excluir', async () => {
   const previous = await db.operationRecord.findUnique({ where: { id: 'integration:ai' } });
   const previousKeyFile = env.WHATSAPP_KEY_FILE;
   env.WHATSAPP_KEY_FILE = join(dir, 'keys-manager-test.key');
@@ -611,9 +611,11 @@ test('REQ-130: chaves fictícias permitem CRUD cifrado sem expor os valores', as
     await putRecord(db, 'integration:ai', 'INTEGRATION', {
       provider: 'gemini', model: 'mock-model', instructions: '', knowledge: '', style: '', enabled: false,
     });
-    await request(app).put('/api/operations/ai/keys/primary').send({ apiKey: primary }).expect(200);
+    const primaryResult = await request(app).put('/api/operations/ai/keys/primary').send({ apiKey: primary }).expect(200);
+    assert.equal(primaryResult.body.saved, true, 'REQ-544 cadastra a chave principal');
     const first = await request(app).post('/api/operations/ai/keys').send({ label: 'Chave A', apiKey: primary }).expect(201);
     const second = await request(app).post('/api/operations/ai/keys').send({ label: 'Chave B', apiKey: replacement }).expect(201);
+    assert.ok(first.body.id && second.body.id, 'REQ-545 cadastra duas chaves adicionais identificáveis');
     await putRecord(db, `ai-key-quota:${first.body.id}`, 'STATE', { until: Date.now() + 60000 });
     await request(app).put(`/api/operations/ai/keys/${first.body.id}`).send({ label: 'Chave A editada', apiKey: replacement }).expect(200);
     assert.equal(await db.operationRecord.findUnique({ where: { id: `ai-key-quota:${first.body.id}` } }), null);
@@ -621,17 +623,19 @@ test('REQ-130: chaves fictícias permitem CRUD cifrado sem expor os valores', as
     await request(app).put('/api/operations/ai/keys/order').send({ ids: [first.body.id, first.body.id] }).expect(422);
     await request(app).patch(`/api/operations/ai/keys/${first.body.id}`).send({ enabled: false }).expect(200);
     const listing = await request(app).get('/api/operations/ai/keys').expect(200);
-    assert.deepEqual(listing.body.items.map((item: { id: string }) => item.id), [second.body.id, first.body.id]);
-    assert.equal(listing.body.items[1].label, 'Chave A editada');
+    assert.deepEqual(listing.body.items.map((item: { id: string }) => item.id), [second.body.id, first.body.id], 'REQ-551 relê as chaves na nova ordem');
+    assert.equal(listing.body.items[1].label, 'Chave A editada', 'REQ-550 confirma a edição do rótulo');
     assert.equal(listing.body.items[1].enabled, false);
     assert.equal(listing.body.primary.configured, true);
     assert.ok(!JSON.stringify(listing.body).includes(primary));
     assert.ok(!JSON.stringify(listing.body).includes(replacement));
+    assert.equal(listing.body.items.length, 2, 'REQ-548 lista rótulos e estados, sem expor o segredo');
     const stored = await db.operationRecord.findUniqueOrThrow({ where: { id: 'integration:ai' } });
     assert.ok(!JSON.stringify(stored.data).includes(primary));
     assert.ok(!JSON.stringify(stored.data).includes(replacement));
     const removal = await request(app).delete('/api/operations/ai/keys/primary').expect(200);
     assert.equal(removal.body.hasOtherActiveKey, true);
+    assert.equal(removal.body.deleted, true, 'REQ-549 remove a chave principal sem excluir as adicionais');
     for (const keyId of [first.body.id, second.body.id])
       await request(app).delete(`/api/operations/ai/keys/${keyId}`).expect(200);
     const empty = await request(app).get('/api/operations/ai/keys').expect(200);
