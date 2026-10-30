@@ -1,0 +1,13 @@
+{
+  "req": "REQ-327",
+  "result": "APROVADO",
+  "project": "desktop-1920",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "qr": "mocked local response; no WhatsApp connection",
+  "bounds": {
+    "width": 260,
+    "height": 260,
+    "naturalWidth": 1
+  },
+  "responsive": true
+}

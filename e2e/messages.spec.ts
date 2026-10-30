@@ -93,7 +93,11 @@ test('REQ-247/REQ-248/REQ-249 salva nota privada dourada sem chamar a rota de en
   await evidence(page, ['REQ-247', 'REQ-248', 'REQ-249'], info, { note: text, persisted: true, externalSend: false });
 });
 
-test('REQ-254/REQ-255/REQ-256 abre, filtra e seleciona recurso da Biblioteca rápida', async ({ page }, info) => {
+test('REQ-254/REQ-255/REQ-256/REQ-324 abre, filtra e seleciona recurso pela Biblioteca e atalho /', async ({ page }, info) => {
+  const library = await page.request.get('http://127.0.0.1:3340/api/attendance/library');
+  const assets = (await library.json() as { assets: Array<{ id: string; name: string }> }).assets;
+  const resourceName = assets.find((asset) => asset.id === 'audit-asset-welcome')?.name;
+  expect(resourceName).toBeTruthy();
   await page.route('**/api/whatsapp/sessions', async (route) => {
     const response = await route.fetch();
     const body = await response.json();
@@ -104,10 +108,11 @@ test('REQ-254/REQ-255/REQ-256 abre, filtra e seleciona recurso da Biblioteca rá
   );
   await openFirstConversation(page);
   const composer = page.getByRole('textbox', { name: 'Mensagem', exact: true });
-  await composer.fill('/Boas');
+  const shortcut = `/${resourceName!.slice(0, 4)}`;
+  await composer.fill(shortcut);
   const menu = page.getByRole('listbox', { name: 'Respostas rápidas da Biblioteca' });
   await expect(menu).toBeVisible();
-  const option = menu.getByRole('option', { name: /Boas-vindas da auditoria/ });
+  const option = menu.getByRole('option').filter({ hasText: resourceName! });
   await expect(option).toBeVisible();
   await expect(menu.getByRole('option')).toHaveCount(1);
   const [sent] = await Promise.all([
@@ -115,16 +120,16 @@ test('REQ-254/REQ-255/REQ-256 abre, filtra e seleciona recurso da Biblioteca rá
     option.click(),
   ]);
   expect(sent.ok()).toBeTruthy();
-  await expect(page.getByText('“Boas-vindas da auditoria” enviado.')).toBeVisible();
+  await expect(page.getByText(`“${resourceName}” enviado.`)).toBeVisible();
   await expect(composer).toHaveValue('');
-  await composer.fill('/Boas');
+  await composer.fill(shortcut);
   await expect(menu).toBeVisible();
   const secondSent = page.waitForResponse((res) => res.url().endsWith('/send-asset') && res.request().method() === 'POST' && res.ok());
   await composer.press('Enter');
   await secondSent;
-  await expect(page.getByText('“Boas-vindas da auditoria” enviado.')).toBeVisible();
+  await expect(page.getByText(`“${resourceName}” enviado.`)).toBeVisible();
   await expect(composer).toHaveValue('');
-  await evidence(page, ['REQ-254', 'REQ-255', 'REQ-256'], info, { selectedByClickAndEnter: 'Boas-vindas da auditoria', sentByFictitiousConnector: true });
+  await evidence(page, ['REQ-254', 'REQ-255', 'REQ-256', 'REQ-324'], info, { selectedByClickAndEnter: resourceName, sentByFictitiousConnector: true, slashShortcut: true });
 });
 
 test('REQ-236/REQ-237/REQ-238/REQ-239 configura HUD pelo cabeçalho e persiste densidade', async ({ page }, info) => {

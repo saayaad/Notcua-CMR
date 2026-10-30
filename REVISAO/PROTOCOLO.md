@@ -109,3 +109,11 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Contagens após o lote: 179 A VERIFICAR; 251 COMPLETO; 30 COMPLETO-LOCAL; 178 PARCIAL; 50 cancelados/substituídos; 10 decisão; 4 desconectados; 0 com defeito; 1 ausente.
 - Próximo lote: REQ-298–327, módulo Exportação e operação. Retomar sem reiniciar os serviços locais; não resetar o banco.
 - Regressão final pós-lote Campanhas: servidor 206/206, typecheck aprovado, build aprovado com aviso de bundle >500 kB, Playwright 18/18 em três viewports.
+
+## Ponto de retomada — 30/10/2026 — após Exportação e operação
+
+- Lote REQ-298–327 fechado; regressão Playwright 48/48 e operações de servidor 51/51. Ledger: 197 REQs com teste vinculado, 506 sem.
+- Estado global: 162 A VERIFICAR; 268 COMPLETO; 38 COMPLETO-LOCAL; 171 PARCIAL; 50 canceladas/substituídas; 9 decisões pendentes; 2 decisões confirmadas; 4 desconectadas; 1 ausente.
+- 25 REQs mudaram: 17 COMPLETO e 8 COMPLETO-LOCAL. Evidências em `REVISAO/evidencias/REQ-298/`–`REQ-327/`. `.audit/noctua-audit.db` preservado; servidor do usuário respondeu HTTP 200 em `127.0.0.1:3340/atendimento`.
+- Próximo módulo: Sandbox e suporte, REQ-328–356. Preservar REQ-357–359 já completas. Siga usando os serviços existentes; não resetar banco nem tocar em produção.
+- `scripts/iniciar-noctua-online.ps1` continua fora do commit: muda a raiz usada para CLI Vercel e arquivos de vínculo, portanto pode mudar a origem da publicação. Nenhuma publicação foi executada.

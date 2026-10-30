@@ -320,7 +320,69 @@ test('REQ-289/REQ-290/REQ-291/REQ-292/REQ-320 agenda filtra contatos e salva ras
   });
 });
 
-test('REQ-293/REQ-294/REQ-295/REQ-296/REQ-297 biblioteca edita, reproduz, amplia, duplica e exclui com confirmação', async ({ page }, info) => {
+test('REQ-317 configura texto, áudio, imagem e vídeo em sequência de campanha fictícia', async ({ page }, info) => {
+  const libraryResponse = await page.request.get(`${api}/attendance/library`);
+  const library = await libraryResponse.json() as { assets: Array<{ id: string; name: string }> };
+  const assets = [
+    library.assets.find((item) => item.id === 'audit-asset-audio'),
+    library.assets.find((item) => item.id === 'audit-asset-image'),
+    library.assets.find((item) => item.id === 'audit-asset-video'),
+  ];
+  expect(assets.every(Boolean)).toBeTruthy();
+  const campaignName = `Campanha de conteúdo REQ-317 ${info.project.name} ${Date.now()}`;
+  let sends = 0;
+  page.on('request', (request) => {
+    if (/\/conversations\/[^/]+\/send(?:-|$)/.test(request.url())) sends += 1;
+  });
+  await openCampaignEditor(page);
+  const dialog = page.locator('dialog.batch-editor-modal');
+  await dialog.getByLabel('Nome', { exact: true }).fill(campaignName);
+  await dialog.getByRole('combobox', { name: 'Conteúdo' }).click();
+  await page.getByRole('option', { name: 'Sequência de textos e mídias', exact: true }).click();
+  const steps = dialog.locator('section.surface').filter({ hasText: /Etapa \d/ });
+  await steps.nth(0).getByRole('textbox', { name: 'Mensagem' }).fill('Mensagem de texto fictícia da campanha.');
+  for (let index = 0; index < assets.length; index += 1) {
+    await dialog.getByRole('button', { name: 'Adicionar mensagem', exact: true }).click();
+    const step = steps.nth(index + 1);
+    await step.getByRole('combobox', { name: `Etapa ${index + 2}` }).click();
+    await page.getByRole('option', { name: 'Áudio, imagem, vídeo ou recurso', exact: true }).click();
+    await step.getByRole('combobox', { name: 'Recurso da biblioteca' }).click();
+    await page.getByRole('option', { name: assets[index]!.name, exact: true }).click();
+  }
+  await expect(steps).toHaveCount(4);
+  await dialog.getByRole('button', { name: 'Conferir público' }).click();
+  await expect(dialog.getByText(/contatos correspondem ao filtro/)).toBeVisible();
+  const responsePromise = page.waitForResponse((response) =>
+    response.url().endsWith('/api/operations/sessions/audit-session/batches') && response.request().method() === 'POST',
+  );
+  await dialog.getByRole('button', { name: 'Salvar rascunho' }).click();
+  const response = await responsePromise;
+  expect(response.status()).toBe(201);
+  const created = await response.json() as { id: string };
+  try {
+  await page.reload();
+  await page.getByRole('button', { name: 'Campanhas', exact: true }).click();
+  await expect(page.getByText(campaignName, { exact: true })).toBeVisible();
+  const batchesResponse = await page.request.get(`${api}/operations/sessions/audit-session/batches`);
+  const batches = (await batchesResponse.json() as { items: Array<Record<string, unknown>> }).items;
+  const saved = batches.find((item) => item.id === created.id) as { status: string } | undefined;
+  expect(saved?.status).toBe('DRAFT');
+  const tasksResponse = await page.request.get(`${api}/operations/sessions/audit-session/batches/${created.id}/tasks`);
+  const tasks = (await tasksResponse.json() as { items: Array<{ payload: { kind: string; steps: Array<{ snapshot: { kind: string } }> } }> }).items;
+  expect(tasks.length).toBeGreaterThan(0);
+  expect(tasks[0]!.payload.kind).toBe('sequence');
+  expect(tasks[0]!.payload.steps.map((step) => step.snapshot.kind)).toEqual(['text', 'audio', 'image', 'video']);
+  expect(sends).toBe(0);
+  await saveEvidence(page, ['REQ-317'], info, { sequence: ['text', 'audio', 'image', 'video'], persistedAfterReload: true, sends });
+  } finally {
+    const cancelled = await page.request.put(`${api}/operations/sessions/audit-session/batches/${created.id}`, {
+      data: { status: 'CANCELLED' },
+    });
+    expect(cancelled.status()).toBe(200);
+  }
+});
+
+test('REQ-293/REQ-294/REQ-295/REQ-296/REQ-297/REQ-323 biblioteca edita, reproduz e pré-visualiza todos os tipos de conteúdo', async ({ page }, info) => {
   const sends: string[] = [];
   page.on('request', (request) => {
     if (/\/conversations\/[^/]+\/send(?:-|$)/.test(request.url())) sends.push(request.url());
@@ -347,6 +409,10 @@ test('REQ-293/REQ-294/REQ-295/REQ-296/REQ-297 biblioteca edita, reproduz, amplia
   await page.getByRole('button', { name: 'Biblioteca', exact: true }).click();
   await page.getByRole('button', { name: /Textos/ }).click();
   await expect(page.getByRole('button', { name: editedName, exact: true })).toBeVisible();
+  await page.getByRole('button', { name: editedName, exact: true }).click();
+  const textPreview = page.getByRole('dialog').last();
+  await expect(textPreview).toContainText(`Texto fictício atualizado ${info.project.name}`);
+  await textPreview.getByRole('button', { name: 'Fechar', exact: true }).click();
   await page.getByRole('button', { name: 'Mídias', exact: true }).click();
   await page.getByRole('button', { name: 'Editar Imagem fictícia' }).click();
   await page.getByLabel('Legenda').fill(`Legenda de auditoria ${info.project.name}`);
@@ -375,6 +441,13 @@ test('REQ-293/REQ-294/REQ-295/REQ-296/REQ-297 biblioteca edita, reproduz, amplia
   await page.getByRole('button', { name: 'Vídeo fictício', exact: true }).click();
   await expect(page.locator('dialog video')).toBeVisible();
   await page.getByRole('dialog').last().getByRole('button', { name: 'Fechar', exact: true }).click();
+  await page.getByRole('button', { name: 'Documentos', exact: true }).click();
+  await page.getByRole('button', { name: 'Documento fictício', exact: true }).click();
+  const documentPreview = page.getByRole('dialog').last();
+  await expect(documentPreview).toContainText('Documento disponível para baixar.');
+  await expect(documentPreview.getByRole('link', { name: 'Baixar arquivo' })).toBeVisible();
+  await saveEvidence(page, ['REQ-323'], info, { previews: ['text', 'audio', 'image', 'video', 'document'] });
+  await documentPreview.getByRole('button', { name: 'Fechar', exact: true }).click();
   await page.getByRole('button', { name: /Textos/ }).click();
   const sourceCard = page.locator('article.resource-card').filter({ has: page.getByRole('button', { name: editedName, exact: true }) });
   await sourceCard.getByRole('button', { name: `Duplicar ${editedName}`, exact: true }).click();

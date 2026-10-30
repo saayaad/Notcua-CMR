@@ -26,3 +26,13 @@
 - Próximo lote por módulo: REQ-298–327, Exportação e operação. Continuar no servidor existente e banco `.audit`; IA simulada apenas.
 - Fechamento do lote Campanhas: 15 itens saíram de A VERIFICAR e 11 de PARCIAL; 25 foram para COMPLETO e REQ-279 para COMPLETO-LOCAL. Contagens globais: 179 A VERIFICAR, 251 COMPLETO, 30 COMPLETO-LOCAL e 178 PARCIAL.
 - Regressão final após correções do lote Campanhas: `npm test` aprovou 206/206; `npm run typecheck` aprovado; `npm run build` aprovado (aviso de bundle JS acima de 500 kB, sem falha). Playwright final 18/18 em três viewports.
+
+## Exportação e operação — lote REQ-298–327 — 30/10/2026
+
+- Regressão visual combinada passou: 48/48 (16 cenários em três viewports: 1366×768, 1920×1080 e 390×844). Suíte de operações do servidor: 51/51 já aprovada. `npm run audit:ledger`: 197 REQs com teste vinculado, 506 sem.
+- Mudaram 25 REQs: 17 para `COMPLETO` e 8 para `COMPLETO-LOCAL` (REQ-300–306 e REQ-327). Totais após regenerar o ledger: 162 A VERIFICAR, 268 COMPLETO, 38 COMPLETO-LOCAL, 171 PARCIAL, 50 canceladas/substituídas, 9 decisões, 2 decisões confirmadas, 4 desconectadas e 1 ausente.
+- Evidências finais em `REVISAO/evidencias/REQ-298/`–`REQ-327/`; dados fictícios exclusivamente em `.audit/noctua-audit.db`. Importações, lembretes e campanha não enviaram mensagens; tarefas de teste foram removidas/restauradas. IA e QR foram simulados localmente.
+- Correções nos testes: seleção de mídia usa nome atual por ID estável; campanha valida snapshots de tarefas no endpoint correto; controle de IA intercepta endpoint local; upload verifica saída WebP; lembrete cancela sua tarefa ao finalizar. Retestes direcionados passaram e regressão completa 48/48.
+- Sem defeito de produto confirmado neste lote. REQ-300–306 permanecem local por falta de provedor real, conforme decisão já registrada; REQ-327 exige leitura física de QR em aparelho.
+- Script `scripts/iniciar-noctua-online.ps1` permanece alterado e fora do commit. Mudança seleciona a pasta de interface em `Documents\ChatGPT\Noctua` quando ela existe, senão usa o repositório; roda o CLI Vercel nessa pasta e lê os vínculos de projeto dali. Isso muda a origem potencial de uma publicação. Não publicar.
+- Próximo módulo: Sandbox e suporte, REQ-328–356. REQ-357–359 já estão completas e serão preservadas.

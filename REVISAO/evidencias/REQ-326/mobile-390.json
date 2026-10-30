@@ -1,0 +1,13 @@
+{
+  "req": "REQ-326",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "categories": [
+    "Fixados A mobile-390",
+    "Fixados B mobile-390"
+  ],
+  "selectedCategory": "Fixados A mobile-390",
+  "visiblePinnedResource": "Recurso auditoria mobile-390",
+  "persistedAfterReload": true
+}

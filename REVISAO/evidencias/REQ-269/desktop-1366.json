@@ -5,7 +5,7 @@
   "url": "http://127.0.0.1:5180/atendimento",
   "nativeSelects": 0,
   "modal": {
-    "height": 674.083984375,
+    "height": 674.0860595703125,
     "viewportHeight": 768,
     "scroller": "form",
     "scrollerOverflowY": "auto",

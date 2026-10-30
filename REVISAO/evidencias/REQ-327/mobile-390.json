@@ -1,0 +1,13 @@
+{
+  "req": "REQ-327",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "qr": "mocked local response; no WhatsApp connection",
+  "bounds": {
+    "width": 204,
+    "height": 204,
+    "naturalWidth": 1
+  },
+  "responsive": true
+}

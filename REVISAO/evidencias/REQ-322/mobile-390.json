@@ -1,0 +1,10 @@
+{
+  "req": "REQ-322",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "uploaded": true,
+  "category": "Categoria REQ-322 mobile-390",
+  "persistedAfterReload": true,
+  "assetId": "asset:a2203ab3-959f-4fdb-8e4b-ed422acfe612"
+}

@@ -1,0 +1,13 @@
+{
+  "req": "REQ-326",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "categories": [
+    "Fixados A desktop-1366",
+    "Fixados B desktop-1366"
+  ],
+  "selectedCategory": "Fixados A desktop-1366",
+  "visiblePinnedResource": "Recurso auditoria desktop-1366",
+  "persistedAfterReload": true
+}
