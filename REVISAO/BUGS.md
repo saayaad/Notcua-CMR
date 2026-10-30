@@ -177,3 +177,12 @@ A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, po
 - Correção: chave do `<textarea>` acompanha a lista carregada e remonta o campo com os termos persistidos.
 - Reteste: Playwright local salva termos no fixture, recarrega e confirma o mesmo valor em desktop e celular; nenhum envio ocorreu.
 - Estado: corrigido localmente em 30/10/2026.
+
+## BUG-025 — Cache chamado semântico só reconhece semelhança lexical limitada
+
+- REQ: REQ-425.
+- Reprodução: habilitar cache aprovado e comparar paráfrases que preservam sentido, mas não compartilham as palavras indexadas nem os sinônimos codificados.
+- Resultado: o cache não encontra equivalência semântica geral; usa palavras, um dicionário curto de sinônimos e Jaccard.
+- Causa: não existe embedding, índice vetorial nem classificador de intenção no cache. Embeddings locais também não estão implementados (REQ-430 AUSENTE).
+- Validação: teste do cache confirma revisão, expiração, isolamento e reutilização para equivalência lexical; não comprova compreensão semântica geral.
+- Estado: defeito aberto em 30/10/2026. Nenhum serviço ou modelo externo foi ativado.

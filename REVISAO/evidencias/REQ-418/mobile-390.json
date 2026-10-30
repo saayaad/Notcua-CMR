@@ -1,0 +1,27 @@
+{
+  "req": "REQ-418",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "consoleErrors": [],
+  "provider": "fixture local; nenhuma chamada externa",
+  "settings": {
+    "enabled": false,
+    "semanticCache": true,
+    "rag": true,
+    "cacheDays": 21,
+    "summaryEvery": 15,
+    "systems": {
+      "autoReply": false,
+      "copilot": false,
+      "summaries": false,
+      "campaigns": true,
+      "training": true,
+      "receipts": true,
+      "dailyDigest": true
+    }
+  },
+  "dailyAndMonthlyStats": true,
+  "cacheReviewedApprovedEditedAndCleared": true,
+  "fixtureOnly": true
+}

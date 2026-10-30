@@ -1,0 +1,10 @@
+{
+  "req": "REQ-443",
+  "resultado": "COMPLETO-LOCAL",
+  "teste": "apps/server/test/operations.test.ts",
+  "caso": "REQ-360/REQ-361/REQ-362/REQ-363/REQ-364/REQ-370/REQ-371/REQ-372/REQ-441/REQ-442/REQ-443 roteia modelos simulados",
+  "observacao": "Negociação com preço/orçamento usou reasoningModel profundo configurado no provider fictício.",
+  "banco": "SQLite temporário criado pela suíte; .audit/noctua-audit.db não usado",
+  "provider": "simulado local; nenhuma chamada externa",
+  "data": "2026-10-30"
+}

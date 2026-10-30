@@ -1,0 +1,10 @@
+{
+  "req": "REQ-433",
+  "resultado": "COMPLETO-LOCAL",
+  "teste": "apps/server/test/operations.test.ts",
+  "caso": "REQ-431/REQ-432/REQ-433/REQ-434 resumo reduz contexto, retoma e usa resumo com mensagens recentes",
+  "observacao": "Resumo avançou por lotes no intervalo configurado, preservou cursor e retomou com Prisma reaberto.",
+  "banco": "SQLite temporário criado pela suíte; .audit/noctua-audit.db não usado",
+  "provider": "simulado local; nenhuma chamada externa",
+  "data": "2026-10-30"
+}

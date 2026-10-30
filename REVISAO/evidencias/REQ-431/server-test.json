@@ -1,0 +1,10 @@
+{
+  "req": "REQ-431",
+  "resultado": "COMPLETO-LOCAL",
+  "teste": "apps/server/test/operations.test.ts",
+  "caso": "REQ-431 RAG envia somente três trechos lexicais relevantes ao provedor simulado",
+  "observacao": "Cinco trechos sintéticos foram configurados. O prompt incluiu três correspondências e excluiu os trechos 4 e 5.",
+  "banco": "SQLite temporário criado pela suíte; .audit/noctua-audit.db não usado",
+  "provider": "simulado local; nenhuma chamada externa",
+  "data": "2026-10-30"
+}

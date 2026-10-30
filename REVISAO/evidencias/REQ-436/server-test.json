@@ -1,0 +1,10 @@
+{
+  "req": "REQ-436",
+  "resultado": "COMPLETO-LOCAL",
+  "teste": "apps/server/test/operations.test.ts",
+  "caso": "REQ-436/REQ-438 análise de imagem persiste descrição em cache e impede visualização única",
+  "observacao": "Imagem sintética gerou descrição persistida e foi reutilizada sem nova chamada.",
+  "banco": "SQLite temporário criado pela suíte; .audit/noctua-audit.db não usado",
+  "provider": "simulado local; nenhuma chamada externa",
+  "data": "2026-10-30"
+}

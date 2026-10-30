@@ -97,6 +97,12 @@ const typeOverrides = {
   'REQ-397': 'C', 'REQ-398': 'C', 'REQ-399': 'B', 'REQ-400': 'C', 'REQ-401': 'D',
   'REQ-402': 'A', 'REQ-403': 'A', 'REQ-406': 'C', 'REQ-407': 'C', 'REQ-408': 'E',
   'REQ-409': 'E', 'REQ-410': 'D', 'REQ-411': 'C', 'REQ-412': 'C', 'REQ-413': 'C',
+  'REQ-414': 'B', 'REQ-415': 'B', 'REQ-416': 'B', 'REQ-417': 'B', 'REQ-418': 'B',
+  'REQ-419': 'E', 'REQ-420': 'E', 'REQ-421': 'E', 'REQ-422': 'E', 'REQ-423': 'B',
+  'REQ-424': 'C', 'REQ-425': 'A', 'REQ-426': 'A', 'REQ-427': 'B', 'REQ-428': 'B',
+  'REQ-429': 'B', 'REQ-430': 'E', 'REQ-431': 'C', 'REQ-432': 'C', 'REQ-433': 'C',
+  'REQ-434': 'C', 'REQ-435': 'C', 'REQ-436': 'C', 'REQ-437': 'C', 'REQ-438': 'C',
+  'REQ-439': 'C', 'REQ-440': 'C', 'REQ-441': 'C', 'REQ-442': 'C', 'REQ-443': 'C',
 };
 const rows = [];
 for (const line of source.split(/\r?\n/)) {
@@ -109,7 +115,7 @@ for (const line of source.split(/\r?\n/)) {
   tipo = typeOverrides[id] ?? tipo;
   if (id === 'REQ-410') tipo = 'D';
   const criterio = criterioOriginal || `Comprovar que ${pedido.replace(/\.$/, '').toLowerCase()}.`;
-  const resultado = estado.includes('COMPLETO') ? 'APROVADO' : estado.includes('CANCELADO') ? 'FORA_DO_ESCOPO'
+  const resultado = estado.includes('COMPLETO') ? 'APROVADO' : estado.includes('DEFEITO') ? 'DEFEITO' : estado.includes('CANCELADO') ? 'FORA_DO_ESCOPO'
     : estado.includes('DECISÃO') ? 'DECISÃO' : estado.includes('DESCONECTADO') ? 'DESCONECTADA'
       : estado.includes('AUSENTE') ? 'AUSENTE' : 'PENDENTE';
   rows.push({ id, modulo, tela: modulo, criterio_aceite: criterio, estado, tipo_de_prova: tipo,

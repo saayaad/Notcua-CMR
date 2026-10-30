@@ -1,0 +1,10 @@
+{
+  "req": "REQ-434",
+  "resultado": "COMPLETO-LOCAL",
+  "teste": "apps/server/test/operations.test.ts",
+  "caso": "REQ-431/REQ-432/REQ-433/REQ-434 resumo reduz contexto, retoma e usa resumo com mensagens recentes",
+  "observacao": "Prompt seguinte recebeu resumo aprovado e as últimas três mensagens.",
+  "banco": "SQLite temporário criado pela suíte; .audit/noctua-audit.db não usado",
+  "provider": "simulado local; nenhuma chamada externa",
+  "data": "2026-10-30"
+}

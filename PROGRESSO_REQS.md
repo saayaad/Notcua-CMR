@@ -210,3 +210,14 @@ Sem chave de IA autorizada, não serão repetidos os cenários que cadastram, ed
 - Falhas resolvidas: seletores duplicados e fixture de conversas vazia ajustados no E2E; formulário inicial de follow-up já vinha com duas etapas; teste REQ-131 foi isolado para comparar apenas envios criados durante o próprio caso.
 - Evidências em `REVISAO/evidencias/REQ-392/` a `REQ-413/`; 408/409 documentam função ausente; REQ-401 inclui pergunta de escopo; REQ-410 registra decisão já aprovada.
 - Próximo: Economia de IA, REQ-414. Nenhuma chave real.
+
+## Lote Economia de IA — REQ-414–443 — 30/10/2026
+
+- Avaliadas 30 REQs: 10 `COMPLETO`, 14 `COMPLETO-LOCAL`, 1 `DEFEITO` (REQ-425), 4 `DESCONECTADO` (419–422) e 1 `AUSENTE` (430). As quatro desconectadas e a ausente já tinham esse estado; 25 estados mudaram.
+- Playwright: 9/9 em 1366×768, 1920×1080 e 390×844. Cobriu a aba Economia, controles, salvar/reabrir, cache, métricas diária/mensal, revisão de prompt e ausência de embeddings.
+- Servidor integral: 218/218; typecheck servidor/web passou; build passou com aviso existente de bundle web 597,52 kB. O teste novo do endpoint de limpeza de cache passou isolado.
+- Corrigido BUG da REQ-423: API e tela exibem totais distintos de tokens/chamadas hoje e no mês. BUG-025 aberto: cache chamado semântico só usa Jaccard/sinônimos limitados. Nenhum embedding/serviço externo.
+- Falhas de teste resolvidas: seletor E2E deixou de usar ancestral amplo e passou a localizar checkbox por nome acessível; API inválida retorna 422 (expectativa corrigida); fixture de métricas agora isola estado; fixture de cache vencido ganhou telefone próprio após colidir com conversa do teste de resumo e disparar duas chamadas.
+- Evidências individuais em `REVISAO/evidencias/REQ-414/` a `REQ-443/`; todas as escritas ocorreram em rotas mockadas E2E ou SQLite temporário da suíte. Banco `.audit/noctua-audit.db` preservado. API/front existentes confirmados HTTP 200.
+- Pendências técnicas visíveis: REQ-425/BUG-025, REQ-430 embeddings locais ausentes, REQ-419–422 sem consumidores. A IA real segue desativada e não foi chamada.
+- Próximo módulo: Ferramentas laterais e respostas padrão, REQ-444–469. REQ-461–464 e REQ-466 têm formato/aceite ambíguo; seguir evidências e deixar decisão explícita no ledger, sem envio real.

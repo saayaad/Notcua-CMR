@@ -1,0 +1,10 @@
+{
+  "req": "REQ-425",
+  "resultado": "DEFEITO",
+  "teste": "apps/server/test/operations.test.ts",
+  "caso": "REQ-424/REQ-425 cache exige revisão, limita equivalência lexical e isola clientes",
+  "observacao": "Prova confirmou cache aprovado, validade, isolamento e bloqueio de dados pessoais. O algoritmo usa sinônimos curtos e Jaccard; não atende equivalência semântica geral. BUG-025 aberto.",
+  "banco": "SQLite temporário criado pela suíte; .audit/noctua-audit.db não usado",
+  "provider": "simulado local; nenhuma chamada externa",
+  "data": "2026-10-30"
+}

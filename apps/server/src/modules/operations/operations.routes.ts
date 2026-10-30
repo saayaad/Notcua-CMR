@@ -1047,10 +1047,14 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       summaryEvery: 10,
       systems: { autoReply: true, copilot: true, summaries: true, campaigns: true, training: true, receipts: true, dailyDigest: true },
     });
-    const monthStart = new Date();
+    const now = new Date();
+    const dayStart = new Date(now);
+    dayStart.setHours(0, 0, 0, 0);
+    const monthStart = new Date(now);
     monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
     const events = await db.operationRecord.findMany({ where: { kind: 'AI_ECONOMY_SAVING', createdAt: { gte: monthStart } }, take: 10000 });
-    const saved = events.reduce((total, row) => { const data = row.data as { tokens?: number; requests?: number }; return { tokens: total.tokens + (data.tokens ?? 0), requests: total.requests + (data.requests ?? 0) }; }, { tokens: 0, requests: 0 });
+    const aggregate = (rows: typeof events) => rows.reduce((total, row) => { const data = row.data as { tokens?: number; requests?: number }; return { tokens: total.tokens + (data.tokens ?? 0), requests: total.requests + (data.requests ?? 0) }; }, { tokens: 0, requests: 0 });
+    const saved = { today: aggregate(events.filter((row) => row.createdAt >= dayStart)), month: aggregate(events) };
     const cacheCount = await db.operationRecord.count({ where: { kind: 'AI_SEMANTIC_CACHE' } });
     res.json({ settings, saved, cacheCount, usage: await aiUsage(db) });
   });

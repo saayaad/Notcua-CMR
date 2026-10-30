@@ -1,0 +1,14 @@
+{
+  "req": "REQ-422",
+  "result": "DESCONECTADA",
+  "project": "mobile-390",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "consoleErrors": [],
+  "provider": "fixture local; nenhuma chamada externa",
+  "visibleButDisconnected": [
+    "campaigns",
+    "training",
+    "receipts",
+    "dailyDigest"
+  ]
+}

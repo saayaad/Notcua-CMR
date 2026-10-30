@@ -146,3 +146,13 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - API/front existentes responderam HTTP 200. `.audit/noctua-audit.db` preservado; produção só leitura.
 - Próximo módulo: Economia de IA, REQ-414. Provedor simulado; não solicitar chave real.
 - `scripts/iniciar-noctua-online.ps1` continua fora do commit. O arquivo raiz `npx` não existe.
+
+## Ponto de retomada — 30/10/2026 — após Economia de IA
+
+- REQ-414–443 fechadas: 10 `COMPLETO`, 14 `COMPLETO-LOCAL`, 1 `DEFEITO` (REQ-425/BUG-025), 4 `DESCONECTADO` (419–422) e 1 `AUSENTE` (430). 25 estados mudaram.
+- Playwright 9/9 em três viewports; servidor 218/218; typecheck e build passaram. Evidências individuais em `REVISAO/evidencias/REQ-414/`–`REQ-443/`.
+- BUG de REQ-423 corrigido: métricas separadas por dia e mês. Bundle web 597,52 kB mantém aviso >500 kB.
+- Falhas de fixture/expectativa corrigidas e regressão integral repetida. Banco do usuário `.audit/noctua-audit.db` preservado; nenhum provedor de IA ou dado de produção foi acessado.
+- REQ-425 segue em defeito: cache não entende equivalência semântica geral. REQ-430 sem embeddings; REQ-419–422 mostram flags sem consumidores. Nenhuma chave real foi solicitada.
+- Próximo módulo: Ferramentas laterais e respostas padrão, REQ-444–469. Avaliar critérios ambíguos por item e registrar decisões sem envio de WhatsApp.
+- `scripts/iniciar-noctua-online.ps1` permanece modificado previamente e fora de qualquer commit.

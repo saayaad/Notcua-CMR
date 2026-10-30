@@ -9,7 +9,7 @@ const names: Record<string, string> = { autoReply: 'Autoatendimento e chatbot', 
 export function EconomySettings() {
   const { request, notify } = useApi();
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [saved, setSaved] = useState({ tokens: 0, requests: 0 });
+  const [saved, setSaved] = useState({ today: { tokens: 0, requests: 0 }, month: { tokens: 0, requests: 0 } });
   const [items, setItems] = useState<CacheItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -54,8 +54,9 @@ export function EconomySettings() {
     <h2>Economia de tokens</h2>
     <p>Use respostas repetidas aprovadas, contexto menor e resumos para reduzir chamadas. A economia exibida é uma estimativa.</p>
     <div className="form-grid">
-      <div className="notice"><strong>{saved.tokens.toLocaleString('pt-BR')}</strong> tokens estimados poupados este mês</div>
-      <div className="notice"><strong>{saved.requests.toLocaleString('pt-BR')}</strong> chamadas evitadas pelo cache · {items.length} respostas salvas</div>
+      <div className="notice"><strong>{saved.today.tokens.toLocaleString('pt-BR')}</strong> tokens estimados poupados hoje · {saved.today.requests.toLocaleString('pt-BR')} chamadas evitadas</div>
+      <div className="notice"><strong>{saved.month.tokens.toLocaleString('pt-BR')}</strong> tokens estimados poupados este mês · {saved.month.requests.toLocaleString('pt-BR')} chamadas evitadas</div>
+      <div className="notice">{items.length} respostas salvas no cache</div>
     </div>
     <label className="checkbox"><input type="checkbox" checked={settings.enabled} onChange={(event) => setSettings({ ...settings, enabled: event.target.checked })}/>Ativar técnicas de economia</label>
     <label className="checkbox"><input type="checkbox" checked={settings.semanticCache} onChange={(event) => setSettings({ ...settings, semanticCache: event.target.checked })}/>Reutilizar respostas semelhantes aprovadas sem chamar a IA</label>

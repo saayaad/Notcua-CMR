@@ -197,7 +197,7 @@ test('REQ-392/REQ-393/REQ-394: follow-up individual agenda etapas e cancela toda
   const tasks = await db.deliveryTask.findMany({ where: { batchId: created.body.id } });
   assert.equal(tasks.length, 1);
   assert.equal(tasks[0]?.status, 'CANCELLED');
-  assert.equal((await record<Batch>(db, created.body.id, { status: '' } as Batch)).status, 'CANCELLED');
+  assert.equal((await record<{ status: Batch['status'] }>(db, created.body.id, { status: 'DRAFT' })).status, 'CANCELLED');
   assert.equal(socket.sends.length, sendsBeforeReply);
 });
 
@@ -364,7 +364,7 @@ test('REQ-395/REQ-396/REQ-397: campanha, remarketing e agendamento trocam etique
     const chat = await db.conversation.findUniqueOrThrow({ where: { id: item.chatId } });
     assert.equal(await db.contactLabel.findUnique({ where: { contactId_labelId: { contactId: chat.contactId, labelId: item.sourceId } } }), null);
     assert.ok(await db.contactLabel.findUnique({ where: { contactId_labelId: { contactId: chat.contactId, labelId: item.targetId } } }));
-    assert.equal((await record<Batch>(db, item.batchId, { status: '' } as Batch)).status, 'COMPLETED');
+    assert.equal((await record<{ status: Batch['status'] }>(db, item.batchId, { status: 'DRAFT' })).status, 'COMPLETED');
   }
 });
 
@@ -633,7 +633,7 @@ test('REQ-376/REQ-377/REQ-378/REQ-379 valida modelos de marca d’água e persis
   await request(app).put('/api/operations/settings/watermarks').send({ ...value, marks: [{ ...value.marks[0], imageData: 'https://externo.example/selo.png' }] }).expect(422);
 });
 
-test('REQ-360/REQ-361/REQ-362/REQ-363/REQ-364/REQ-370/REQ-371/REQ-372 roteia modelos simulados e salva estúdio por cliente', async () => {
+test('REQ-360/REQ-361/REQ-362/REQ-363/REQ-364/REQ-370/REQ-371/REQ-372/REQ-441/REQ-442/REQ-443 roteia modelos simulados e salva estúdio por cliente', async () => {
   const originalKeyFile = env.WHATSAPP_KEY_FILE;
   const originalFetch = globalThis.fetch;
   const previous = await db.operationRecord.findUnique({ where: { id: 'integration:ai' } });
@@ -661,6 +661,11 @@ test('REQ-360/REQ-361/REQ-362/REQ-363/REQ-364/REQ-370/REQ-371/REQ-372 roteia mod
     const phoneSuffix = String(Date.now() % 10_000_000).padStart(7, '0');
     const fastChat = await makeContact(`551199${phoneSuffix}1`, 'Cliente Flash Fictício');
     const deepChat = await makeContact(`551198${phoneSuffix}2`, 'Cliente Pro Fictício');
+    const faqChat = await makeContact(`551197${phoneSuffix}3`, 'Cliente FAQ Fictício');
+    await inbound(faqChat.id, 'Qual prazo para entrega do mascote?');
+    await request(app).post(`/api/operations/sessions/${sessionId}/contacts/${faqChat.id}/ai`)
+      .send({ consent: true, task: 'Responda à última mensagem do cliente.' }).expect(200);
+    assert.match(calls.at(-1)!.url, /\/models\/audit-flash:generateContent$/);
     await request(app).post(`/api/operations/sessions/${sessionId}/contacts/${fastChat.id}/ai`)
       .send({ consent: true, task: 'Sugira uma resposta curta para uma dúvida simples.' }).expect(200);
     assert.match(calls.at(-1)!.url, /\/models\/audit-flash:generateContent$/);
@@ -1274,7 +1279,7 @@ test('REQ-130/REQ-153: provedores simulados contabilizam tokens e limites bloque
     assert.equal(calls, 2);
   }));
 
-test('resumo de IA avança além de 60 mensagens e retoma após reinício ou importação histórica', async () =>
+test('REQ-431/REQ-432/REQ-433/REQ-434 resumo reduz contexto, retoma e usa resumo com mensagens recentes', async () =>
   aiTest(async () => {
     await configureAi();
     const previous = await record<object | null>(db, 'settings:ai-economy', null);
@@ -1377,7 +1382,7 @@ test('resumo de IA avança além de 60 mensagens e retoma após reinício ou imp
     }
   }));
 
-test('cache de IA exige revisão e impede reutilizar nome de outro cliente', async () =>
+test('REQ-424/REQ-425 cache exige revisão, limita equivalência lexical e isola clientes', async () =>
   aiTest(async () => {
     await configureAi();
     const first = await makeContact('5511777770061', 'Joana Exemplo');
@@ -1414,7 +1419,98 @@ test('cache de IA exige revisão e impede reutilizar nome de outro cliente', asy
       .send({ answer: 'Resposta em revisão.' }).expect(200);
     assert.equal(wasCached(await generateSuggestion(db, third.id, task)), false);
     assert.equal(calls, 3);
+    const expired = await makeContact('5511777770098', 'Cliente Cache Vencido');
+    await db.chatMessage.create({ data: { conversationId: expired.id, direction: 'INBOUND', text: 'Qual prazo para mascote?', sentAt: new Date() } });
+    const oldDate = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    await putRecord(db, 'expired-cache-fixture', 'AI_SEMANTIC_CACHE', {
+      question: 'Qual prazo para mascote?', answer: 'O prazo depende do escopo.', system: 'autoReply',
+      sourceConversationId: first.id, createdAt: oldDate, approvedAt: oldDate, hits: 0,
+    });
+    assert.equal(wasCached(await generateSuggestion(db, expired.id, task)), false);
+    assert.equal(calls, 4);
+    await db.operationRecord.deleteMany({ where: { id: 'expired-cache-fixture' } });
+    await request(app).delete(`/api/operations/economy/cache/${entry.id}`).expect(200);
+    const afterDelete = await request(app).get('/api/operations/economy/cache').expect(200);
+    assert.equal(afterDelete.body.items.some((item: { id: string }) => item.id === entry.id), false);
   }));
+
+test('REQ-415/REQ-416/REQ-417/REQ-418/REQ-426 preferências de economia validam e persistem no banco de teste', async () => {
+  const settings = { enabled: false, semanticCache: true, rag: false, cacheDays: 21, summaryEvery: 15, systems: { autoReply: false, copilot: true, summaries: false } };
+  const previous = await record<object | null>(db, 'settings:ai-economy', null);
+  try {
+    await request(app).put('/api/operations/economy').send(settings).expect(200);
+    const saved = await request(app).get('/api/operations/economy').expect(200);
+    assert.deepEqual(saved.body.settings, settings);
+    assert.equal(saved.body.settings.cacheDays, 21);
+    await request(app).put('/api/operations/economy').send({ ...settings, cacheDays: 0 }).expect(422);
+  } finally {
+    if (previous) await putRecord(db, 'settings:ai-economy', 'AI_ECONOMY_SETTINGS', previous);
+    else await db.operationRecord.deleteMany({ where: { id: 'settings:ai-economy' } });
+  }
+});
+
+test('REQ-429 endpoint limpa somente respostas salvas no cache', async () => {
+  await putRecord(db, 'audit-cache-clear-fixture', 'AI_SEMANTIC_CACHE', { question: 'Fixture?', answer: 'Resposta fictícia.' });
+  await request(app).delete('/api/operations/economy/cache').expect(200);
+  const cache = await request(app).get('/api/operations/economy/cache').expect(200);
+  assert.deepEqual(cache.body.items, []);
+});
+
+test('REQ-423 economia retorna métricas distintas de hoje e do mês', async () => {
+  const now = new Date();
+  const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+  const monthStart = new Date(now); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+  const todayId = `audit-economy-today-${randomBytes(5).toString('hex')}`;
+  const monthId = `audit-economy-month-${randomBytes(5).toString('hex')}`;
+  const lastMonth = new Date(monthStart.getTime() - 60_000);
+  try {
+    const before = (await request(app).get('/api/operations/economy').expect(200)).body.saved;
+    await db.operationRecord.createMany({ data: [
+      { id: todayId, kind: 'AI_ECONOMY_SAVING', data: { tokens: 120, requests: 2 }, createdAt: new Date(todayStart.getTime() + 1000), updatedAt: now },
+      { id: monthId, kind: 'AI_ECONOMY_SAVING', data: { tokens: 300, requests: 4 }, createdAt: new Date(monthStart.getTime() + 1000), updatedAt: now },
+      { id: `old-${monthId}`, kind: 'AI_ECONOMY_SAVING', data: { tokens: 999, requests: 9 }, createdAt: lastMonth, updatedAt: lastMonth },
+    ] });
+    const result = await request(app).get('/api/operations/economy').expect(200);
+    assert.deepEqual(result.body.saved.today, { tokens: before.today.tokens + 120, requests: before.today.requests + 2 });
+    assert.deepEqual(result.body.saved.month, { tokens: before.month.tokens + 420, requests: before.month.requests + 6 });
+  } finally {
+    await db.operationRecord.deleteMany({ where: { id: { in: [todayId, monthId, `old-${monthId}`] } } });
+  }
+});
+
+test('REQ-431 RAG envia somente três trechos lexicais relevantes ao provedor simulado', async () => aiTest(async () => {
+  const chat = await makeContact('5511777770097', 'Cliente RAG Fictício');
+  await inbound(chat.id, 'Quero saber prazo e mascote.');
+  const previous = await record<object | null>(db, 'settings:ai-economy', null);
+  await putRecord(db, 'settings:ai-economy', 'AI_ECONOMY_SETTINGS', { enabled: true, semanticCache: false, rag: true, cacheDays: 14, summaryEvery: 10, systems: { autoReply: true, copilot: true, summaries: true } });
+  await configureAi({ knowledge: [1, 2, 3, 4, 5].map((n) => `Trecho ${n}: prazo do mascote; detalhe ${n}.`).join('\n\n') });
+  let instructions = '';
+  globalThis.fetch = async (_url, options) => {
+    instructions = JSON.parse(String(options?.body)).instructions;
+    return new Response(JSON.stringify({ output: [{ content: [{ type: 'output_text', text: 'Resposta simulada.' }] }] }));
+  };
+  try {
+    await generateSuggestion(db, chat.id, 'Responda sobre prazo e mascote.');
+    const chunks = [...instructions.matchAll(/Trecho \d:/g)].map((match) => match[0]);
+    assert.equal(chunks.length, 3);
+    assert.match(instructions, /Trecho 1:/);
+    assert.doesNotMatch(instructions, /Trecho 4:|Trecho 5:/);
+  } finally {
+    if (previous) await putRecord(db, 'settings:ai-economy', 'AI_ECONOMY_SETTINGS', previous);
+    else await db.operationRecord.deleteMany({ where: { id: 'settings:ai-economy' } });
+  }
+}));
+
+test('REQ-439/REQ-440 otimização simulada gera prévia sem aplicar alterações', async () => aiTest(async () => {
+  await configureAi({ instructions: 'Preserve preço e exceção.', style: 'Tom breve.' });
+  globalThis.fetch = async () => new Response(JSON.stringify({ output: [{ content: [{ type: 'output_text', text: JSON.stringify({ instructions: '- Preserve preço e exceção.', style: '- Use tom breve.' }) }] }] }));
+  const proposal = await request(app).post('/api/operations/economy/optimize-prompts')
+    .send({ instructions: 'Preserve preço e exceção.', style: 'Tom breve.' }).expect(200);
+  assert.equal(proposal.body.instructions, '- Preserve preço e exceção.');
+  const unchanged = await request(app).get('/api/operations/ai').expect(200);
+  assert.equal(unchanged.body.instructions, 'Preserve preço e exceção.');
+  assert.equal(unchanged.body.style, 'Tom breve.');
+}));
 
 test('REQ-133/REQ-155/REQ-303/REQ-304/REQ-305/REQ-306: conhecimento aprovado conserva ordem, contexto, estilo e regras absolutas', async () =>
   aiTest(async () => {
@@ -1466,7 +1562,7 @@ test('REQ-133/REQ-155/REQ-303/REQ-304/REQ-305/REQ-306: conhecimento aprovado con
     assert.equal(suggestion.text, 'Sugestão');
   }));
 
-test('REQ-140/REQ-141/REQ-300/REQ-302: transcrição de áudio e descrição de vídeo entram no contexto simulado', async () =>
+test('REQ-140/REQ-141/REQ-300/REQ-302/REQ-435/REQ-437/REQ-438: transcrição e descrição entram no contexto e são reutilizadas', async () =>
   aiTest(async () => {
     const chat = await makeContact('5511777770064');
     const audio = await db.storedFile.create({ data: { sha256: 'd'.repeat(64), filename: 'fala.ogg', mimeType: 'audio/ogg', byteLength: 5, data: Buffer.from('audio') } });
@@ -1474,12 +1570,16 @@ test('REQ-140/REQ-141/REQ-300/REQ-302: transcrição de áudio e descrição de 
     const first = await db.chatMessage.create({ data: { conversationId: chat.id, direction: 'INBOUND', type: 'audioMessage', fileId: audio.id, sentAt: new Date('2026-01-01T10:00:00Z') } });
     const second = await db.chatMessage.create({ data: { conversationId: chat.id, direction: 'INBOUND', type: 'videoMessage', fileId: video.id, sentAt: new Date('2026-01-01T10:01:00Z') } });
     await configureAi({ provider: 'openai', mediaModel: 'modelo-midia-ficticio', transcriptionModel: 'modelo-audio-ficticio' });
+    let audioCalls = 0;
     globalThis.fetch = async (url, options) => {
       assert.match(String(url), /audio\/transcriptions/);
       assert.equal((options?.body as FormData).get('model'), 'modelo-audio-ficticio');
+      audioCalls++;
       return new Response(JSON.stringify({ text: 'Transcrição fictícia do áudio.' }));
     };
     assert.equal((await preprocessMedia(db, messaging, sessionId, chat.id, first.id)).text, 'Transcrição fictícia do áudio.');
+    assert.equal((await preprocessMedia(db, messaging, sessionId, chat.id, first.id)).text, 'Transcrição fictícia do áudio.');
+    assert.equal(audioCalls, 1);
     await configureAi({ provider: 'gemini', mediaModel: 'modelo-midia-ficticio' });
     let suggestionInput = '';
     globalThis.fetch = async (_url, options) => {
@@ -1497,7 +1597,7 @@ test('REQ-140/REQ-141/REQ-300/REQ-302: transcrição de áudio e descrição de 
     assert.match(suggestionInput, /Descrição fictícia do vídeo/);
   }));
 
-test('análise de mídia usa conteúdo explícito, cache e impede visualização única', async () =>
+test('REQ-436/REQ-438 análise de imagem persiste descrição em cache e impede visualização única', async () =>
   aiTest(async () => {
     const chat = await makeContact('5511777770036');
     const file = await db.storedFile.create({

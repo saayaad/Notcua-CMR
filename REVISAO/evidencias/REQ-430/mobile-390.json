@@ -1,0 +1,10 @@
+{
+  "req": "REQ-430",
+  "result": "AUSENTE",
+  "project": "mobile-390",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "consoleErrors": [],
+  "provider": "fixture local",
+  "embeddingControl": "absent",
+  "proposalReviewedBeforeApply": true
+}

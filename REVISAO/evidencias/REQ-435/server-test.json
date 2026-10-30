@@ -1,0 +1,10 @@
+{
+  "req": "REQ-435",
+  "resultado": "COMPLETO-LOCAL",
+  "teste": "apps/server/test/operations.test.ts",
+  "caso": "REQ-140/REQ-141/REQ-300/REQ-302/REQ-435/REQ-437/REQ-438 transcrição e descrição entram no contexto e são reutilizadas",
+  "observacao": "Áudio de teste gerou transcrição persistida. Segunda leitura retornou cache; contador de chamadas permaneceu 1.",
+  "banco": "SQLite temporário criado pela suíte; .audit/noctua-audit.db não usado",
+  "provider": "simulado local; nenhuma chamada externa",
+  "data": "2026-10-30"
+}

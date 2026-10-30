@@ -1,0 +1,10 @@
+{
+  "req": "REQ-442",
+  "resultado": "COMPLETO-LOCAL",
+  "teste": "apps/server/test/operations.test.ts",
+  "caso": "REQ-360/REQ-361/REQ-362/REQ-363/REQ-364/REQ-370/REQ-371/REQ-372/REQ-441/REQ-442/REQ-443 roteia modelos simulados; REQ-424 cache aprovado",
+  "observacao": "FAQ simples usou modelo rápido. Cache aprovado foi retornado antes de invocar o provider.",
+  "banco": "SQLite temporário criado pela suíte; .audit/noctua-audit.db não usado",
+  "provider": "simulado local; nenhuma chamada externa",
+  "data": "2026-10-30"
+}
