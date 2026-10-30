@@ -40,6 +40,20 @@
 2. Em uma conta Google de teste, confirmar nome do contato e descrição preenchidos no formulário do evento.
 3. Salvar e excluir o evento de teste, registrando captura dos campos preenchidos.
 
+## Navegadores e dispositivos físicos
+
+### REQ-164 — preferências da conta em outro dispositivo
+
+1. Em uma conta e operação descartáveis, alterar um nome, cor e preferência de layout no primeiro navegador físico.
+2. Entrar com a mesma conta em um segundo navegador ou aparelho e confirmar os três valores sem copiá-los localmente.
+3. Recarregar ambos, registrar as telas e restaurar as preferências de teste.
+
+### REQ-198 — atendimento responsivo em aparelhos reais
+
+1. Abrir o Atendimento em um telefone e um tablet físicos, sem alterar dados de produção.
+2. Exercitar menu principal, lista, conversa, retorno à lista e abertura/fechamento da biblioteca, conferindo ausência de corte e rolagem horizontal.
+3. Repetir em pelo menos dois motores de navegador disponíveis e registrar resolução, navegador e capturas.
+
 ## WhatsApp em aparelho de teste
 
 ### REQ-125 — documento enviado por fluxo

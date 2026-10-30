@@ -1,0 +1,13 @@
+{
+  "req": "REQ-198",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "viewport": {
+    "width": 1366,
+    "height": 768
+  },
+  "horizontalOverflow": 0,
+  "navigation": "expanded",
+  "tools": "panel"
+}

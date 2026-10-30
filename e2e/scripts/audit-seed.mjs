@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { PrismaClient } from '@prisma/client';
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -99,10 +100,22 @@ try {
   await db.storedFile.create({
     data: { id: pdfFileId, sha256: createHash('sha256').update(pdf).digest('hex'), filename: 'documento-auditoria.pdf', mimeType: 'application/pdf', byteLength: pdf.length, data: pdf },
   });
+  const audio = await readFile(new URL('../../apps/web/public/sandbox-media/audio.wav', import.meta.url));
+  const audioFileId = `audit-file-${createHash('sha256').update(audio).digest('hex').slice(0, 12)}`;
+  await db.storedFile.create({
+    data: { id: audioFileId, sha256: createHash('sha256').update(audio).digest('hex'), filename: 'audio-auditoria.wav', mimeType: 'audio/wav', byteLength: audio.length, data: audio },
+  });
+  const video = await readFile(new URL('../../apps/web/public/sandbox-media/video.mp4', import.meta.url));
+  const videoFileId = `audit-file-${createHash('sha256').update(video).digest('hex').slice(0, 12)}`;
+  await db.storedFile.create({
+    data: { id: videoFileId, sha256: createHash('sha256').update(video).digest('hex'), filename: 'video-auditoria.mp4', mimeType: 'video/mp4', byteLength: video.length, data: video },
+  });
   await db.asset.createMany({ data: [
     { id: 'audit-asset-welcome', kind: 'MESSAGE', name: 'Boas-vindas da auditoria', text: 'Olá, #nome! Esta é uma resposta fictícia.', metadata: { category: 'Auditoria' } },
     { id: 'audit-asset-budget', kind: 'MESSAGE', name: 'Orçamento fictício', text: 'O orçamento fictício está pronto.', metadata: { category: 'Auditoria' } },
     { id: 'audit-asset-image', kind: 'MEDIA', name: 'Imagem fictícia', caption: 'Imagem gerada para teste local.', fileId, metadata: { category: 'Auditoria' } },
+    { id: 'audit-asset-video', kind: 'MEDIA', name: 'Vídeo fictício', caption: 'Vídeo gerado para teste local.', fileId: videoFileId, metadata: { category: 'Auditoria' } },
+    { id: 'audit-asset-audio', kind: 'AUDIO', name: 'Áudio fictício', caption: 'Áudio gerado para teste local.', fileId: audioFileId, metadata: { category: 'Auditoria' } },
     { id: 'audit-asset-document', kind: 'DOCUMENT', name: 'Documento fictício', caption: 'Documento gerado para teste local.', fileId: pdfFileId, metadata: { category: 'Auditoria' } },
   ] });
   await db.chatMessage.create({
@@ -154,13 +167,15 @@ try {
 
   const records = [
     ['settings:departments', 'SETTINGS', { items: [{ name: 'Comercial', label: 'audit-label-budget' }, { name: 'Suporte', label: '' }] }],
-    ['team:admin@example.com', 'TEAM', { email: 'admin@example.com', name: 'Administrador Exemplo', role: 'ADMIN', department: 'Comercial', active: true }],
-    ['team:membro@example.com', 'TEAM', { email: 'membro@example.com', name: 'Membro Exemplo', role: 'MEMBER', department: 'Suporte', active: true }],
+    ['team:admin@example.com', 'TEAM', { email: 'admin@example.com', name: 'Administrador Exemplo', role: 'ADMIN', department: 'Comercial', active: true, avatar: `data:image/png;base64,${png.toString('base64')}` }],
+    ['team:membro@example.com', 'TEAM', { email: 'membro@example.com', name: 'Membro Exemplo', role: 'MEMBER', department: 'Suporte', active: true, avatar: `data:image/png;base64,${png.toString('base64')}` }],
     ['profile:local', 'PROFILE', { name: 'Operador Auditoria', company: 'Empresa Exemplo', segment: 'Testes locais', employees: '3', objective: 'Auditar requisitos', social: '', phone: '5511999999904', completed: true }],
     ['preferences:local', 'PREFERENCES', { brandingName: 'noctua', theme: 'dark', density: 'compact', attendanceCustomizationVersion: 3 }],
     ['settings:features', 'FEATURES', { aiEnabled: false }],
     ['integration:ai', 'AI_SETTINGS', { provider: 'gemini', model: 'modelo-falso-auditoria', instructions: '', knowledge: '', style: '', enabled: false }],
     ['settings:business', 'BUSINESS_SETTINGS', { company: 'Empresa Exemplo', segment: 'Testes locais', distribution: false }],
+    ['lead-list:audit-new', 'LEAD_LIST', { sessionId, name: 'Lista Novos', conversationIds: ['audit-conversation-1', 'audit-conversation-2'] }],
+    ['lead-list:audit-clients', 'LEAD_LIST', { sessionId, name: 'Lista Clientes', conversationIds: ['audit-conversation-2', 'audit-conversation-3'] }],
   ];
   for (const [id, kind, data] of records)
     await db.operationRecord.create({ data: { id, kind, data } });

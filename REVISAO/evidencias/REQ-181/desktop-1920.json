@@ -1,0 +1,13 @@
+{
+  "req": "REQ-181",
+  "result": "APROVADO",
+  "project": "desktop-1920",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "editedText": true,
+  "replacedFile": true,
+  "previewed": [
+    "audio",
+    "video"
+  ],
+  "duplicated": "Resposta editada desktop-1920"
+}

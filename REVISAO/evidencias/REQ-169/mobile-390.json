@@ -1,0 +1,11 @@
+{
+  "req": "REQ-169",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "department": "Interface mobile390",
+  "member": "interface-mobile390@example.com",
+  "searchableMember": "Administrador Exemplo",
+  "presence": "Offline",
+  "avatar": true
+}

@@ -182,3 +182,16 @@ Sem chave de IA autorizada, não serão repetidos os cenários que cadastram, ed
 - REQ-139 e REQ-150 ficaram COMPLETO-LOCAL porque a última prova depende, respectivamente, de reconexão WhatsApp real e recebimento multimídia em aparelho.
 - Evidências individuais foram gravadas em `REVISAO/evidencias/REQ-128/` a `REQ-158/`, exceto REQ-147, preservada da auditoria anterior.
 - Contagens após o lote: 222 A VERIFICAR; 156 COMPLETO; 13 COMPLETO-LOCAL; 252 PARCIAL; 50 canceladas/substituídas; 5 decisões; 4 desconectadas; 1 ausente.
+
+## Protocolo local — lote Interface global (REQ-159–198) — 30/10/2026
+
+- O lote encerrou 33 pendências: **27 COMPLETO**, **2 COMPLETO-LOCAL** e **4 PRECISA DE DECISÃO**. Os requisitos 160, 162, 163, 170, 183, 186 e 192 já estavam encerrados e foram preservados.
+- Playwright local: **36/36 aprovados** em 1366×768, 1920×1080 e 390×844, com capturas e JSON individuais em `REVISAO/evidencias/REQ-159/` a `REQ-198/` para os itens executados.
+- Servidor local selecionado: **8/8 aprovados** para arquivamento, equipe/setor, diretório/presença, segmentação, saneamento/busca de contatos, biblioteca e zona de segurança.
+- `npm run typecheck`: aprovado para servidor e web.
+- Regressão integral após o último refinamento: `npm test` com **202/202 aprovados**, 0 falhas, em 171,7 s.
+- O teste de diretório da REQ-169 foi tornado independente: o próprio cenário agora cria o setor Comercial em vez de depender do estado deixado por um teste anterior. Nenhum código funcional do produto foi alterado neste lote.
+- REQ-164 e REQ-198 ficaram COMPLETO-LOCAL porque a última prova depende de outro navegador/aparelho físico; os passos foram isolados em `REVISAO/CHECKLIST-MANUAL.md`.
+- REQ-194–197 ficaram como decisão, pois “todas as telas”, “padronizar”, “animar páginas” e “todos os botões” não definem inventário nem tolerâncias objetivas. Cada linha registra a pergunta mínima necessária para fechar o aceite.
+- Produção permaneceu somente leitura; uploads, cadastros, agendamentos, arquivos, campanhas e preferências foram exercitados exclusivamente no SQLite local descartável, sem envio de WhatsApp e sem chave real de IA.
+- Contagens após o lote: **196 A VERIFICAR; 183 COMPLETO; 15 COMPLETO-LOCAL; 245 PARCIAL; 50 canceladas/substituídas; 9 decisões; 4 desconectadas; 1 ausente**. O ledger contém 703 IDs únicos, sem lacunas ou duplicatas.

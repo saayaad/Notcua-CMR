@@ -515,7 +515,7 @@ test('API filtra, protege escopo, salva ativos/funis/notas e entrega o históric
     .expect(404);
 });
 
-test('biblioteca cria, edita, lista, baixa e exclui áudio, imagem, vídeo e documento', async () => {
+test('REQ-180/REQ-181/REQ-182: biblioteca cria, edita, lista, baixa e exclui áudio, imagem, vídeo e documento', async () => {
   const app = createApp(db, whatsapp, sequences, messaging);
   const sendsBefore = socket.sends.length;
   const ffmpeg = createRequire(import.meta.url)('ffmpeg-static') as string;
@@ -644,7 +644,7 @@ test('notas internas não enviam WhatsApp e a paginação intercala notas e mens
   );
 });
 
-test('fila SLA ordena antes de paginar e não mistura arquivadas com ativas', async () => {
+test('REQ-167: fila SLA ordena antes de paginar e não mistura arquivadas com ativas', async () => {
   const app = createApp(db, whatsapp, sequences, messaging);
   const ids: string[] = [];
   for (const [index, age] of [30, 20, 1].entries()) {

@@ -1,0 +1,15 @@
+{
+  "req": "REQ-187",
+  "result": "APROVADO",
+  "project": "desktop-1920",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "contacts": 6,
+  "media": [
+    "audio",
+    "video"
+  ],
+  "labels": 3,
+  "agenda": true,
+  "flow": true,
+  "team": true
+}

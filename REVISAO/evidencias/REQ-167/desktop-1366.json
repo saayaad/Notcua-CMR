@@ -1,0 +1,10 @@
+{
+  "req": "REQ-167",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "filters": [
+    "Arquivadas"
+  ],
+  "archivedAndReopened": "Ana Exemplo"
+}

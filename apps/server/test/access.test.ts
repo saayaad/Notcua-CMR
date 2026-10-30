@@ -351,7 +351,7 @@ test('atendente não recebe privilégio de outro papel nem mantém acesso depois
   });
   await request(app).get('/api/attendance/library').set('Authorization', 'Bearer staff').expect(403);
 });
-test('REQ-110/REQ-111: setores e equipe persistem com isolamento e permissão de administrador', async () => {
+test('REQ-110/REQ-111/REQ-168: setores e equipe persistem com isolamento e permissão de administrador', async () => {
   const departments = { items: [{ name: 'Suporte de teste', label: '' }] };
   await request(app)
     .put('/api/operations/settings/departments')

@@ -76,7 +76,7 @@ after(async () => {
   await rm(directory, { recursive: true, force: true });
 });
 
-test('zona de segurança exige administrador, EXCLUIR e escolha explícita de backup', async () => {
+test('REQ-193: zona de segurança exige administrador, EXCLUIR e escolha explícita de backup', async () => {
   await request(app).post('/safety/backup').set('x-test-member', 'true').expect(403);
   await request(app)
     .post('/safety/reset')

@@ -1,0 +1,10 @@
+{
+  "req": "REQ-167",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "filters": [
+    "Arquivadas"
+  ],
+  "archivedAndReopened": "Ana Exemplo"
+}

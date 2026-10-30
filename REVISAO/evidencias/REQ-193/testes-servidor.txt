@@ -1,0 +1,9 @@
+Execução local isolada em 2026-10-30.
+
+Comando:
+npx tsx --import ./test/setup-env.mjs --test --test-concurrency=1 --test-name-pattern "REQ-167|REQ-168|REQ-169|REQ-172|REQ-173|REQ-176|REQ-177|REQ-178|REQ-179|REQ-180|REQ-181|REQ-182|REQ-193" test/attendance.test.ts test/access.test.ts test/operations.test.ts test/part3.test.ts test/safety.test.ts
+
+Resultado: 8 testes aprovados; 0 falhas; 0 cancelados.
+
+REQ-193: zona de segurança exige administrador, EXCLUIR e escolha explícita de backup — APROVADO.
+Ambiente: SQLite temporário e dados fictícios; nenhum reset de produção.

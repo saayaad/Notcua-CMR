@@ -9,7 +9,7 @@ import {
   validScheduledContacts,
 } from '../../web/src/context/contact-search.js';
 import { chooseCampaignText, expandSpintax } from '../src/modules/operations/campaign-text.js';
-test('contatos técnicos e zero são removidos e o telefone brasileiro recebe uma única formatação', () => {
+test('REQ-176/REQ-177: contatos técnicos e zero são removidos e o telefone brasileiro recebe uma única formatação', () => {
   assert.equal(cleanPhone('0'), '');
   assert.equal(cleanPhone('lid:113288486621283@lid'), '');
   assert.equal(cleanPhone('5511999991234@c.us'), '5511999991234');
@@ -20,7 +20,7 @@ test('contatos técnicos e zero são removidos e o telefone brasileiro recebe um
     0,
   );
 });
-test('busca ignora acentos e formatação e aceita DDI, DDD ou parte do celular', () => {
+test('REQ-178/REQ-179: busca ignora acentos e formatação e aceita DDI, DDD ou parte do celular', () => {
   const item = { name: 'Márcio Alves', phoneNumber: '5562998765432' };
   for (const query of ['marcio', '+55 (62) 99876', '62 99876', '99876'])
     assert.equal(contactMatches(item, query), true, query);
