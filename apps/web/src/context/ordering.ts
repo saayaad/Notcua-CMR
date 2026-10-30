@@ -7,6 +7,7 @@ export const menuGroups = [
       ['overview', 'Visão geral'],
       ['inbox', 'Atendimento'],
       ['campaigns', 'Campanhas'],
+      ['spreadsheets', 'Planilhas'],
       ['schedule', 'Agenda'],
       ['library', 'Biblioteca'],
       ['flows', 'Autoatendimento'],
@@ -18,7 +19,6 @@ export const menuGroups = [
     name: 'Relacionamentos',
     items: [
       ['contacts', 'Contatos'],
-      ['spreadsheets', 'Planilhas'],
       ['crm', 'CRM e negócios'],
     ],
   },

@@ -1,6 +1,10 @@
 ﻿$ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
+$WebRoot = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'ChatGPT\Noctua'
+if (-not (Test-Path -LiteralPath (Join-Path $WebRoot 'apps\web\src\App.tsx'))) {
+  $WebRoot = $ProjectRoot
+}
 $ServerUrl = 'http://127.0.0.1:3333'
 $HealthUrl = "$ServerUrl/health"
 $VercelSite = 'https://notcua.vercel.app/atendimento'
@@ -24,9 +28,14 @@ function Stop-Tree($Process) {
 }
 
 function Invoke-Vercel([string[]]$Arguments) {
-  & npx.cmd --yes vercel @Arguments
-  if ($LASTEXITCODE -ne 0) {
-    throw "A Vercel não concluiu a etapa solicitada. Veja a mensagem acima."
+  Push-Location -LiteralPath $WebRoot
+  try {
+    & npx.cmd --yes vercel @Arguments
+    if ($LASTEXITCODE -ne 0) {
+      throw "A Vercel não concluiu a etapa solicitada. Veja a mensagem acima."
+    }
+  } finally {
+    Pop-Location
   }
 }
 
@@ -105,8 +114,8 @@ try {
     Write-Host 'Na primeira vez, entre na sua conta Vercel quando o navegador abrir.' -ForegroundColor Yellow
     Invoke-Vercel @('login')
   }
-  $ProjectLink = Join-Path $ProjectRoot '.vercel\project.json'
-  $RepositoryLink = Join-Path $ProjectRoot '.vercel\repo.json'
+  $ProjectLink = Join-Path $WebRoot '.vercel\project.json'
+  $RepositoryLink = Join-Path $WebRoot '.vercel\repo.json'
   if (-not (Test-Path -LiteralPath $ProjectLink) -and -not (Test-Path -LiteralPath $RepositoryLink)) {
     Write-Host 'Na primeira vez, selecione sua conta e o projeto Noctua na lista da Vercel.' -ForegroundColor Yellow
     Invoke-Vercel @('link')
@@ -142,6 +151,7 @@ try {
   Invoke-Vercel @('env', 'add', 'VITE_API_URL', '--environment', 'production', '--value', $PublicApiUrl, '--type', 'config', '--force', '--yes')
 
   Write-Step '5 de 5 — Publicando o site atualizado'
+  Write-Host "Publicando a interface de: $WebRoot"
   Invoke-Vercel @('--prod', '--yes')
   Write-Host "`nNoctua online: $VercelSite" -ForegroundColor Green
   Write-Host 'Já abri o site no navegador. Deixe esta janela aberta enquanto estiver usando o sistema.' -ForegroundColor Green
