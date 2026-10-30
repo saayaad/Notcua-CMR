@@ -1,0 +1,11 @@
+{
+  "resultado": "APROVADO",
+  "testes": [
+    "test/attendance.test.ts: duração curta >=650ms; longa >=1700ms; diferença >800ms"
+  ],
+  "ambiente": "local; SQLite temporário/.audit e conector fictício; sem produção",
+  "titulo": "duração proporcional",
+  "requisito": "REQ-265",
+  "data": "2026-10-30",
+  "limitacao": "Confirmação em telefone destinatário continua no checklist manual."
+}

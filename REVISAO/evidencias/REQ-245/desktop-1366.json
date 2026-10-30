@@ -5,5 +5,7 @@
   "url": "http://127.0.0.1:5180/atendimento",
   "contact": "Ana Exemplo",
   "class": "urgent",
+  "color": "rgb(255, 100, 124)",
+  "simulatedWaitMinutes": 20,
   "threshold": "over 15 min"
 }

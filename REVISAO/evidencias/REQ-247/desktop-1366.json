@@ -1,0 +1,9 @@
+{
+  "req": "REQ-247",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "note": "Nota privada auditoria desktop-1366 1793371960620",
+  "persisted": true,
+  "externalSend": false
+}

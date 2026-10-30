@@ -104,3 +104,30 @@ A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, po
 - Correção: elevar a altura calculada da lista para clamp(20rem, 42vh, 26rem).
 - Validação: teste REQ-216 em Chromium Playwright e teste unitário attendance-layout; viewport desktop e móvel aprovados.
 - Estado: corrigido localmente em 30/10/2026.
+
+## BUG-017 — Barra de mensagens fixadas não tinha atalho flutuante para reabrir
+
+- REQ: REQ-240.
+- Reprodução: ocultar o painel “Mensagens fixadas” no Atendimento e procurar o atalho flutuante solicitado; antes da correção, só havia ações no cabeçalho/menu.
+- Resultado: não existia o atalho flutuante animado, embora o painel pudesse ser reaberto por outros controles.
+- Correção: botão flutuante acessível, com animação discreta e respeito a `prefers-reduced-motion`; aciona a mesma ação existente para abrir o painel.
+- Validação: Playwright desktop e móvel confirma visibilidade, animação, reabertura e ocultação; evidências em `REVISAO/evidencias/REQ-240/`.
+- Estado: corrigido localmente em 30/10/2026.
+
+## BUG-018 — Ação de resumo da conversa não ficava acessível no celular
+
+- REQ: REQ-250/251.
+- Reprodução: em 390×844, abrir as ações do cabeçalho após habilitar IA simulada; “Resumir conversa” não aparecia, embora Copiloto e análise de mídia estivessem disponíveis.
+- Resultado: não havia percurso móvel para abrir o modal de resumo.
+- Correção: adicionada ação “Resumir conversa” nas ações do compositor em larguras até 760 px; ela abre o mesmo modal e fluxo de resumo existente.
+- Validação: retestar em Chromium móvel com resposta de provedor simulada; evidências em `REVISAO/evidencias/REQ-250/` e `REQ-251/`.
+- Estado: corrigido localmente em 30/10/2026; Playwright passou em desktop 1366, desktop 1920 e mobile 390 com provedor simulado.
+
+## BUG-019 — Mensagem apagada não arquivava a mídia recebida
+
+- REQ: REQ-267.
+- Reprodução: receber uma imagem sem cópia local, depois receber o evento de exclusão; antes da correção, o evento só marcava `deletedByClient` e não guardava arquivo.
+- Resultado: a imagem ainda dependia do arquivo remoto continuar disponível.
+- Correção: no evento de exclusão, o servidor tenta copiar imagem/áudio do payload Baileys para `StoredFile` (limite 20 MiB) antes de gravar o selo; mídias de visualização única são ignoradas e falha de download conserva o tombstone/metadados.
+- Validação: `REQ-267 arquiva a cópia fictícia...` em banco temporário confirmou arquivo e marca após evento de exclusão; integração externa segue no checklist manual.
+- Estado: corrigido localmente em 30/10/2026.

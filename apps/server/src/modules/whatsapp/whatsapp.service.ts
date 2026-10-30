@@ -1,4 +1,11 @@
-import { DisconnectReason, jidNormalizedUser, type BaileysEventMap } from '@whiskeysockets/baileys';
+import {
+  DisconnectReason,
+  downloadMediaMessage,
+  jidNormalizedUser,
+  normalizeMessageContent,
+  type BaileysEventMap,
+  type WAMessage,
+} from '@whiskeysockets/baileys';
 import type { ConnectionStatus, PrismaClient } from '@prisma/client';
 import QRCode from 'qrcode';
 import { env } from '../../config/env.js';
@@ -12,6 +19,7 @@ import { socketFactory, type SocketFactory, type WhatsappSocket } from './socket
 import { silentPublisher, type SessionSnapshot, type WhatsappPublisher } from './whatsapp.types.js';
 import { LabelOutbox } from './label-outbox.js';
 import { retryDatabaseOperation } from '../../database/retry.js';
+import { pino } from 'pino';
 
 interface Runtime {
   controls: SerialQueue;
@@ -46,7 +54,7 @@ export class WhatsappService {
     factory?: SocketFactory,
   ) {
     this.factory = factory ?? socketFactory(db);
-    this.sync = new SyncService(db, publisher);
+    this.sync = new SyncService(db, publisher, (sessionId, raw) => this.archiveDeletedMedia(sessionId, raw));
     this.outbox = new LabelOutbox(
       db,
       (id) => {
@@ -76,6 +84,36 @@ export class WhatsappService {
       this.runtimes.set(id, runtime);
     }
     return runtime;
+  }
+
+  private async archiveDeletedMedia(sessionId: string, raw: WAMessage) {
+    const content = normalizeMessageContent(raw.message);
+    const media = content?.imageMessage ?? content?.audioMessage;
+    const runtime = this.runtimes.get(sessionId);
+    const socket = runtime?.socket;
+    if (!media || !socket) return null;
+    const stream = await downloadMediaMessage(raw, 'stream', {}, {
+      logger: pino({ level: 'silent' }),
+      reuploadRequest: async (message) =>
+        socket.updateMediaMessage ? socket.updateMediaMessage(message) : message,
+    });
+    const chunks: Buffer[] = [];
+    let length = 0;
+    for await (const chunk of stream) {
+      const part = Buffer.from(chunk);
+      length += part.length;
+      if (length > 20 * 1024 * 1024) {
+        stream.destroy();
+        return null;
+      }
+      chunks.push(part);
+    }
+    if (!length) return null;
+    return {
+      data: Buffer.concat(chunks),
+      filename: 'fileName' in media && typeof media.fileName === 'string' ? media.fileName : 'midia-recebida',
+      mimeType: media.mimetype ?? 'application/octet-stream',
+    };
   }
 
   async create(name: string) {

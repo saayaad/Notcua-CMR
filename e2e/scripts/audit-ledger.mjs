@@ -61,6 +61,13 @@ const typeOverrides = {
   'REQ-220': 'B', 'REQ-221': 'B', 'REQ-222': 'B', 'REQ-223': 'D', 'REQ-224': 'B',
   'REQ-225': 'B', 'REQ-226': 'B', 'REQ-227': 'B', 'REQ-228': 'B', 'REQ-229': 'B',
   'REQ-230': 'B', 'REQ-231': 'B', 'REQ-232': 'B', 'REQ-233': 'B',
+  'REQ-236': 'B', 'REQ-237': 'B', 'REQ-238': 'B', 'REQ-239': 'B', 'REQ-240': 'B',
+  'REQ-241': 'B', 'REQ-242': 'B', 'REQ-243': 'B', 'REQ-244': 'B', 'REQ-245': 'B',
+  'REQ-247': 'B', 'REQ-248': 'B', 'REQ-249': 'B',
+  'REQ-250': 'C', 'REQ-251': 'C', 'REQ-252': 'C', 'REQ-253': 'C',
+  'REQ-254': 'B', 'REQ-255': 'B', 'REQ-256': 'B', 'REQ-258': 'B', 'REQ-259': 'B',
+  'REQ-261': 'C', 'REQ-262': 'C', 'REQ-263': 'C', 'REQ-264': 'C', 'REQ-265': 'C',
+  'REQ-267': 'C', 'REQ-268': 'B',
 };
 const rows = [];
 for (const line of source.split(/\r?\n/)) {

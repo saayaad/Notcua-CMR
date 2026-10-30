@@ -103,11 +103,42 @@
   animation: sla-pulse 1.8s ease-in-out infinite;
 }
 .inbox-layout .chat-pane {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
   background: var(--chat);
+}
+.tools-reopen-fab {
+  position: fixed;
+  z-index: 12;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: calc(6.5rem + env(safe-area-inset-bottom));
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line));
+  border-radius: 999px;
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: 0 8px 26px #0004;
+  cursor: pointer;
+  animation: tools-reopen-pulse 2.4s ease-in-out infinite;
+}
+.tools-reopen-fab:hover,
+.tools-reopen-fab:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent);
+  animation-play-state: paused;
+}
+@keyframes tools-reopen-pulse {
+  0%, 100% { transform: translateY(0); box-shadow: 0 8px 26px #0004; }
+  50% { transform: translateY(-3px); box-shadow: 0 11px 30px #0006; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tools-reopen-fab { animation: none; }
 }
 .inbox-layout .chat-header {
   flex: 0 0 auto;

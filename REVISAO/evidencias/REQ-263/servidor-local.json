@@ -1,0 +1,11 @@
+{
+  "resultado": "APROVADO",
+  "testes": [
+    "test/attendance.test.ts: composing antes de texto e pausa após espera configurada"
+  ],
+  "ambiente": "local; SQLite temporário/.audit e conector fictício; sem produção",
+  "titulo": "presença composing",
+  "requisito": "REQ-263",
+  "data": "2026-10-30",
+  "limitacao": "Confirmação em telefone destinatário continua no checklist manual."
+}

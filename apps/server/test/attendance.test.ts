@@ -144,6 +144,42 @@ test('duração zero desliga presença automática e ausência da opção manté
   assert.ok(socket.presence.slice(before).includes('composing'));
 });
 
+test('REQ-263 sinaliza digitando antes de texto e encerra a presença simulada', async () => {
+  const before = socket.presence.length;
+  await messaging.send(sessionId, conversationId, {
+    requestId: 'req-263-typing', kind: 'text', text: 'Mensagem de atendimento fictícia',
+  });
+  assert.deepEqual(socket.presence.slice(before), ['composing', 'paused']);
+});
+
+test('REQ-264 sinaliza gravando antes de áudio e encerra a presença simulada', async () => {
+  const audio = Buffer.concat([Buffer.from('OggS\u0000\u0002ficticio'), Buffer.from('OpusHead\u0001\u0001')]);
+  const file = await db.storedFile.create({
+    data: {
+      id: 'req-264-fake-audio', filename: 'audio-ficticio.ogg', mimeType: 'audio/ogg; codecs=opus',
+      byteLength: audio.length, sha256: randomBytes(32).toString('hex'), data: audio,
+    },
+  });
+  const before = socket.presence.length;
+  await messaging.send(sessionId, conversationId, {
+    requestId: 'req-264-recording', kind: 'audio', fileId: file.id, isPtt: true,
+  });
+  assert.deepEqual(socket.presence.slice(before), ['recording', 'paused']);
+});
+
+test('REQ-265 ajusta a duração de digitando conforme o tamanho do texto', async () => {
+  const measure = async (requestId: string, text: string) => {
+    const started = Date.now();
+    await messaging.send(sessionId, conversationId, { requestId, kind: 'text', text });
+    return Date.now() - started;
+  };
+  const shortMs = await measure('req-265-short', 'Oi');
+  const longMs = await measure('req-265-long', 'Resposta fictícia longa '.repeat(5));
+  assert.ok(shortMs >= 650, `texto curto terminou em ${shortMs} ms`);
+  assert.ok(longMs >= 1700, `texto longo terminou em ${longMs} ms`);
+  assert.ok(longMs > shortMs + 800, `longa=${longMs} ms, curta=${shortMs} ms`);
+});
+
 test('conversão real de WAV produz OGG/Opus; PTT e visualização única chegam ao socket', async () => {
   const samples = 8000;
   const pcm = Buffer.alloc(samples * 2);

@@ -301,6 +301,32 @@ test('exclusão recebida preserva texto e só marca a conversa de origem', async
   assert.equal((second.rawPayload as { deletedByClient?: boolean }).deletedByClient, undefined);
 });
 
+test('REQ-267 arquiva a cópia fictícia de imagem ao receber exclusão e mantém o selo', async () => {
+  const jid = '5511777771010@s.whatsapp.net';
+  const retainingSync = new SyncService(db, silentPublisher, async () => ({
+    data: Buffer.from('imagem fictícia preservada'),
+    filename: 'recebida.png',
+    mimeType: 'image/png',
+  }));
+  const original = {
+    key: { remoteJid: jid, id: 'req-267-image', fromMe: false },
+    message: { imageMessage: { mimetype: 'image/png', url: 'https://media.invalid/fake', mediaKey: randomBytes(32) } },
+    messageTimestamp: 1_792_779_000,
+  } as unknown as WAMessage;
+  await retainingSync.messagesUpsert(sessionId, [original], false);
+  await retainingSync.messagesUpsert(sessionId, [{
+    key: { remoteJid: jid, id: 'req-267-revoke', fromMe: false },
+    message: { protocolMessage: { type: 0, key: { id: 'req-267-image', remoteJid: jid } } },
+  }], true);
+  const message = await db.chatMessage.findFirstOrThrow({
+    where: { whatsappMessageId: 'req-267-image', conversation: { sessionId, contact: { phoneNumber: '5511777771010' } } },
+    include: { file: true },
+  });
+  assert.equal((message.rawPayload as { deletedByClient?: boolean }).deletedByClient, true);
+  assert.equal(message.file?.filename, 'recebida.png');
+  assert.equal(Buffer.from(message.file!.data).toString(), 'imagem fictícia preservada');
+});
+
 test('fila de etiquetas tenta novamente após falha e conclui sem reenviar mensagens', async () => {
   const socket = new FakeSocket();
   const outbox = new LabelOutbox(db, () => socket);

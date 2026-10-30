@@ -1,0 +1,11 @@
+{
+  "resultado": "APROVADO",
+  "testes": [
+    "test/attendance.test.ts: recording antes de áudio OGG/Opus e pausa após envio simulado"
+  ],
+  "ambiente": "local; SQLite temporário/.audit e conector fictício; sem produção",
+  "titulo": "presença recording",
+  "requisito": "REQ-264",
+  "data": "2026-10-30",
+  "limitacao": "Confirmação em telefone destinatário continua no checklist manual."
+}

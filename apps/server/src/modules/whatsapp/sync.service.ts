@@ -10,6 +10,7 @@ import {
   type WAMessage,
 } from '@whiskeysockets/baileys';
 import type { MessageStatus, Prisma, PrismaClient } from '@prisma/client';
+import { createHash } from 'node:crypto';
 import { ContactRepository, normalizedJid, resolveContact } from './contact.repository.js';
 import type { WhatsappPublisher } from './whatsapp.types.js';
 
@@ -100,6 +101,11 @@ export class SyncService {
   constructor(
     private readonly db: PrismaClient,
     private readonly publisher: WhatsappPublisher,
+    private readonly archiveDeletedMedia?: (sessionId: string, raw: WAMessage) => Promise<{
+      data: Uint8Array;
+      filename: string;
+      mimeType: string;
+    } | null>,
   ) {
     this.contacts = new ContactRepository(db);
   }
@@ -176,10 +182,34 @@ export class SyncService {
                 },
               },
             },
-            select: { id: true, rawPayload: true },
+            select: { id: true, rawPayload: true, fileId: true, asViewOnce: true },
           });
           if (original) {
             const raw = original.rawPayload;
+            let fileId = original.fileId;
+            if (!fileId && !original.asViewOnce && this.archiveDeletedMedia) {
+              try {
+                const received = await this.archiveDeletedMedia(sessionId, JSON.parse(JSON.stringify(raw), BufferJSON.reviver) as WAMessage);
+                if (received && received.data.byteLength <= 20 * 1024 * 1024) {
+                  const sha256 = createHash('sha256').update(received.data).digest('hex');
+                  const file = await this.db.storedFile.upsert({
+                    where: { sha256 },
+                    create: {
+                      filename: received.filename,
+                      mimeType: received.mimeType,
+                      data: new Uint8Array(received.data) as Uint8Array<ArrayBuffer>,
+                      byteLength: received.data.byteLength,
+                      sha256,
+                    },
+                    update: {},
+                    select: { id: true },
+                  });
+                  fileId = file.id;
+                }
+              } catch {
+                // Preserve the tombstone and metadata even if the remote media has expired.
+              }
+            }
             await this.db.chatMessage.update({
               where: { id: original.id },
               data: {
@@ -188,6 +218,7 @@ export class SyncService {
                   deletedByClient: true,
                   deletedAt: new Date().toISOString(),
                 },
+                ...(fileId ? { fileId } : {}),
               },
             });
             count++;

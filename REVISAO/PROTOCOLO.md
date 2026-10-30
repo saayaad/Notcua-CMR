@@ -95,10 +95,9 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 
 ## Ponto de retomada — 30/10/2026
 
-- Módulo ativo: Mensagens, REQ-236–268. O ledger ainda não foi atualizado para este lote.
-- O usuário confirmou que os servidores já estão rodando em `127.0.0.1:5180` e `127.0.0.1:3340`; não iniciar outro servidor nem resetar o banco.
-- Banco confirmado por cadeia de processos: PID que escuta 3340 tem como ancestral `node e2e/scripts/audit-dev.mjs`; esse script define `DATABASE_URL` para `.audit/noctua-audit.db`. Health local respondeu `ok`.
-- `e2e/playwright.config.ts` agora oferece `AUDIT_USE_RUNNING_SERVER=1` para omitir o webServer do Playwright e reutilizar os endereços existentes.
-- `e2e/messages.spec.ts` segue em progresso. REQ-243/244/245 passaram em Chromium 1366×768 e geraram evidências; thresholds no banco .audit foram restaurados aos padrões 5/15, timer ligado.
-- Arquivamento/restauração (REQ-241/242), nota interna (REQ-247/249), Biblioteca rápida (REQ-254–256) e HUD (REQ-236–239) já atingiram duas tentativas sem passar; não repetir. Registrar bloqueios no lote e prosseguir com os demais requisitos do módulo.
-- Neste ponto, lote de Mensagens ainda não está fechado; ledger/status não foram regenerados. Sem publicação, reset do banco ou novo servidor nesta retomada.
+- Lote Mensagens REQ-236–268 atualizado: 19 `COMPLETO`, 10 `COMPLETO-LOCAL`, itens anteriormente completos preservados; BUG-017/018/019 registrados em BUGS.md. Ledger regenerado após regressão: servidor 206/206; Playwright 36/36; build/typecheck aprovados.
+- Evidências Playwright por requisito em `REVISAO/evidencias/REQ-236/` a `REQ-268/`; 18 casos de mensagens, 9 de mídia e 9 de IA simulada aprovados em três viewports. Servidor `attendance.test.ts` + `whatsapp.test.ts`: 40/40 aprovados com banco/socket fictícios.
+- REQ-263/264/265 e 267 estão `COMPLETO-LOCAL`; checklist externo detalha a validação futura em aparelho/WhatsApp descartável. Nada foi enviado ao WhatsApp de produção.
+- Os serviços locais do usuário continuam ativos em `127.0.0.1:5180` e `127.0.0.1:3340`; usar `AUDIT_USE_RUNNING_SERVER=1`. Banco confirmado `.audit/noctua-audit.db`; não resetar nem subir serviços adicionais.
+- Próximo lote: módulo Campanhas e agenda, iniciando REQ-269. Não tocar em produção, Firebase, chaves reais, Vercel ou `.env.local`.
+- Conforme instrução mais recente do usuário/AGENTS.md, após cada falha registrar mensagem completa, corrigir uma causa real e retestar; não repetir o mesmo teste sem alteração e não parar pelo limite de tentativas antigo.

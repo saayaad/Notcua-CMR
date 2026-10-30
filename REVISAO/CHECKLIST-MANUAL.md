@@ -124,3 +124,29 @@ Os requisitos abaixo estão aprovados com provedor simulado e em estado **COMPLE
 1. Entrar com a mesma conta de teste em dois dispositivos.
 2. Mudar uma preferência no primeiro e aguardar sincronização no segundo.
 3. Recarregar ambos e confirmar o valor persistido.
+
+## Mensagens — validações externas opcionais (somente aparelho/conexão descartável)
+
+### REQ-263 — presença “digitando” antes de texto
+
+1. Usar uma conexão WhatsApp de teste e um telefone destinatário descartável; acionar uma resposta textual curta pelo caminho de teste.
+2. Confirmar no aparelho destinatário que aparece “digitando” antes do texto e registrar captura/vídeo com horário.
+3. Repetir com texto longo e apagar a conversa de teste dos dois aparelhos ao final.
+
+### REQ-264 — presença “gravando áudio” antes de áudio
+
+1. Na mesma conexão descartável, iniciar uma resposta de áudio do fluxo de teste com conector de envio autorizado.
+2. Confirmar “gravando áudio” no destinatário antes de receber o arquivo, sem usar o número de produção.
+3. Registrar captura/vídeo e remover os dados de teste.
+
+### REQ-265 — duração proporcional da presença
+
+1. Executar uma resposta curta e outra longa no mesmo telefone de teste, em sequência separada.
+2. Medir “digitando” em ambas; confirmar que a longa dura mais e comparar aproximadamente com a regra local validada em teste.
+3. Registrar as durações e excluir a conversa de teste.
+
+### REQ-267 — recuperação de mídia apagada
+
+1. Em conexão descartável, receber uma imagem e um áudio comuns (não de visualização única) e confirmar a entrega ao Noctua.
+2. Apagar cada mídia no cliente remetente e verificar que o Noctua conserva a cópia legível após o evento de exclusão.
+3. Registrar capturas e remover os arquivos/conversa de teste. A cópia local já foi provada com downloader fictício; esta etapa só valida a integração WhatsApp.

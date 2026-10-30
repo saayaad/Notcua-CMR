@@ -27,6 +27,7 @@ import {
   LockKeyhole,
   ImagePlus,
   BadgeDollarSign,
+  PanelRightOpen,
 } from 'lucide-react';
 import { useApi, errorMessage } from '../context/ApiContext';
 import { useContextMenu } from '../context/ContextMenu';
@@ -368,6 +369,18 @@ export function ChatPane({
   const adReferral = chat.contact.metadata.adReferral as { source?: string; title?: string; body?: string; url?: string } | undefined;
   return (
     <main className="chat-pane" {...placement.attributes} style={placement.style}>
+      {!toolsVisible && (
+        <button
+          type="button"
+          className="tools-reopen-fab"
+          aria-label="Reabrir mensagens fixadas"
+          title="Reabrir mensagens fixadas"
+          onClick={onToggleTools}
+        >
+          <PanelRightOpen size={18} />
+          <span>Mensagens fixadas</span>
+        </button>
+      )}
       <header className="chat-header">
         <HudMoveHandle placement={placement} name="chat" />
         <button className="icon-button mobile-back" onClick={onBack} aria-label="Voltar à lista">
@@ -613,6 +626,10 @@ export function ChatPane({
               onRefresh();
             }}
             onQuick={onQuick}
+            onSummarize={() => {
+              setSummary('');
+              setSummaryOpen(true);
+            }}
           />
         </div>
       </div>

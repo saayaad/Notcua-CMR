@@ -1,0 +1,11 @@
+{
+  "resultado": "APROVADO",
+  "testes": [
+    "test/whatsapp.test.ts: downloader fictício salva bytes em banco SQLite temporário antes de marcar exclusão"
+  ],
+  "ambiente": "local; SQLite temporário/.audit e conector fictício; sem produção",
+  "titulo": "preservação da mídia apagada",
+  "requisito": "REQ-267",
+  "data": "2026-10-30",
+  "limitacao": "Integração real de recebimento/apagamento continua no checklist manual."
+}

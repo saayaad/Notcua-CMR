@@ -25,6 +25,7 @@ export function Composer({
   connected,
   onSent,
   onQuick,
+  onSummarize,
   sessionId,
   conversationId,
   library,
@@ -37,6 +38,7 @@ export function Composer({
   connected: boolean;
   onSent: () => void;
   onQuick: () => void;
+  onSummarize: () => void;
   onInternalNote: (text: string) => Promise<void>;
 }) {
   const { request, notify } = useApi();
@@ -434,6 +436,9 @@ export function Composer({
           <Zap size={14} />
           Respostas rápidas
         </button>
+        <AiOnly><button className="mobile-summary-trigger" onClick={onSummarize}>
+          <WandSparkles size={14} /> Resumir conversa
+        </button></AiOnly>
         <AiOnly><button
           className={`copilot-trigger ${copilotOpen ? 'selected' : ''}`}
           onClick={() => {
