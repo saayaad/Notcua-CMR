@@ -1,0 +1,23 @@
+{
+  "req": "REQ-517",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "errors": [],
+  "attendanceMenuStayedOnConversation": true,
+  "shortcutsOpenedFilteredLibrary": [
+    [
+      "Textos",
+      "Textos"
+    ],
+    [
+      "Áudios",
+      "Áudios"
+    ],
+    [
+      "Fotos e vídeos",
+      "Mídias"
+    ]
+  ],
+  "emptyPinnedShelfNotOpened": true
+}

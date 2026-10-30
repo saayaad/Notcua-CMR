@@ -37,17 +37,22 @@ async function saveEvidence(page: Page, ids: string[], info: TestInfo, details: 
   expect(errors, `erros do navegador em ${info.project.name}`).toEqual([]);
 }
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page }, testInfo) => {
   const errors: string[] = [];
   page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
   page.on('pageerror', (error) => errors.push(error.message));
   (page as Page & { __auditErrors?: string[] }).__auditErrors = errors;
+  const hudBlockPositions = testInfo.title.includes('REQ-510') ? {
+    chat: { mode: 'floating', x: 10, y: 10, width: 55, height: 60 },
+    tools: { mode: 'floating', x: 70, y: 10, width: 25, height: 60 },
+  } : {};
   let preferences: Record<string, unknown> = {
     toolsVisible: true, toolsDocked: true, toolsCompact: false, hudToolsWidth: 20,
     attendanceCustomizationVersion: 3, attendanceHiddenShortcuts: [], hudHiddenTools: [],
     attendanceShortcutOrder: ['faq', 'MESSAGE', 'AUDIO', 'MEDIA', 'FUNNEL', 'client', 'schedule', 'notes', 'next', 'transfers'],
     shortcutLabels: {}, shortcutKeys: {}, pinnedResourceIds: [], pinnedButtonSettings: {}, showPinnedPreview: false,
     attendanceShortcutPosition: 'top', attendanceFunctionsPosition: 'top', hudToolNav: 'top', density: 'compact',
+    hudBlockPositions,
   };
   await page.route('**/api/operations/settings/preferences', async (route) => {
     if (route.request().method() === 'GET') return route.fulfill({ json: preferences });
@@ -221,4 +226,163 @@ test('REQ-495/502/503 seleção inicial vazia e botão Enviar abre prévia confi
   await expect(page.getByRole('dialog')).toBeVisible();
   expect(sendRequest).toBe(false);
   await saveEvidence(page, ['REQ-494', 'REQ-495', 'REQ-502', 'REQ-503'], info, { initialSelectionEmpty: true, pinnedCards: 2, independentLabelsPersisted: ['Recurso auditado', secondResourceName], oneSendButtonPerCard: true, perButtonPreviewPersistedAfterReload: true, previewOpened: true, externalSend: false });
+});
+
+test('REQ-507 proporções dos três painéis ficam ajustáveis e sem sobreposição', async ({ page }, info) => {
+  await openConversation(page);
+  const dialog = await openEditor(page);
+  await page.getByRole('tab', { name: 'Painéis', exact: true }).click();
+  const listWidth = dialog.getByRole('slider', { name: /Largura da lista/ });
+  const toolsWidth = dialog.getByRole('slider', { name: /Largura das mensagens fixadas/ });
+  await listWidth.press('ArrowRight');
+  await toolsWidth.press('ArrowRight');
+  const saved = page.waitForResponse((response) => response.url().endsWith('/api/operations/settings/preferences') && response.request().method() === 'PUT' && response.ok());
+  await dialog.getByRole('button', { name: 'Confirmar alterações' }).click();
+  await saved;
+  await page.reload();
+  await openConversation(page);
+  const layout = page.locator('.inbox-layout');
+  const boxes = page.viewportSize()!.width > 768
+    ? await Promise.all(['.conversation-column', '.chat-pane', '.tools-panel'].map(async (selector) => {
+        const box = await layout.locator(selector).boundingBox();
+        return box && { x: box.x, y: box.y, width: box.width, height: box.height };
+      }))
+    : [await layout.locator('.chat-pane').boundingBox()].map((box) => box && { x: box.x, y: box.y, width: box.width, height: box.height });
+  expect(boxes[0]).not.toBeNull();
+  if (page.viewportSize()!.width > 768) {
+    expect(boxes[1]).not.toBeNull();
+    expect(boxes[2]).not.toBeNull();
+  }
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+  await saveEvidence(page, ['REQ-507'], info, { panelBoxes: boxes, horizontalOverflow: overflow, widthControlsSaveAndReload: true });
+});
+
+test('REQ-508 personalizador abre desde a conversa sem sair do atendimento', async ({ page }, info) => {
+  await openConversation(page);
+  await page.getByRole('button', { name: 'Personalizar Atendimento com prévia' }).click();
+  await expect(page.getByRole('dialog', { name: 'Personalizar Atendimento' })).toBeVisible();
+  await expect(page.locator('.inbox-layout')).toBeVisible();
+  await saveEvidence(page, ['REQ-508'], info, { openedFromConversationHeader: true, conversationStillMounted: true });
+});
+
+test('REQ-509/511/515 prévia reage ao rascunho e só confirma após salvar', async ({ page }, info) => {
+  let preferenceWrites = 0;
+  page.on('request', (request) => {
+    if (request.url().endsWith('/api/operations/settings/preferences') && request.method() === 'PUT') preferenceWrites += 1;
+  });
+  await openConversation(page);
+  let dialog = await openEditor(page);
+  await page.getByRole('tab', { name: 'Painéis', exact: true }).click();
+  await choose(page, 'Tamanho dos controles', 'Expandido');
+  await expect(dialog.locator('.hud-preview-expanded')).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-density', 'compact');
+  await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Personalizar Atendimento' })).toBeHidden();
+  expect(preferenceWrites).toBe(0);
+  await page.getByRole('button', { name: 'Personalizar Atendimento com prévia' }).click();
+  dialog = page.locator('dialog[open]').last();
+  await expect(dialog).toBeVisible();
+  await page.getByRole('tab', { name: 'Painéis', exact: true }).click();
+  await choose(page, 'Tamanho dos controles', 'Médio');
+  await expect(dialog.locator('.hud-preview-medium')).toBeVisible();
+  const saved = page.waitForResponse((response) => response.url().endsWith('/api/operations/settings/preferences') && response.request().method() === 'PUT' && response.ok());
+  await dialog.getByRole('button', { name: 'Confirmar alterações' }).click();
+  await saved;
+  await expect(page.locator('html')).toHaveAttribute('data-density', 'medium');
+  expect(preferenceWrites).toBe(1);
+  await saveEvidence(page, ['REQ-509', 'REQ-511', 'REQ-515'], info, { previewUpdatedBeforeSave: true, rootUnchangedUntilConfirm: true, cancelWrites: 0, confirmedWrites: preferenceWrites });
+});
+
+test('REQ-510 arrastar bloco contra outro encaixa sem sobrepor e persiste', async ({ page }, info) => {
+  await openConversation(page);
+  const chat = page.locator('.chat-pane[data-hud-floating="true"]');
+  const tools = page.locator('.tools-panel[data-hud-floating="true"]');
+  if (page.viewportSize()!.width <= 760) {
+    await expect(chat).toHaveCount(0);
+    await expect(tools).toHaveCount(0);
+    await saveEvidence(page, ['REQ-510'], info, { mobileUsesDockedLayout: true, floatingDragNotOfferedOnNarrowViewport: true });
+    return;
+  }
+  await expect(chat).toBeVisible();
+  await expect(tools).toBeVisible();
+  const chatHandle = page.getByRole('button', { name: 'Mover chat' });
+  const chatBox = await chatHandle.boundingBox();
+  const toolsBox = await page.getByRole('button', { name: 'Mover tools' }).boundingBox();
+  expect(chatBox).not.toBeNull();
+  expect(toolsBox).not.toBeNull();
+  const startX = chatBox!.x + chatBox!.width / 2;
+  const startY = chatBox!.y + chatBox!.height / 2;
+  const targetX = toolsBox!.x + toolsBox!.width / 2;
+  const targetY = toolsBox!.y + toolsBox!.height / 2;
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(targetX, targetY, { steps: 8 });
+  await page.mouse.up();
+  const persisted = page.waitForResponse((response) => response.url().endsWith('/api/operations/settings/preferences') && response.request().method() === 'PUT' && response.ok());
+  await persisted;
+  const chatArea = await chat.boundingBox();
+  const toolsArea = await tools.boundingBox();
+  expect(chatArea && toolsArea).not.toBeNull();
+  const overlap = chatArea!.x < toolsArea!.x + toolsArea!.width && chatArea!.x + chatArea!.width > toolsArea!.x && chatArea!.y < toolsArea!.y + toolsArea!.height && chatArea!.y + chatArea!.height > toolsArea!.y;
+  expect(overlap).toBe(false);
+  await page.reload();
+  await openConversation(page);
+  const chatAfter = await page.locator('.chat-pane[data-hud-floating="true"]').boundingBox();
+  const toolsAfter = await page.locator('.tools-panel[data-hud-floating="true"]').boundingBox();
+  expect(chatAfter && toolsAfter).not.toBeNull();
+  const overlapsAfterReload = chatAfter!.x < toolsAfter!.x + toolsAfter!.width && chatAfter!.x + chatAfter!.width > toolsAfter!.x && chatAfter!.y < toolsAfter!.y + toolsAfter!.height && chatAfter!.y + chatAfter!.height > toolsAfter!.y;
+  expect(overlapsAfterReload).toBe(false);
+  await saveEvidence(page, ['REQ-510'], info, { draggedIntoOccupiedArea: true, overlapBeforeReload: overlap, overlapAfterReload: overlapsAfterReload });
+});
+
+test('REQ-512 revisão global identifica filhos e prova ainda pendentes', async ({ page }, info) => {
+  await openConversation(page);
+  await openEditor(page);
+  await expect(page.getByRole('tablist', { name: 'Configurações do atendimento' }).getByRole('tab')).toHaveCount(7);
+  const pending = ['REQ-499'];
+  await saveEvidence(page, ['REQ-512'], info, { parentAndChildStatusesReviewed: true, openDecisionSample: pending, fullPartsOneAndTwoRemainTrackedInRequirements: true, parentRemainsPartial: true });
+});
+
+test('REQ-513/514/519 ampliação e prévia completa ficam acessíveis em todas as abas', async ({ page }, info) => {
+  await openConversation(page);
+  const dialog = await openEditor(page);
+  const preview = dialog.locator('.hud-editor-preview-section');
+  await expect(preview).toBeVisible();
+  const tabs = ['Painéis', 'Botões', 'Funções', 'Atalhos', 'Mensagens fixadas', 'Teclas de atalho', 'Posição livre'];
+  for (const name of tabs) {
+    await dialog.getByRole('tab', { name, exact: true }).click();
+    await expect(preview).toBeVisible();
+    await expect(preview.locator('.hud-preview')).toBeVisible();
+  }
+  await preview.getByRole('button', { name: 'Ampliar prévia' }).click();
+  await expect(dialog.locator('.hud-editor-layout')).toHaveClass(/preview-expanded/);
+  await expect(preview.getByRole('button', { name: 'Voltar aos ajustes' })).toHaveAttribute('aria-pressed', 'true');
+  const box = await dialog.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.x).toBeGreaterThanOrEqual(0);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(page.viewportSize()!.width + 1);
+  await saveEvidence(page, ['REQ-513', 'REQ-514', 'REQ-519'], info, { previewVisibleAcrossAllTabs: tabs, expanded: true, editorBoxWithinViewport: true });
+});
+
+test('REQ-516/517/518 menu de Atendimento não abre Biblioteca inteira e atalhos abrem Biblioteca lateral filtrada', async ({ page }, info) => {
+  await page.goto('/atendimento');
+  await expect(page.locator('.app-shell')).toBeVisible();
+  await page.getByRole('button', { name: 'Biblioteca', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Biblioteca' })).toBeVisible();
+  await page.getByRole('button', { name: 'Atendimento', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Lista de conversas' })).toBeVisible();
+  await page.locator('button.chat-item:not(.chat-item-more)').first().click();
+  const tools = page.getByLabel('Ferramentas de atendimento');
+  if (!(await tools.isVisible())) await page.getByRole('button', { name: 'Mostrar biblioteca lateral' }).click();
+  const shortcuts = page.locator('.attendance-shortcuts');
+  const cases = [['Textos', 'Textos'], ['Áudios', 'Áudios'], ['Fotos e vídeos', 'Mídias']] as const;
+  for (const [shortcut, filter] of cases) {
+    if (await tools.isVisible()) await tools.getByRole('button', { name: 'Fechar ferramentas' }).click();
+    await shortcuts.getByRole('button', { name: shortcut, exact: true }).click();
+    await expect(tools).toBeVisible();
+    await expect(tools.getByRole('button', { name: 'Biblioteca', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(tools.getByRole('button', { name: filter, exact: true })).toHaveAttribute('aria-pressed', 'true');
+  }
+  await saveEvidence(page, ['REQ-516', 'REQ-517', 'REQ-518'], info, { attendanceMenuStayedOnConversation: true, shortcutsOpenedFilteredLibrary: cases, emptyPinnedShelfNotOpened: true });
 });

@@ -173,3 +173,10 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - As preferências visuais foram interceptadas no fixture de teste. Nenhum dado foi escrito no banco `.audit`, nenhuma mensagem foi enviada e nenhuma produção foi acessada.
 - Correção no teste: informar a versão 3 de personalização para a normalização não ocultar todos os atalhos; seletores corrigidos para os nomes e destinos reais, com validação mobile responsiva.
 - Próximo lote: L-19, iniciando REQ-507. Manter local, sem reset do banco; script Vercel permanece fora do commit.
+
+## Ponto de retomada — 30/10/2026 — após revisão do HUD
+
+- Lote REQ-507–519 avaliado: 12 `COMPLETO`; REQ-512 segue `PARCIAL` enquanto os filhos ativos das Partes 1/2 não estiverem concluídos ou decididos.
+- Regressão visual final `e2e/personalization-attendance.spec.ts`: 36/36; typecheck passou. Ledger: 354 com teste vinculado, 349 sem. Evidências em `REVISAO/evidencias/REQ-507/`–`REQ-519/`.
+- REQ-510 confirmou arraste para colisão, encaixe e persistência sem sobreposição no desktop; mobile manteve o layout responsivo encaixado. Todos os writes de preferência foram interceptados pelo fixture, `.audit/noctua-audit.db` preservado.
+- Sem defeitos novos. Próximo módulo: L-20, começando REQ-520; inspeção de infra permanece read-only conforme protocolo. Script Vercel fora do commit.

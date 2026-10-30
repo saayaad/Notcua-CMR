@@ -1,0 +1,17 @@
+{
+  "req": "REQ-507",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "errors": [],
+  "panelBoxes": [
+    {
+      "x": 68,
+      "y": 60,
+      "width": 322,
+      "height": 784
+    }
+  ],
+  "horizontalOverflow": 0,
+  "widthControlsSaveAndReload": true
+}

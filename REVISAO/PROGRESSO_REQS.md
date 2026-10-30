@@ -70,3 +70,12 @@
 - Preferências foram interceptadas pelo Playwright em fixture e sobreviveram a reloads dentro do teste; nenhuma escrita no `.audit/noctua-audit.db`, envio de mensagem ou chamada de produção. Evidências individuais em `REVISAO/evidencias/REQ-488/`–`REQ-503/`.
 - Falhas e correções: fixture inicial não informava `attendanceCustomizationVersion=3`, então normalização ocultava atalhos; adicionada versão e visibilidade explícitas. Nomes de abas e destino do atalho foram ajustados aos rótulos reais do DOM. Em mobile, lateral fechada após salvar é o comportamento responsivo; expectativa foi atualizada. Posição livre testada nos campos reais e após recarga.
 - Ledger: 342 REQs com teste vinculado e 361 sem. Próximo módulo: L-19, REQ-507 em diante. O script `scripts/iniciar-noctua-online.ps1` segue fora do commit.
+
+## Atendimento e Personalização — lote REQ-507–519 — 30/10/2026
+
+- Playwright `e2e/personalization-attendance.spec.ts`: regressão final 36/36 aprovada em três viewports; `npm run typecheck` passou. Evidências em `REVISAO/evidencias/REQ-507/`–`REQ-519/`.
+- 12 REQs ficaram `COMPLETO`; REQ-512 continua `PARCIAL` porque a revisão global das Partes 1/2 não substitui resolver os filhos ainda incompletos. Nenhum novo defeito de produto confirmado.
+- REQ-510 arrastou o bloco de conversa para a área de ferramentas; o app o encaixou sem colisão e manteve a posição após reload em desktop. Mobile preserva layout encaixado. REQ-509/511 confirmou que Cancelar não grava e Confirmar grava uma vez. REQ-517 percorreu Textos, Áudios e Mídias na lateral.
+- Falhas/correções de teste: medições mobile foram ajustadas porque a lista de conversas fica oculta enquanto a conversa está aberta; REQ-508 usa o botão direto no cabeçalho; `Personalizar` abre menu, não o editor. Para L-19, preferências e posições foram interceptadas no fixture. A gaveta mobile intercepta atalhos enquanto aberta; o teste fecha antes de escolher o próximo filtro.
+- Nenhuma chamada de produção, mensagem ou gravação no `.audit/noctua-audit.db`. Ledger: 354 REQs com teste vinculado e 349 sem.
+- Próximo módulo: L-20, REQ-520 em diante. `scripts/iniciar-noctua-online.ps1` segue fora do commit.
