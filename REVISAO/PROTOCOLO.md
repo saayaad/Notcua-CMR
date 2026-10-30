@@ -92,3 +92,12 @@ Ao parar: tabela antes × depois por estado, IDs que mudaram, defeitos novos e U
 Só pare quando a lista acabar ou quando precisar de algo que só eu posso fazer (junte tudo numa lista e pare).
 
 Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISAO/LEDGER.csv e processe o próximo lote.
+
+## Ponto de retomada — 30/10/2026
+
+- Módulo ativo: Mensagens, REQ-236–268. O ledger ainda não foi atualizado para este lote.
+- O usuário confirmou que os servidores já estão rodando em `127.0.0.1:5180` e `127.0.0.1:3340`; não iniciar outro servidor nem resetar o banco.
+- Banco confirmado por cadeia de processos: PID que escuta 3340 tem como ancestral `node e2e/scripts/audit-dev.mjs`; esse script define `DATABASE_URL` para `.audit/noctua-audit.db`. Health local respondeu `ok`.
+- `e2e/playwright.config.ts` agora oferece `AUDIT_USE_RUNNING_SERVER=1` para omitir o webServer do Playwright e reutilizar os endereços existentes.
+- `e2e/messages.spec.ts` está em progresso e ainda não foi commitado. Os primeiros testes de arquivamento/restauração (REQ-241/242), nota interna (REQ-247/249) e Biblioteca rápida (REQ-254–256) atingiram duas tentativas sem passar; não repetir. O teste de HUD (REQ-236–239) também atingiu duas tentativas sem passar. Registrar bloqueios/defeitos com cuidado e continuar os demais requisitos do módulo.
+- Não foi iniciada publicação, reset do banco ou novo servidor nesta retomada.

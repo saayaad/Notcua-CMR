@@ -18,7 +18,7 @@ export default defineConfig({
     { name: 'desktop-1920', use: { ...devices['Desktop Chrome'], viewport: { width: 1920, height: 1080 } } },
     { name: 'mobile-390', use: { ...devices['Pixel 5'], viewport: { width: 390, height: 844 } } },
   ],
-  webServer: {
+  webServer: process.env.AUDIT_USE_RUNNING_SERVER === '1' ? undefined : {
     command: 'npm run audit:dev',
     cwd: '..',
     url: 'http://127.0.0.1:3340/health',
