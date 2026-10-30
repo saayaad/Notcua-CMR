@@ -42,10 +42,12 @@ import { inflateRawSync } from 'node:zlib';
 class FakeSocket implements WhatsappSocket {
   lookupCalls = 0;
   lookupFails = false;
+  registeredPhones = new Set<string>();
   async onWhatsApp(...numbers: string[]) {
     this.lookupCalls++;
     if (this.lookupFails) throw new Error('Consulta indisponível');
-    return numbers.filter(phone => phone.endsWith('1')).map(phone => ({ jid: `${phone}@s.whatsapp.net`, exists: true }));
+    return numbers.filter(phone => phone.endsWith('1') || this.registeredPhones.has(phone))
+      .map(phone => ({ jid: `${phone}@s.whatsapp.net`, exists: true }));
   }
   ev = makeEventBuffer(pino({ level: 'silent' }));
   user = { id: '5511000000000@s.whatsapp.net' };
@@ -116,6 +118,7 @@ after(async () => {
 });
 async function makeContact(phoneNumber: string, name = 'Contato Fictício') {
   await contacts.import(sessionId, { items: [{ name, phoneNumber, tags: ['Teste'] }] });
+  socket.registeredPhones.add(phoneNumber);
   return db.conversation.findFirstOrThrow({ where: { sessionId, contact: { phoneNumber } } });
 }
 async function draft(conversationIds: string[], delivery: object, mode = 'CAMPAIGN', runAt?: string) {
@@ -151,10 +154,10 @@ test('validação consulta sem enviar, reutiliza cache, separa ausência de falh
   const before = socket.lookupCalls;
   const result = await request(app).post(url).send({ phoneNumbers: ['5511999990001', '5511999990002'] }).expect(200);
   assert.deepEqual(result.body.items.map((item: any) => item.status), ['REGISTERED', 'NOT_REGISTERED']);
-  assert.equal(socket.lookupCalls, before + 2);
+  assert.equal(socket.lookupCalls, before + 3);
   const cached = await request(app).post(url).send({ phoneNumbers: ['5511999990001'] }).expect(200);
   assert.equal(cached.body.items[0].cached, true);
-  assert.equal(socket.lookupCalls, before + 2);
+  assert.equal(socket.lookupCalls, before + 3);
   socket.lookupFails = true;
   try {
     const failed = await request(app).post(url).send({ phoneNumbers: ['5511999990003', '5511999990004'] }).expect(200);
@@ -1161,6 +1164,31 @@ test('resumo de IA avança além de 60 mensagens e retoma após reinício ou imp
       assert.equal(summaries, 6);
       assert.doesNotMatch(summaryInputs[5] ?? '', /Resumo antigo sem cursor/);
       assert.ok((await record<{ cursor?: { id: string } }>(db, `conversation-summary:${legacy.id}`, {})).cursor?.id);
+      await db.chatMessage.create({ data: {
+        conversationId: long.id, direction: 'INBOUND', text: 'Mensagem histórica após falha',
+        sentAt: new Date(Date.UTC(2024, 0, 1)),
+      } });
+      const workingFetch = globalThis.fetch;
+      let fallbackInput = '';
+      let failedSummaries = 0;
+      globalThis.fetch = async (_url, options) => {
+        const body = JSON.parse(String(options?.body));
+        if (body.instructions.includes('Resuma fatos')) {
+          failedSummaries++;
+          return new Response(JSON.stringify({ error: { message: 'Falha fictícia' } }), { status: 503 });
+        }
+        fallbackInput = body.input;
+        return new Response(JSON.stringify({ output: [{ content: [{ type: 'output_text', text: 'Sugestão de contingência' }] }] }));
+      };
+      const fallback = await generateSuggestion(db, long.id, 'Sugira uma resposta.');
+      assert.equal(failedSummaries, 1);
+      assert.equal(fallback.text, 'Sugestão de contingência');
+      assert.match(fallbackInput, /Mensagem fictícia 159/);
+      assert.doesNotMatch(fallbackInput, /Resumo aprovado da conversa|Resumo 5/);
+      globalThis.fetch = workingFetch;
+      await generateSuggestion(db, long.id, 'Sugira uma resposta.');
+      assert.equal(summaries, 7);
+      assert.match(summaryInputs[6] ?? '', /Mensagem histórica após falha/);
     } finally {
       if (previous) await putRecord(db, 'settings:ai-economy', 'AI_ECONOMY_SETTINGS', previous);
       else await db.operationRecord.deleteMany({ where: { id: 'settings:ai-economy' } });

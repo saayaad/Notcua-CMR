@@ -664,7 +664,13 @@ export function WorkspaceSettings({
           )}
         </section>
       </div>
-      {hudOpen && <HudEditor onClose={() => setHudOpen(false)} />}
+      {hudOpen && (
+        <HudEditor
+          library={library}
+          sessionId={sessionId}
+          onClose={() => setHudOpen(false)}
+        />
+      )}
     </main>
   );
 }

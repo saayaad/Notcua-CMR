@@ -7,6 +7,7 @@ import { record, putRecord } from './records.js';
 import { json } from '../backups/validation.js';
 import { FlowEngine } from '../flows/flow.engine.js';
 import { queueLabelChange } from '../whatsapp/label-changes.js';
+import { nextSendWindowAt, type SendWindow } from './send-window.js';
 export interface Batch {
   name: string;
   sessionId: string;
@@ -22,18 +23,29 @@ export interface Batch {
   sentCount?: number;
   investmentInCents?: number;
   attributedRevenueInCents?: number;
+  approaches?: string[];
+  followUpCount?: number;
+  ctaKeyword?: string;
+  ctaKeywords?: string[];
+  sendWindow?: SendWindow;
 }
 export interface Delivery {
   kind: 'text' | 'asset' | 'funnel' | 'flow' | 'reminder' | 'sequence';
   steps?: { snapshot: Record<string, unknown>; waitSeconds: number }[];
   stepIndex?: number;
   text?: string;
+  approachIndex?: number;
   assetId?: string;
   funnelId?: string;
   flowId?: string;
   snapshot?: Record<string, unknown>;
   followUp?: boolean;
   sourceMessageAt?: string;
+  followUps?: { waitMinutes: number; text: string }[];
+  followUpIndex?: number;
+  cta?: { keyword: string; replyText: string };
+  ctas?: { keyword: string; replyText: string }[];
+  sourceCampaignId?: string;
   labelTransition?: { fromLabelId?: string; toLabelId?: string };
 }
 export class DeliveryWorker {
@@ -116,6 +128,13 @@ export class DeliveryWorker {
           (batch.nextAllowedAt && new Date(batch.nextAllowedAt) > new Date())
         )
           continue;
+        if (batch.sendWindow) {
+          const next = nextSendWindowAt(batch.sendWindow, new Date());
+          if (next.getTime() > Date.now()) {
+            await putRecord(this.db, task.batchId, 'BATCH', { ...batch, nextAllowedAt: next.toISOString() });
+            continue;
+          }
+        }
         const data = task.payload as unknown as Delivery;
         const chat = await this.db.conversation.findFirst({
           where: { id: task.conversationId, sessionId: task.sessionId },
@@ -132,12 +151,16 @@ export class DeliveryWorker {
         }
         if (data.followUp && data.sourceMessageAt) {
           const reply = await this.db.chatMessage.findFirst({
-            where: { conversationId: chat.id, direction: 'INBOUND', sentAt: { gt: new Date(data.sourceMessageAt) } },
+            where: { conversationId: chat.id, direction: 'INBOUND',
+              sentAt: { gte: new Date(new Date(data.sourceMessageAt).getTime() - 1000) } },
             select: { id: true },
           });
           if (reply) {
-            await this.db.deliveryTask.updateMany({ where: { batchId: task.batchId, status: { in: ['QUEUED', 'RUNNING'] } }, data: { status: 'CANCELLED', error: 'Follow-up cancelado: o cliente respondeu.' } });
-            await putRecord(this.db, task.batchId, 'BATCH', { ...batch, status: 'CANCELLED' });
+            await this.db.deliveryTask.update({ where: { id: task.id }, data: { status: 'CANCELLED', error: 'Follow-up cancelado: o cliente respondeu.' } });
+            const remaining = await this.db.deliveryTask.count({ where: { batchId: task.batchId, status: 'QUEUED' } });
+            await putRecord(this.db, task.batchId, 'BATCH', {
+              ...batch, status: batch.mode === 'CAMPAIGN' ? (remaining ? batch.status : 'COMPLETED') : 'CANCELLED',
+            });
             continue;
           }
         }
@@ -165,8 +188,14 @@ export class DeliveryWorker {
         if (!claimed.count) continue;
         const index = data.stepIndex ?? 0;
         const step = data.kind === 'sequence' ? data.steps?.[index] : undefined;
-        const hasNext = data.kind === 'sequence' && index + 1 < (data.steps?.length ?? 0);
+        const followUpIndex = data.followUpIndex ?? 0;
+        const campaignFollowUp = data.kind === 'text' && data.followUp ? data.followUps?.[followUpIndex] : undefined;
+        const hasNextSequence = data.kind === 'sequence' && index + 1 < (data.steps?.length ?? 0);
+        const hasNextCampaignFollowUp = data.kind === 'text' && Boolean(data.followUps?.length) &&
+          (!data.followUp || followUpIndex + 1 < data.followUps!.length);
+        const hasNext = hasNextSequence || hasNextCampaignFollowUp;
         try {
+          let sentAt: Date | undefined;
           if (data.kind === 'reminder')
             await putRecord(this.db, `notice:${task.id}`, 'NOTICE', {
               title: batch.name,
@@ -184,19 +213,28 @@ export class DeliveryWorker {
               `delivery:${task.id}`,
             );
           else if (data.kind === 'flow') await this.flows.launch(task.sessionId, data.flowId!, chat.id);
-          else
-            await this.messaging.send(task.sessionId, chat.id, {
-              ...(step?.snapshot ?? data.snapshot ?? { kind: 'text', text: data.text }),
-              requestId: `delivery:${task.id}${data.kind === 'sequence' ? `:${index}` : ''}`,
+          else {
+            const sent = await this.messaging.send(task.sessionId, chat.id, {
+              ...(campaignFollowUp
+                ? { kind: 'text', text: campaignFollowUp.text }
+                : step?.snapshot ?? data.snapshot ?? { kind: 'text', text: data.text }),
+              requestId: `delivery:${task.id}${data.kind === 'sequence' ? `:${index}` : data.followUp && data.kind === 'text' ? `:follow-up:${followUpIndex}` : ''}`,
             });
+            sentAt = sent.sentAt;
+          }
           await this.db.$transaction(async (tx) => {
             await tx.deliveryTask.updateMany({
               where: { id: task.id, status: 'RUNNING' },
               data: hasNext
                 ? {
                     status: 'QUEUED',
-                    payload: json({ ...data, stepIndex: index + 1 }),
-                    runAt: new Date(Date.now() + (data.steps?.[index + 1]?.waitSeconds ?? 1) * 1000),
+                    payload: json(hasNextCampaignFollowUp
+                      ? { ...data, followUp: true, followUpIndex: data.followUp ? followUpIndex + 1 : 0,
+                          sourceMessageAt: data.sourceMessageAt ?? sentAt?.toISOString() }
+                      : { ...data, stepIndex: index + 1 }),
+                    runAt: new Date(Date.now() + (hasNextCampaignFollowUp
+                      ? data.followUps![data.followUp ? followUpIndex + 1 : 0]!.waitMinutes * 60
+                      : data.steps?.[index + 1]?.waitSeconds ?? 1) * 1000),
                   }
                 : { status: 'COMPLETED' },
             });

@@ -1,4 +1,6 @@
 import { chooseCampaignText } from './campaign-text.js';
+import { normalizeCampaignKeyword } from './campaign-response.js';
+import { validTimezone } from './send-window.js';
 import { labelActionRoutes } from './label-actions.js';
 import { safetyRoutes } from './safety.routes.js';
 import { simulatorRoutes } from './simulator.routes.js';
@@ -601,7 +603,19 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
             .max(30)
             .optional(),
           text: z.string().max(10000).optional(),
-          textVariations: z.array(z.string().trim().min(1).max(10000)).max(5).default([]),
+          textVariations: z.array(z.string().trim().min(1).max(10000)).max(4).default([]),
+          followUps: z.array(z.object({
+            waitMinutes: z.number().int().min(1).max(43200),
+            text: z.string().trim().min(1).max(10000),
+          })).max(100).default([]),
+          cta: z.object({
+            keyword: z.string().trim().min(1).max(100),
+            replyText: z.string().trim().min(1).max(10000),
+          }).optional(),
+          ctas: z.array(z.object({
+            keyword: z.string().trim().min(1).max(100),
+            replyText: z.string().trim().min(1).max(10000),
+          })).max(20).default([]),
           assetId: id.optional(),
           funnelId: id.optional(),
           flowId: id.optional(),
@@ -615,6 +629,13 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
         attributedRevenueInCents: z.number().int().min(0).max(2_000_000_000).default(0),
         pauseEvery: z.number().int().min(0).max(5000).default(0),
         pauseSeconds: z.number().int().min(0).max(86400).default(0),
+        sendWindow: z.object({
+          timezone: z.string().refine(validTimezone, 'Escolha um fuso horário válido.'),
+          days: z.array(z.number().int().min(0).max(6)).min(1).max(7)
+            .refine((days) => new Set(days).size === days.length, 'Escolha cada dia apenas uma vez.'),
+          start: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+          end: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+        }).refine((window) => window.start < window.end, 'O fim do horário deve ser posterior ao início.').optional(),
         runAt: z.iso.datetime().optional(),
       })
       .parse(req.body);
@@ -622,12 +643,21 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       throw new AppError(422, 'O intervalo máximo deve ser maior ou igual ao mínimo.');
     if ((input.mode === 'REMINDER') !== (input.delivery.kind === 'reminder'))
       throw new AppError(422, 'Use um lembrete somente no modo de lembrete.');
+    const ctas = [...input.delivery.ctas, ...(input.delivery.cta ? [input.delivery.cta] : [])];
+    const keywords = ctas.map((cta) => normalizeCampaignKeyword(cta.keyword));
+    if (ctas.length > 20 || keywords.some((keyword) => !keyword) || new Set(keywords).size !== keywords.length)
+      throw new AppError(422, 'As palavras-chave das CTAs devem ser distintas e conter letras ou números.');
+    if ((input.delivery.followUps.length || ctas.length) &&
+      (input.mode !== 'CAMPAIGN' || input.delivery.kind !== 'text'))
+      throw new AppError(422, 'CTA e follow-ups automáticos estão disponíveis apenas para campanhas de texto.');
+    if (input.sendWindow && input.mode !== 'CAMPAIGN')
+      throw new AppError(422, 'O horário permitido está disponível apenas para campanhas.');
     const people = await audience(sessionId, input.audience);
     if (!people.length) throw new AppError(422, 'Nenhum contato corresponde ao público escolhido.');
     if (input.mode !== 'CAMPAIGN' && people.length !== 1)
       throw new AppError(422, 'Selecione uma conversa para o agendamento individual.');
     const { steps, ...initialDelivery } = input.delivery;
-    const delivery: Delivery = { ...initialDelivery };
+    const delivery: Delivery = { ...initialDelivery, ctas };
     if (delivery.kind === 'sequence') {
       if (!steps?.length) throw new AppError(422, 'Adicione mensagens à sequência.');
       delivery.steps = [];
@@ -717,6 +747,11 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       investmentInCents: input.mode === 'CAMPAIGN' ? input.investmentInCents : 0,
       attributedRevenueInCents: input.mode === 'CAMPAIGN' ? input.attributedRevenueInCents : 0,
       count: people.length,
+      ...(input.delivery.followUps.length ? { followUpCount: input.delivery.followUps.length } : {}),
+      ...(ctas.length ? { ctaKeywords: ctas.map((cta) => cta.keyword) } : {}),
+      ...(input.sendWindow ? { sendWindow: input.sendWindow } : {}),
+      ...(delivery.kind === 'text' && input.mode === 'CAMPAIGN' && input.delivery.textVariations.length
+        ? { approaches: [delivery.text!, ...input.delivery.textVariations] } : {}),
       createdAt: new Date().toISOString(),
     };
     await db.$transaction(
@@ -731,6 +766,8 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
               delivery.kind === 'text'
                 ? {
                     ...delivery,
+                    approachIndex: input.delivery.textVariations.length
+                      ? index % (input.delivery.textVariations.length + 1) : undefined,
                     snapshot: {
                       kind: 'text',
                       text: chooseCampaignText(
@@ -857,6 +894,54 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     });
     const contacts = new Map(chats.map((chat) => [chat.id, chat.contact]));
     res.json({ items: items.map((item) => ({ ...item, contact: contacts.get(item.conversationId) ?? null })) });
+  });
+  router.get('/sessions/:sessionId/batches/:batchId/approaches', async (req, res) => {
+    const sessionId = id.parse(req.params.sessionId);
+    const batchId = id.parse(req.params.batchId);
+    const batch = await record<Batch | null>(db, batchId, null);
+    if (!batch || batch.sessionId !== sessionId || !batch.approaches?.length)
+      throw new AppError(404, 'Teste de abordagens não encontrado nesta conexão.');
+    const tasks = await db.deliveryTask.findMany({ where: { sessionId, batchId }, select: { id: true, conversationId: true, status: true, payload: true } });
+    const outbound = await db.chatMessage.findMany({
+      where: { id: { in: tasks.map((task) => `out:delivery:${task.id}`) } },
+      select: { id: true, sentAt: true, status: true },
+    });
+    const messages = new Map(outbound.map((message) => [message.id, message]));
+    const responses = await db.chatMessage.findMany({
+      where: { conversationId: { in: tasks.map((task) => task.conversationId) }, direction: 'INBOUND' },
+      select: { conversationId: true, sentAt: true },
+    });
+    const latestReplyByConversation = new Map<string, Date>();
+    for (const reply of responses) {
+      const latest = latestReplyByConversation.get(reply.conversationId);
+      if (!latest || reply.sentAt > latest) latestReplyByConversation.set(reply.conversationId, reply.sentAt);
+    }
+    const attributed = await db.operationRecord.findMany({ where: { kind: 'CAMPAIGN_ATTRIBUTION' } });
+    const attributedIds = attributed.filter((row) => (row.data as { campaignId?: string }).campaignId === batchId)
+      .map((row) => (row.data as { conversationId?: string }).conversationId).filter((value): value is string => Boolean(value));
+    const sales = await db.crmOpportunity.findMany({
+      where: { conversationId: { in: attributedIds }, status: 'WON' },
+      select: { conversationId: true, valueInCents: true },
+    });
+    const salesByConversation = new Map(sales.map((sale) => [sale.conversationId, sale.valueInCents]));
+    const items = batch.approaches.map((text, index) => ({ index, text, assigned: 0, sent: 0, delivered: 0, read: 0, replied: 0, sales: 0, revenueInCents: 0 }));
+    for (const task of tasks) {
+      const index = (task.payload as { approachIndex?: number }).approachIndex;
+      if (index === undefined || !items[index]) continue;
+      const row = items[index]!;
+      row.assigned++;
+      const message = messages.get(`out:delivery:${task.id}`);
+      if (message && ['SENT', 'DELIVERED', 'READ'].includes(message.status)) {
+        row.sent++;
+        if (['DELIVERED', 'READ'].includes(message.status)) row.delivered++;
+        if (message.status === 'READ') row.read++;
+        const latestReply = latestReplyByConversation.get(task.conversationId);
+        if (latestReply && latestReply > message.sentAt) row.replied++;
+        const sale = salesByConversation.get(task.conversationId);
+        if (sale !== undefined) { row.sales++; row.revenueInCents += sale; }
+      }
+    }
+    res.json({ items });
   });
   router.get('/ai', async (_req, res) => {
     admin(res.locals.identity.role);

@@ -29,8 +29,9 @@ test('busca ignora acentos e formatação e aceita DDI, DDD ou parte do celular'
   assert.equal(newContactPhone('99876'), '');
 });
 test('campanha alterna variações e fixa escolhas de spintax sem alterar variáveis de personalização', () => {
-  assert.equal(chooseCampaignText('base', ['A {{nome}}', 'B {{nome}}'], 0, 'a'), 'A {{nome}}');
-  assert.equal(chooseCampaignText('base', ['A {{nome}}', 'B {{nome}}'], 1, 'b'), 'B {{nome}}');
+  assert.equal(chooseCampaignText('base', ['A {{nome}}', 'B {{nome}}'], 0, 'a'), 'base');
+  assert.equal(chooseCampaignText('base', ['A {{nome}}', 'B {{nome}}'], 1, 'b'), 'A {{nome}}');
+  assert.equal(chooseCampaignText('base', ['A {{nome}}', 'B {{nome}}'], 2, 'c'), 'B {{nome}}');
   const source = '{Olá|Oi}, {{nome}}! {{saudacao}}';
   const result = expandSpintax(source, 'lead-a');
   assert.equal(result, expandSpintax(source, 'lead-a'));
