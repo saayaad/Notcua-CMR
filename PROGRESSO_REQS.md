@@ -258,3 +258,13 @@ Sem chave de IA autorizada, não serão repetidos os cenários que cadastram, ed
 - Próximo lote do protocolo: L-23, painéis encaixáveis e recuperação de controles, começando REQ-574.
 
 - Typecheck geral passou após corrigir dois tipos do fixture de teste de chaves; nenhuma asserção ou resultado esperado foi alterado.
+
+## Lote L-23 — Painéis encaixáveis e recuperação — 30/10/2026
+
+- Fechadas 22 REQs (574–595): todas COMPLETO; nenhum estado anterior foi sobrescrito fora do lote.
+- Playwright e2e/dock-panels.spec.ts: 66/66 em Chromium, desktop 1366×768 e 1920×1080, mobile 390×844; 66 JSON APROVADO e 72 PNG, incluindo seis capturas de pop-out.
+- Sem erros de página ou falhas de asserção. Houve 22 erros de console móveis por https://apis.google.com bloqueado intencionalmente pelo isolamento de rede. Mutações da API foram interceptadas nos testes visuais.
+- REQ-578 também passou 1/1 em apps/server/test/access.test.ts: dockingLayout e dockingEnabled foram salvos e lidos após abrir novo cliente SQLite temporário; .audit/noctua-audit.db preservado (2.039.808 bytes, timestamp 30/10/2026 15:07:20).
+- Falha inicial do runner antes das asserções: uv_os_get_passwd ... ENOMEM em tsx no Windows isolado. Contornada com preload CommonJS temporário em %TEMP% e NODE_OPTIONS com caminho normalizado; nenhum pacote/dependência foi alterado. A execução final passou.
+- Não foram encontrados defeitos de produto; falhas anteriores de seletor/setup no E2E foram corrigidas e retestadas conforme evidências. Nenhuma produção acessada.
+- Próximo lote: L-24 Etiquetas e leads, REQ-596–602. REQ-603–608 já completas; preservar sem reexecutar.

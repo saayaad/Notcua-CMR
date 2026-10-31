@@ -1,0 +1,26 @@
+{
+  "req": "REQ-581",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "viewport": {
+    "width": 1366,
+    "height": 768
+  },
+  "consoleErrors": [],
+  "pageErrors": [],
+  "blockedExternal": [],
+  "interceptedMutations": [
+    "POST /api/operations/directory/presence",
+    "POST /socket.io/",
+    "POST /socket.io/"
+  ],
+  "preferenceWrites": [],
+  "notes": {
+    "externalWindowRendered": true,
+    "url": "http://127.0.0.1:5180/popout.html",
+    "content": "Biblioteca e fixados"
+  },
+  "failures": [],
+  "screenshotError": ""
+}

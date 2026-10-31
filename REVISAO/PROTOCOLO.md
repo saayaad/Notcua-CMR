@@ -218,3 +218,11 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Próximo lote do protocolo: L-23, painéis encaixáveis e recuperação de controles, começando REQ-574.
 
 - Typecheck geral do repositório passou; foram ajustados apenas os tipos do fixture em pps/server/test/ai-feature.test.ts, sem mudar asserções ou resultados esperados.
+
+## Lote L-23 — Painéis encaixáveis e recuperação — 30/10/2026
+
+- REQ-574–595 fechadas: 22 COMPLETO. Playwright 66/66; 66 JSON e 72 PNG em REVISAO/evidencias/REQ-574/–REQ-595/. Desktop 1366×768/1920×1080; mobile 390×844 confirmou fallback clássico.
+- REQ-578 também comprovou persistência de dockingEnabled/dockingLayout ao reabrir SQLite temporário (teste de servidor 1/1). Preferências visuais E2E mockadas; .audit/noctua-audit.db preservado, sem reset.
+- Zero erros de página. Vinte e dois erros de console foram chamadas de apis.google.com bloqueadas de propósito nos casos mobile. Nenhuma falha de produto confirmada; sem entrada nova em BUGS.md.
+- tsx inicialmente não rodou por uv_os_get_passwd ... ENOMEM; preload CommonJS temporário e caminho NODE_OPTIONS com barras / resolveram. Resultado final 1/1; nenhuma dependência alterada.
+- Próximo lote: L-24, Etiquetas e leads, REQ-596–602; preservar REQ-603–608 já completas.

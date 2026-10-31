@@ -1,0 +1,14 @@
+{
+  "req": "REQ-578",
+  "result": "APROVADO",
+  "test": "apps/server/test/access.test.ts — REQ-578: preferências de layout encaixável persistem por usuário após reabrir o banco",
+  "execution": "1 teste passou; SQLite criado em pasta temporária do sistema e removido no teardown.",
+  "asserted": [
+    "PUT de dockingEnabled e dockingLayout",
+    "GET devolve a preferência salva",
+    "cliente SQLite reaberto lê o mesmo registro",
+    "preferências permanecem isoladas por usuário"
+  ],
+  "auditDatabase": "Não usado; .audit/noctua-audit.db permaneceu inalterado.",
+  "resultSummary": "pass 1, fail 0"
+}
