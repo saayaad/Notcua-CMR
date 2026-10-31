@@ -1,0 +1,5 @@
+REQ-008 — Kanban — 31/10/2026
+Playwright: e2e/structure-audit.spec.ts — 3/3 aprovados em 1366x768, 1920x1080 e 390x844.
+A alça arrastou o cartão fictício Ana Exemplo para depois de Bruna Exemplo; a nova ordem apareceu na tela após recarregar. O teste de servidor crm.test.ts confirmou a etapa destino após nova leitura em SQLite temporário.
+Todas as escritas do browser foram interceptadas: movimento CRM no fixture do teste e heartbeats POST /api/operations/directory/presence. Nenhuma escrita foi enviada ao banco .audit; nenhum envio/mensagem/WhatsApp real ocorreu.
+Capturas e JSON por viewport acompanham este arquivo. Erros do detector de posição/scroll da primeira rodada permanecem como evidência histórica; a rodada final está aprovada.

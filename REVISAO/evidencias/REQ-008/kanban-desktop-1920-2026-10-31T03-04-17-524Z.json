@@ -1,0 +1,53 @@
+{
+  "req": "REQ-008",
+  "result": "APROVADO",
+  "project": "desktop-1920",
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "persistedColumnOrder": [
+    "audit-req008-bruna",
+    "audit-req008-ana"
+  ],
+  "moveRequests": [
+    {
+      "conversationId": "audit-req008-ana",
+      "sourceLabelId": "stage-new",
+      "targetLabelId": "stage-new",
+      "beforeConversationId": null,
+      "version": 1
+    }
+  ],
+  "interceptedWrites": [
+    "POST /api/operations/directory/presence",
+    "POST /api/crm/sessions/audit-session/move",
+    "POST /api/operations/directory/presence"
+  ],
+  "unexpectedWrites": [],
+  "dragGeometry": {
+    "start": {
+      "x": 622,
+      "y": 581.59375,
+      "width": 26,
+      "height": 26
+    },
+    "targetAfterAutoScroll": {
+      "x": 400,
+      "y": 780.28125,
+      "width": 260,
+      "height": 197.6875
+    },
+    "dropZone": {
+      "x": 389,
+      "y": 560.59375,
+      "width": 282,
+      "height": 460.40625
+    }
+  },
+  "blockedExternal": [],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "failures": []
+}

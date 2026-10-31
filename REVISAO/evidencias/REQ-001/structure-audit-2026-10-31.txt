@@ -1,0 +1,5 @@
+REQ-001 — Estrutura — 31/10/2026
+Teste identificado: apps/server/test/structure-audit.test.ts
+Resultado: APROVADO. TypeScript 5.9 executou --noEmit nos projetos apps/server e apps/web, ambos com strict=true. A busca por marcadores TODO/FIXME exigiu marcador explícito em comentário e não encontrou implementação pendente.
+Execução focada: apps/server/test/structure-audit.test.ts + crm.test.ts — 9/9 aprovados.
+Escopo: somente leitura de código e compilação local; nenhum banco, endpoint externo, build de produção ou configuração foi alterado.

@@ -1,0 +1,44 @@
+{
+  "req": "REQ-008",
+  "result": "FALHOU",
+  "project": "mobile-390",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "persistedColumnOrder": [
+    "audit-req008-bruna",
+    "audit-req008-ana"
+  ],
+  "moveRequests": [
+    {
+      "conversationId": "audit-req008-ana",
+      "sourceLabelId": "stage-new",
+      "targetLabelId": "stage-new",
+      "beforeConversationId": null,
+      "version": 1
+    }
+  ],
+  "interceptedWrites": [
+    "POST /api/operations/directory/presence",
+    "POST /api/crm/sessions/audit-session/move",
+    "POST /api/operations/directory/presence"
+  ],
+  "unexpectedWrites": [
+    "POST /api/operations/directory/presence",
+    "POST /api/operations/directory/presence"
+  ],
+  "blockedExternal": [
+    "https://apis.google.com"
+  ],
+  "consoleErrors": [
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector"
+  ],
+  "pageErrors": [],
+  "failures": [
+    "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoHaveLength\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected length: \u001b[32m1\u001b[39m\nReceived length: \u001b[31m3\u001b[39m\nReceived array:  \u001b[31m[\"POST /api/operations/directory/presence\", \"POST /api/crm/sessions/audit-session/move\", \"POST /api/operations/directory/presence\"]\u001b[39m"
+  ]
+}

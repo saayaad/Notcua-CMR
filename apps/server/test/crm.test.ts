@@ -157,11 +157,16 @@ test('quadro usa etiquetas por conexão, representa múltiplos vínculos e não 
   assert.equal(metrics.conversion, 0);
 });
 
-test('mover offline altera apenas a origem, preserva VIP e sincroniza adição e remoção sem enviar mensagens', async () => {
+test('REQ-008: mover cartão no Kanban persiste a etapa sem enviar mensagens', async () => {
   await move(one, origin, target);
   assert.equal(socket.changes.length, 0);
   const links = (await db.contactLabel.findMany({ where: { contactId } })).map((link) => link.labelId);
   assert.deepEqual(new Set(links), new Set([target, 'extra']));
+  const persistedBoard = await crm.board(sessionId, {});
+  assert.ok(
+    persistedBoard.columns.find((column) => column.id === target)!.conversationIds.includes(one),
+    'REQ-008: o cartão movido aparece na etapa destino após nova leitura',
+  );
   await outbox.flush();
   assert.equal(socket.changes.length, 0);
   assert.equal((await crm.board(sessionId, {})).pendingSync, 2);

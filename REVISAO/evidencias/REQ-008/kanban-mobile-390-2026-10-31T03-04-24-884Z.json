@@ -1,0 +1,59 @@
+{
+  "req": "REQ-008",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "persistedColumnOrder": [
+    "audit-req008-bruna",
+    "audit-req008-ana"
+  ],
+  "moveRequests": [
+    {
+      "conversationId": "audit-req008-ana",
+      "sourceLabelId": "stage-new",
+      "targetLabelId": "stage-new",
+      "beforeConversationId": null,
+      "version": 1
+    }
+  ],
+  "interceptedWrites": [
+    "POST /api/operations/directory/presence",
+    "POST /api/crm/sessions/audit-session/move",
+    "POST /api/operations/directory/presence"
+  ],
+  "unexpectedWrites": [],
+  "dragGeometry": {
+    "start": {
+      "x": 329,
+      "y": 436.5,
+      "width": 26,
+      "height": 26
+    },
+    "targetAfterAutoScroll": {
+      "x": 121,
+      "y": 635.1875,
+      "width": 246,
+      "height": 197.6875
+    },
+    "dropZone": {
+      "x": 110,
+      "y": 415.5,
+      "width": 268,
+      "height": 428
+    }
+  },
+  "blockedExternal": [
+    "https://apis.google.com"
+  ],
+  "consoleErrors": [
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector"
+  ],
+  "pageErrors": [],
+  "failures": []
+}

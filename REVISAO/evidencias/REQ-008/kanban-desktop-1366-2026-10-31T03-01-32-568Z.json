@@ -1,0 +1,45 @@
+{
+  "req": "REQ-008",
+  "result": "FALHOU",
+  "project": "desktop-1366",
+  "viewport": {
+    "width": 1366,
+    "height": 768
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "persistedColumnOrder": [
+    "audit-req008-ana",
+    "audit-req008-bruna"
+  ],
+  "moveRequests": [],
+  "interceptedWrites": [
+    "POST /api/operations/directory/presence"
+  ],
+  "unexpectedWrites": [],
+  "dragGeometry": {
+    "start": {
+      "x": 621.109375,
+      "y": 552.703125,
+      "width": 26,
+      "height": 26
+    },
+    "initialTarget": {
+      "x": 399.109375,
+      "y": 751.390625,
+      "width": 260,
+      "height": 197.6875
+    },
+    "dropZone": {
+      "x": 388.109375,
+      "y": 531.703125,
+      "width": 282,
+      "height": 181.1875
+    }
+  },
+  "blockedExternal": [],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "failures": [
+    "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+  ]
+}
