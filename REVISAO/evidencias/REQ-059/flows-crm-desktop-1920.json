@@ -1,0 +1,105 @@
+{
+  "req": "REQ-059",
+  "result": "APROVADO",
+  "project": "desktop-1920",
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "url": "http://127.0.0.1:5180/",
+  "consoleErrors": [],
+  "pageErrors": [],
+  "blockedExternal": [],
+  "interceptedWrites": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/automation/sessions/audit-session/flows",
+      "body": {
+        "name": "Gatilhos da auditoria desktop-1920"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/automation/sessions/audit-session/flows/audit-flow-1/draft",
+      "body": {
+        "name": "Gatilhos da auditoria desktop-1920",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "start",
+              "position": {
+                "x": 100,
+                "y": 140
+              },
+              "data": {
+                "title": "Início",
+                "keywordRules": [
+                  {
+                    "rule": "equals",
+                    "keyword": "AJUDA"
+                  },
+                  {
+                    "rule": "contains",
+                    "keyword": "preço"
+                  }
+                ],
+                "nextNodeIds": [],
+                "sendToContacts": true,
+                "sendToGroups": true,
+                "cooldownMs": 60000,
+                "isCaseSensitive": true,
+                "schedule": {
+                  "days": [
+                    1,
+                    2,
+                    3
+                  ],
+                  "minTime": "09:30",
+                  "maxTime": "17:45"
+                }
+              }
+            }
+          ]
+        },
+        "revision": 1
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    }
+  ],
+  "unhandledWrites": [],
+  "notes": {
+    "keywordRules": [
+      {
+        "rule": "equals",
+        "keyword": "AJUDA"
+      },
+      {
+        "rule": "contains",
+        "keyword": "preço"
+      }
+    ],
+    "caseSensitive": true,
+    "contactsAllowed": true,
+    "groupsAllowed": true,
+    "schedule": {
+      "days": [
+        1,
+        2,
+        3
+      ],
+      "minTime": "09:30",
+      "maxTime": "17:45"
+    },
+    "persistedAfterReload": true
+  }
+}

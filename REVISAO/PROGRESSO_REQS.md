@@ -105,3 +105,14 @@
 - REQ-036 continua em DECISÃO: o app cadastra chave aleatória já emitida e gera QR/Copia e Cola, mas não pode criar chave bancária. A pergunta de escopo está registrada em REQUISITOS.md; os itens externos estão no CHECKLIST-MANUAL.md.
 - Contagens após o lote: 5 A VERIFICAR; 454 COMPLETO; 111 COMPLETO-LOCAL; 46 PARCIAL; 51 substituídos/cancelados; 26 decisões (2 confirmadas); 4 desconectados; 3 defeitos; 3 ausentes.
 - Próximo módulo: Fluxos e CRM, REQ-054–075 (22 pendentes), conforme ordem da LEDGER. Sem reset, sem mudança no app e sem publicação.
+
+## Fluxos e CRM — L-04, REQ-054–075 — 31/10/2026
+
+- 22 REQs passaram de PARCIAL para COMPLETO-LOCAL. Já completas fora do lote foram preservadas. Totais: 454 COMPLETO, 133 COMPLETO-LOCAL, 24 PARCIAL; demais estados sem mudança.
+- Playwright `e2e/flows-crm-audit.spec.ts`: 21/21 cenários aprovados, sete cenários em 1366×768, 1920×1080 e 390×844. 66 pares PNG/JSON por REQ e viewport em `REVISAO/evidencias/REQ-054/`–`REQ-075/`.
+- Fluxos cobertos: arraste x/y com ajuste do quadro à tela, rascunho separado da versão publicada, ativação/pausa, gatilhos, dias/horários, contatos/grupos, recursos e atrasos, ligações, entradas, respostas, timeout e follow-up. CRM: colunas por etiqueta, arraste com mouse no desktop, mover pelo cartão no móvel, reload e métricas de atendimento/conversão.
+- Os testes de servidor `flows.test.ts` 15/15 e `crm.test.ts` 8/8 em SQLite isolado já estavam aprovados antes deste lote. Gravações da UI ficaram interceptadas em memória; não houve envio. Front/API responderam HTTP 200; `.audit/noctua-audit.db` permaneceu em 2.039.808 bytes e `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`. JSONs: zero pageErrors e zero writes não interceptados; desktop sem erros de console. No mobile, 1–2 erros de console por caso, exclusivamente ERR_BLOCKED_BY_CLIENT de https://apis.google.com/js/api.js, bloqueado pelo harness.
+- Correções de harness sem alterar critérios: fechamento explícito do inspector antes de selecionar outro nó; ajuste “Fit View” e evento touch real no canvas móvel, pois o nó novo aparecia fora da área visível; textarea localizada dentro do rótulo acessível; dashboard localizado pelo rótulo exato; movimento CRM simulado por mouse com sensor real no desktop e caminho “Mover cartão” documentado pelo app no mobile. Nenhum defeito funcional do produto confirmado.
+- Limites: REQ-064/065 continuam locais; recebimento em aparelho WhatsApp descartável está em `CHECKLIST-MANUAL.md`. Um teste teclado-only de CRM teve resultado inconsistente entre viewports; REQ-073 foi validada pelo gesto de mouse descrito no critério e o modo teclado ficou como conferência manual opcional.
+- Nenhum arquivo funcional do app foi alterado. Próximo módulo por ordem do ledger: Backups, REQ-076–097. Sem reset, push, publicação ou escrita em produção. `scripts/iniciar-noctua-online.ps1` segue fora do commit.
+- Ledger regenerado após L-04: 482 REQs com teste vinculado, 221 sem.

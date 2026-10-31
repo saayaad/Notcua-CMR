@@ -1,0 +1,126 @@
+{
+  "req": "REQ-066",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "url": "http://127.0.0.1:5180/",
+  "consoleErrors": [
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://apis.google.com/js/api.js?onload=__iframefcb915030"
+  ],
+  "pageErrors": [],
+  "blockedExternal": [
+    "https://apis.google.com"
+  ],
+  "interceptedWrites": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/automation/sessions/audit-session/flows",
+      "body": {
+        "name": "Espera e pausa mobile-390"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/automation/sessions/audit-session/flows/audit-flow-1/draft",
+      "body": {
+        "name": "Espera e pausa mobile-390",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "start",
+              "position": {
+                "x": 100,
+                "y": 140
+              },
+              "data": {
+                "title": "Início",
+                "keywordRules": [
+                  {
+                    "rule": "equals",
+                    "keyword": "oi"
+                  }
+                ],
+                "nextNodeIds": [
+                  "6e2ba349-6e91-40be-9a65-ec7bf2cce8c6"
+                ],
+                "sendToContacts": true,
+                "sendToGroups": false,
+                "cooldownMs": 60000
+              }
+            },
+            {
+              "id": "6e2ba349-6e91-40be-9a65-ec7bf2cce8c6",
+              "type": "user-input",
+              "position": {
+                "x": 380,
+                "y": 220
+              },
+              "data": {
+                "title": "Aguardar cliente",
+                "nextNodeIds": [
+                  "38df28d6-f893-4abc-892a-08a998acd6f1"
+                ],
+                "simulationDelay": 1000,
+                "compareRule": "anything",
+                "expirationTimeoutInMs": 300000
+              }
+            },
+            {
+              "id": "38df28d6-f893-4abc-892a-08a998acd6f1",
+              "type": "text",
+              "position": {
+                "x": 680,
+                "y": 220
+              },
+              "data": {
+                "title": "Resposta aceita",
+                "nextNodeIds": [],
+                "simulationDelay": 1000
+              }
+            }
+          ]
+        },
+        "revision": 1
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/automation/sessions/audit-session/flows/audit-flow-1/publish",
+      "body": {
+        "revision": 2
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/automation/sessions/audit-session/flows/audit-flow-1/settings",
+      "body": {
+        "revision": 3,
+        "enabled": true
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/automation/sessions/audit-session/flows/audit-flow-1/settings",
+      "body": {
+        "revision": 4,
+        "enabled": false
+      }
+    }
+  ],
+  "unhandledWrites": [],
+  "notes": {
+    "waitNodeId": "6e2ba349-6e91-40be-9a65-ec7bf2cce8c6",
+    "connectedNextNode": "6e2ba349-6e91-40be-9a65-ec7bf2cce8c6",
+    "waitingRunCancelledByPause": true,
+    "sendsPerformed": 0
+  }
+}

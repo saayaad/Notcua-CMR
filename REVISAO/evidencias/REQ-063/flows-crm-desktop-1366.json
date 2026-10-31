@@ -1,0 +1,130 @@
+{
+  "req": "REQ-063",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "viewport": {
+    "width": 1366,
+    "height": 768
+  },
+  "url": "http://127.0.0.1:5180/",
+  "consoleErrors": [],
+  "pageErrors": [],
+  "blockedExternal": [],
+  "interceptedWrites": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/automation/sessions/audit-session/flows",
+      "body": {
+        "name": "Recursos da auditoria desktop-1366"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/automation/sessions/audit-session/flows/audit-flow-1/draft",
+      "body": {
+        "name": "Recursos da auditoria desktop-1366",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "start",
+              "position": {
+                "x": 100,
+                "y": 140
+              },
+              "data": {
+                "title": "Início",
+                "keywordRules": [
+                  {
+                    "rule": "equals",
+                    "keyword": "oi"
+                  }
+                ],
+                "nextNodeIds": [],
+                "sendToContacts": true,
+                "sendToGroups": false,
+                "cooldownMs": 60000
+              }
+            },
+            {
+              "id": "adae0b4f-0319-40da-8b11-5c31a991a02b",
+              "type": "text",
+              "position": {
+                "x": 380,
+                "y": 220
+              },
+              "data": {
+                "title": "Texto do fluxo",
+                "nextNodeIds": [],
+                "simulationDelay": 2500,
+                "itemId": "audit-text"
+              }
+            },
+            {
+              "id": "c2169b81-8928-4a81-994f-684133505c23",
+              "type": "audio",
+              "position": {
+                "x": 680,
+                "y": 220
+              },
+              "data": {
+                "title": "Áudio do fluxo",
+                "nextNodeIds": [],
+                "simulationDelay": 3200,
+                "itemId": "audit-audio"
+              }
+            },
+            {
+              "id": "6e097fd3-dfc1-4caa-92fd-09ed0f4f521b",
+              "type": "media",
+              "position": {
+                "x": 80,
+                "y": 420
+              },
+              "data": {
+                "title": "Mídia do fluxo",
+                "nextNodeIds": [],
+                "simulationDelay": 4100,
+                "itemId": "audit-image"
+              }
+            }
+          ]
+        },
+        "revision": 1
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    }
+  ],
+  "unhandledWrites": [],
+  "notes": {
+    "resources": [
+      {
+        "type": "text",
+        "itemId": "audit-text",
+        "delay": 2500
+      },
+      {
+        "type": "audio",
+        "itemId": "audit-audio",
+        "delay": 3200
+      },
+      {
+        "type": "media",
+        "itemId": "audit-image",
+        "delay": 4100
+      }
+    ],
+    "persistedAfterReload": true,
+    "fictitiousAssetsOnly": true,
+    "sendsPerformed": 0
+  }
+}

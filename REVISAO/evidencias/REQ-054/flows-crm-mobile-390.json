@@ -1,0 +1,209 @@
+{
+  "req": "REQ-054",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "url": "http://127.0.0.1:5180/",
+  "consoleErrors": [
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://apis.google.com/js/api.js?onload=__iframefcb438788",
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://apis.google.com/js/api.js?onload=__iframefcb815963"
+  ],
+  "pageErrors": [],
+  "blockedExternal": [
+    "https://apis.google.com",
+    "https://apis.google.com"
+  ],
+  "interceptedWrites": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/automation/sessions/audit-session/flows",
+      "body": {
+        "name": "Fluxo auditável mobile-390"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/automation/sessions/audit-session/flows/audit-flow-1/draft",
+      "body": {
+        "name": "Fluxo auditável mobile-390",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "start",
+              "position": {
+                "x": 100,
+                "y": 140
+              },
+              "data": {
+                "title": "Início",
+                "keywordRules": [
+                  {
+                    "rule": "equals",
+                    "keyword": "oi"
+                  }
+                ],
+                "nextNodeIds": [],
+                "sendToContacts": true,
+                "sendToGroups": false,
+                "cooldownMs": 60000
+              }
+            },
+            {
+              "id": "6268ab82-028d-4dd0-bf32-3c889c87b5f1",
+              "type": "text",
+              "position": {
+                "x": 1127.253508794876,
+                "y": 290.8617126049639
+              },
+              "data": {
+                "title": "Saudação do teste",
+                "nextNodeIds": [],
+                "simulationDelay": 1000
+              }
+            }
+          ]
+        },
+        "revision": 1
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "PUT",
+      "path": "/api/automation/sessions/audit-session/flows/audit-flow-1/draft",
+      "body": {
+        "name": "Fluxo auditável mobile-390",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "start",
+              "position": {
+                "x": 100,
+                "y": 140
+              },
+              "data": {
+                "title": "Início",
+                "keywordRules": [
+                  {
+                    "rule": "equals",
+                    "keyword": "oi"
+                  }
+                ],
+                "nextNodeIds": [],
+                "sendToContacts": true,
+                "sendToGroups": false,
+                "cooldownMs": 60000
+              }
+            },
+            {
+              "id": "6268ab82-028d-4dd0-bf32-3c889c87b5f1",
+              "type": "text",
+              "position": {
+                "x": 1127.253508794876,
+                "y": 290.8617126049639
+              },
+              "data": {
+                "title": "Versão publicada",
+                "nextNodeIds": [],
+                "simulationDelay": 1000
+              }
+            }
+          ]
+        },
+        "revision": 2
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/automation/sessions/audit-session/flows/audit-flow-1/publish",
+      "body": {
+        "revision": 3
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/automation/sessions/audit-session/flows/audit-flow-1/draft",
+      "body": {
+        "name": "Fluxo auditável mobile-390",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "start",
+              "position": {
+                "x": 100,
+                "y": 140
+              },
+              "data": {
+                "title": "Início",
+                "keywordRules": [
+                  {
+                    "rule": "equals",
+                    "keyword": "oi"
+                  }
+                ],
+                "nextNodeIds": [],
+                "sendToContacts": true,
+                "sendToGroups": false,
+                "cooldownMs": 60000
+              }
+            },
+            {
+              "id": "6268ab82-028d-4dd0-bf32-3c889c87b5f1",
+              "type": "text",
+              "position": {
+                "x": 1127.253508794876,
+                "y": 290.8617126049639
+              },
+              "data": {
+                "title": "Novo rascunho posterior",
+                "nextNodeIds": [],
+                "simulationDelay": 1000
+              }
+            }
+          ]
+        },
+        "revision": 4
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/automation/sessions/audit-session/flows/audit-flow-1/settings",
+      "body": {
+        "revision": 5,
+        "enabled": true
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/automation/sessions/audit-session/flows/audit-flow-1/settings",
+      "body": {
+        "revision": 6,
+        "enabled": false
+      }
+    }
+  ],
+  "unhandledWrites": [],
+  "notes": {
+    "savedPosition": {
+      "x": 1127.253508794876,
+      "y": 290.8617126049639
+    },
+    "publishedVersion": 4,
+    "draftDidNotReplacePublishedSnapshot": true,
+    "flowPaused": true
+  }
+}

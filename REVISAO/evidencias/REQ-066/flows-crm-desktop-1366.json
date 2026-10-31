@@ -1,0 +1,122 @@
+{
+  "req": "REQ-066",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "viewport": {
+    "width": 1366,
+    "height": 768
+  },
+  "url": "http://127.0.0.1:5180/",
+  "consoleErrors": [],
+  "pageErrors": [],
+  "blockedExternal": [],
+  "interceptedWrites": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/automation/sessions/audit-session/flows",
+      "body": {
+        "name": "Espera e pausa desktop-1366"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/automation/sessions/audit-session/flows/audit-flow-1/draft",
+      "body": {
+        "name": "Espera e pausa desktop-1366",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "start",
+              "position": {
+                "x": 100,
+                "y": 140
+              },
+              "data": {
+                "title": "Início",
+                "keywordRules": [
+                  {
+                    "rule": "equals",
+                    "keyword": "oi"
+                  }
+                ],
+                "nextNodeIds": [
+                  "24159f45-a538-4968-9a5c-1bcddd51a7ee"
+                ],
+                "sendToContacts": true,
+                "sendToGroups": false,
+                "cooldownMs": 60000
+              }
+            },
+            {
+              "id": "24159f45-a538-4968-9a5c-1bcddd51a7ee",
+              "type": "user-input",
+              "position": {
+                "x": 380,
+                "y": 220
+              },
+              "data": {
+                "title": "Aguardar cliente",
+                "nextNodeIds": [
+                  "f3e58735-f404-4176-8d9c-149a063a87fb"
+                ],
+                "simulationDelay": 1000,
+                "compareRule": "anything",
+                "expirationTimeoutInMs": 300000
+              }
+            },
+            {
+              "id": "f3e58735-f404-4176-8d9c-149a063a87fb",
+              "type": "text",
+              "position": {
+                "x": 680,
+                "y": 220
+              },
+              "data": {
+                "title": "Resposta aceita",
+                "nextNodeIds": [],
+                "simulationDelay": 1000
+              }
+            }
+          ]
+        },
+        "revision": 1
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/automation/sessions/audit-session/flows/audit-flow-1/publish",
+      "body": {
+        "revision": 2
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/automation/sessions/audit-session/flows/audit-flow-1/settings",
+      "body": {
+        "revision": 3,
+        "enabled": true
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/automation/sessions/audit-session/flows/audit-flow-1/settings",
+      "body": {
+        "revision": 4,
+        "enabled": false
+      }
+    }
+  ],
+  "unhandledWrites": [],
+  "notes": {
+    "waitNodeId": "24159f45-a538-4968-9a5c-1bcddd51a7ee",
+    "connectedNextNode": "24159f45-a538-4968-9a5c-1bcddd51a7ee",
+    "waitingRunCancelledByPause": true,
+    "sendsPerformed": 0
+  }
+}

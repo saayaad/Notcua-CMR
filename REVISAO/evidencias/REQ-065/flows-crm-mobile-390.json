@@ -1,0 +1,136 @@
+{
+  "req": "REQ-065",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "url": "http://127.0.0.1:5180/",
+  "consoleErrors": [
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://apis.google.com/js/api.js?onload=__iframefcb169255",
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://apis.google.com/js/api.js?onload=__iframefcb449760"
+  ],
+  "pageErrors": [],
+  "blockedExternal": [
+    "https://apis.google.com",
+    "https://apis.google.com"
+  ],
+  "interceptedWrites": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/automation/sessions/audit-session/flows",
+      "body": {
+        "name": "Recursos da auditoria mobile-390"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/automation/sessions/audit-session/flows/audit-flow-1/draft",
+      "body": {
+        "name": "Recursos da auditoria mobile-390",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "start",
+              "position": {
+                "x": 100,
+                "y": 140
+              },
+              "data": {
+                "title": "Início",
+                "keywordRules": [
+                  {
+                    "rule": "equals",
+                    "keyword": "oi"
+                  }
+                ],
+                "nextNodeIds": [],
+                "sendToContacts": true,
+                "sendToGroups": false,
+                "cooldownMs": 60000
+              }
+            },
+            {
+              "id": "33974465-09a9-41a4-8664-c2aa84efa7ed",
+              "type": "text",
+              "position": {
+                "x": 380,
+                "y": 220
+              },
+              "data": {
+                "title": "Texto do fluxo",
+                "nextNodeIds": [],
+                "simulationDelay": 2500,
+                "itemId": "audit-text"
+              }
+            },
+            {
+              "id": "344109de-f954-4376-a270-1a083c659625",
+              "type": "audio",
+              "position": {
+                "x": 680,
+                "y": 220
+              },
+              "data": {
+                "title": "Áudio do fluxo",
+                "nextNodeIds": [],
+                "simulationDelay": 3200,
+                "itemId": "audit-audio"
+              }
+            },
+            {
+              "id": "1d7aca39-7690-4268-8a15-32dd37ca7232",
+              "type": "media",
+              "position": {
+                "x": 80,
+                "y": 420
+              },
+              "data": {
+                "title": "Mídia do fluxo",
+                "nextNodeIds": [],
+                "simulationDelay": 4100,
+                "itemId": "audit-image"
+              }
+            }
+          ]
+        },
+        "revision": 1
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    }
+  ],
+  "unhandledWrites": [],
+  "notes": {
+    "resources": [
+      {
+        "type": "text",
+        "itemId": "audit-text",
+        "delay": 2500
+      },
+      {
+        "type": "audio",
+        "itemId": "audit-audio",
+        "delay": 3200
+      },
+      {
+        "type": "media",
+        "itemId": "audit-image",
+        "delay": 4100
+      }
+    ],
+    "persistedAfterReload": true,
+    "fictitiousAssetsOnly": true,
+    "sendsPerformed": 0
+  }
+}

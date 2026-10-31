@@ -1,0 +1,154 @@
+{
+  "req": "REQ-068",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "url": "http://127.0.0.1:5180/",
+  "consoleErrors": [
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://apis.google.com/js/api.js?onload=__iframefcb531535",
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://apis.google.com/js/api.js?onload=__iframefcb410418"
+  ],
+  "pageErrors": [],
+  "blockedExternal": [
+    "https://apis.google.com",
+    "https://apis.google.com"
+  ],
+  "interceptedWrites": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/automation/sessions/audit-session/flows",
+      "body": {
+        "name": "Ramificações mobile-390"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/automation/sessions/audit-session/flows/audit-flow-1/draft",
+      "body": {
+        "name": "Ramificações mobile-390",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "start",
+              "position": {
+                "x": 100,
+                "y": 140
+              },
+              "data": {
+                "title": "Início",
+                "keywordRules": [
+                  {
+                    "rule": "equals",
+                    "keyword": "oi"
+                  }
+                ],
+                "nextNodeIds": [
+                  "ed41f42b-8ca5-4b45-aa2f-858102051523"
+                ],
+                "sendToContacts": true,
+                "sendToGroups": false,
+                "cooldownMs": 60000
+              }
+            },
+            {
+              "id": "465d504a-7d2d-4c6e-afd6-e63b4eeaa95d",
+              "type": "text",
+              "position": {
+                "x": 380,
+                "y": 220
+              },
+              "data": {
+                "title": "Resposta aceita",
+                "nextNodeIds": [],
+                "simulationDelay": 1000
+              }
+            },
+            {
+              "id": "d0d5ddb0-e4f6-4890-8355-4b85fa662be1",
+              "type": "text",
+              "position": {
+                "x": 680,
+                "y": 220
+              },
+              "data": {
+                "title": "Resposta diferente",
+                "nextNodeIds": [],
+                "simulationDelay": 1000
+              }
+            },
+            {
+              "id": "576d6f16-7243-44ff-a2ba-01ff9f10620c",
+              "type": "text",
+              "position": {
+                "x": 80,
+                "y": 420
+              },
+              "data": {
+                "title": "Tempo esgotado",
+                "nextNodeIds": [],
+                "simulationDelay": 1000
+              }
+            },
+            {
+              "id": "ed41f42b-8ca5-4b45-aa2f-858102051523",
+              "type": "user-input",
+              "position": {
+                "x": 380,
+                "y": 420
+              },
+              "data": {
+                "title": "Escolher caminho",
+                "nextNodeIds": [
+                  "465d504a-7d2d-4c6e-afd6-e63b4eeaa95d"
+                ],
+                "simulationDelay": 1000,
+                "compareRule": "contains",
+                "expirationTimeoutInMs": 180000,
+                "expectedMessages": [
+                  "sim",
+                  "quero orçamento"
+                ],
+                "followUpData": {
+                  "enabled": true,
+                  "itemId": "audit-text",
+                  "simulationDelay": 1000
+                },
+                "nextNodeIdOnDifferentAnswer": "d0d5ddb0-e4f6-4890-8355-4b85fa662be1",
+                "nextNodeIdOnExpiration": "576d6f16-7243-44ff-a2ba-01ff9f10620c"
+              }
+            }
+          ]
+        },
+        "revision": 1
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    }
+  ],
+  "unhandledWrites": [],
+  "notes": {
+    "compareRule": "contains",
+    "expectedMessages": [
+      "sim",
+      "quero orçamento"
+    ],
+    "expirationTimeoutInMs": 180000,
+    "accepted": "465d504a-7d2d-4c6e-afd6-e63b4eeaa95d",
+    "mismatch": "d0d5ddb0-e4f6-4890-8355-4b85fa662be1",
+    "timeout": "576d6f16-7243-44ff-a2ba-01ff9f10620c",
+    "persistedAfterReload": true,
+    "sendsPerformed": 0
+  }
+}

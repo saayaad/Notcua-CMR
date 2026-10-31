@@ -1,0 +1,74 @@
+{
+  "req": "REQ-072",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "url": "http://127.0.0.1:5180/",
+  "consoleErrors": [
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://apis.google.com/js/api.js?onload=__iframefcb690300",
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://apis.google.com/js/api.js?onload=__iframefcb990891"
+  ],
+  "pageErrors": [],
+  "blockedExternal": [
+    "https://apis.google.com",
+    "https://apis.google.com"
+  ],
+  "interceptedWrites": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/crm/sessions/audit-session/move",
+      "body": {
+        "conversationId": "audit-conversation-crm",
+        "sourceLabelId": "audit-label-new",
+        "targetLabelId": "audit-label-proposal",
+        "beforeConversationId": null,
+        "version": 1
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    }
+  ],
+  "unhandledWrites": [],
+  "notes": {
+    "columns": [
+      {
+        "name": "Sem etiqueta",
+        "labelId": null,
+        "conversationIds": []
+      },
+      {
+        "name": "Novo",
+        "labelId": "audit-label-new",
+        "conversationIds": []
+      },
+      {
+        "name": "Proposta",
+        "labelId": "audit-label-proposal",
+        "conversationIds": [
+          "audit-conversation-crm"
+        ]
+      }
+    ],
+    "move": {
+      "conversationId": "audit-conversation-crm",
+      "sourceLabelId": "audit-label-new",
+      "targetLabelId": "audit-label-proposal",
+      "beforeConversationId": null,
+      "version": 1
+    },
+    "moveMethod": "card-editor",
+    "persistedAfterReload": true,
+    "allWritesIntercepted": true
+  }
+}

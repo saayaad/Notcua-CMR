@@ -1,0 +1,148 @@
+{
+  "req": "REQ-069",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "viewport": {
+    "width": 1366,
+    "height": 768
+  },
+  "url": "http://127.0.0.1:5180/",
+  "consoleErrors": [],
+  "pageErrors": [],
+  "blockedExternal": [],
+  "interceptedWrites": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/automation/sessions/audit-session/flows",
+      "body": {
+        "name": "Ramificações desktop-1366"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/automation/sessions/audit-session/flows/audit-flow-1/draft",
+      "body": {
+        "name": "Ramificações desktop-1366",
+        "graph": {
+          "nodes": [
+            {
+              "id": "start",
+              "type": "start",
+              "position": {
+                "x": 100,
+                "y": 140
+              },
+              "data": {
+                "title": "Início",
+                "keywordRules": [
+                  {
+                    "rule": "equals",
+                    "keyword": "oi"
+                  }
+                ],
+                "nextNodeIds": [
+                  "a6470e9a-e298-453e-9169-4a6ac11581b0"
+                ],
+                "sendToContacts": true,
+                "sendToGroups": false,
+                "cooldownMs": 60000
+              }
+            },
+            {
+              "id": "f9df52b4-ae67-47da-9d23-5fa22569a64e",
+              "type": "text",
+              "position": {
+                "x": 380,
+                "y": 220
+              },
+              "data": {
+                "title": "Resposta aceita",
+                "nextNodeIds": [],
+                "simulationDelay": 1000
+              }
+            },
+            {
+              "id": "f27eb5bc-e2b4-45cc-ab6d-802737475f4c",
+              "type": "text",
+              "position": {
+                "x": 680,
+                "y": 220
+              },
+              "data": {
+                "title": "Resposta diferente",
+                "nextNodeIds": [],
+                "simulationDelay": 1000
+              }
+            },
+            {
+              "id": "65dd8b0c-4565-4acf-98c2-cbc7853752a0",
+              "type": "text",
+              "position": {
+                "x": 80,
+                "y": 420
+              },
+              "data": {
+                "title": "Tempo esgotado",
+                "nextNodeIds": [],
+                "simulationDelay": 1000
+              }
+            },
+            {
+              "id": "a6470e9a-e298-453e-9169-4a6ac11581b0",
+              "type": "user-input",
+              "position": {
+                "x": 380,
+                "y": 420
+              },
+              "data": {
+                "title": "Escolher caminho",
+                "nextNodeIds": [
+                  "f9df52b4-ae67-47da-9d23-5fa22569a64e"
+                ],
+                "simulationDelay": 1000,
+                "compareRule": "contains",
+                "expirationTimeoutInMs": 180000,
+                "expectedMessages": [
+                  "sim",
+                  "quero orçamento"
+                ],
+                "followUpData": {
+                  "enabled": true,
+                  "itemId": "audit-text",
+                  "simulationDelay": 1000
+                },
+                "nextNodeIdOnDifferentAnswer": "f27eb5bc-e2b4-45cc-ab6d-802737475f4c",
+                "nextNodeIdOnExpiration": "65dd8b0c-4565-4acf-98c2-cbc7853752a0"
+              }
+            }
+          ]
+        },
+        "revision": 1
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    }
+  ],
+  "unhandledWrites": [],
+  "notes": {
+    "compareRule": "contains",
+    "expectedMessages": [
+      "sim",
+      "quero orçamento"
+    ],
+    "expirationTimeoutInMs": 180000,
+    "accepted": "f9df52b4-ae67-47da-9d23-5fa22569a64e",
+    "mismatch": "f27eb5bc-e2b4-45cc-ab6d-802737475f4c",
+    "timeout": "65dd8b0c-4565-4acf-98c2-cbc7853752a0",
+    "persistedAfterReload": true,
+    "sendsPerformed": 0
+  }
+}

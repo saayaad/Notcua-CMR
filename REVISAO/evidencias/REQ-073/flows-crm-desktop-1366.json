@@ -1,0 +1,68 @@
+{
+  "req": "REQ-073",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "viewport": {
+    "width": 1366,
+    "height": 768
+  },
+  "url": "http://127.0.0.1:5180/",
+  "consoleErrors": [],
+  "pageErrors": [],
+  "blockedExternal": [],
+  "interceptedWrites": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/crm/sessions/audit-session/move",
+      "body": {
+        "conversationId": "audit-conversation-crm",
+        "sourceLabelId": "audit-label-new",
+        "targetLabelId": "audit-label-proposal",
+        "beforeConversationId": null,
+        "version": 1
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    }
+  ],
+  "unhandledWrites": [],
+  "notes": {
+    "columns": [
+      {
+        "name": "Sem etiqueta",
+        "labelId": null,
+        "conversationIds": []
+      },
+      {
+        "name": "Novo",
+        "labelId": "audit-label-new",
+        "conversationIds": []
+      },
+      {
+        "name": "Proposta",
+        "labelId": "audit-label-proposal",
+        "conversationIds": [
+          "audit-conversation-crm"
+        ]
+      }
+    ],
+    "move": {
+      "conversationId": "audit-conversation-crm",
+      "sourceLabelId": "audit-label-new",
+      "targetLabelId": "audit-label-proposal",
+      "beforeConversationId": null,
+      "version": 1
+    },
+    "moveMethod": "drag-handle",
+    "persistedAfterReload": true,
+    "allWritesIntercepted": true
+  }
+}

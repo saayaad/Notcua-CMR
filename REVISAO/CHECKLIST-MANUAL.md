@@ -206,3 +206,8 @@ O comportamento foi aprovado localmente com provedor simulado e está marcado `C
 1. Em uma sessão descartável, configure espera e tempo de digitação em uma macro e presença de gravação durante uma etapa do funil.
 2. Execute somente para o destinatário de teste e observe no aparelho a ordem, o atraso e o sinal de digitando/gravação.
 3. Registre duração e resultado; não use contatos reais nem campanha ativa.
+
+## Fluxos e CRM — conferências externas/assistivas
+
+- REQ-064/065: em conta e aparelho WhatsApp descartáveis, receber áudio e mídia enviados pelo fluxo publicado; confirmar recurso, atraso, ordem e conteúdo. Não usar conta de produção.
+- REQ-073 (opcional): confirmar movimentação do cartão usando somente teclado no Chromium desktop 1366×768. No teste visual local, mouse passou nos dois desktops e o caminho Mover cartão passou no mobile; sequência teclado teve resultado inconsistente.
