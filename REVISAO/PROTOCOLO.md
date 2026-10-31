@@ -291,3 +291,11 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Pendências manuais: arquivo histórico/reporte Teste para REQ-089/090; futura inicialização local segura REQ-093; QR em aparelho descartável REQ-094; túnel real não interrompido REQ-095. Detalhes e limites em CHECKLIST-MANUAL.md.
 - REQ-126 permanece DECISÃO. Próximo defeito aberto não relacionado a chave de IA: REQ-381/BUG-022, compressão de vídeo; investigar e tentar uma correção local segura, preservando o resultado esperado.
 - scripts/iniciar-noctua-online.ps1 continua modificado e não deve ser staged, committed ou executado; não publicar nem fazer push.
+
+## Ponto de retomada — 31/10/2026 — após correção de diagnóstico REQ-381
+
+- BUG-022 foi encerrado como falso positivo: o teste antigo comparava os bytes antes da transcodificação do servidor. REQ-381 agora está COMPLETO com prova real no endpoint compartilhado pelo chat e Biblioteca.
+- Regressões: `attendance.test.ts` 25/25; `e2e/ai-media.spec.ts` 24/24 em três viewports. Evidências individuais em `REVISAO/evidencias/REQ-381/`; Playwright final registrou `passed` e zero testes falhos.
+- Banco `.audit/noctua-audit.db` intacto; testes do servidor usaram SQLite temporário e mutações visuais foram interceptadas. Sem produção, envio ou chave real.
+- Próximas pendências não finais: REQ-408/409 ausentes, REQ-419–422 desconectadas, REQ-425 defeito de cache semântico e REQ-430 ausente; seguir pelo próximo item corrigível sem chave real e registrar decisões/ausências conforme o protocolo.
+- `scripts/iniciar-noctua-online.ps1` permanece fora de staging/commit. Sem push ou publicação.

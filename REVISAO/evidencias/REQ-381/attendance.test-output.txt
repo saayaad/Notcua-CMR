@@ -1,0 +1,9 @@
+✔ REQ-381 comprime vídeo pesado no endpoint compartilhado pelo chat e pela Biblioteca (926.5675ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8733.5154

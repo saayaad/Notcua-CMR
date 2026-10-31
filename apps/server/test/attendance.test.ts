@@ -1,7 +1,7 @@
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -298,6 +298,47 @@ test('REQ-032/REQ-033/REQ-034 vídeo circular preserva visualização única, le
     messaging.send(sessionId, conversationId, { requestId: 'wrong-file', kind: 'image', fileId: video.id }),
     /tipo do arquivo/,
   );
+});
+
+test('REQ-381 comprime vídeo pesado no endpoint compartilhado pelo chat e pela Biblioteca', async () => {
+  const ffmpeg = createRequire(import.meta.url)('ffmpeg-static') as string;
+  const original = execFileSync(ffmpeg, [
+    '-nostdin', '-v', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=1280x720:rate=24:duration=1.5',
+    '-c:v', 'ffv1', '-level', '3', '-f', 'matroska', 'pipe:1',
+  ], { windowsHide: true, maxBuffer: 64 * 1024 * 1024 });
+  const app = createApp(db, whatsapp, sequences, messaging);
+  const response = await request(app)
+    .post('/api/attendance/files')
+    .send({
+      base64: original.toString('base64'),
+      filename: 'video-pesado.mkv',
+      mimeType: 'video/x-matroska',
+    })
+    .expect(201);
+  assert.equal(response.body.mimeType, 'video/mp4');
+  assert.equal(response.body.filename, 'video-pesado.mp4');
+  assert.ok(response.body.byteLength < original.byteLength, `${response.body.byteLength} deve ser menor que ${original.byteLength}`);
+  const stored = await db.storedFile.findUniqueOrThrow({ where: { id: response.body.id } });
+  assert.equal(stored.byteLength, response.body.byteLength);
+  assert.deepEqual(Buffer.from(stored.data).subarray(4, 8), Buffer.from('ftyp'));
+  const compressedPath = join(directory, 'req-381-comprimido.mp4');
+  await writeFile(compressedPath, stored.data);
+  execFileSync(ffmpeg, [
+    '-nostdin', '-v', 'error', '-i', compressedPath, '-frames:v', '1', '-f', 'null', '-',
+  ], { windowsHide: true });
+  const evidenceDirectory = fileURLToPath(new URL('../../../REVISAO/evidencias/REQ-381/', import.meta.url));
+  await mkdir(evidenceDirectory, { recursive: true });
+  await writeFile(join(evidenceDirectory, 'sqlite-temporario.json'), JSON.stringify({
+    req: 'REQ-381',
+    result: 'APROVADO',
+    database: 'SQLite temporário descartável',
+    endpoint: '/api/attendance/files',
+    original: { filename: 'video-pesado.mkv', mimeType: 'video/x-matroska', byteLength: original.byteLength },
+    stored: { filename: response.body.filename, mimeType: response.body.mimeType, byteLength: response.body.byteLength },
+    reductionPercent: Number(((1 - response.body.byteLength / original.byteLength) * 100).toFixed(2)),
+    decodedFirstFrame: true,
+    sharedBy: ['chat', 'Biblioteca'],
+  }, null, 2), 'utf8');
 });
 
 test('marca d’água é incorporada ao vídeo e GIF mantém os bytes originais', async () => {

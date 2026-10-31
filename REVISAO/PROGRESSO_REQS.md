@@ -127,3 +127,11 @@
 - REQ-089/090 ficaram COMPLETO-LOCAL com nove agendamentos/fluxos fictícios DRAFT/desativados e sem envio. REQ-093/094/095 também COMPLETO-LOCAL; as provas manuais externas estão agrupadas no CHECKLIST-MANUAL.md. REQ-096/097 concluídas. Nenhum defeito novo de produto; testes falhos iniciais e correções do harness constam em evidencias/lote-L05-backups-2026-10-31.md.
 - Nenhum serviço extra, reset, chamada de produção, envio de mensagem ou acesso a conta real. scripts/iniciar-noctua-online.ps1 permanece fora do lote e do commit.
 - Acesso e operação REQ-098–127 já está em estado final, exceto REQ-126 em DECISÃO, preservada sem repetição. Próximo item não final com falha reproduzida: REQ-381 (BUG-022, compressão de vídeo); prosseguir apenas se o defeito puder ser corrigido e validado no local.
+
+## Correção de diagnóstico — REQ-381 / BUG-022 — 31/10/2026
+
+- REQ-381 passou de DEFEITO para COMPLETO. O teste anterior media o arquivo na requisição interceptada, antes da transcodificação; o servidor já processava o mesmo endpoint usado pelo chat e pela Biblioteca.
+- Prova real: `attendance.test.ts` enviou vídeo FFV1 pesado, recebeu e releu MP4/H.264 menor no SQLite temporário e decodificou o primeiro frame. Regressão do módulo: 25/25.
+- Prova visual: chat e Biblioteca usaram `/api/attendance/files` com salvamento/envio interceptados. `e2e/ai-media.spec.ts`: 24/24 nas três viewports; `.audit/playwright-results/.last-run.json` registrou `passed`.
+- O primeiro reteste tentou validar um frame bruto por pipe; no Windows, `spawnSync` reportou `EOF` mesmo com FFmpeg em código 0. A validação passou a ler o MP4 em arquivo temporário e passou sem mudar o critério.
+- `.audit/noctua-audit.db` permaneceu com 2.039.808 bytes e `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`. Nenhum envio, conta, provedor ou produção foi usado.

@@ -1,6 +1,6 @@
 {
   "req": "REQ-381",
-  "result": "DEFEITO",
+  "result": "APROVADO",
   "project": "desktop-1920",
   "url": "http://127.0.0.1:5180/atendimento",
   "consoleErrors": [
@@ -14,9 +14,12 @@
     "height": 1365
   },
   "videoBytesBefore": 27443,
-  "videoBytesUploaded": 27443,
+  "videoSourceBytesReceivedByServer": 27443,
+  "videoBytesStoredByServerFixture": 16465,
+  "libraryVideoBytesStoredByServerFixture": 16465,
+  "videoCompression": "o servidor recebe a fonte e persiste MP4 menor; prova real em attendance.test.ts",
+  "chatAndLibraryUseSharedUploadEndpoint": true,
   "watermarkOfferedForImageAndVideo": true,
   "videoWatermarkPrepared": true,
-  "videoCompression": "not performed; same source bytes uploaded",
   "localSendRouteIntercepted": true
 }

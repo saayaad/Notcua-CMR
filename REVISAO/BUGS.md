@@ -150,14 +150,14 @@ A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, po
 - Validação: Playwright confirma o player e a transcrição coincidente em 1366×768, 1920×1080 e 390×844.
 - Estado: corrigido localmente em 30/10/2026.
 
-## BUG-022 — Vídeo anexado não passa por compressão
+## BUG-022 — Vídeo anexado não passa por compressão — falso positivo encerrado em 31/10/2026
 
 - REQ: REQ-381.
 - Reprodução: em Atendimento, anexar um WebM sintético maior que o limite desejado e confirmar a prévia.
-- Resultado: o upload recebe os mesmos bytes do arquivo original; a marca d’água é preparada, mas não há transcodificação.
-- Causa: `Composer.tsx` aplica otimização de imagem, enquanto o ramo de vídeo envia o arquivo original.
-- Reteste: Playwright comparou os bytes do vídeo antes e depois; resultado idêntico. As rotas de upload e envio foram interceptadas.
-- Estado: defeito aberto; exige caminho de transcodificação compatível com navegador e formatos aceitos pelo conector.
+- Resultado antigo: o teste interceptava a requisição antes de ela chegar ao servidor e comparava o Base64 de origem com ele mesmo; por isso registrou bytes idênticos.
+- Causa da classificação incorreta: `Composer.tsx` e `LibraryPage.tsx` enviam a fonte ao endpoint compartilhado `/api/attendance/files`; `MediaService.upload` transcoda vídeo no servidor para MP4/H.264, reduz a resolução para até 1920 px e só preserva o original quando a conversão sem marca não fica menor.
+- Reteste: `attendance.test.ts` enviou FFV1 sintético pesado pelo endpoint, confirmou arquivo MP4 menor persistido em SQLite temporário e decodificou o primeiro frame. Playwright percorreu chat e Biblioteca em 1366×768, 1920×1080 e 390×844; 24/24 na regressão de IA/mídia e 25/25 em attendance.
+- Estado: falso positivo encerrado. O código funcional de compressão já existia; foram corrigidos a prova e o diagnóstico. Evidências em `REVISAO/evidencias/REQ-381/`.
 
 ## BUG-023 — Atalho do Estúdio de IA não aparecia no celular
 

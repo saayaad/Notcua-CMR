@@ -1,0 +1,22 @@
+{
+  "req": "REQ-381",
+  "result": "APROVADO",
+  "database": "SQLite temporário descartável",
+  "endpoint": "/api/attendance/files",
+  "original": {
+    "filename": "video-pesado.mkv",
+    "mimeType": "video/x-matroska",
+    "byteLength": 1897925
+  },
+  "stored": {
+    "filename": "video-pesado.mp4",
+    "mimeType": "video/mp4",
+    "byteLength": 274410
+  },
+  "reductionPercent": 85.54,
+  "decodedFirstFrame": true,
+  "sharedBy": [
+    "chat",
+    "Biblioteca"
+  ]
+}

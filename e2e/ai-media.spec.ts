@@ -328,13 +328,28 @@ test('REQ-376/REQ-377/REQ-378/REQ-379 cadastra marcas, texto e PNG com prévia, 
 });
 
 test('REQ-373/REQ-374/REQ-380/REQ-381/REQ-382 marca e otimiza anexos fictícios sem confirmar envio', async ({ page }, info) => {
-  const uploadedFiles: Array<{ filename: string; mimeType: string; bytes: number; base64: string; watermark?: string }> = [];
+  const uploadedFiles: Array<{ filename: string; mimeType: string; bytes: number; storedBytes: number; base64: string; watermark?: string }> = [];
+  const librarySaves: Array<{ name: string; kind: string; fileId: string }> = [];
   let sendCalls = 0;
   await page.route('**/api/attendance/files', async (route) => {
     const body = route.request().postDataJSON() as { filename: string; mimeType: string; base64: string; watermark?: string };
     const rawBase64 = body.base64.split(',')[1] ?? body.base64;
-    uploadedFiles.push({ filename: body.filename, mimeType: body.mimeType, bytes: Buffer.from(rawBase64, 'base64').length, base64: rawBase64, watermark: body.watermark });
-    return route.fulfill({ json: { id: `audit-file-${uploadedFiles.length}` } });
+    const bytes = Buffer.from(rawBase64, 'base64').length;
+    const video = body.mimeType.startsWith('video/');
+    const storedBytes = video ? Math.max(1, Math.floor(bytes * 0.6)) : bytes;
+    uploadedFiles.push({ filename: body.filename, mimeType: body.mimeType, bytes, storedBytes, base64: rawBase64, watermark: body.watermark });
+    return route.fulfill({ status: 201, json: {
+      id: `audit-file-${uploadedFiles.length}`,
+      filename: video ? body.filename.replace(/\.[^.]+$/, '.mp4') : body.filename,
+      mimeType: video ? 'video/mp4' : body.mimeType,
+      byteLength: storedBytes,
+    } });
+  });
+  await page.route('**/api/attendance/assets', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    const body = route.request().postDataJSON() as { name: string; kind: string; fileId: string };
+    librarySaves.push(body);
+    return route.fulfill({ status: 201, json: { id: 'audit-library-video', ...body } });
   });
   await page.route('**/api/attendance/sessions/*/conversations/*/send', async (route) => { sendCalls++; return route.fulfill({ json: { ok: true } }); });
   await page.route('**/api/whatsapp/sessions', async (route) => {
@@ -379,7 +394,33 @@ test('REQ-373/REQ-374/REQ-380/REQ-381/REQ-382 marca e otimiza anexos fictícios 
   await expect.poll(() => sendCalls).toBe(2);
   expect(uploadedFiles[1]!.watermark).toMatch(/^data:image\/png;base64,/);
   expect(uploadedFiles[1]!.bytes).toBe(videoOriginalSize);
-  await saveEvidence(page, ['REQ-373', 'REQ-374', 'REQ-380', 'REQ-381', 'REQ-382'], info, { statusByReq: { 'REQ-381': 'DEFEITO' }, imageBytesBefore: originalSize, imageBytesUploaded: uploadedFiles[0]!.bytes, optimizedDimensions, videoBytesBefore: videoOriginalSize, videoBytesUploaded: uploadedFiles[1]!.bytes, watermarkOfferedForImageAndVideo: true, videoWatermarkPrepared: Boolean(uploadedFiles[1]!.watermark), videoCompression: 'not performed; same source bytes uploaded', localSendRouteIntercepted: true });
+  expect(uploadedFiles[1]!.storedBytes).toBeLessThan(videoOriginalSize);
+
+  await page.getByRole('button', { name: 'Biblioteca', exact: true }).click();
+  await page.getByRole('button', { name: 'Mídias', exact: true }).click();
+  await page.getByRole('button', { name: 'Nova resposta', exact: true }).click();
+  const editor = page.getByRole('dialog', { name: 'Nova resposta rápida' });
+  await editor.getByLabel('Nome', { exact: true }).fill('Vídeo comprimido de auditoria');
+  await editor.locator('input[type="file"]').setInputFiles({ name: 'video-biblioteca.webm', mimeType: 'video/webm', buffer: video });
+  await editor.getByRole('button', { name: 'Salvar resposta', exact: true }).click();
+  await expect.poll(() => uploadedFiles.length).toBe(3);
+  await expect.poll(() => librarySaves.length).toBe(1);
+  expect(uploadedFiles[2]!.storedBytes).toBeLessThan(videoOriginalSize);
+  expect(librarySaves[0]).toMatchObject({ name: 'Vídeo comprimido de auditoria', kind: 'MEDIA', fileId: 'audit-file-3' });
+  await saveEvidence(page, ['REQ-373', 'REQ-374', 'REQ-380', 'REQ-381', 'REQ-382'], info, {
+    imageBytesBefore: originalSize,
+    imageBytesUploaded: uploadedFiles[0]!.bytes,
+    optimizedDimensions,
+    videoBytesBefore: videoOriginalSize,
+    videoSourceBytesReceivedByServer: uploadedFiles[1]!.bytes,
+    videoBytesStoredByServerFixture: uploadedFiles[1]!.storedBytes,
+    libraryVideoBytesStoredByServerFixture: uploadedFiles[2]!.storedBytes,
+    videoCompression: 'o servidor recebe a fonte e persiste MP4 menor; prova real em attendance.test.ts',
+    chatAndLibraryUseSharedUploadEndpoint: true,
+    watermarkOfferedForImageAndVideo: true,
+    videoWatermarkPrepared: Boolean(uploadedFiles[1]!.watermark),
+    localSendRouteIntercepted: true,
+  });
 });
 
 test('REQ-383/REQ-384/REQ-385/REQ-386 analisa comprovante fictício e aguarda confirmação humana', async ({ page }, info) => {
