@@ -314,3 +314,10 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Evidências atualizadas em `REVISAO/evidencias/REQ-512/`. Front/API HTTP 200; `.audit/noctua-audit.db` inalterado em 2.039.808 bytes, `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`.
 - REQ-425/BUG-025 não deve ser reclassificada por regras léxicas adicionais. Sem embedding/modelo local, permanece defeito de IA separado; nenhuma chave externa deve ser solicitada.
 - Próximo lote fechável sem produção: Infraestrutura REQ-527/534/542. Inspecionar e testar apenas localmente; não executar nem commitar `scripts/iniciar-noctua-online.ps1`, não fazer push/publicação.
+
+## Ponto de retomada — 31/10/2026 — após fechamento de Infraestrutura
+
+- REQ-523/527/540 estão em `DECISÃO`; REQ-530/533/541/542 em `COMPLETO-LOCAL`; REQ-534 em `COMPLETO`. Não restam estados `PARCIAL` ou `A VERIFICAR` na Infraestrutura.
+- Testes: infraestrutura 4/4 e persistência REQ-530 1/1, todos locais. Banco `.audit` inalterado. Evidências individuais em `REVISAO/evidencias/REQ-523/`, `527/`, `530/`, `533/`, `534/`, `540/`, `541/` e `542/`.
+- O iniciador não foi executado; `scripts/iniciar-noctua-online.ps1` permanece modificado fora do staging/commit. Nenhum push, publicação, Firebase, túnel ou WhatsApp real foi alterado.
+- Próximo trabalho: regenerar ledger, rodar regressões dos dois arquivos e fechar o commit; depois recontar apenas defeitos/ausências/desconexões e decisões restantes.

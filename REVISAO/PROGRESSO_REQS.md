@@ -150,3 +150,10 @@
 - O teste lê `REVISAO/LEDGER.csv`, rejeita filho ausente ou ainda parcial e confirma as sete abas do editor. Playwright focado: 3/3 em 1366×768, 1920×1080 e 390×844; evidências renovadas em `REVISAO/evidencias/REQ-512/`.
 - Front/API responderam HTTP 200. `.audit/noctua-audit.db` permaneceu com 2.039.808 bytes e `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`; nenhuma preferência real, mensagem ou produção foi alterada.
 - REQ-425/BUG-025 continua separada como pendência de IA: não existe modelo/embedding local instalado, e ampliar o dicionário de sinônimos não comprovaria equivalência semântica.
+
+## Infraestrutura — fechamento dos estados não finais — 31/10/2026
+
+- Oito REQs saíram de estados transitórios: REQ-534 `COMPLETO`; REQ-530/533/541/542 `COMPLETO-LOCAL`; REQ-523/527/540 `DECISÃO`. O módulo ficou sem `PARCIAL` e sem `A VERIFICAR`.
+- Testes locais: `infrastructure-audit.test.ts` 4/4 e REQ-530 em `whatsapp.test.ts` 1/1. A primeira tentativa não iniciou porque `|` no filtro foi interpretado pelo wrapper `.cmd`; as duas suítes foram separadas e passaram sem mudar expectativas.
+- REQ-533/534/541 foram verificadas sem executar o iniciador: caminhos relativos, BOM/UTF-8, mensagens acentuadas, URL exata e `Start-Process` foram afirmados. REQ-542 comprovou branch/remoto/build local, sem push.
+- `.audit/noctua-audit.db` permaneceu em 2.039.808 bytes e `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`. `scripts/iniciar-noctua-online.ps1` continuou fora do staging; nenhuma conta, Vercel, Firebase, túnel ou WhatsApp real foi alterado.

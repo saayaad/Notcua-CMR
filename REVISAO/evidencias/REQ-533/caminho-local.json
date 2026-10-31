@@ -1,0 +1,8 @@
+{
+  "req": "REQ-533",
+  "date": "2026-10-31",
+  "result": "APROVADO_LOCAL",
+  "test": "apps/server/test/infrastructure-audit.test.ts",
+  "assertions": ["CMD usa %~dp0", "PowerShell usa PSScriptRoot", "ProjectRoot independe do diretorio corrente"],
+  "launcherExecuted": false
+}

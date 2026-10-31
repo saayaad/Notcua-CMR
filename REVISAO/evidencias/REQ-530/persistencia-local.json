@@ -1,0 +1,9 @@
+{
+  "req": "REQ-530",
+  "date": "2026-10-31",
+  "result": "APROVADO_LOCAL",
+  "test": "apps/server/test/whatsapp.test.ts — REQ-530 auth store persiste credenciais e categorias Signal v7, incluindo exclusao",
+  "assertions": ["registered=true salvo e relido", "categorias Signal salvas e relidas", "SQLite temporario"],
+  "externalLimit": "Reinicio com sessao WhatsApp descartavel valida permanece manual.",
+  "auditDbUnchanged": true
+}

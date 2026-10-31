@@ -220,7 +220,7 @@ test('cifra autenticada preserva bytes e detecta chave errada ou adulteração',
   assert.deepEqual(second.decrypt(first.encrypt(value)), value);
 });
 
-test('auth store persiste credenciais e categorias Signal v7, incluindo exclusão', async () => {
+test('REQ-530 auth store persiste credenciais e categorias Signal v7, incluindo exclusão', async () => {
   const auth = await createAuthStore(db, sessionId, cipher);
   await auth.state.keys.set({
     'lid-mapping': { lid: '5511' },

@@ -1,0 +1,8 @@
+{
+  "req": "REQ-534",
+  "date": "2026-10-31",
+  "result": "APROVADO",
+  "test": "apps/server/test/infrastructure-audit.test.ts",
+  "assertions": ["BOM UTF-8 presente", "decodificacao estrita valida", "oito mensagens acentuadas preservadas", "sem caractere de substituicao ou mojibake classico"],
+  "launcherExecuted": false
+}

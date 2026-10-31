@@ -1,0 +1,9 @@
+{
+  "req": "REQ-541",
+  "date": "2026-10-31",
+  "result": "APROVADO_LOCAL",
+  "test": "apps/server/test/infrastructure-audit.test.ts",
+  "url": "https://notcua.vercel.app/atendimento",
+  "assertions": ["URL exata no script", "Start-Process recebe VercelSite", "guia repete a mesma rota"],
+  "launcherExecuted": false
+}

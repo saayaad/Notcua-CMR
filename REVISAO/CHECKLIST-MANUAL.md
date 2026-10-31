@@ -236,3 +236,20 @@ O comportamento foi aprovado localmente com provedor simulado e está marcado `C
 
 ### REQ-095 — túnel
 O teste local de desconexão/reconexão e de não repetição de POST passou. A queda do túnel real não foi provocada porque a regra atual mantém túnel e produção somente para leitura.
+
+## Infraestrutura — provas externas após autorização
+
+### REQ-530 — sessão persistida sem novo QR
+1. Usar somente uma conta WhatsApp descartável, conectá-la no ambiente local de teste e encerrar normalmente.
+2. Reiniciar na próxima janela controlada sem limpar credenciais e confirmar reconexão sem novo QR.
+3. Registrar estado e horário; não enviar mensagem e nunca usar a sessão de produção.
+
+### REQ-533/541 — iniciador e URL
+1. Na próxima inicialização autorizada, chamar `Iniciar Noctua.cmd` a partir de outro diretório e confirmar que ele encontra os scripts pela própria pasta.
+2. Confirmar que o navegador abre exatamente `https://notcua.vercel.app/atendimento` e que os acentos do console permanecem legíveis.
+3. Não iniciar enquanto a regra de produção impedir publicação: o script altera Vercel e executa `--prod`.
+
+### REQ-542 — push/publicação
+1. Obter autorização explícita para o destino e revisar o diff entre `auditoria-reqs` e a branch que publica.
+2. Fazer push somente da branch autorizada; não incluir `scripts/iniciar-noctua-online.ps1` enquanto a alteração local não for aprovada.
+3. Conferir o deployment e a rota `/atendimento` em leitura, registrando commit e URL sem expor segredos.

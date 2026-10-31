@@ -125,6 +125,8 @@ const typeOverrides = {
   'REQ-429': 'B', 'REQ-430': 'E', 'REQ-431': 'C', 'REQ-432': 'C', 'REQ-433': 'C',
   'REQ-434': 'C', 'REQ-435': 'C', 'REQ-436': 'C', 'REQ-437': 'C', 'REQ-438': 'C',
   'REQ-439': 'C', 'REQ-440': 'C', 'REQ-441': 'C', 'REQ-442': 'C', 'REQ-443': 'C',
+  'REQ-523': 'D', 'REQ-527': 'D', 'REQ-530': 'C', 'REQ-533': 'C',
+  'REQ-534': 'A', 'REQ-540': 'D', 'REQ-541': 'C', 'REQ-542': 'C',
   'REQ-574': 'B',
   'REQ-575': 'B',
   'REQ-576': 'B',
@@ -188,6 +190,7 @@ for (let n = 76; n <= 97; n++) dateOverrides['REQ-' + String(n).padStart(3, '0')
 dateOverrides['REQ-381'] = '2026-10-31';
 dateOverrides['REQ-464'] = '2026-10-31';
 dateOverrides['REQ-512'] = '2026-10-31';
+for (const id of ['REQ-523', 'REQ-527', 'REQ-530', 'REQ-533', 'REQ-534', 'REQ-540', 'REQ-541', 'REQ-542']) dateOverrides[id] = '2026-10-31';
 const rows = [];
 for (const line of source.split(/\r?\n/)) {
   if (!/^\| REQ-\d+ \|/.test(line)) continue;
