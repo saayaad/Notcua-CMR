@@ -143,3 +143,10 @@
 - Playwright selecionou o recurso WebP e salvou a ação nas três viewports, com POST interceptado e zero envio. Regressão `side-tools.spec.ts`: 30/30; zero erros de console.
 - A regressão inicialmente falhou em REQ-402/403 porque o teste dependia do relógio real estar após 08h. `BusinessWorker` recebeu relógio opcional apenas para teste; o cenário passou com 08h fixas sem alterar o relógio padrão de produção.
 - Front/API responderam HTTP 200; `.audit/noctua-audit.db` permaneceu em 2.039.808 bytes e `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`. Sem produção, envio, reset ou nova dependência.
+
+## Fechamento global — REQ-512 — 31/10/2026
+
+- REQ-512 passou de `PARCIAL` para `COMPLETO`: os 24 filhos REQ-488–511 estão `COMPLETO`, `COMPLETO-LOCAL` ou com decisão registrada; REQ-499 é a única decisão desse intervalo.
+- O teste lê `REVISAO/LEDGER.csv`, rejeita filho ausente ou ainda parcial e confirma as sete abas do editor. Playwright focado: 3/3 em 1366×768, 1920×1080 e 390×844; evidências renovadas em `REVISAO/evidencias/REQ-512/`.
+- Front/API responderam HTTP 200. `.audit/noctua-audit.db` permaneceu com 2.039.808 bytes e `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`; nenhuma preferência real, mensagem ou produção foi alterada.
+- REQ-425/BUG-025 continua separada como pendência de IA: não existe modelo/embedding local instalado, e ampliar o dicionário de sinônimos não comprovaria equivalência semântica.

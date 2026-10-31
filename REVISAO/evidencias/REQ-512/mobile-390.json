@@ -5,9 +5,10 @@
   "url": "http://127.0.0.1:5180/atendimento",
   "errors": [],
   "parentAndChildStatusesReviewed": true,
-  "openDecisionSample": [
+  "reviewedRange": "REQ-488–REQ-511",
+  "reviewedCount": 24,
+  "registeredDecision": [
     "REQ-499"
   ],
-  "fullPartsOneAndTwoRemainTrackedInRequirements": true,
-  "parentRemainsPartial": true
+  "parentComplete": true
 }

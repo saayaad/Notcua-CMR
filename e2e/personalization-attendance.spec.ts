@@ -1,5 +1,5 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 const evidenceRoot = resolve(process.cwd(), 'REVISAO', 'evidencias');
@@ -336,12 +336,28 @@ test('REQ-510 arrastar bloco contra outro encaixa sem sobrepor e persiste', asyn
   await saveEvidence(page, ['REQ-510'], info, { draggedIntoOccupiedArea: true, overlapBeforeReload: overlap, overlapAfterReload: overlapsAfterReload });
 });
 
-test('REQ-512 revisão global identifica filhos e prova ainda pendentes', async ({ page }, info) => {
+test('REQ-512 revisão global confirma estados finais das Partes 1 e 2', async ({ page }, info) => {
+  const ledger = await readFile(resolve(process.cwd(), 'REVISAO', 'LEDGER.csv'), 'utf8');
+  const reviewed: Record<string, string> = {};
+  for (let number = 488; number <= 511; number++) {
+    const id = `REQ-${String(number).padStart(3, '0')}`;
+    const row = ledger.split(/\r?\n/u).find((line) => line.startsWith(`"${id}",`));
+    expect(row, `${id} precisa existir no ledger`).toBeTruthy();
+    const state = row!.match(/,"((?:✅ COMPLETO(?:-LOCAL)?)|(?:🟣|⚠️) DECISÃO)",/u)?.[1];
+    expect(state, `${id} precisa estar completo ou com decisão registrada`).toBeTruthy();
+    reviewed[id] = state!;
+  }
   await openConversation(page);
   await openEditor(page);
   await expect(page.getByRole('tablist', { name: 'Configurações do atendimento' }).getByRole('tab')).toHaveCount(7);
-  const pending = ['REQ-499'];
-  await saveEvidence(page, ['REQ-512'], info, { parentAndChildStatusesReviewed: true, openDecisionSample: pending, fullPartsOneAndTwoRemainTrackedInRequirements: true, parentRemainsPartial: true });
+  expect(reviewed['REQ-499']).toMatch(/DECISÃO/u);
+  await saveEvidence(page, ['REQ-512'], info, {
+    parentAndChildStatusesReviewed: true,
+    reviewedRange: 'REQ-488–REQ-511',
+    reviewedCount: Object.keys(reviewed).length,
+    registeredDecision: ['REQ-499'],
+    parentComplete: true,
+  });
 });
 
 test('REQ-513/514/519 ampliação e prévia completa ficam acessíveis em todas as abas', async ({ page }, info) => {

@@ -187,6 +187,7 @@ const dateOverrides = { 'REQ-017': '2026-10-31', 'REQ-018': '2026-10-31', 'REQ-0
 for (let n = 76; n <= 97; n++) dateOverrides['REQ-' + String(n).padStart(3, '0')] = '2026-10-31';
 dateOverrides['REQ-381'] = '2026-10-31';
 dateOverrides['REQ-464'] = '2026-10-31';
+dateOverrides['REQ-512'] = '2026-10-31';
 const rows = [];
 for (const line of source.split(/\r?\n/)) {
   if (!/^\| REQ-\d+ \|/.test(line)) continue;
