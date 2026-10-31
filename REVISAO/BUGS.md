@@ -105,6 +105,22 @@ A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, po
 - Validação: teste REQ-216 em Chromium Playwright e teste unitário attendance-layout; viewport desktop e móvel aprovados.
 - Estado: corrigido localmente em 30/10/2026.
 
+## BUG-033 — REQ-455 não permite editar o telefone mantendo a identidade da conversa
+
+- Reprodução: enviar `PUT /api/operations/sessions/:sessionId/contacts/:conversationId` com `phoneNumber` diferente para um contato fictício.
+- Esperado conforme decisão B do usuário: atualizar o telefone do contato associado e preservar IDs da conversa, contato e conexão.
+- Resultado observado: resposta HTTP 200, mas `contact.phoneNumber` permanece inalterado. `ContactWorkspace.tsx` não renderiza campo de telefone; schema `profile` em `operations.routes.ts` não aceita `phoneNumber` e remove o campo enviado.
+- Teste: novo acceptance test em `apps/server/test/operations.test.ts`; falhou em SQLite temporário: esperado `5511777770189`, recebido `5511777770188`. O banco foi criado e removido pelo harness.
+- Estado: aberto. Sem correção de produto nesta rodada, conforme instrução para não implementar funções novas.
+
+## BUG-034 — REQ-457 mantém valor de atendimento separado da oportunidade CRM
+
+- Reprodução: salvar `dealValue: "1250,50"` pela ficha do contato fictício e consultar a oportunidade CRM da mesma conversa.
+- Esperado conforme decisão A: um valor único sincronizado entre ficha do Atendimento e oportunidade CRM (125050 centavos).
+- Resultado observado: a ficha salva o valor em `Contact.metadata.dealValue`; `CrmOpportunity.valueInCents` não é criado nem atualizado. A busca no código encontrou esses campos em caminhos separados.
+- Teste: novo acceptance test em `apps/server/test/operations.test.ts`; falhou em SQLite temporário porque a oportunidade correspondente veio `null`. O banco foi criado e removido pelo harness.
+- Estado: aberto. Sem correção de produto nesta rodada, conforme instrução para não implementar funções novas.
+
 ## BUG-017 — Barra de mensagens fixadas não tinha atalho flutuante para reabrir
 
 - REQ: REQ-240.

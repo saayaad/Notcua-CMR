@@ -1,0 +1,33 @@
+{
+  "req": "REQ-197",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "reports": [
+    {
+      "screen": "Atendimento",
+      "visibleButtons": 128,
+      "unnamed": []
+    },
+    {
+      "screen": "CRM",
+      "visibleButtons": 199,
+      "unnamed": []
+    },
+    {
+      "screen": "Campanhas",
+      "visibleButtons": 19,
+      "unnamed": []
+    },
+    {
+      "screen": "Configurações",
+      "visibleButtons": 34,
+      "unnamed": []
+    }
+  ],
+  "checked": "nomes acessíveis de botões visíveis nas quatro telas definidas da REQ-194"
+}

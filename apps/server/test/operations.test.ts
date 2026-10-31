@@ -591,6 +591,36 @@ test('REQ-114/115/455/457/458: perfil completo e observações persistem; histó
   assert.match(exported.headers['content-disposition'] ?? '', /\.zip/);
   await request(app).get(`/api/operations/sessions/${otherSession}/contacts/${chat.id}/export`).expect(404);
 });
+test('REQ-455 telefone editável preserva a conversa e atualiza o contato associado', async () => {
+  const chat = await makeContact('5511777770188');
+  const nextPhone = '5511777770189';
+  await request(app)
+    .put(`/api/operations/sessions/${sessionId}/contacts/${chat.id}`)
+    .send({ phoneNumber: nextPhone })
+    .expect(200);
+  const [contact, conversation] = await Promise.all([
+    db.contact.findUniqueOrThrow({ where: { id: chat.contactId } }),
+    db.conversation.findUniqueOrThrow({ where: { id: chat.id } }),
+  ]);
+  assert.equal(contact.phoneNumber, nextPhone);
+  assert.equal(conversation.id, chat.id);
+  assert.equal(conversation.contactId, chat.contactId);
+  assert.equal(conversation.sessionId, sessionId);
+});
+test('REQ-457 valor da ficha de atendimento sincroniza com oportunidade CRM', async () => {
+  const chat = await makeContact('5511777770190');
+  await request(app)
+    .put(`/api/operations/sessions/${sessionId}/contacts/${chat.id}`)
+    .send({ dealValue: '1250,50' })
+    .expect(200);
+  const [contact, opportunity] = await Promise.all([
+    db.contact.findUniqueOrThrow({ where: { id: chat.contactId } }),
+    db.crmOpportunity.findUnique({ where: { conversationId: chat.id } }),
+  ]);
+  assert.equal((contact.metadata as { dealValue?: string }).dealValue, '1250,50');
+  assert.ok(opportunity, 'salvar o valor da ficha deve atualizar a oportunidade correspondente');
+  assert.equal(opportunity.valueInCents, 125050);
+});
 test('encerramento automático não fecha conversa quando a última mensagem é do cliente', async () => {
   const a = await makeContact('5511777770009');
   const b = await makeContact('5511777770010');

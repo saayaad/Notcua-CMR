@@ -4,7 +4,7 @@ import { Spinner } from './ui';
 
 type Settings = { enabled: boolean; semanticCache: boolean; rag: boolean; cacheDays: number; summaryEvery: number; systems: Record<string, boolean> };
 type CacheItem = { id: string; question: string; answer: string; hits?: number; createdAt: string; approvedAt?: string };
-const names: Record<string, string> = { autoReply: 'Autoatendimento e chatbot', copilot: 'Copiloto do vendedor', summaries: 'Resumos e passagem de turno', campaigns: 'Campanhas e testes A/B', training: 'Treinamento do vendedor', receipts: 'Comprovantes e auditoria', dailyDigest: 'Resumo diário de leads' };
+const names: Record<string, string> = { autoReply: 'Autoatendimento e chatbot', copilot: 'Copiloto do vendedor', summaries: 'Resumos e passagem de turno' };
 
 export function EconomySettings() {
   const { request, notify } = useApi();

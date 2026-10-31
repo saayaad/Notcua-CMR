@@ -1,0 +1,9 @@
+{
+  "req": "REQ-487",
+  "result": "PARTIAL - visual bloqueado",
+  "finding": "Barra de funções usa attendanceFunctionsPosition com um único valor top|bottom; regra CSS deriva classes do estado, sem duas posições simultâneas para a mesma barra.",
+  "source": "apps/web/src/context/PreferencesContext.tsx; apps/web/src/components/HudEditor.tsx; apps/web/src/workbench.css",
+  "userDecision": "A: uma posição por vez.",
+  "limitation": "No visual evidence: existing front 127.0.0.1:5180 unavailable. Source review is not treated as visual or connector proof.",
+  "date": "2026-10-31"
+}

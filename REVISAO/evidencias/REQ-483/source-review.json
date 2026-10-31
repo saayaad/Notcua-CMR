@@ -1,0 +1,9 @@
+{
+  "req": "REQ-483",
+  "result": "PARTIAL - visual bloqueado",
+  "finding": "PreferencesContext armazena attendanceFunctionsPosition como enum top|bottom; HudEditor mostra um Select para uma posição.",
+  "source": "apps/web/src/context/PreferencesContext.tsx; apps/web/src/components/HudEditor.tsx:417",
+  "userDecision": "A: uma posição por vez.",
+  "limitation": "No visual evidence: existing front 127.0.0.1:5180 unavailable. Source review is not treated as visual or connector proof.",
+  "date": "2026-10-31"
+}

@@ -1,0 +1,11 @@
+{
+  "req": "REQ-223",
+  "result": "PARCIAL",
+  "source": "REVISAO/evidencias/inventario-botoes-lote50-2026-10-29.tsv",
+  "entries": 504,
+  "uniqueFiles": 70,
+  "missingSourceFiles": [],
+  "noStaticBinding": [],
+  "limitations": "Static handler/submit binding does not prove each button action, permissions, persistence, or success/error feedback. Scope is not enumerable by approved acceptance criteria.",
+  "testedAt": "2026-10-31"
+}

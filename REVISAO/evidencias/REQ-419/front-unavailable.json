@@ -1,0 +1,13 @@
+{
+  "reqs": [
+    "REQ-419",
+    "REQ-420",
+    "REQ-421",
+    "REQ-422"
+  ],
+  "result": "BLOQUEIO VISUAL",
+  "cause": "Existing front at 127.0.0.1:5180 did not respond to HTTP request within 5 seconds; Playwright page.goto timed out after 30 seconds with net::ERR_ABORTED while waiting for load. API 127.0.0.1:3340/health returned 200.",
+  "change": "Controls removed in source per recorded user decision; web typecheck passes. Visual assertion could not execute.",
+  "recovery": "Use the already-running front after it responds again; do not start a second server.",
+  "date": "2026-10-31"
+}

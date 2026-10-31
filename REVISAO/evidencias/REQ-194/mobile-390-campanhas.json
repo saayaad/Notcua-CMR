@@ -1,0 +1,16 @@
+{
+  "req": "REQ-194",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "criterion": "overflow/limites do conteúdo até 2 px",
+  "horizontalOverflowPx": 0,
+  "mainLeft": 68,
+  "mainRightExcess": 0,
+  "mainTop": 63.98944091796875,
+  "mainBottomExcess": 3.98944091796875
+}

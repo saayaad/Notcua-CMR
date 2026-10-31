@@ -1,0 +1,9 @@
+{
+  "req": "REQ-461",
+  "result": "PARTIAL - visual bloqueado",
+  "finding": "Nenhuma ação nativa de convite de grupo na enumeração de macros: tipos aceitos são WAIT/ARCHIVE/UNARCHIVE/PIN/UNPIN/MARK_UNREAD/CLEAR_LABELS/TRANSFER e macro action enum exclui convite.",
+  "source": "apps/server/src/modules/operations/macros.routes.ts",
+  "userDecision": "B: convite nativo somente se suportado pelo conector.",
+  "limitation": "No visual evidence: existing front 127.0.0.1:5180 unavailable. Source review is not treated as visual or connector proof.",
+  "date": "2026-10-31"
+}

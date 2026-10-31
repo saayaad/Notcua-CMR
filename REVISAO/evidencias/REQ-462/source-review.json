@@ -1,0 +1,9 @@
+{
+  "req": "REQ-462",
+  "result": "PARTIAL - visual bloqueado",
+  "finding": "Nenhuma ação vCard/contact share na enumeração de macros; action types são TEXT, ASSET, ADD_LABEL, REMOVE_LABEL, UTILITY e IMPORTED.",
+  "source": "apps/server/src/modules/operations/macros.routes.ts",
+  "userDecision": "B: vCard somente se suportado pelo conector.",
+  "limitation": "No visual evidence: existing front 127.0.0.1:5180 unavailable. Source review is not treated as visual or connector proof.",
+  "date": "2026-10-31"
+}

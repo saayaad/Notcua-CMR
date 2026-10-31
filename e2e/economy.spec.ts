@@ -103,7 +103,7 @@ test('REQ-414–REQ-429 Economia abre, persiste ajustes e permite revisar e remo
   await saveEvidence(page, ['REQ-414', 'REQ-415', 'REQ-416', 'REQ-417', 'REQ-418', 'REQ-423', 'REQ-424', 'REQ-426', 'REQ-427', 'REQ-428', 'REQ-429'], info, { settings, dailyAndMonthlyStats: true, cacheReviewedApprovedEditedAndCleared: true, fixtureOnly: true });
 });
 
-test('REQ-419–REQ-422 controles sem consumidores são marcados DESCONECTADO', async ({ page }, info) => {
+test('REQ-419–REQ-422 controles sem consumidores foram removidos da interface', async ({ page }, info) => {
   const settings = { enabled: true, semanticCache: true, rag: true, cacheDays: 14, summaryEvery: 10, systems: { autoReply: true, copilot: true, summaries: true, campaigns: true, training: true, receipts: true, dailyDigest: true } };
   await page.route('**/api/operations/economy/cache**', (route) => route.fulfill({ json: { items: [] } }));
   await page.route('**/api/operations/economy', (route) => route.fulfill({ json: { settings, saved: { today: { tokens: 0, requests: 0 }, month: { tokens: 0, requests: 0 } } } }));
@@ -111,8 +111,10 @@ test('REQ-419–REQ-422 controles sem consumidores são marcados DESCONECTADO', 
   await page.goto('/atendimento');
   await page.getByRole('button', { name: 'Configurações', exact: true }).click();
   await page.getByRole('button', { name: 'Economia de Tokens', exact: true }).click();
-  for (const label of ['Campanhas e testes A/B', 'Treinamento do vendedor', 'Comprovantes e auditoria', 'Resumo diário de leads']) await expect(page.getByText(label, { exact: true })).toBeVisible();
-  await saveEvidence(page, ['REQ-419', 'REQ-420', 'REQ-421', 'REQ-422'], info, { visibleButDisconnected: ['campaigns', 'training', 'receipts', 'dailyDigest'] }, { 'REQ-419': 'DESCONECTADA', 'REQ-420': 'DESCONECTADA', 'REQ-421': 'DESCONECTADA', 'REQ-422': 'DESCONECTADA' });
+  const removed = ['Campanhas e testes A/B', 'Treinamento do vendedor', 'Comprovantes e auditoria', 'Resumo diário de leads'];
+  for (const label of removed) await expect(page.getByText(label, { exact: true })).toHaveCount(0);
+  for (const label of ['Autoatendimento e chatbot', 'Copiloto do vendedor', 'Resumos e passagem de turno']) await expect(page.getByText(label, { exact: true })).toBeVisible();
+  await saveEvidence(page, ['REQ-419', 'REQ-420', 'REQ-421', 'REQ-422'], info, { removedControls: removed, retainedConsumers: ['autoReply', 'copilot', 'summaries'], provider: 'fixture local; apenas GET; sem persistência' });
 });
 
 test('REQ-430 controle de embeddings ausente; REQ-439/REQ-440 revisão de otimização precede aplicar', async ({ page }, info) => {

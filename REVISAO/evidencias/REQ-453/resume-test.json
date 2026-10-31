@@ -1,0 +1,8 @@
+{
+  "req": "REQ-453",
+  "result": "BLOQUEIO VISUAL",
+  "cause": "127.0.0.1:5180 não respondeu em até 5 s; teste visual não executado.",
+  "existingTest": "e2e/side-tools.spec.ts — painel lateral definido para busca, enviar e anexar; nova confirmação visual pendente.",
+  "action": "Retomar quando o front existente voltar a responder; não subir outro servidor.",
+  "date": "2026-10-31"
+}

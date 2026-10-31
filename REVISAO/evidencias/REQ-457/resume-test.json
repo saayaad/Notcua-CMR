@@ -1,0 +1,11 @@
+{
+  "req": "REQ-457",
+  "result": "DEFEITO CONFIRMADO",
+  "test": "apps/server/test/operations.test.ts — acceptance test sincronização de dealValue",
+  "expected": "dealValue 1250,50 deve corresponder a CrmOpportunity.valueInCents=125050 na mesma conversa.",
+  "actual": "Contact.metadata.dealValue salvou; nenhuma CrmOpportunity correspondente foi encontrada.",
+  "database": "SQLite temporário descartável do harness; nenhum dado .audit ou real",
+  "limitation": "Sem prova visual por indisponibilidade do front; valor de ficha e oportunidade estão em caminhos de código separados.",
+  "bug": "REVISAO/BUGS.md BUG-034",
+  "date": "2026-10-31"
+}

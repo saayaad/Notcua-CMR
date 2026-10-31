@@ -1,0 +1,11 @@
+{
+  "req": "REQ-455",
+  "result": "DEFEITO CONFIRMADO",
+  "test": "apps/server/test/operations.test.ts — acceptance test telefone editável",
+  "expected": "Atualizar contact.phoneNumber mantendo conversation.id, conversation.contactId e conversation.sessionId.",
+  "actual": "PUT retornou 200 mas o telefone permaneceu 5511777770188 em vez de 5511777770189.",
+  "database": "SQLite temporário descartável do harness; nenhum dado .audit ou real",
+  "limitation": "Sem prova visual por indisponibilidade do front; código não renderiza campo de telefone e schema profile não permite phoneNumber.",
+  "bug": "REVISAO/BUGS.md BUG-033",
+  "date": "2026-10-31"
+}

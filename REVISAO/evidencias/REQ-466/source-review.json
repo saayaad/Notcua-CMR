@@ -1,0 +1,9 @@
+{
+  "req": "REQ-466",
+  "result": "PARTIAL - visual bloqueado",
+  "finding": "Comandos de macro incluem CLEAR_LABELS e tipos ADD_LABEL/REMOVE_LABEL; não há comando de limpar etapa ou negócio CRM no enum de macros.",
+  "source": "apps/server/src/modules/operations/macros.routes.ts",
+  "userDecision": "A: ação rápida atua só sobre etiquetas.",
+  "limitation": "No visual evidence: existing front 127.0.0.1:5180 unavailable. Source review is not treated as visual or connector proof.",
+  "date": "2026-10-31"
+}

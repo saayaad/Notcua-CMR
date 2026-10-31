@@ -1,0 +1,16 @@
+{
+  "req": "REQ-194",
+  "result": "APROVADO",
+  "project": "desktop-1920",
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "criterion": "overflow/limites do conteúdo até 2 px",
+  "horizontalOverflowPx": 0,
+  "mainLeft": 68,
+  "mainRightExcess": 0,
+  "mainTop": 71.99064636230469,
+  "mainBottomExcess": 3.9905853271484375
+}

@@ -1,0 +1,9 @@
+{
+  "req": "REQ-463",
+  "result": "PARTIAL - visual bloqueado",
+  "finding": "Macro TEXT aceita texto; ASSET preserva caption/text de mídia. Busca estática identifica caminho para link como texto/legenda, mas não prova UI nem envio do conteúdo.",
+  "source": "apps/server/src/modules/operations/macros.routes.ts",
+  "userDecision": "A: link na legenda.",
+  "limitation": "No visual evidence: existing front 127.0.0.1:5180 unavailable. Source review is not treated as visual or connector proof.",
+  "date": "2026-10-31"
+}

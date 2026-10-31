@@ -1,0 +1,12 @@
+{
+  "req": "REQ-430",
+  "result": "APROVADO LOCAL",
+  "test": "apps/server/test/operations.test.ts: REQ-431 RAG envia somente três trechos lexicais relevantes ao provedor simulado",
+  "passed": 1,
+  "failed": 0,
+  "database": "SQLite temporário criado e removido pelo harness",
+  "provider": "fetch simulado; sem chave real nem chamada externa",
+  "behavior": "Busca por palavras seleciona no máximo três trechos relevantes; teste exclui os trechos 4 e 5.",
+  "source": "apps/server/src/modules/operations/ai.service.ts:165-181; histórico/resumo usa contexto separado; REQ-425 permanece apenas no cache semântico de respostas aprovadas.",
+  "date": "2026-10-31"
+}
