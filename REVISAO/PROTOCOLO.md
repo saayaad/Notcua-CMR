@@ -439,3 +439,8 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Commit `54e4189` fechado e push confirmado em `origin/auditoria-reqs`; LEDGER registra esse commit para REQ-425/680. A branch ficou sem commits à frente.
 - Nenhum próximo módulo tem requisito A/B pendente. Restantes REQs estão em decisão/ausente/desconectado, todos estados finais do protocolo.
 - Parada desta sequência: pedir ao usuário restauração do conteúdo prévio não commitado de `REVISAO/evidencias/REQ-686/process.json`, sobrescrito pelo teste histórico antes do bloqueio ser corrigido. O arquivo e `scripts/iniciar-noctua-online.ps1` ficaram fora do staging e dos commits.
+
+## Registro de integridade de evidências — 31/10/2026
+
+- `REVISAO/evidencias/REQ-686/process.json` foi sobrescrito pelo teste histórico. O artefato precisa ser regenerado a partir de uma nova execução verificável; não restaurar nem tentar reconstruí-lo com versões antigas.
+- Regra: testes não podem gravar, substituir ou remover arquivos em `REVISAO/evidencias/REQ-<id>/` de REQs já fechadas sem autorização explícita do usuário. Para reexecuções, usar saída temporária fora dessas pastas; evidência fechada só pode ser atualizada com autorização.
