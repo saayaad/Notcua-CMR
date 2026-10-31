@@ -1,0 +1,41 @@
+{
+  "req": "REQ-462",
+  "result": "APROVADO-LOCAL",
+  "format": "VCARD",
+  "receipt": {
+    "id": "bb346a13-cc93-4dd6-84a7-1ab38e69271f",
+    "sessionId": "audit-connector-session",
+    "macroId": "macro:fd4e5b7d-6b6d-4b94-8ca3-0802d9e87be0",
+    "actions": [
+      {
+        "format": "VCARD",
+        "name": "Pessoa Fictícia",
+        "phone": "5511000000001"
+      }
+    ],
+    "payloads": [
+      {
+        "contacts": {
+          "displayName": "Pessoa Fictícia",
+          "contacts": [
+            {
+              "vcard": "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Pessoa Fictícia\r\nTEL;TYPE=CELL;waid=5511000000001:+5511000000001\r\nEND:VCARD"
+            }
+          ]
+        }
+      }
+    ],
+    "result": "SIMULATED",
+    "externalMessages": 0,
+    "createdAt": "2026-10-31T20:50:27.009Z"
+  },
+  "validations": [
+    "schema",
+    "reload-SQLite",
+    "idempotency",
+    "conflict-409",
+    "member-403",
+    "invalid-422-rollback"
+  ],
+  "externalProof": "Não comprova compatibilidade de aparelho/WhatsApp real."
+}

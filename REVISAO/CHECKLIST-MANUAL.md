@@ -253,3 +253,10 @@ O teste local de desconexão/reconexão e de não repetição de POST passou. A 
 1. Obter autorização explícita para o destino e revisar o diff entre `auditoria-reqs` e a branch que publica.
 2. Fazer push somente da branch autorizada; não incluir `scripts/iniciar-noctua-online.ps1` enquanto a alteração local não for aprovada.
 3. Conferir o deployment e a rota `/atendimento` em leitura, registrando commit e URL sem expor segredos.
+
+
+## REQ-461 / REQ-462 / REQ-465 — compatibilidade externa futura
+
+1. Somente após autorização futura, usar conector e números descartáveis para convite nativo, vCard e lista interativa; nunca produção.
+2. Conferir no aparelho recebedor convite válido, contato importável e seleção de opção, incluindo erros de formato/suporte.
+3. Registrar versão do conector/aparelho e recibos por requisito. A prova atual é exclusivamente simulada; nenhum envio externo está autorizado nesta rodada.

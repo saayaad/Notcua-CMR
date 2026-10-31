@@ -1,3 +1,4 @@
+import { simulatedConnectorRoutes } from './simulated-connector.js';
 import { chooseCampaignText } from './campaign-text.js';
 import { normalizeCampaignKeyword } from './campaign-response.js';
 import { validTimezone } from './send-window.js';
@@ -85,6 +86,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
   router.use('/client-ai', clientAiRoutes(db, messaging));
   router.use('/directory', directoryRoutes(db));
   router.use('/macros', macroRoutes(db));
+  router.use('/audit-connector', simulatedConnectorRoutes(db));
   router.use('/toolbox', toolboxRoutes(db));
   router.use('/sessions/:sessionId/standard-replies', standardReplyRoutes(db, whatsapp, messaging));
   router.use('/sessions/:sessionId/contacts/:conversationId/next-action', nextActionRoutes(db, whatsapp));

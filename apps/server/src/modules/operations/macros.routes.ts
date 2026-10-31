@@ -1,3 +1,4 @@
+import { validateSimulation } from './simulated-connector.js';
 import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
@@ -16,6 +17,16 @@ const command = z.enum([
 ]);
 export function macroRoutes(db: PrismaClient) {
   const router = Router();
+  router.use((req, res, next) => {
+    if (
+      req.method !== 'GET' &&
+      Array.isArray(req.body?.actions) &&
+      req.body.actions.some((action: { type?: string }) => action.type === 'SIMULATED') &&
+      res.locals.identity?.role !== 'ADMIN'
+    )
+      throw new AppError(403, 'Esta ação exige acesso de administrador.');
+    next();
+  });
   router.get('/:id', async (req, res) => {
     const item = await db.macro.findUnique({
       where: { id: String(req.params.id) },
@@ -27,11 +38,13 @@ export function macroRoutes(db: PrismaClient) {
       name: item.name,
       actions: item.actions.map((action) => ({
         type:
-          (action.payload as { type?: string }).type === 'utility'
-            ? 'UTILITY'
-            : action.type === 'MEDIA'
-              ? 'IMPORTED'
-              : action.type,
+          (action.payload as { type?: string }).type === 'simulated'
+            ? 'SIMULATED'
+            : (action.payload as { type?: string }).type === 'utility'
+              ? 'UTILITY'
+              : action.type === 'MEDIA'
+                ? 'IMPORTED'
+                : action.type,
         actionId: action.id,
         text: action.text ?? '',
         labelId: action.labelId ?? '',
@@ -48,7 +61,15 @@ export function macroRoutes(db: PrismaClient) {
         actions: z
           .array(
             z.object({
-              type: z.enum(['TEXT', 'ASSET', 'ADD_LABEL', 'REMOVE_LABEL', 'UTILITY', 'IMPORTED']),
+              type: z.enum([
+                'TEXT',
+                'ASSET',
+                'ADD_LABEL',
+                'REMOVE_LABEL',
+                'UTILITY',
+                'IMPORTED',
+                'SIMULATED',
+              ]),
               actionId: z.string().max(200).default(''),
               text: z.string().max(20000).default(''),
               assetId: z.string().max(200).default(''),
@@ -59,6 +80,7 @@ export function macroRoutes(db: PrismaClient) {
               target: z.string().max(200).default(''),
               presence: z.enum(['none', 'composing', 'recording']).default('none'),
               asSticker: z.boolean().default(false),
+              simulation: z.unknown().optional(),
             }),
           )
           .min(1)
@@ -117,10 +139,9 @@ export function macroRoutes(db: PrismaClient) {
               filename: asset.file?.filename,
               editor: action,
               send: {
-                kind:
-                  action.asSticker
-                    ? 'sticker'
-                    : asset.kind === 'MESSAGE'
+                kind: action.asSticker
+                  ? 'sticker'
+                  : asset.kind === 'MESSAGE'
                     ? 'text'
                     : asset.kind === 'AUDIO'
                       ? 'audio'
@@ -147,6 +168,10 @@ export function macroRoutes(db: PrismaClient) {
               labelID: labelId,
               editor: action,
             };
+          }
+          if (action.type === 'SIMULATED') {
+            const simulation = validateSimulation(action.simulation);
+            payload = { type: 'simulated', simulation, editor: { ...action, simulation } };
           }
           if (action.type === 'UTILITY')
             payload = {

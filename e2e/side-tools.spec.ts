@@ -309,28 +309,35 @@ test('REQ-450 ordem das categorias salva e reaparece após reload', async ({ pag
   }
 });
 
-test('REQ-461/REQ-462/REQ-463/REQ-465/REQ-466 registra ações de macro disponíveis e formatos pendentes', async ({ page }, info) => {
+for (const [req, button, format] of [
+  ['REQ-461', 'Convite de grupo simulado', 'GROUP_INVITE'],
+  ['REQ-462', 'Contato vCard simulado', 'VCARD'],
+  ['REQ-465', 'Lista interativa simulada', 'INTERACTIVE_LIST'],
+]) test(`${req} edita e salva formato fictício sem envio externo`, async ({ page }, info) => {
+  await page.route('**/api/operations/audit-connector/capabilities', route => route.fulfill({ json: { simulated: true, formats: ['GROUP_INVITE', 'VCARD', 'INTERACTIVE_LIST'] } }));
+  let posted: any;
+  await page.route('**/api/operations/macros', async route => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    posted = route.request().postDataJSON();
+    return route.fulfill({ status: 201, json: { id: 'audit-simulated-macro', name: posted.name } });
+  });
   await openConversation(page);
   await ensureToolsOpen(page);
   const tools = page.getByLabel('Ferramentas de atendimento');
   await tools.locator('.workbench-create summary').click();
   await tools.locator('.workbench-create').getByRole('button', { name: 'Macros', exact: true }).click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog.getByRole('heading', { name: 'Criar macro de atendimento' })).toBeVisible();
-  const categories = dialog.locator('.macro-action-chooser details');
-  for (const name of ['Enviar mensagem', 'Aba do CRM', 'Etiquetas', 'Temporizadores', 'Utilitários e transferência'])
-    await categories.filter({ has: page.getByText(name, { exact: true }) }).locator('summary').click();
-  const choices = (await dialog.locator('.macro-action-chooser button').allTextContents()).map((text) => text.trim());
-  for (const option of ['Adicionar etapa ou etiqueta', 'Remover etapa ou etiqueta', 'Remover todas as etiquetas'])
-    expect(choices).toContain(option);
-  for (const absent of ['Convidar para grupo', 'Enviar contato', 'Banner com link', 'Lista interativa', 'Bloquear contato'])
-    expect(choices).not.toContain(absent);
-  await saveEvidence(page, ['REQ-461', 'REQ-462', 'REQ-463', 'REQ-465', 'REQ-466'], info, {
-    result: 'PARCIAL', availableChoices: choices, macroNotSaved: true, noMessageSent: true,
-    nativeInviteAvailable: false, vCardAvailable: false, interactiveListAvailable: false,
-    limitation: 'A interface e a enumeração local não oferecem as ações nativas. O conector fictício não comprova suporte externo para os três formatos condicionais.',
-    req466Finding: 'A interface também expõe ações “Adicionar etapa ou etiqueta” e “Remover etapa ou etiqueta”; ver teste de aceitação REQ-466.',
-  });
+  await dialog.getByLabel('Nome da macro').fill(`Macro fictícia ${req}`);
+  await dialog.locator('.macro-action-chooser details').filter({ hasText: 'Conector fictício local' }).locator('summary').click();
+  await dialog.getByRole('button', { name: button, exact: true }).click();
+  await expect(dialog.getByText('Simulação local: esta ação nunca envia mensagens ao WhatsApp.')).toBeVisible();
+  const value = JSON.parse(await dialog.locator('textarea').inputValue());
+  expect(value.format, `${req}: formato escolhido no editor`).toBe(format);
+  await saveEvidence(page, [req], info, { format, simulationOnly: true, apiWritesIntercepted: true });
+  await dialog.getByRole('button', { name: 'Salvar macro', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  expect(posted.actions[0].type, `${req}: ação salva como simulada`).toBe('SIMULATED');
+  expect(posted.actions[0].simulation, `${req}: campos preservados no salvamento`).toEqual(value);
 });
 
 test('REQ-466 ação rápida limita-se a etiquetas, sem ações de etapa', async ({ page }, info) => {

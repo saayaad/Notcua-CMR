@@ -16,9 +16,9 @@ Fonte: LEDGER.csv, decisões do usuário e execução local de 31/10/2026. Esta 
 - REQ-223 — DECISÃO: inventário revalidado em 504 botões/70 arquivos, mas vínculo sintático não prova efeito. Pergunta: aprova homologação segura por módulo/amostragem ou fornecerá inventário versionado das 504 ações com resultado esperado de sucesso/erro e permissões?
 - REQ-401 — A, escolha do usuário; execução/verificação pendente, sem ampliar o escopo nesta atualização.
 - REQ-448 — A escolhida, mas a inspeção visual em 3 viewports não identifica quais botões ou qual mudança visual são o aceite. Pergunta: quais botões devem mudar e qual resultado visual define “melhorar”?
-- REQ-461 — A VERIFICAR: depende de conector de teste com suporte a convite, vCard e lista interativa; não implementado.
-- REQ-462 — A VERIFICAR: depende de conector de teste com suporte a convite, vCard e lista interativa; não implementado.
-- REQ-465 — A VERIFICAR: depende de conector de teste com suporte a convite, vCard e lista interativa; não implementado.
+- REQ-461 — COMPLETO-LOCAL: conector fictício autorizado e validado; prova externa futura no checklist.
+- REQ-462 — COMPLETO-LOCAL: conector fictício autorizado e validado; prova externa futura no checklist.
+- REQ-465 — COMPLETO-LOCAL: conector fictício autorizado e validado; prova externa futura no checklist.
 - REQ-466 — COMPLETO-LOCAL: separação de etiquetas/etapas aprovada e BUG-035 corrigido; CRM/operações 75/75, UI 3/3.
 
 ## Retirados do escopo — 2 requisitos
@@ -29,7 +29,7 @@ Fonte: LEDGER.csv, decisões do usuário e execução local de 31/10/2026. Esta 
 ## Contagens atuais após atualização documental
 
 - DECISÃO no LEDGER: 9 (inclui os 5 itens de infraestrutura/documentação acima).
-- A VERIFICAR no LEDGER: 3 (REQ-461, REQ-462 e REQ-465).
+- A VERIFICAR no LEDGER: 0.
 - AUSENTE no LEDGER: 0.
 - DESCONECTADO no LEDGER: 0.
 - SUBSTITUÍDO OU CANCELADO: 53 no ledger (REQ-408/409 são as duas decisões destacadas acima).

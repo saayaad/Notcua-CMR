@@ -1,0 +1,63 @@
+{
+  "req": "REQ-465",
+  "result": "APROVADO-LOCAL",
+  "format": "INTERACTIVE_LIST",
+  "receipt": {
+    "id": "7d441557-457a-4b32-9b34-59303eac0460",
+    "sessionId": "audit-connector-session",
+    "macroId": "macro:08aeb505-b969-4b8e-b77d-c263215a3fc8",
+    "actions": [
+      {
+        "format": "INTERACTIVE_LIST",
+        "title": "Opções fictícias",
+        "button": "Escolher",
+        "rows": [
+          {
+            "id": "audit-1",
+            "title": "Primeira opção"
+          },
+          {
+            "id": "audit-2",
+            "title": "Segunda opção"
+          }
+        ]
+      }
+    ],
+    "payloads": [
+      {
+        "listMessage": {
+          "title": "Opções fictícias",
+          "buttonText": "Escolher",
+          "listType": 1,
+          "sections": [
+            {
+              "title": "Opções fictícias",
+              "rows": [
+                {
+                  "rowId": "audit-1",
+                  "title": "Primeira opção"
+                },
+                {
+                  "rowId": "audit-2",
+                  "title": "Segunda opção"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "result": "SIMULATED",
+    "externalMessages": 0,
+    "createdAt": "2026-10-31T20:50:27.129Z"
+  },
+  "validations": [
+    "schema",
+    "reload-SQLite",
+    "idempotency",
+    "conflict-409",
+    "member-403",
+    "invalid-422-rollback"
+  ],
+  "externalProof": "Não comprova compatibilidade de aparelho/WhatsApp real."
+}

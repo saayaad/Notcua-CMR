@@ -158,6 +158,7 @@ export class SequenceService {
               presence?: SequenceStep['presence'];
               send?: Record<string, unknown>;
             };
+            if (payload.type === 'simulated') throw new AppError(422, 'Ações simuladas só podem ser executadas pelo conector de auditoria local.');
             if (payload.type === 'utility') {
               steps.push(
                 stepSchema.parse({

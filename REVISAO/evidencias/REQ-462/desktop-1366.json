@@ -1,31 +1,10 @@
 {
   "req": "REQ-462",
-  "result": "PARCIAL",
+  "result": "APROVADO",
   "project": "desktop-1366",
   "url": "http://127.0.0.1:5180/atendimento",
   "consoleErrors": [],
-  "availableChoices": [
-    "Texto",
-    "Imagem, vídeo, áudio ou documento",
-    "Figurinha WebP da biblioteca",
-    "Adicionar etapa ou etiqueta",
-    "Remover etapa ou etiqueta",
-    "Adicionar etiqueta",
-    "Remover etiqueta",
-    "Remover todas as etiquetas",
-    "Esperar e mostrar presença",
-    "Arquivar conversa",
-    "Reabrir conversa",
-    "Fixar conversa",
-    "Desafixar conversa",
-    "Marcar como não lida",
-    "Transferir atendimento"
-  ],
-  "macroNotSaved": true,
-  "noMessageSent": true,
-  "nativeInviteAvailable": false,
-  "vCardAvailable": false,
-  "interactiveListAvailable": false,
-  "limitation": "A interface e a enumeração local não oferecem as ações nativas. O conector fictício não comprova suporte externo para os três formatos condicionais.",
-  "req466Finding": "A interface também expõe ações “Adicionar etapa ou etiqueta” e “Remover etapa ou etiqueta”; ver teste de aceitação REQ-466."
+  "format": "VCARD",
+  "simulationOnly": true,
+  "apiWritesIntercepted": true
 }

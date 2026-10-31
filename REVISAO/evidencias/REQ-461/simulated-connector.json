@@ -1,0 +1,39 @@
+{
+  "req": "REQ-461",
+  "result": "APROVADO-LOCAL",
+  "format": "GROUP_INVITE",
+  "receipt": {
+    "id": "2c5c8b1b-4d8c-45f2-85b0-10d22bc556e0",
+    "sessionId": "audit-connector-session",
+    "macroId": "macro:fce7c12f-0f04-4183-9dc4-ef9d485ded4f",
+    "actions": [
+      {
+        "format": "GROUP_INVITE",
+        "groupId": "audit-group-exemplo",
+        "title": "Grupo fictício",
+        "invitation": "audit-invite-exemplo"
+      }
+    ],
+    "payloads": [
+      {
+        "groupInviteMessage": {
+          "groupJid": "audit-group-exemplo@g.us",
+          "groupName": "Grupo fictício",
+          "inviteCode": "audit-invite-exemplo"
+        }
+      }
+    ],
+    "result": "SIMULATED",
+    "externalMessages": 0,
+    "createdAt": "2026-10-31T20:50:26.850Z"
+  },
+  "validations": [
+    "schema",
+    "reload-SQLite",
+    "idempotency",
+    "conflict-409",
+    "member-403",
+    "invalid-422-rollback"
+  ],
+  "externalProof": "Não comprova compatibilidade de aparelho/WhatsApp real."
+}

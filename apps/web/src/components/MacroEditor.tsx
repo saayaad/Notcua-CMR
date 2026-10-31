@@ -1,4 +1,4 @@
-import {Select} from './Select';
+import { Select } from './Select';
 import { useEffect, useState } from 'react';
 import { Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import type { Label, Library } from '../types';
@@ -7,7 +7,8 @@ import { Modal } from './ui';
 import { ResourcePicker } from './ResourcePicker';
 interface Action {
   uiId: string;
-  type: 'TEXT' | 'ASSET' | 'ADD_LABEL' | 'REMOVE_LABEL' | 'UTILITY' | 'IMPORTED';
+  type: 'TEXT' | 'ASSET' | 'ADD_LABEL' | 'REMOVE_LABEL' | 'UTILITY' | 'IMPORTED' | 'SIMULATED';
+  simulation?: { format: string; [key: string]: unknown };
   actionId: string;
   text: string;
   assetId: string;
@@ -51,6 +52,12 @@ export function MacroEditor({
   const [actions, setActions] = useState<Action[]>([blank()]);
   const [labels, setLabels] = useState<Label[]>([]);
   const [busy, setBusy] = useState(false);
+  const [simulated, setSimulated] = useState(false);
+  useEffect(() => {
+    void request<{ simulated: boolean }>('/operations/audit-connector/capabilities')
+      .then((data) => setSimulated(data.simulated))
+      .catch(() => setSimulated(false));
+  }, [request]);
   useEffect(() => {
     if (sessionId)
       void request<{ items: Label[] }>(`/whatsapp/sessions/${sessionId}/labels`)
@@ -136,6 +143,54 @@ export function MacroEditor({
               </span>
             </header>
             <div className="macro-action-chooser" aria-label="Adicionar ação por categoria">
+              {simulated && (
+                <details>
+                  <summary>Conector fictício local</summary>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      update(index, {
+                        type: 'SIMULATED',
+                        simulation: {
+                          format: 'GROUP_INVITE',
+                          groupId: 'audit-group-exemplo',
+                          title: 'Grupo fictício',
+                          invitation: 'audit-invite-exemplo',
+                        },
+                      })
+                    }
+                  >
+                    Convite de grupo simulado
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      update(index, {
+                        type: 'SIMULATED',
+                        simulation: { format: 'VCARD', name: 'Contato fictício', phone: '5511000000001' },
+                      })
+                    }
+                  >
+                    Contato vCard simulado
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      update(index, {
+                        type: 'SIMULATED',
+                        simulation: {
+                          format: 'INTERACTIVE_LIST',
+                          title: 'Escolha fictícia',
+                          button: 'Ver opções',
+                          rows: [{ id: 'audit-opcao-1', title: 'Opção fictícia' }],
+                        },
+                      })
+                    }
+                  >
+                    Lista interativa simulada
+                  </button>
+                </details>
+              )}
               <details>
                 <summary>Enviar mensagem</summary>
                 <button type="button" onClick={() => update(index, { type: 'TEXT' })}>
@@ -237,7 +292,8 @@ export function MacroEditor({
                   value={action.assetId}
                   onChange={(assetId) => update(index, { assetId })}
                 />
-                {library.assets.find((asset) => asset.id === action.assetId)?.file?.mimeType === 'image/webp' && (
+                {library.assets.find((asset) => asset.id === action.assetId)?.file?.mimeType ===
+                  'image/webp' && (
                   <label className="checkbox">
                     <input
                       type="checkbox"
@@ -249,8 +305,11 @@ export function MacroEditor({
                 )}
                 {action.asSticker &&
                   action.assetId &&
-                  library.assets.find((asset) => asset.id === action.assetId)?.file?.mimeType !== 'image/webp' && (
-                    <p className="notice">Escolha uma imagem WebP da Biblioteca para enviar como figurinha.</p>
+                  library.assets.find((asset) => asset.id === action.assetId)?.file?.mimeType !==
+                    'image/webp' && (
+                    <p className="notice">
+                      Escolha uma imagem WebP da Biblioteca para enviar como figurinha.
+                    </p>
                   )}
               </>
             )}
@@ -270,6 +329,28 @@ export function MacroEditor({
                   ))}
                 </Select>
               </label>
+            )}
+            {action.type === 'SIMULATED' && (
+              <>
+                <p className="notice">Simulação local: esta ação nunca envia mensagens ao WhatsApp.</p>
+                <label>
+                  Dados fictícios ({action.simulation?.format})
+                  <textarea
+                    required
+                    rows={6}
+                    key={action.simulation?.format}
+                    defaultValue={JSON.stringify(action.simulation, null, 2)}
+                    onChange={(event) => {
+                      try {
+                        update(index, { simulation: JSON.parse(event.target.value) });
+                        event.currentTarget.setCustomValidity('');
+                      } catch {
+                        event.currentTarget.setCustomValidity('Informe JSON válido.');
+                      }
+                    }}
+                  />
+                </label>
+              </>
             )}
             {action.type === 'UTILITY' && (
               <>
