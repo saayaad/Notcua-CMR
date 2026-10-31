@@ -190,3 +190,8 @@
 - Banco `.audit/noctua-audit.db` preservado em 2.039.808 bytes e timestamp 2026-10-30; API local HTTP 200. Nenhuma produção acessada.
 - Commit `b5cbd76` publicado em `auditoria-reqs`. Os arquivos preexistentes `scripts/iniciar-noctua-online.ps1` e `REVISAO/evidencias/REQ-686/process.json` ficaram fora do commit.
 - Próximo trabalho: analisar o próximo módulo com estados não finais no LEDGER; primeiro pendente dentro de Economia de IA são REQ-419–422 (consumidores desconectados) e REQ-430 (interface ausente).
+
+## Retomada — próximo módulo
+
+- Próximo módulo aberto na ordem do ledger: Atendimento (REQ-448–499). Os 15 requisitos ainda não finais requerem decisões de escopo/comportamento já discriminadas em `REVISAO/LEDGER.csv`; não alterei essas funções sem critérios definidos.
+- Commit da correção: `b5cbd76`; commit de preservação do histórico: `2d6fd67`; ambos publicados em `auditoria-reqs`.

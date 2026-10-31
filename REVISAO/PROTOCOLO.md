@@ -362,3 +362,9 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Tentativas registradas: chamada de teste com filtro após o glob iniciou suíte ampla; interrompida e substituída por comando focal correto. Caso negativo novo revelou contador esperado desatualizado; corrigida só a expectativa de chamadas simuladas, e reteste passou.
 - Instalação relatou 13 vulnerabilidades transitivas (11 moderadas, 2 altas); `npm audit fix` não foi executado. Revisar em tarefa separada.
 - Próximo passo: atualizar LEDGER, commitar e fazer push desta correção na branch `auditoria-reqs`; depois seguir pelo próximo módulo não final, sem produção ou novo servidor.
+
+## Próximo módulo e bloqueio de decisão — 31/10/2026
+
+- REQ-425 foi fechada como `COMPLETO-LOCAL` no commit `b5cbd76`, já publicado na branch `auditoria-reqs`.
+- Próximo módulo aberto na ordem do LEDGER: Atendimento (REQ-448–499). Os 15 IDs ainda não finais estão todos em `DECISÃO`: critérios pedem mudanças amplas de visual, estrutura, dados ou ações rápidas sem definir resultado esperado; detalhes individuais permanecem no LEDGER.
+- Não alterei código nem dados para esses critérios vagos. Próxima ação depende de definir quais comportamentos/escopo são desejados para Atendimento. Nenhum acesso a produção.
