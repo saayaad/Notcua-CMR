@@ -1,0 +1,39 @@
+{
+  "req": "REQ-021",
+  "result": "FALHOU",
+  "project": "desktop-1920",
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "labelId": "local:audit-req021-qualificacao",
+  "mutations": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/crm/sessions/audit-session/labels",
+      "body": {
+        "name": "Qualificação fictícia",
+        "color": "#2a88dd",
+        "description": "Validar oportunidade de auditoria."
+      }
+    }
+  ],
+  "interceptedWrites": [
+    "POST /api/operations/directory/presence",
+    "POST /api/crm/sessions/audit-session/labels"
+  ],
+  "unexpectedWrites": [],
+  "blockedExternal": [],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "failures": [
+    "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('dialog', { name: 'Etapas e etiquetas' }).locator('.stage-list').getByText('Validar oportunidade de auditoria.')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Etapas e etiquetas' }).locator('.stage-list').getByText('Validar oportunidade de auditoria.')\u001b[22m\n"
+  ],
+  "screenshotError": ""
+}

@@ -256,3 +256,12 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Falhas de teste corrigidas sem alterar critérios: o detector de pendências confundiu o português “todo” com `TODO`; agora exige marcador de comentário explícito. No Playwright, a rolagem da lista ocultava a origem e o índice do cartão mudava durante o arraste; destino passou a ser selecionado pelo contato e a rolagem automática foi exercitada. Dois POSTs de presença esperados foram isolados junto com o POST de movimento; todos foram interceptados.
 - Nenhum defeito de produto confirmado e nenhum código funcional do app alterado. Front/API responderam 200; `.audit/noctua-audit.db` permaneceu em 2.039.808 bytes com `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`.
 - Próximo módulo pela ordem do ledger: Conexões, REQ-017–021. Reconfirmar `git status`, `git log`, serviços e banco antes dos testes. Sem reset, push ou produção.
+
+## Ponto de retomada — 31/10/2026 — após Conexões
+
+- REQ-017–020 ficaram `COMPLETO-LOCAL`; REQ-021 ficou `COMPLETO`. Provas individuais em `REVISAO/evidencias/REQ-017/`–`REQ-021/`; REQ-021 passou Playwright em três viewports.
+- Servidor focado: 31/31; Playwright: 3/3. API/front existentes responderam HTTP 200. `.audit/noctua-audit.db` permaneceu inalterado: 2.039.808 bytes, `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`.
+- Não houve defeito funcional. Duas correções de fixture foram testadas novamente; details em `PROGRESSO_REQS.md`. Writes visuais foram interceptados, testes de servidor usaram SQLite temporário e produção não foi acessada.
+- Pendência externa: validar agenda, fotos visíveis, histórico disponível e etiqueta importada em conta WhatsApp descartável; seguir `REVISAO/CHECKLIST-MANUAL.md`.
+- Próximo lote: módulo Mensagens, primeira REQ pendente após REQ-021. Reconfirmar Git, API/front e metadados do banco antes de testar.
+- `scripts/iniciar-noctua-online.ps1` permanece fora do lote e do commit.

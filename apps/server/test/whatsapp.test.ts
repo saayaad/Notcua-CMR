@@ -20,7 +20,7 @@ import { WhatsappService } from '../src/modules/whatsapp/whatsapp.service.js';
 import { SyncService } from '../src/modules/whatsapp/sync.service.js';
 import { LabelOutbox } from '../src/modules/whatsapp/label-outbox.js';
 import type { WhatsappSocket } from '../src/modules/whatsapp/socket-factory.js';
-import { silentPublisher, type SessionSnapshot } from '../src/modules/whatsapp/whatsapp.types.js';
+import { silentPublisher, type SessionSnapshot, type SyncNotice } from '../src/modules/whatsapp/whatsapp.types.js';
 import { createApp } from '../src/app.js';
 import { attachRealtime } from '../src/realtime/socket.js';
 import { env } from '../src/config/env.js';
@@ -31,6 +31,7 @@ class FakeSocket implements WhatsappSocket {
   ended = 0;
   loggedOut = false;
   failLabels = false;
+  profilePicture: string | undefined;
   labels: { jid: string; label: string }[] = [];
   async end() {
     this.ended++;
@@ -39,7 +40,7 @@ class FakeSocket implements WhatsappSocket {
     this.loggedOut = true;
   }
   async profilePictureUrl() {
-    return undefined;
+    return this.profilePicture;
   }
   async resyncAppState() {}
   async addChatLabel(jid: string, label: string) {
@@ -55,6 +56,7 @@ const cipher = new CredentialCipher(randomBytes(32));
 const sockets: FakeSocket[] = [];
 const authStates: AuthenticationState[] = [];
 const snapshots: SessionSnapshot[] = [];
+const syncNotices: SyncNotice[] = [];
 const service = new WhatsappService(
   db,
   cipher,
@@ -62,6 +64,9 @@ const service = new WhatsappService(
     ...silentPublisher,
     state: (state) => {
       snapshots.push(state);
+    },
+    sync: (notice) => {
+      syncNotices.push(notice);
     },
   },
   (auth) => {
@@ -94,6 +99,108 @@ after(async () => {
   await service.shutdown();
   await db.$disconnect();
   await rm(directory, { recursive: true, force: true });
+});
+
+test('REQ-017: contacts.upsert sincroniza contato e persiste após reabrir SQLite', async () => {
+  const isolated = await service.create('REQ-017 conexão fictícia');
+  const phoneNumber = '5511777000017';
+  const jid = `${phoneNumber}@s.whatsapp.net`;
+  try {
+    await service.connect(isolated.id);
+    const socket = sockets.at(-1)!;
+    socket.ev.emit('connection.update', { connection: 'open' });
+    await service.idle(isolated.id);
+    socket.ev.emit('contacts.upsert', [{ id: jid, phoneNumber, name: 'Contato REQ-017' }]);
+    await service.idle(isolated.id);
+
+    const reopened = createSqliteClient(databaseUrl);
+    try {
+      await reopened.$connect();
+      const contact = await reopened.contact.findUnique({ where: { phoneNumber } });
+      assert.ok(contact);
+      assert.equal(contact.name, 'Contato REQ-017');
+      assert.equal(contact.whatsappJid, jid);
+      assert.ok(syncNotices.some((notice) => notice.sessionId === isolated.id && notice.kind === 'contacts'));
+    } finally {
+      await reopened.$disconnect();
+    }
+  } finally {
+    await service.disconnect(isolated.id);
+  }
+});
+
+test('REQ-018: evento de contato busca foto fictícia e persiste após reabrir SQLite', async () => {
+  const isolated = await service.create('REQ-018 conexão fictícia');
+  const phoneNumber = '5511777000018';
+  const jid = `${phoneNumber}@s.whatsapp.net`;
+  const picture = 'https://example.invalid/req-018-profile.png';
+  try {
+    await service.connect(isolated.id);
+    const socket = sockets.at(-1)!;
+    socket.profilePicture = picture;
+    socket.ev.emit('connection.update', { connection: 'open' });
+    await service.idle(isolated.id);
+    socket.ev.emit('contacts.upsert', [{ id: jid, phoneNumber, name: 'Contato REQ-018' }]);
+    await service.idle(isolated.id);
+
+    const deadline = Date.now() + 5_000;
+    let profilePicture: string | null | undefined;
+    while (Date.now() < deadline && !profilePicture) {
+      profilePicture = (await db.contact.findUnique({ where: { phoneNumber }, select: { profilePicture: true } }))?.profilePicture;
+      if (!profilePicture) await delay(100);
+    }
+    assert.equal(profilePicture, picture);
+
+    const reopened = createSqliteClient(databaseUrl);
+    try {
+      await reopened.$connect();
+      const contact = await reopened.contact.findUnique({ where: { phoneNumber } });
+      assert.equal(contact?.profilePicture, picture);
+    } finally {
+      await reopened.$disconnect();
+    }
+  } finally {
+    await service.disconnect(isolated.id);
+  }
+});
+
+test('REQ-019: histórico recebido sincroniza contatos, conversa, mensagens e progresso', async () => {
+  const isolated = await service.create('REQ-019 conexão fictícia');
+  const phoneNumber = '5511777000019';
+  const jid = `${phoneNumber}@s.whatsapp.net`;
+  const noticeStart = syncNotices.length;
+  try {
+    await service.connect(isolated.id);
+    const socket = sockets.at(-1)!;
+    socket.ev.emit('connection.update', { connection: 'open' });
+    await service.idle(isolated.id);
+    socket.ev.emit('messaging-history.set', {
+      contacts: [{ id: jid, phoneNumber, name: 'Contato REQ-019' }],
+      chats: [{ id: jid, name: 'Contato REQ-019', conversationTimestamp: 1_792_779_000, unreadCount: 1 }],
+      messages: [message(jid, 'req-019-history', false, 'Histórico fictício')],
+      progress: 73,
+      isLatest: false,
+    });
+    await service.idle(isolated.id);
+
+    const reopened = createSqliteClient(databaseUrl);
+    try {
+      await reopened.$connect();
+      const contact = await reopened.contact.findUniqueOrThrow({ where: { phoneNumber } });
+      const conversation = await reopened.conversation.findUniqueOrThrow({
+        where: { sessionId_contactId: { sessionId: isolated.id, contactId: contact.id } },
+      });
+      assert.equal(conversation.hasHistory, true);
+      assert.equal(await reopened.chatMessage.count({ where: { conversationId: conversation.id, whatsappMessageId: 'req-019-history' } }), 1);
+      assert.ok(syncNotices.slice(noticeStart).some((notice) =>
+        notice.sessionId === isolated.id && notice.kind === 'history' && notice.count === 1 && notice.progress === 73,
+      ));
+    } finally {
+      await reopened.$disconnect();
+    }
+  } finally {
+    await service.disconnect(isolated.id);
+  }
 });
 
 test('cifra autenticada preserva bytes e detecta chave errada ou adulteração', async () => {
@@ -132,9 +239,10 @@ test('auth store persiste credenciais e categorias Signal v7, incluindo exclusã
 });
 
 test('conectar é idempotente; QR só fica em memória; abrir limpa QR e pausar ignora eventos antigos', async () => {
+  const previousCount = sockets.length;
   await Promise.all([service.connect(sessionId), service.connect(sessionId)]);
-  assert.equal(sockets.length, 1);
-  const socket = sockets[0]!;
+  assert.equal(sockets.length, previousCount + 1);
+  const socket = sockets.at(-1)!;
   socket.ev.emit('connection.update', { qr: 'qr-de-teste-nao-conecta-conta' });
   await service.idle(sessionId);
   const waiting = await service.snapshot(sessionId);
@@ -189,12 +297,17 @@ test('restartRequired reconecta; logout remoto apaga apenas as credenciais da se
   assert.equal(await db.whatsappAuthEntry.count({ where: { sessionId: other.id } }), 1);
 });
 
-test('etiquetas WhatsApp preservam origem; associação anterior à edição mantém vínculos', async () => {
-  await sync.labelAssociation(sessionId, {
+test('REQ-020: eventos WhatsApp importam etiqueta com origem e preservam vínculos', async () => {
+  await service.connect(sessionId);
+  const socket = sockets.at(-1)!;
+  socket.ev.emit('connection.update', { connection: 'open' });
+  await service.idle(sessionId);
+  socket.ev.emit('labels.association', {
     type: 'add',
     association: { type: LabelAssociationType.Chat, chatId: '5511888880000@s.whatsapp.net', labelId: '7' },
   });
-  await sync.labelEdit(sessionId, { id: '7', name: 'Novo lead', color: 2, deleted: false });
+  socket.ev.emit('labels.edit', { id: '7', name: 'Novo lead', color: 2, deleted: false });
+  await service.idle(sessionId);
   const label = await db.label.findUniqueOrThrow({
     where: { id: `wa:${sessionId}:7` },
     include: { contacts: true },
@@ -207,6 +320,7 @@ test('etiquetas WhatsApp preservam origem; associação anterior à edição man
     where: { sessionId },
     data: { autoLabelFirstMessage: true, firstMessageLabelId: label.id },
   });
+  await service.disconnect(sessionId);
 });
 
 test('desvinculação pausada exige conexão; falha remota não apaga credenciais', async () => {

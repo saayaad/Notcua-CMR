@@ -173,3 +173,25 @@ O comportamento foi aprovado localmente com provedor simulado e está marcado `C
 1. Em Android/iOS real, faça toque prolongado em uma conversa e numa mensagem fictícia; confirme abertura do menu sem selecionar texto inesperadamente. Use ⋯ na conversa e confira foco/contraste.
 2. Em janela destacada real, abra e feche o menu em Biblioteca e Mensagem; confirme que permanece no painel/documento correto.
 3. Com leitor de tela e teclado, percorra os itens por seta, Home/End, escolha sem executar exclusão/envio e confirme retorno do foco. Registre navegador/dispositivo e captura.
+
+## REQ-017–020 — conexão WhatsApp de teste descartável
+
+### REQ-017 — agenda de contatos
+1. Conecte uma sessão de teste a um telefone/conta descartável; não use produção nem envie mensagem.
+2. Aguarde a sincronização e compare nomes e números disponíveis com a agenda dessa conta.
+3. Recarregue o app e confirme os contatos sincronizados; anote contatos ausentes ou duplicados.
+
+### REQ-018 — fotos de perfil
+1. Na mesma sessão descartável, escolha contato cuja foto esteja visível para a conta.
+2. Aguarde a sincronização automática da foto e confira a imagem no contato.
+3. Recarregue o app; se a privacidade ocultar a foto, registre o limite sem forçar acesso.
+
+### REQ-019 — histórico disponível
+1. Use uma sessão descartável que já tenha conversas e histórico acessível; não envie conteúdo novo.
+2. Aguarde o evento de sincronização e compare conversas, mensagens e mídias que o WhatsApp disponibilizar.
+3. Recarregue o app e registre diferenças de volume; conteúdo indisponível pelo WhatsApp não conta como falha local.
+
+### REQ-020 — etiquetas importadas
+1. Na conta descartável, crie uma etiqueta e associe-a a um contato fictício já existente.
+2. Aguarde a sincronização e confira nome, cor e vínculo no app local.
+3. Recarregue e confirme persistência e origem “Importado do whatsapp”; não altere uma conta real.

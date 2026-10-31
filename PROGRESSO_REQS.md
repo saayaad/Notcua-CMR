@@ -289,3 +289,11 @@ Sem chave de IA autorizada, não serão repetidos os cenários que cadastram, ed
 - Writes de API/socket e chamadas externas foram interceptados. `.audit/noctua-audit.db` permaneceu 2.039.808 bytes, `30/10/2026 15:07:20`.
 - REQ-680 aguarda aprovação para eventual reação real. A lista de verificações externas está em `REVISAO/CHECKLIST-MANUAL.md`.
 - Próximo módulo: primeiro módulo pendente depois de REQ-687 na LEDGER. Script `scripts/iniciar-noctua-online.ps1` não entra no commit; sem push/publicação.
+
+## Lote Conexões — REQ-017–021 — 31/10/2026
+
+- Quatro requisitos foram fechados como `COMPLETO-LOCAL` (REQ-017–020), com eventos WhatsApp fictícios, fotos `example.invalid` e SQLite temporário; REQ-021 ficou `COMPLETO` após persistência de etiqueta e vínculo em API/SQLite temporário.
+- Testes focados: 31/31 em `whatsapp.test.ts`, `photo-sync.test.ts` e `crm.test.ts`; Playwright REQ-021 passou 3/3 em 1366×768, 1920×1080 e 390×844. Capturas e JSONs em `REVISAO/evidencias/REQ-021/`; provas de servidor em cada pasta REQ-017–020.
+- Nenhum defeito de produto confirmado. A contagem global do FakeSocket foi isolada por baseline após a inclusão de três sessões de teste. No E2E, a fixture passou a incluir `labelId`; o seletor seguiu o combobox customizado observado no DOM. Critérios não foram alterados.
+- Front/API responderam HTTP 200. `.audit/noctua-audit.db` permaneceu em 2.039.808 bytes, `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`. Todas as mutações visuais foram interceptadas; nenhuma produção foi acessada.
+- Pendência externa agrupada: validar agenda, fotos disponíveis, histórico e etiquetas em uma conta/telefone WhatsApp descartável; passos em `REVISAO/CHECKLIST-MANUAL.md`. Próximo módulo por ordem do ledger: Mensagens, começando pela primeira REQ pendente após o módulo Conexões.

@@ -294,6 +294,58 @@ test('CRUD de etapas protege etiquetas vinculadas/importadas e API valida entrad
     .expect(422);
 });
 
+test('REQ-021: cria etiqueta local identificável e vincula contato após reabrir SQLite', async () => {
+  const app = createApp(db, whatsapp);
+  const phoneNumber = '5511333330021';
+  const contact = await db.contact.create({
+    data: { name: 'Contato REQ-021', phoneNumber, whatsappJid: `${phoneNumber}@s.whatsapp.net` },
+  });
+  const conversation = await db.conversation.create({ data: { sessionId, contactId: contact.id } });
+  const created = await request(app)
+    .post(`/api/crm/sessions/${sessionId}/labels`)
+    .send({ name: 'Qualificação fictícia', color: '#2A88DD', description: 'Validar oportunidade de auditoria.' })
+    .expect(201);
+
+  assert.match(created.body.id, /^local:[0-9a-f-]{36}$/i);
+  assert.equal(created.body.name, 'Qualificação fictícia');
+  assert.equal(created.body.color, '#2A88DD');
+  assert.equal(created.body.description, 'Validar oportunidade de auditoria.');
+  await request(app)
+    .post(`/api/crm/sessions/${sessionId}/move`)
+    .send({
+      conversationId: conversation.id,
+      sourceLabelId: null,
+      targetLabelId: created.body.id,
+      beforeConversationId: null,
+      version: 0,
+    })
+    .expect(200);
+
+  const board = await request(app).get(`/api/crm/sessions/${sessionId}/board`).expect(200);
+  const column = board.body.columns.find((item: { id: string }) => item.id === created.body.id);
+  assert.deepEqual(column?.conversationIds, [conversation.id]);
+  assert.equal(
+    board.body.cards.find((item: { conversationId: string }) => item.conversationId === conversation.id)
+      ?.contact.labels[0]?.labelId,
+    created.body.id,
+  );
+
+  const reopened = createSqliteClient(url);
+  try {
+    await reopened.$connect();
+    const label = await reopened.label.findUniqueOrThrow({
+      where: { id: created.body.id },
+      include: { contacts: true },
+    });
+    assert.equal(label.name, 'Qualificação fictícia');
+    assert.equal(label.color, '#2A88DD');
+    assert.equal(label.description, 'Validar oportunidade de auditoria.');
+    assert.equal(label.contacts.length, 1);
+    assert.equal(label.contacts[0]?.contactId, contact.id);
+  } finally {
+    await reopened.$disconnect();
+  }
+});
 test('alteração no atendimento substitui uma sincronização pendente do quadro', async () => {
   connected = false;
   await move(one, origin, target);

@@ -35,6 +35,7 @@ for (const file of testFiles) {
 const external = /WhatsApp real|iPhone|Android|aparelho|dispositivo físico|segundo monitor|2º monitor|janela externa real|e-mail real|chave real|conta real|Vercel|Firebase|túnel|produção/i;
 const visual = /exibir|mostrar|abrir|interface|tela|botão|modal|layout|painel|menu|tooltip|arrastar|redimensionar|prévia|visualizar|tema|cor|ícone|responsiv/i;
 const typeOverrides = {
+  'REQ-017': 'C', 'REQ-018': 'C', 'REQ-019': 'C', 'REQ-020': 'C', 'REQ-021': 'B',
   'REQ-098': 'C', 'REQ-099': 'C', 'REQ-100': 'C', 'REQ-101': 'A', 'REQ-102': 'B',
   'REQ-103': 'B', 'REQ-104': 'B', 'REQ-105': 'B', 'REQ-106': 'B', 'REQ-107': 'B',
   'REQ-108': 'B', 'REQ-109': 'B', 'REQ-110': 'B', 'REQ-111': 'C', 'REQ-112': 'C',
@@ -141,6 +142,7 @@ const typeOverrides = {
   'REQ-684': 'A', 'REQ-685': 'A', 'REQ-686': 'A', 'REQ-687': 'A',
   'REQ-695': 'C', 'REQ-696': 'C', 'REQ-697': 'C',
 };
+const dateOverrides = { 'REQ-017': '2026-10-31', 'REQ-018': '2026-10-31', 'REQ-019': '2026-10-31', 'REQ-020': '2026-10-31', 'REQ-021': '2026-10-31' };
 const rows = [];
 for (const line of source.split(/\r?\n/)) {
   if (!/^\| REQ-\d+ \|/.test(line)) continue;
@@ -156,7 +158,7 @@ for (const line of source.split(/\r?\n/)) {
     : estado.includes('DECISÃO') ? 'DECISÃO' : estado.includes('DESCONECTADO') ? 'DESCONECTADA'
       : estado.includes('AUSENTE') ? 'AUSENTE' : 'PENDENTE';
   rows.push({ id, modulo, tela: modulo, criterio_aceite: criterio, estado, tipo_de_prova: tipo,
-    teste: tests.join(';'), evidencia, resultado, bloqueio: observacao, data: '2026-10-30' });
+    teste: tests.join(';'), evidencia, resultado, bloqueio: observacao, data: dateOverrides[id] ?? '2026-10-30' });
 }
 
 const headers = ['id', 'modulo', 'tela', 'criterio_aceite', 'estado', 'tipo_de_prova', 'teste', 'evidencia', 'resultado', 'bloqueio', 'data', 'commit'];

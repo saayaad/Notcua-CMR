@@ -1,0 +1,131 @@
+{
+  "req": "REQ-021",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "labelId": "local:audit-req021-qualificacao",
+  "board": {
+    "cards": [
+      {
+        "conversationId": "audit-req021-ana",
+        "contact": {
+          "id": "audit-contact-req021",
+          "name": "Ana Exemplo",
+          "phoneNumber": "5511999000021",
+          "profilePicture": null,
+          "labels": [
+            {
+              "labelId": "local:audit-req021-qualificacao",
+              "label": {
+                "id": "local:audit-req021-qualificacao",
+                "name": "Qualificação fictícia",
+                "color": "#2a88dd",
+                "whatsappId": null
+              }
+            }
+          ]
+        },
+        "title": "Oportunidade fictícia REQ-021",
+        "valueInCents": 0,
+        "status": "OPEN",
+        "version": 0,
+        "unreadCount": 0,
+        "attendanceStatus": "OPEN",
+        "lastMessageAt": null,
+        "sync": "SYNCED"
+      }
+    ],
+    "columns": [
+      {
+        "id": "unlabelled",
+        "labelId": null,
+        "name": "Sem etiqueta",
+        "color": "#9294a4",
+        "description": "Contatos ainda sem uma etapa ou etiqueta.",
+        "whatsappId": null,
+        "conversationIds": [],
+        "totalValueInCents": 0
+      },
+      {
+        "id": "stage-new",
+        "labelId": "stage-new",
+        "name": "Novos",
+        "color": "#3b82f6",
+        "description": "Etapa inicial fictícia.",
+        "whatsappId": null,
+        "conversationIds": [],
+        "totalValueInCents": 0
+      },
+      {
+        "id": "local:audit-req021-qualificacao",
+        "labelId": "local:audit-req021-qualificacao",
+        "name": "Qualificação fictícia",
+        "color": "#2a88dd",
+        "description": "Validar oportunidade de auditoria.",
+        "whatsappId": null,
+        "conversationIds": [
+          "audit-req021-ana"
+        ],
+        "totalValueInCents": 0
+      }
+    ],
+    "total": 1,
+    "loaded": 1,
+    "limit": 500,
+    "pendingSync": 0,
+    "failedSync": 0
+  },
+  "mutations": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/crm/sessions/audit-session/labels",
+      "body": {
+        "name": "Qualificação fictícia",
+        "color": "#2a88dd",
+        "description": "Validar oportunidade de auditoria."
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/crm/sessions/audit-session/move",
+      "body": {
+        "conversationId": "audit-req021-ana",
+        "sourceLabelId": "stage-new",
+        "targetLabelId": "local:audit-req021-qualificacao",
+        "beforeConversationId": null,
+        "version": 0
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    }
+  ],
+  "interceptedWrites": [
+    "POST /api/operations/directory/presence",
+    "POST /api/crm/sessions/audit-session/labels",
+    "POST /api/crm/sessions/audit-session/move",
+    "POST /api/operations/directory/presence"
+  ],
+  "unexpectedWrites": [],
+  "blockedExternal": [
+    "https://apis.google.com"
+  ],
+  "consoleErrors": [
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://apis.google.com/js/api.js?onload=__iframefcb921534",
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://apis.google.com/js/api.js?onload=__iframefcb715644"
+  ],
+  "pageErrors": [],
+  "failures": [],
+  "screenshotError": ""
+}
