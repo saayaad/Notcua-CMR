@@ -286,3 +286,9 @@ A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, po
 - Correção: o foco inicial agora usa `focus({ preventScroll: true })`; o fechamento por scroll espera dois frames para ignorar apenas a rolagem de colocação inicial. Rolagens posteriores do usuário continuam fechando o menu.
 - Reteste: `e2e/context-menu-audit.spec.ts` passou 18/18 em 1366×768, 1920×1080 e 390×844, inclusive clique direito real em 1920×1080. Nenhum envio ou mutação real.
 - Estado: corrigido localmente em 30/10/2026.
+
+## Clareza e feedback de controles documentados — REQ-448 — 31/10/2026
+
+- Salvar macro já bloqueava o botão durante o pedido, porém não informava explicitamente carregamento nem sucesso. Acrescentados rótulo Salvando macro, aria-busy e toast Macro salva após atualização da biblioteca.
+- Teste de erro 503 fictício preserva nome/texto; retry transmite o mesmo conteúdo e confirma sucesso em três viewports. Não classificado como novo defeito de regra de negócio.
+- Complemento BUG-035: seletor Tipo de ação agora diz somente Adicionar/Remover etiqueta, e estilos de etiquetas não substituem cor de etapa. Inicialização dos vínculos antigos acontece antes de workers/requisições; novo teste garante que uma etiqueta aplicada antes da primeira visita ao CRM não move o cartão.

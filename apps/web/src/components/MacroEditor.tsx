@@ -96,6 +96,7 @@ export function MacroEditor({
             { name, actions },
           )
             .then(onSaved)
+            .then(() => notify('Macro salva.'))
             .catch((error) => notify(errorMessage(error), true))
             .finally(() => setBusy(false));
         }}
@@ -261,9 +262,12 @@ export function MacroEditor({
                 <option value="TEXT">Enviar texto</option>
                 <option value="ASSET">Enviar recurso da biblioteca</option>
                 {action.type === 'IMPORTED' && <option value="IMPORTED">Arquivo original importado</option>}
-                <option value="ADD_LABEL">Adicionar etiqueta / etapa do CRM</option>
-                <option value="REMOVE_LABEL">Remover etiqueta / etapa do CRM</option>
+                <option value="ADD_LABEL">Adicionar etiqueta</option>
+                <option value="REMOVE_LABEL">Remover etiqueta</option>
                 <option value="UTILITY">Temporizador ou utilitário</option>
+                {(simulated || action.type === 'SIMULATED') && (
+                  <option value="SIMULATED">Conector fictício local</option>
+                )}
               </Select>
             </label>
             {action.type === 'TEXT' && (
@@ -443,8 +447,8 @@ export function MacroEditor({
           <button type="button" className="button" onClick={onClose}>
             Cancelar
           </button>
-          <button className="button primary" disabled={busy}>
-            Salvar macro
+          <button className="button primary" disabled={busy} aria-busy={busy}>
+            {busy ? 'Salvando macro…' : 'Salvar macro'}
           </button>
         </div>
       </form>

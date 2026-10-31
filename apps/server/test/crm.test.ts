@@ -375,3 +375,33 @@ test('REQ-466: conexão estrangeira não pode mover, editar ou excluir etapas', 
     'Privada',
   );
 });
+
+test('REQ-466: etiquetas aplicadas antes da primeira visita ao CRM não viram etapas', async () => {
+  const session = await whatsapp.create('Nova conexão fictícia');
+  const contact = await db.contact.create({
+    data: {
+      name: 'Novo contato fictício',
+      phoneNumber: '5511000000466',
+      whatsappJid: '5511000000466@s.whatsapp.net',
+    },
+  });
+  const conversation = await db.conversation.create({
+    data: { sessionId: session.id, contactId: contact.id },
+  });
+  const label = await db.label.create({
+    data: { id: 'audit-tag-before-board', name: 'Etiqueta sem etapa', sessionId: session.id },
+  });
+  // Initialization happens at the runtime/request boundary before the first label mutation.
+  await crm.initializeStages();
+  const app = createApp(db, whatsapp);
+  await request(app)
+    .put(`/api/attendance/sessions/${session.id}/conversations/${conversation.id}/labels/${label.id}`)
+    .send({ active: true })
+    .expect(200);
+  const board = await crm.board(session.id, {});
+  assert.deepEqual(board.columns.find((column) => column.id === 'unlabelled')?.conversationIds, [
+    conversation.id,
+  ]);
+  assert.deepEqual(board.columns.find((column) => column.id === label.id)?.conversationIds, []);
+  assert.equal(await db.contactLabel.count({ where: { contactId: contact.id, labelId: label.id } }), 1);
+});

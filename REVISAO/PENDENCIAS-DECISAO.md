@@ -10,12 +10,12 @@ Fonte: LEDGER.csv, decisões do usuário e execução local de 31/10/2026. Esta 
 - REQ-567 — adiada; política de pausa e horários de envio não definidos.
 - REQ-573 — Parte 8 não fornecida; depende do envio futuro do texto.
 
-## Decisões registradas; execução/verificação pendente — 8 requisitos
+## Resultados das decisões aprovadas — 8 requisitos
 
-- REQ-197 — DECISÃO pendente de escopo: a decisão A está registrada; prova parcial cobriu botões visíveis nas quatro telas REQ-194, mas não todas as 504 ações. Pergunta: aprovar homologação por módulo/amostragem segura ou fornecer inventário versionado com resultado esperado de ação/sucesso/erro para cada botão?
-- REQ-223 — DECISÃO: inventário revalidado em 504 botões/70 arquivos, mas vínculo sintático não prova efeito. Pergunta: aprova homologação segura por módulo/amostragem ou fornecerá inventário versionado das 504 ações com resultado esperado de sucesso/erro e permissões?
+- REQ-197 — COMPLETO-LOCAL: CRM salva etapa; campanhas atualizam e filtram; macro mostra carregamento/erro/sucesso e preserva rascunho. Aceite representativo aprovado. Teste individual vinculado, 3/3 viewports; não certifica todas as ações.
+- REQ-223 — COMPLETO-LOCAL: Personalização altera prévia, confirma densidade, informa sucesso e mantém após reload. Aceite representativo aprovado. Teste individual vinculado, 3/3 viewports; não certifica todas as ações.
 - REQ-401 — DECISÃO somente do contrato externo: telemetria local de atribuição CRM validada 2/2, sem PII. Informar eventos CTWA/referral, campos do payload, destino e autenticação; não há base documental para inferir esse contrato.
-- REQ-448 — A escolhida, mas a inspeção visual em 3 viewports não identifica quais botões ou qual mudança visual são o aceite. Pergunta: quais botões devem mudar e qual resultado visual define “melhorar”?
+- REQ-448 — COMPLETO-LOCAL: Salvar macro mostra carregamento e impede novo clique; erro preserva rascunho; retry salva conteúdo e informa sucesso. Rótulos claros de etiquetas. Teste individual vinculado, 3/3 viewports; não certifica todas as ações.
 - REQ-461 — COMPLETO-LOCAL: conector fictício autorizado e validado; prova externa futura no checklist.
 - REQ-462 — COMPLETO-LOCAL: conector fictício autorizado e validado; prova externa futura no checklist.
 - REQ-465 — COMPLETO-LOCAL: conector fictício autorizado e validado; prova externa futura no checklist.
@@ -28,7 +28,7 @@ Fonte: LEDGER.csv, decisões do usuário e execução local de 31/10/2026. Esta 
 
 ## Contagens atuais após atualização documental
 
-- DECISÃO no LEDGER: 9 (inclui os 5 itens de infraestrutura/documentação acima).
+- DECISÃO no LEDGER: 6 (inclui os 5 itens de infraestrutura/documentação acima).
 - A VERIFICAR no LEDGER: 0.
 - AUSENTE no LEDGER: 0.
 - DESCONECTADO no LEDGER: 0.

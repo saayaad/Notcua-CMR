@@ -1,0 +1,24 @@
+{
+  "req": "REQ-223",
+  "acceptance": "Amostragem por módulo aprovada em 31/10/2026",
+  "inventory": [
+    {
+      "module": "Personalização",
+      "controls": [
+        "Tamanho dos controles",
+        "Confirmar alterações"
+      ],
+      "expected": [
+        "prévia expandida",
+        "preferência enviada",
+        "toast sucesso",
+        "densidade após reload"
+      ],
+      "reqs": [
+        "REQ-223"
+      ],
+      "test": "e2e/representative-controls.spec.ts"
+    }
+  ],
+  "limit": "Não representa teste individual de todos os 504 botões do inventário histórico; ações externas e funções ambíguas não presumidas."
+}

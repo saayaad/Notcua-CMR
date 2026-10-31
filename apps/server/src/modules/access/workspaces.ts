@@ -14,6 +14,7 @@ import { authorizeAccount, authorizeToken, configureAuthorization, type Identity
 import { errorHandler } from '../../http/errors.js';
 import { AppError } from '../../shared/errors.js';
 import { createApp } from '../../app.js';
+import { CrmService } from '../crm/crm.service.js';
 import { RealtimeHub } from '../../realtime/socket.js';
 import { WhatsappService } from '../whatsapp/whatsapp.service.js';
 import { CredentialCipher } from '../whatsapp/credential-cipher.js';
@@ -72,6 +73,7 @@ export async function buildWorkspaceRuntime(
   keyFile: string,
 ) {
   const whatsapp = new WhatsappService(db, await CredentialCipher.load(keyFile), hub.scope(id));
+  await new CrmService(db, whatsapp).initializeStages();
   const messaging = new LicensedMessaging(db, whatsapp, check);
   const sequences = new SequenceService(db, whatsapp, messaging);
   const flows = new FlowEngine(db, whatsapp, messaging);

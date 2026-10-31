@@ -70,10 +70,21 @@ const sortCards = (a: Chat, b: Chat, labelId: string | null) =>
 
 export class CrmService {
   private readonly mutations = new SerialQueue();
+  private readonly initializedSessions = new Set<string>();
   constructor(
     private readonly db: PrismaClient,
     private readonly whatsapp: WhatsappService,
   ) {}
+
+  async initializeStages() {
+    const sessions = await this.db.whatsappSession.findMany({ select: { id: true } });
+    for (const session of sessions) {
+      if (!this.initializedSessions.has(session.id)) {
+        await this.ensureStages(session.id);
+        this.initializedSessions.add(session.id);
+      }
+    }
+  }
 
   // Snapshot the legacy board once; later label changes never enter stage storage.
   private async ensureStages(sessionId: string) {

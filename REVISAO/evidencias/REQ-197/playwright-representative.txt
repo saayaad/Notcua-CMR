@@ -1,0 +1,42 @@
+
+Running 9 tests using 1 worker
+
+
+
+[1A[2K(node:15924) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[1A[2K(node:15924) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[1A[2K[1/9] [desktop-1366] › e2e\representative-controls.spec.ts:55:5 › REQ-197: CRM salva etapa e Campanhas atualiza dados e filtra resultados verificáveis
+[1A[2K[2/9] [desktop-1366] › e2e\representative-controls.spec.ts:142:5 › REQ-223: Personalização confirma densidade, mostra sucesso e mantém após reload
+[1A[2K[3/9] [desktop-1366] › e2e\representative-controls.spec.ts:173:5 › REQ-448 / REQ-197: macro mostra carregamento, preserva rascunho no erro e informa sucesso ao salvar
+
+[1A[2K(node:620) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+
+[1A[2K(node:620) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1A[2K[4/9] [desktop-1920] › e2e\representative-controls.spec.ts:55:5 › REQ-197: CRM salva etapa e Campanhas atualiza dados e filtra resultados verificáveis
+[1A[2K[5/9] [desktop-1920] › e2e\representative-controls.spec.ts:142:5 › REQ-223: Personalização confirma densidade, mostra sucesso e mantém após reload
+[1A[2K[6/9] [desktop-1920] › e2e\representative-controls.spec.ts:173:5 › REQ-448 / REQ-197: macro mostra carregamento, preserva rascunho no erro e informa sucesso ao salvar
+[1A[2K(node:8456) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+
+[1A[2K(node:8456) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[1A[2K[7/9] [mobile-390] › e2e\representative-controls.spec.ts:55:5 › REQ-197: CRM salva etapa e Campanhas atualiza dados e filtra resultados verificáveis
+[1A[2K[8/9] [mobile-390] › e2e\representative-controls.spec.ts:142:5 › REQ-223: Personalização confirma densidade, mostra sucesso e mantém após reload
+[1A[2K[9/9] [mobile-390] › e2e\representative-controls.spec.ts:173:5 › REQ-448 / REQ-197: macro mostra carregamento, preserva rascunho no erro e informa sucesso ao salvar
+[1A[2K  9 passed (56.1s)
+
+To open last HTML report run:
+[36m[39m
+[36m  npx playwright show-report .audit\playwright-report[39m
+[36m[39m

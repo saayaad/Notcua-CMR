@@ -260,3 +260,9 @@ O teste local de desconexão/reconexão e de não repetição de POST passou. A 
 1. Somente após autorização futura, usar conector e números descartáveis para convite nativo, vCard e lista interativa; nunca produção.
 2. Conferir no aparelho recebedor convite válido, contato importável e seleção de opção, incluindo erros de formato/suporte.
 3. Registrar versão do conector/aparelho e recibos por requisito. A prova atual é exclusivamente simulada; nenhum envio externo está autorizado nesta rodada.
+
+## BUG-011 — diagnóstico manual após reinício, sem iniciador online
+
+1. Quando for conveniente, reinicie o Windows; não execute Iniciar Noctua.cmd nem scripts/iniciar-noctua-online.ps1 nesta validação. Abra Windows PowerShell e entre na pasta oficial do projeto.
+2. Execute powershell.exe -NoProfile -File .\scripts\audit-validate-signature.ps1; o diagnóstico importa Microsoft.PowerShell.Security e consulta somente a assinatura do PowerShell já instalado, gravando .audit/manual-signature.json. Não cria túnel, servidor ou publicação.
+3. Informe validated e attempts do recibo. Isso testa a condição ambiental após reinício; não comprova o iniciador protegido ou a assinatura da Cloudflare, cuja validação integral continua fora desta autorização. Roteiro apenas preparado e validado pelo parser; não executado pelo agente.

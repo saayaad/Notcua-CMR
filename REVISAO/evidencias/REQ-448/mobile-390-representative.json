@@ -1,0 +1,14 @@
+{
+  "req": "REQ-448",
+  "result": "APROVADO-LOCAL",
+  "acceptance": "Cenários representativos por módulo aprovados pelo usuário em 31/10/2026; não certifica todas as 504 ações.",
+  "module": "Atendimento",
+  "asserted": [
+    "save-loading-disabled",
+    "503-visible-feedback",
+    "draft-preserved",
+    "retry",
+    "success-feedback"
+  ],
+  "apiMutationsMocked": true
+}

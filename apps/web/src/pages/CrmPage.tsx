@@ -51,7 +51,6 @@ export function CrmPage({
   revision,
   connected,
   onOpenChat,
-  labelStyles,
 }: {
   sessionId: string;
   revision: number;
@@ -314,10 +313,7 @@ export function CrmPage({
                 >
                   <header>
                     <div>
-                      <i style={{ background: labelStyles[column.id]?.color || column.color }} />
-                      {labelStyles[column.id]?.icon && (
-                        <b className="kanban-column-icon">{labelStyles[column.id]?.icon}</b>
-                      )}
+                      <i style={{ background: column.color }} />
                       <h2 title={column.name}>{column.name}</h2>
                       <span>{column.conversationIds.length}</span>
                       {column.whatsappId && <Wifi size={13} aria-label="Etiqueta do WhatsApp" />}

@@ -17,6 +17,7 @@ import { MessagingService } from './modules/attendance/messaging.service.js';
 import { FlowEngine } from './modules/flows/flow.engine.js';
 import { flowRoutes } from './modules/flows/flow.routes.js';
 import { crmRoutes } from './modules/crm/crm.routes.js';
+import { CrmService } from './modules/crm/crm.service.js';
 import { SequenceService } from './modules/attendance/sequence.service.js';
 import { operationsRoutes } from './modules/operations/operations.routes.js';
 
@@ -107,6 +108,13 @@ export function createApp(
   });
   app.use('/api/backups', backupRoutes(db));
   app.use(express.json({ limit: `${env.BODY_LIMIT_MB}mb` }));
+  if (whatsapp) {
+    const crm = new CrmService(db, whatsapp);
+    app.use('/api', async (_req, _res, next) => {
+      await crm.initializeStages();
+      next();
+    });
+  }
   if (whatsapp) app.use('/api/whatsapp', whatsappRoutes(db, whatsapp));
   if (whatsapp) app.use('/api/crm', crmRoutes(db, whatsapp));
   if (whatsapp) {

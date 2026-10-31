@@ -1,0 +1,12 @@
+{
+  "req": "REQ-197",
+  "result": "APROVADO-LOCAL",
+  "module": "Atendimento",
+  "actions": [
+    "save-loading-disabled",
+    "error-feedback",
+    "draft-preserved",
+    "retry-success"
+  ],
+  "attempts": 2
+}

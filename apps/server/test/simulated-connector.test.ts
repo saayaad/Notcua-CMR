@@ -148,7 +148,7 @@ for (const fixture of fixtures)
       .send(changed)
       .expect(200);
     await request(app).post(endpoint).send({ requestId }).expect(409);
-    const evidence = join(root, 'REVISAO/evidencias', fixture.req);
+    const evidence = join(process.env.AUDIT_EVIDENCE_ROOT ?? join(root, 'REVISAO/evidencias'), fixture.req);
     await mkdir(evidence, { recursive: true });
     await writeFile(
       join(evidence, 'simulated-connector.json'),

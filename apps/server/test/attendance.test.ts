@@ -326,7 +326,7 @@ test('REQ-381 comprime vídeo pesado no endpoint compartilhado pelo chat e pela 
   execFileSync(ffmpeg, [
     '-nostdin', '-v', 'error', '-i', compressedPath, '-frames:v', '1', '-f', 'null', '-',
   ], { windowsHide: true });
-  const evidenceDirectory = fileURLToPath(new URL('../../../REVISAO/evidencias/REQ-381/', import.meta.url));
+  const evidenceDirectory = (process.env.AUDIT_EVIDENCE_ROOT ? join(process.env.AUDIT_EVIDENCE_ROOT, 'REQ-381') : fileURLToPath(new URL('../../../REVISAO/evidencias/REQ-381/', import.meta.url)));
   await mkdir(evidenceDirectory, { recursive: true });
   await writeFile(join(evidenceDirectory, 'sqlite-temporario.json'), JSON.stringify({
     req: 'REQ-381',

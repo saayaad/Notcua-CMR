@@ -1,0 +1,61 @@
+{
+  "req": "REQ-197",
+  "acceptance": "Amostragem por módulo aprovada em 31/10/2026",
+  "inventory": [
+    {
+      "module": "CRM",
+      "controls": [
+        "Nova etapa",
+        "Salvar etapa"
+      ],
+      "expected": [
+        "campos enviados",
+        "coluna criada",
+        "toast de sucesso",
+        "cor da etapa independente da etiqueta"
+      ],
+      "reqs": [
+        "REQ-197",
+        "REQ-466"
+      ],
+      "test": "e2e/representative-controls.spec.ts"
+    },
+    {
+      "module": "Campanhas",
+      "controls": [
+        "Atualizar envios",
+        "Buscar campanha"
+      ],
+      "expected": [
+        "nova consulta muda conteúdo",
+        "filtrar oculta/restaura campanha"
+      ],
+      "reqs": [
+        "REQ-197"
+      ],
+      "test": "e2e/representative-controls.spec.ts"
+    },
+    {
+      "module": "Atendimento",
+      "controls": [
+        "Criar",
+        "Macros",
+        "Salvar macro"
+      ],
+      "expected": [
+        "draft editável",
+        "carregamento desabilita botão",
+        "503 mostra erro",
+        "rascunho preservado",
+        "retry salva conteúdo",
+        "sucesso visível"
+      ],
+      "reqs": [
+        "REQ-448",
+        "REQ-197"
+      ],
+      "test": "e2e/representative-controls.spec.ts"
+    }
+  ],
+  "limit": "Não representa teste individual de todos os 504 botões do inventário histórico; ações externas e funções ambíguas não presumidas."
+}

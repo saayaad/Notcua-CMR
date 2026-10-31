@@ -1,0 +1,16 @@
+{
+  "req": "REQ-223",
+  "result": "APROVADO-LOCAL",
+  "acceptance": "Cenários representativos por módulo aprovados pelo usuário em 31/10/2026; não certifica todas as 504 ações.",
+  "modules": [
+    "Personalização"
+  ],
+  "asserted": [
+    "preview",
+    "confirm-action",
+    "success-feedback",
+    "reload-persistence"
+  ],
+  "preferencesBackend": "fixture local",
+  "certification": "Amostragem aprovada, não prova de todas as ações."
+}

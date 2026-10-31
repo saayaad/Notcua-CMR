@@ -1,0 +1,28 @@
+{
+  "req": "REQ-448",
+  "acceptance": "Amostragem por módulo aprovada em 31/10/2026",
+  "inventory": [
+    {
+      "module": "Atendimento",
+      "controls": [
+        "Criar",
+        "Macros",
+        "Salvar macro"
+      ],
+      "expected": [
+        "draft editável",
+        "carregamento desabilita botão",
+        "503 mostra erro",
+        "rascunho preservado",
+        "retry salva conteúdo",
+        "sucesso visível"
+      ],
+      "reqs": [
+        "REQ-448",
+        "REQ-197"
+      ],
+      "test": "e2e/representative-controls.spec.ts"
+    }
+  ],
+  "limit": "Não representa teste individual de todos os 504 botões do inventário histórico; ações externas e funções ambíguas não presumidas."
+}

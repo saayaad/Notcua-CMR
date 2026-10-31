@@ -107,7 +107,7 @@ test('REQ-401: atribuição CRM gera eventos locais mínimos de sucesso/erro com
     await reopened.$disconnect();
   }
   assert.equal(await db.chatMessage.count(), 0);
-  const directory = join(root, 'REVISAO/evidencias/REQ-401');
+  const directory = join(process.env.AUDIT_EVIDENCE_ROOT ?? join(root, 'REVISAO/evidencias'), 'REQ-401');
   await mkdir(directory, { recursive: true });
   await writeFile(
     join(directory, 'local-telemetry.json'),

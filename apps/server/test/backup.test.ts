@@ -414,7 +414,7 @@ test('REQ-079: importa documento Base64 com MIME e bytes preservados e reexporta
   const object = exported.objectsList.find((item) => item.id === document.fileId);
   assert.equal(object?.mimeType, 'application/pdf');
   assert.deepEqual(Buffer.from(object!.base64, 'base64'), bytes);
-  const directory = fileURLToPath(new URL('../../../REVISAO/evidencias/REQ-079/', import.meta.url));
+  const directory = (process.env.AUDIT_EVIDENCE_ROOT ? join(process.env.AUDIT_EVIDENCE_ROOT, 'REQ-079') : fileURLToPath(new URL('../../../REVISAO/evidencias/REQ-079/', import.meta.url)));
   await mkdir(directory, { recursive: true });
   await writeFile(join(directory, 'sqlite-temporario.json'), JSON.stringify({
     req: 'REQ-079', result: 'APROVADO', database: 'SQLite temporário descartável',
@@ -458,7 +458,7 @@ test('REQ-089: mantém nove agendamentos Sutofly e fluxo como rascunhos na conex
   await worker.flush();
   assert.equal(await db.deliveryTask.count({ where: { batchId: { in: batchIds }, status: 'QUEUED' } }), 9);
   assert.deepEqual(sends, []);
-  const directory = fileURLToPath(new URL('../../../REVISAO/evidencias/REQ-089/', import.meta.url));
+  const directory = (process.env.AUDIT_EVIDENCE_ROOT ? join(process.env.AUDIT_EVIDENCE_ROOT, 'REQ-089') : fileURLToPath(new URL('../../../REVISAO/evidencias/REQ-089/', import.meta.url)));
   await mkdir(directory, { recursive: true });
   await writeFile(join(directory, 'sqlite-temporario.json'), JSON.stringify({
     req: 'REQ-089', result: 'APROVADO', database: 'SQLite temporário descartável',
@@ -496,7 +496,7 @@ test('REQ-090: importa ZapVoice na conexão fictícia com todos os fluxos desati
       draftStartNode: { id: 'req090-start', type: 'start', position: { x: 0, y: 0 }, data: { nextNodeIds: ['req090-text'] } },
     }],
   });
-  const directory = fileURLToPath(new URL('../../../REVISAO/evidencias/REQ-090/', import.meta.url));
+  const directory = (process.env.AUDIT_EVIDENCE_ROOT ? join(process.env.AUDIT_EVIDENCE_ROOT, 'REQ-090') : fileURLToPath(new URL('../../../REVISAO/evidencias/REQ-090/', import.meta.url)));
   await mkdir(directory, { recursive: true });
   await writeFile(join(directory, 'sqlite-temporario.json'), JSON.stringify({
     req: 'REQ-090', result: 'APROVADO', database: 'SQLite temporário descartável',
