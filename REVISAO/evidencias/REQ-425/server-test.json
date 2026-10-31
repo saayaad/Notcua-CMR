@@ -6,5 +6,13 @@
   "observacao": "Prova confirmou cache aprovado, validade, isolamento e bloqueio de dados pessoais. O algoritmo usa sinônimos curtos e Jaccard; não atende equivalência semântica geral. BUG-025 aberto.",
   "banco": "SQLite temporário criado pela suíte; .audit/noctua-audit.db não usado",
   "provider": "simulado local; nenhuma chamada externa",
-  "data": "2026-10-30"
+  "data": "2026-10-30",
+  "revalidacao_2026_10_31": {
+    "teste": "apps/server/test/operations.test.ts",
+    "caso": "REQ-424/REQ-425 cache exige revisão, limita equivalência lexical e isola clientes",
+    "resultado": "1/1 aprovado",
+    "estado": "DEFEITO mantido: equivalência semântica geral não é atendida",
+    "banco": "SQLite temporário; .audit não usado",
+    "provedor": "simulado local; nenhuma chamada externa"
+  }
 }

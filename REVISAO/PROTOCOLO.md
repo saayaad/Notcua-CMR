@@ -337,3 +337,10 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Playwright `e2e/automations.spec.ts`, caso REQ-408/409: 3/3 em 1366×768, 1920×1080 e 390×844. Capturas PNG e recibos JSON individuais em `REVISAO/evidencias/REQ-408/` e `REQ-409/`.
 - O teste só abriu o editor; não criou nem salvou campanha. API/front responderam HTTP 200; `.audit/noctua-audit.db` permaneceu com 2.039.808 bytes e `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`.
 - Branch `auditoria-reqs` sincronizada antes do lote. Próximo módulo com itens não aprovados: Economia de IA (REQ-419–422, 425, 430). IA real/chave real não será usada.
+
+## Lote — Economia de IA REQ-419–422, 425 e 430 — 31/10/2026
+
+- Playwright `e2e/economy.spec.ts`: 6/6 (REQ-419–422 e REQ-430) em 1366×768, 1920×1080 e 390×844. Evidências visuais atualizadas em REQ-419–422 e REQ-430; REQ-439/440 também foram exercitadas pelo caso compartilhado de prévia e aplicação.
+- `operations.test.ts`, caso REQ-424/425: 1/1 em SQLite criado sob `%TEMP%`. Evidência REQ-425 atualizada. O teste passou; `BUG-025` e estado `DEFEITO` permanecem porque a reutilização lexical controlada não satisfaz equivalência semântica geral.
+- Mantidos `DESCONECTADO` para REQ-419–422 e `AUSENTE` para REQ-430. Sem chamada externa, chave real, modelo externo ou gravação no banco `.audit`; API/front locais permanecem ativos.
+- Entre os itens não aprovados tipo A/B no LEDGER, REQ-425 é o único restante. Corrigi-la exige escolher/autorizar tecnologia de modelo ou embedding local; sinônimos adicionais não resolvem o critério. Próxima retomada aguarda essa decisão técnica; demais decisões e verificações externas seguem registrados no LEDGER/CHECKLIST-MANUAL.

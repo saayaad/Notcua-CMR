@@ -171,3 +171,10 @@
 - 3/3 Playwright em três viewports confirmou ausência de seletor para dividir fila entre conexões e de failover. Estados `AUSENTE` mantidos; nenhuma campanha criada ou salva.
 - PNGs/JSON atualizados em `REVISAO/evidencias/REQ-408/` e `REQ-409/`; API/front HTTP 200; banco `.audit` inalterado.
 - Nenhum bug de código novo confirmado. Próximo lote: Economia de IA, usando somente testes locais simulados, sem chave/serviço externo.
+
+## Economia de IA — revalidação local — 31/10/2026
+
+- Playwright 6/6 para REQ-419–422 e 430 nas três viewports; operações 1/1 para REQ-425 em SQLite temporário. Atualizadas capturas e recibos dos IDs exercitados, incluindo REQ-439/440 no caso compartilhado.
+- REQ-419–422 permanecem `DESCONECTADO`; REQ-430 permanece `AUSENTE`; REQ-425 permanece `DEFEITO`/BUG-025. Testes passaram e confirmaram os limites; nenhum critério foi enfraquecido.
+- Não usei chave/modelo externo. `.audit/noctua-audit.db` não foi utilizado pelos testes de servidor nem alterado pelos testes visuais.
+- Único item restante com prova A/B fora de COMPLETO/COMPLETO-LOCAL é REQ-425; avanço exige decisão sobre tecnologia local de embeddings/modelo. Ver decisões e tarefas externas restantes no LEDGER e CHECKLIST-MANUAL.
