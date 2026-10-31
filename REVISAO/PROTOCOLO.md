@@ -414,3 +414,11 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Mantido `DECISÃO`: implementação requer aprovação do proprietário sobre ação, permissão e persistência das reações. Não criei controle nem alterei o app.
 - O teste bloqueou gravações de API e origens externas. Os 403 no console foram gerados pela guarda ao interceptar POSTs de presença e socket; nenhuma escrita chegou ao servidor. `.audit/noctua-audit.db` manteve 2.039.808 bytes e timestamp 2026-10-30T18:07:20Z.
 - Nenhum outro módulo com requisito A/B independente ficou na sequência imediata; restantes itens pendentes no LEDGER dependem de decisões, artefatos ausentes ou funções já registradas como AUSENTE/DESCONECTADO. Retomar após aprovação da semântica de REQ-680 ou avançar para outro módulo independentemente escolhido.
+
+
+## Ponto de retomada — após REQ-680 — 31/10/2026
+
+- Commit `3e69197` enviado a `origin/auditoria-reqs`; Playwright REQ-680 3/3 e capturas registradas. LEDGER mantém o item em `DECISÃO`.
+- Próxima ação neste módulo exige aprovação do usuário sobre semântica das reações, ações disponíveis, permissões e persistência. Até lá, não implementar.
+- REQ-567 e REQ-573 foram decididas conforme seção anterior: pausa adiada; Parte 8 ausente, depende de envio futuro.
+- REQ-686/process.json e `scripts/iniciar-noctua-online.ps1` seguem preexistentes e fora dos commits.

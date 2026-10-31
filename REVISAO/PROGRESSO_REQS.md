@@ -229,3 +229,8 @@
 
 - Playwright focal 3/3. Menu da mensagem fictícia não tem controle acessível de reação; recebidos POST de presença/socket bloqueados pela guarda. Sem chamadas externas nem alteração do banco.
 - REQ-680 permanece DECISÃO aguardando aprovação sobre ações, permissões e persistência. Capturas em `REVISAO/evidencias/REQ-680/`.
+
+
+## Retomada após REQ-680
+
+- Commit `3e69197` enviado. REQ-680 continua DECISÃO após prova visual sem controles de reação; aguarda aprovação para qualquer implementação. REQ-567/573 registradas conforme decisão do usuário.
