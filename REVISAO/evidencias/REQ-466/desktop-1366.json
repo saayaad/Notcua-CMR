@@ -1,14 +1,11 @@
 {
   "req": "REQ-466",
-  "result": "FALHOU",
+  "result": "APROVADO",
   "project": "desktop-1366",
   "url": "http://127.0.0.1:5180/atendimento",
   "consoleErrors": [],
-  "decision": "A: somente etiqueta",
-  "stageActionsVisible": [
-    "Adicionar etapa ou etiqueta",
-    "Remover etapa ou etiqueta"
-  ],
+  "decision": "Etiquetas e etapas independentes",
+  "stageActionsVisible": [],
   "macroNotSaved": true,
   "noMessageSent": true
 }

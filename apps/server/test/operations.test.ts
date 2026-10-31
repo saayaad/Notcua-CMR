@@ -1826,7 +1826,8 @@ test('falha da geração envia contingência uma vez, pausa e avisa atendente', 
     assert.equal((await aiControl(db, chat.id)).paused, true);
   }));
 
-test('ordem das etiquetas persiste, aparece no CRM e rejeita outra conexão sem alterar a lista', async () => {
+test('REQ-466: ordem das etiquetas persiste sem alterar etapas independentes do CRM', async () => {
+  const originalBoard = await request(app).get(`/api/crm/sessions/${sessionId}/board`).expect(200);
   const a = await db.label.create({ data: { id: 'reorder-a', name: 'Ordem A', sessionId, position: 900 } });
   const b = await db.label.create({ data: { id: 'reorder-b', name: 'Ordem B', sessionId, position: 901 } });
   const foreign = await db.label.create({
@@ -1845,8 +1846,8 @@ test('ordem das etiquetas persiste, aparece no CRM e rejeita outra conexão sem 
   const board = await request(app).get(`/api/crm/sessions/${sessionId}/board`).expect(200);
   const columns = board.body.columns.filter((column: { labelId: string | null }) => column.labelId);
   assert.deepEqual(
-    columns.slice(0, 2).map((column: { labelId: string }) => column.labelId),
-    [b.id, a.id],
+    columns.map((column: { labelId: string }) => column.labelId),
+    originalBoard.body.columns.filter((column: { labelId: string | null }) => column.labelId).map((column: { labelId: string }) => column.labelId),
   );
   await request(app)
     .put(url)
@@ -2110,17 +2111,23 @@ test('filtros de resposta e ordenação consideram todos os leads antes de pagin
   const client=await request(app).get(`${base}&response=client`).expect(200);
   assert.equal(client.body.total,1);assert.equal(client.body.items[0].id,chats[2]!.id);
 });
-test('Kanban confirma ações de etiqueta e desfaz movimentação sem valor obrigatório',async()=>{
+test('REQ-466: mover etapa não dispara automação de etiqueta configurada',async()=>{
   const chat=await makeContact('5511888800631','Venda Kanban fictícia');
-  const source=await db.contactLabel.findFirstOrThrow({where:{contactId:chat.contactId}});
-  const label=await db.label.create({data:{id:'paid-kanban-rule-test',sessionId,name:'Venda no Kanban'}});
+  const label=await db.label.create({data:{id:'paid-kanban-rule-test',sessionId,name:'Etiqueta com venda'}});
   await request(app).put(`/api/operations/sessions/${sessionId}/label-rules/${label.id}`).send({enabled:true,recordSale:true,askValue:true}).expect(200);
-  const body={conversationId:chat.id,sourceLabelId:source.labelId,targetLabelId:label.id,version:0};
-  await request(app).post(`/api/crm/sessions/${sessionId}/move`).send(body).expect(409);
+  const stage=await request(app).post(`/api/crm/sessions/${sessionId}/labels`).send({name:'Etapa independente',color:'#aabbcc'}).expect(201);
+  const body={conversationId:chat.id,sourceLabelId:null,targetLabelId:stage.body.id,version:0};
+  await request(app).post(`/api/crm/sessions/${sessionId}/move`).send(body).expect(200);
+  const opportunity=await db.crmOpportunity.findUniqueOrThrow({where:{conversationId:chat.id}});
+  assert.equal(opportunity.status,'OPEN');assert.equal(opportunity.valueInCents,0);
   assert.equal(await db.contactLabel.count({where:{contactId:chat.contactId,labelId:label.id}}),0);
-  await request(app).post(`/api/crm/sessions/${sessionId}/move`).send({...body,confirmActions:true,saleValueInCents:9000}).expect(200);
+  // Existing authorized label automation remains available only on explicit label application.
+  const url=`/api/attendance/sessions/${sessionId}/conversations/${chat.id}/labels/${label.id}`;
+  await request(app).put(url).send({active:true}).expect(409);
+  await request(app).put(url).send({active:true,confirmActions:true,saleValueInCents:9000}).expect(200);
   const won=await db.crmOpportunity.findUniqueOrThrow({where:{conversationId:chat.id}});
   assert.equal(won.status,'WON');assert.equal(won.valueInCents,9000);
+  assert.deepEqual(won.placements,opportunity.placements);
 });
 
 test('REQ-046 macro importada usa mídia Base64 como áudio de voz no conector fictício', async () => {
@@ -2152,4 +2159,22 @@ test('REQ-046 macro importada usa mídia Base64 como áudio de voz no conector f
   assert.equal(sent.mimetype, 'audio/ogg; codecs=opus');
   assert.equal(sent.ptt, true);
   assert.equal((await db.sequenceRun.findUniqueOrThrow({ where: { id: run.id } })).status, 'COMPLETED');
+});
+
+ test('REQ-466: macro adiciona, remove e limpa etiquetas sem alterar a etapa ou o negócio', async () => {
+  const chat = await makeContact('5511888840466', 'Cliente Macro Fictício');
+  const stage = await request(app).post(`/api/crm/sessions/${sessionId}/labels`).send({ name: 'Etapa independente', color: '#aabbcc' }).expect(201);
+  await request(app).post(`/api/crm/sessions/${sessionId}/move`).send({ conversationId: chat.id, sourceLabelId: null, targetLabelId: stage.body.id, version: 0 }).expect(200);
+  const before = await db.crmOpportunity.findUniqueOrThrow({ where: { conversationId: chat.id } });
+  const label = await db.label.create({ data: { id: 'req466-tag', name: 'Etiqueta fictícia', sessionId } });
+  for (const action of [{ type: 'ADD_LABEL', labelId: label.id }, { type: 'REMOVE_LABEL', labelId: label.id }, { type: 'UTILITY', command: 'CLEAR_LABELS' }]) {
+    const macro = await request(app).post('/api/operations/macros').send({ name: 'Macro fictícia 466', actions: [action] }).expect(201);
+    const run = await sequences.enqueue(sessionId, chat.id, 'MACRO', macro.body.id, `req466-${macro.body.id}`);
+    for (let i=0;i<5;i++) { await sequences.flush(); if ((await db.sequenceRun.findUniqueOrThrow({ where: { id: run.id } })).status === 'COMPLETED') break; }
+    assert.equal((await db.sequenceRun.findUniqueOrThrow({ where: { id: run.id } })).status, 'COMPLETED');
+    assert.deepEqual(await db.crmOpportunity.findUniqueOrThrow({ where: { conversationId: chat.id } }), before);
+    const board = await request(app).get(`/api/crm/sessions/${sessionId}/board`).expect(200);
+    assert.ok(board.body.columns.find((column: any) => column.id === stage.body.id).conversationIds.includes(chat.id));
+    assert.equal(await db.contactLabel.count({ where: { contactId: chat.contactId, labelId: label.id } }), action.type === 'ADD_LABEL' ? 1 : 0);
+  }
 });

@@ -149,15 +149,6 @@ export function MacroEditor({
                 </button>
               </details>
               <details>
-                <summary>Aba do CRM</summary>
-                <button type="button" onClick={() => update(index, { type: 'ADD_LABEL' })}>
-                  Adicionar etapa ou etiqueta
-                </button>
-                <button type="button" onClick={() => update(index, { type: 'REMOVE_LABEL' })}>
-                  Remover etapa ou etiqueta
-                </button>
-              </details>
-              <details>
                 <summary>Etiquetas</summary>
                 <button type="button" onClick={() => update(index, { type: 'ADD_LABEL' })}>
                   Adicionar etiqueta

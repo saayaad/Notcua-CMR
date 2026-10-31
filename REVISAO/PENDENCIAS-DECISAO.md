@@ -19,7 +19,7 @@ Fonte: LEDGER.csv, decisões do usuário e execução local de 31/10/2026. Esta 
 - REQ-461 — A VERIFICAR: depende de conector de teste com suporte a convite, vCard e lista interativa; não implementado.
 - REQ-462 — A VERIFICAR: depende de conector de teste com suporte a convite, vCard e lista interativa; não implementado.
 - REQ-465 — A VERIFICAR: depende de conector de teste com suporte a convite, vCard e lista interativa; não implementado.
-- REQ-466 — A: somente etiqueta. Teste falhou pois o editor oferece ações de etapa; BUG-035 registrado. Pergunta: separar tags de etapas (hoje ambas usam `Label`) ou aceitar que etiqueta que representa coluna mova o cartão?
+- REQ-466 — COMPLETO-LOCAL: separação de etiquetas/etapas aprovada e BUG-035 corrigido; CRM/operações 75/75, UI 3/3.
 
 ## Retirados do escopo — 2 requisitos
 
@@ -28,7 +28,7 @@ Fonte: LEDGER.csv, decisões do usuário e execução local de 31/10/2026. Esta 
 
 ## Contagens atuais após atualização documental
 
-- DECISÃO no LEDGER: 10 (inclui os 5 itens de infraestrutura/documentação acima).
+- DECISÃO no LEDGER: 9 (inclui os 5 itens de infraestrutura/documentação acima).
 - A VERIFICAR no LEDGER: 3 (REQ-461, REQ-462 e REQ-465).
 - AUSENTE no LEDGER: 0.
 - DESCONECTADO no LEDGER: 0.

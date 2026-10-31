@@ -130,7 +130,10 @@ A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, po
 - Resultado observado: editor oferece “Adicionar etapa ou etiqueta” e “Remover etapa ou etiqueta”. No CRM, as colunas são derivadas de `ContactLabel`; aplicar/remover label pode mover o cartão.
 - Teste: `REQ-466 ação rápida de CRM deve limitar-se a etiquetas, sem ações de etapa` falha em Chromium 1366×768 com as duas ações presentes; macro não salva, nenhum dado alterado. Evidência em `REVISAO/evidencias/REQ-466/desktop-1366.{png,json}`.
 - Limite: `Label` atualmente é entidade compartilhada entre etiquetas e colunas do CRM; não há classificação que permita distinguir tag comum de etapa. Correção depende de decisão sobre separar essas entidades ou aceitar o efeito no cartão.
-- Estado: aberto.
+- Estado: corrigido localmente em 31/10/2026, após aprovação da separação de entidades.
+- Correção: etapas armazenadas separadamente em OperationRecord CRM_STAGE por conexão; participação e ordem no funil ficam em CrmOpportunity.placements, sem depender de ContactLabel. Conversão transacional única preserva todas as colunas/vínculos legados; campos e versões anteriores são mantidos. Criar/editar/excluir etapa não altera etiquetas. Movimento não dispara automação de etiqueta; aplicação explícita de etiqueta ainda respeita ações configuradas e confirmação.
+- Validação atual: 75/75 testes CRM/operações em SQLite temporário sob .audit; UI 3/3 viewports. Inclui macros ADD_LABEL/REMOVE_LABEL/CLEAR_LABELS, edição/limpeza de tags, persistência após reabrir SQLite, conflito de versão e recusa de conexão estrangeira. Teste antigo de venda via movimento ajustado à decisão aprovada; automação explícita de etiqueta continua validada. Evidências anteriores à correção disponíveis no histórico Git.
+
 
 ## BUG-017 — Barra de mensagens fixadas não tinha atalho flutuante para reabrir
 

@@ -333,8 +333,7 @@ test('REQ-461/REQ-462/REQ-463/REQ-465/REQ-466 registra ações de macro disponí
   });
 });
 
-test('REQ-466 ação rápida de CRM deve limitar-se a etiquetas, sem ações de etapa', async ({ page }, info) => {
-  test.skip(page.viewportSize()?.width !== 1366, 'captura de falha focal no desktop');
+test('REQ-466 ação rápida limita-se a etiquetas, sem ações de etapa', async ({ page }, info) => {
   await openConversation(page);
   await ensureToolsOpen(page);
   const tools = page.getByLabel('Ferramentas de atendimento');
@@ -342,11 +341,13 @@ test('REQ-466 ação rápida de CRM deve limitar-se a etiquetas, sem ações de 
   await tools.locator('.workbench-create').getByRole('button', { name: 'Macros', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('heading', { name: 'Criar macro de atendimento' }).waitFor();
-  await dialog.locator('.macro-action-chooser details').filter({ has: page.getByText('Aba do CRM', { exact: true }) }).locator('summary').click();
-  const choices = (await dialog.locator('.macro-action-chooser button').allTextContents()).map((text) => text.trim());
-  const stageActions = choices.filter((choice) => /etapa/i.test(choice));
-  await saveEvidence(page, ['REQ-466'], info, { result: 'FALHOU', decision: 'A: somente etiqueta', stageActionsVisible: stageActions, macroNotSaved: true, noMessageSent: true });
-  expect(stageActions, 'a decisão A proíbe a ação de macro sobre etapa do CRM').toEqual([]);
+  await dialog.locator('.macro-action-chooser details').filter({ has: page.getByText('Etiquetas', { exact: true }) }).locator('summary').click();
+  await expect(dialog.getByRole('button', { name: 'Adicionar etiqueta', exact: true })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Remover etiqueta', exact: true })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Remover todas as etiquetas', exact: true })).toBeVisible();
+  const choices = (await dialog.locator('.macro-action-chooser button').allTextContents()).map(text => text.trim());
+  expect(choices.filter(choice => /etapa/i.test(choice)), 'REQ-466: nenhuma ação de etiqueta pode oferecer movimento de etapa').toEqual([]);
+  await saveEvidence(page, ['REQ-466'], info, { decision: 'Etiquetas e etapas independentes', stageActionsVisible: [], macroNotSaved: true, noMessageSent: true });
 });
 
 test('REQ-463 recurso de imagem mantém link na legenda sem exigir banner clicável', async ({ page }, info) => {

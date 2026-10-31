@@ -157,46 +157,45 @@ test('quadro usa etiquetas por conexão, representa múltiplos vínculos e não 
   assert.equal(metrics.conversion, 0);
 });
 
-test('REQ-008: mover cartão no Kanban persiste a etapa sem enviar mensagens', async () => {
+test('REQ-008 / REQ-466: mover etapa persiste sem alterar etiquetas nem enviar mensagens', async () => {
+  const initial = await db.contactLabel.findMany({ where: { contactId }, orderBy: { labelId: 'asc' } });
   await move(one, origin, target);
-  assert.equal(socket.changes.length, 0);
-  const links = (await db.contactLabel.findMany({ where: { contactId } })).map((link) => link.labelId);
-  assert.deepEqual(new Set(links), new Set([target, 'extra']));
-  const persistedBoard = await crm.board(sessionId, {});
+  assert.deepEqual(
+    await db.contactLabel.findMany({ where: { contactId }, orderBy: { labelId: 'asc' } }),
+    initial,
+  );
   assert.ok(
-    persistedBoard.columns.find((column) => column.id === target)!.conversationIds.includes(one),
-    'REQ-008: o cartão movido aparece na etapa destino após nova leitura',
+    (await crm.board(sessionId, {})).columns
+      .find((column) => column.id === target)!
+      .conversationIds.includes(one),
   );
   await outbox.flush();
   assert.equal(socket.changes.length, 0);
-  assert.equal((await crm.board(sessionId, {})).pendingSync, 2);
+  assert.equal(await db.scheduledJob.count(), 0);
+  // A WhatsApp label event cannot change the independently persisted stage.
   await sync.labelAssociation(sessionId, {
     type: 'add',
-    association: { type: LabelAssociationType.Chat, labelId: '1', chatId: '5511000000001@s.whatsapp.net' },
+    association: { type: LabelAssociationType.Chat, labelId: '2', chatId: '5511000000001@s.whatsapp.net' },
   });
-  assert.equal(await db.contactLabel.count({ where: { contactId, labelId: origin } }), 0);
-  connected = true;
-  await outbox.flush();
-  assert.deepEqual(socket.changes, [
-    { label: '2', active: true },
-    { label: '1', active: false },
-  ]);
-  assert.equal((await crm.board(sessionId, {})).pendingSync, 0);
-  assert.ok(notices.includes(sessionId));
+  assert.ok(
+    (await crm.board(sessionId, {})).columns
+      .find((column) => column.id === target)!
+      .conversationIds.includes(one),
+  );
 });
 
-test('fusão em etapa já vinculada não duplica cartão e Sem etiqueta não apaga outros vínculos', async () => {
-  await assert.rejects(move(one, target, null), /outras etiquetas/);
-  const before = await version(one);
-  await move(one, target, 'extra');
-  assert.equal(await version(one), before + 1);
-  const board = await crm.board(sessionId, {});
+test('REQ-466: Sem etapa remove apenas vínculos do funil; etiquetas permanecem', async () => {
+  await move(one, target, null);
+  assert.ok((await crm.board(sessionId, {})).columns[0]!.conversationIds.includes(one));
+  assert.ok((await db.contactLabel.count({ where: { contactId } })) > 0);
+  await move(one, null, 'extra');
   assert.equal(
-    board.columns.find((column) => column.id === 'extra')!.conversationIds.filter((id) => id === one).length,
+    (await crm.board(sessionId, {})).columns
+      .find((column) => column.id === 'extra')!
+      .conversationIds.filter((id) => id === one).length,
     1,
   );
   await move(one, 'extra', null);
-  assert.ok((await crm.board(sessionId, {})).columns[0]!.conversationIds.includes(one));
 });
 
 test('ordem é persistida, versões antigas são recusadas e escopo da conexão é obrigatório', async () => {
@@ -247,21 +246,23 @@ test('ganhos e perdas calculam valores/conversão uma vez por negociação; reab
   assert.equal((await db.crmOpportunity.findUniqueOrThrow({ where: { conversationId: one } })).wonAt, null);
 });
 
-test('falhas de etiqueta ficam visíveis; nova intenção substitui trabalho antigo e pode ser repetida', async () => {
-  await outbox.flush();
-  socket.fail = true;
-  await move(one, origin, target);
-  await db.scheduledJob.updateMany({ where: { status: 'QUEUED' }, data: { maxAttempts: 1 } });
-  await outbox.flush();
-  assert.ok((await crm.board(sessionId, {})).failedSync > 0);
-  assert.ok((await crm.retrySync(sessionId)).queued > 0);
-  await move(one, target, origin);
-  socket.fail = false;
-  await outbox.flush();
-  assert.equal((await crm.board(sessionId, {})).failedSync, 0);
-  assert.equal(await db.contactLabel.count({ where: { contactId, labelId: target } }), 0);
-  assert.equal(await db.contactLabel.count({ where: { contactId, labelId: origin } }), 1);
-  assert.ok(await db.scheduledJob.count({ where: { type: 'WHATSAPP_SET_LABEL', status: 'CANCELLED' } }));
+test('REQ-466: adicionar, remover, limpar e editar etiquetas não muda etapa, valor ou versão', async () => {
+  const app = createApp(db, whatsapp);
+  const before = await db.crmOpportunity.findUniqueOrThrow({ where: { conversationId: one } });
+  for (const active of [true, false]) {
+    await request(app)
+      .put(`/api/attendance/sessions/${sessionId}/conversations/${one}/labels/extra`)
+      .send({ active })
+      .expect(200);
+    assert.deepEqual(await db.crmOpportunity.findUniqueOrThrow({ where: { conversationId: one } }), before);
+  }
+  await db.contactLabel.deleteMany({ where: { contactId } });
+  await db.label.update({ where: { id: origin }, data: { name: 'Etiqueta renomeada' } });
+  const board = await new CrmService(db, whatsapp).board(sessionId, {});
+  assert.ok(board.columns.find((column) => column.id === origin)!.conversationIds.includes(one));
+  assert.equal(board.columns.find((column) => column.id === origin)!.name, 'Novo contato');
+  assert.deepEqual(await db.crmOpportunity.findUniqueOrThrow({ where: { conversationId: one } }), before);
+  assert.equal((await crm.retrySync(sessionId)).queued, 0);
 });
 
 test('CRUD de etapas protege etiquetas vinculadas/importadas e API valida entradas e detalhes do contato', async () => {
@@ -294,7 +295,7 @@ test('CRUD de etapas protege etiquetas vinculadas/importadas e API valida entrad
     .expect(422);
 });
 
-test('REQ-021: cria etiqueta local identificável e vincula contato após reabrir SQLite', async () => {
+test('REQ-466: cria etapa independente e preserva vínculo após reabrir SQLite', async () => {
   const app = createApp(db, whatsapp);
   const phoneNumber = '5511333330021';
   const contact = await db.contact.create({
@@ -303,7 +304,11 @@ test('REQ-021: cria etiqueta local identificável e vincula contato após reabri
   const conversation = await db.conversation.create({ data: { sessionId, contactId: contact.id } });
   const created = await request(app)
     .post(`/api/crm/sessions/${sessionId}/labels`)
-    .send({ name: 'Qualificação fictícia', color: '#2A88DD', description: 'Validar oportunidade de auditoria.' })
+    .send({
+      name: 'Qualificação fictícia',
+      color: '#2A88DD',
+      description: 'Validar oportunidade de auditoria.',
+    })
     .expect(201);
 
   assert.match(created.body.id, /^local:[0-9a-f-]{36}$/i);
@@ -324,39 +329,49 @@ test('REQ-021: cria etiqueta local identificável e vincula contato após reabri
   const board = await request(app).get(`/api/crm/sessions/${sessionId}/board`).expect(200);
   const column = board.body.columns.find((item: { id: string }) => item.id === created.body.id);
   assert.deepEqual(column?.conversationIds, [conversation.id]);
-  assert.equal(
+  assert.deepEqual(
     board.body.cards.find((item: { conversationId: string }) => item.conversationId === conversation.id)
-      ?.contact.labels[0]?.labelId,
-    created.body.id,
+      ?.contact.labels,
+    [],
   );
 
   const reopened = createSqliteClient(url);
   try {
     await reopened.$connect();
-    const label = await reopened.label.findUniqueOrThrow({
-      where: { id: created.body.id },
-      include: { contacts: true },
-    });
-    assert.equal(label.name, 'Qualificação fictícia');
-    assert.equal(label.color, '#2A88DD');
-    assert.equal(label.description, 'Validar oportunidade de auditoria.');
-    assert.equal(label.contacts.length, 1);
-    assert.equal(label.contacts[0]?.contactId, contact.id);
+    assert.equal(await reopened.label.findUnique({ where: { id: created.body.id } }), null);
+    const persisted = await new CrmService(reopened, whatsapp).board(sessionId, {});
+    assert.deepEqual(persisted.columns.find((column) => column.id === created.body.id)?.conversationIds, [
+      conversation.id,
+    ]);
+    assert.equal(
+      persisted.columns.find((column) => column.id === created.body.id)?.name,
+      'Qualificação fictícia',
+    );
   } finally {
     await reopened.$disconnect();
   }
 });
-test('alteração no atendimento substitui uma sincronização pendente do quadro', async () => {
-  connected = false;
-  await move(one, origin, target);
+test('REQ-466: conexão estrangeira não pode mover, editar ou excluir etapas', async () => {
   const app = createApp(db, whatsapp);
+  const stage = await crm.label(sessionId, null, { name: 'Privada', color: '#aabbcc' });
   await request(app)
-    .put(`/api/attendance/sessions/${sessionId}/conversations/${one}/labels/${encodeURIComponent(target)}`)
-    .send({ active: false })
-    .expect(200);
-  connected = true;
-  socket.changes = [];
-  await outbox.flush();
-  assert.ok(!socket.changes.some((change) => change.label === '2' && change.active));
-  assert.equal(await db.contactLabel.count({ where: { contactId, labelId: target } }), 0);
+    .put(`/api/crm/sessions/${otherSession}/labels/${encodeURIComponent(stage.id)}`)
+    .send({ name: 'Inválido', color: '#000000' })
+    .expect(404);
+  await request(app)
+    .delete(`/api/crm/sessions/${otherSession}/labels/${encodeURIComponent(stage.id)}`)
+    .expect(404);
+  await assert.rejects(
+    crm.move(otherSession, {
+      conversationId: one,
+      sourceLabelId: origin,
+      targetLabelId: stage.id,
+      version: await version(one),
+    }),
+    /não encontrado/,
+  );
+  assert.equal(
+    (await crm.board(sessionId, {})).columns.find((column) => column.id === stage.id)?.name,
+    'Privada',
+  );
 });

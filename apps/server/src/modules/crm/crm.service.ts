@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { applyLabelActions, labelActionInput } from '../operations/label-actions.js';
+import { labelActionInput } from '../operations/label-actions.js';
 import { Prisma, type PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { AppError } from '../../shared/errors.js';
 import { SerialQueue } from '../../shared/serial-queue.js';
 import type { WhatsappService } from '../whatsapp/whatsapp.service.js';
-import { queueLabelChange, type LabelChange } from '../whatsapp/label-changes.js';
+import { type LabelChange } from '../whatsapp/label-changes.js';
 import { json } from '../backups/validation.js';
 
 const id = z.string().min(1).max(200);
@@ -48,8 +48,20 @@ const includeChat = (sessionId: string) =>
     },
   }) satisfies Prisma.ConversationInclude;
 type Chat = Prisma.ConversationGetPayload<{ include: ReturnType<typeof includeChat> }>;
-const belongs = (chat: Chat, labelId: string | null) =>
-  labelId ? chat.contact.labels.some((link) => link.labelId === labelId) : !chat.contact.labels.length;
+const membershipKey = (stageId: string) => `stage:${stageId}`;
+const belongs = (chat: Chat, stageId: string | null) => {
+  const placement = positions(chat.opportunity?.placements);
+  return stageId
+    ? placement[membershipKey(stageId)] === 1
+    : !Object.keys(placement).some((key) => key.startsWith('stage:') && placement[key] === 1);
+};
+const stageSchema = labelInput.extend({
+  id: z.string(),
+  position: z.number(),
+  isDeleted: z.boolean().default(false),
+});
+const stageKind = (sessionId: string) => `CRM_STAGE:${sessionId}`;
+const stageKey = (sessionId: string, stageId: string) => `crm-stage:${sessionId}:${stageId}`;
 const rank = (chat: Chat, labelId: string | null) =>
   positions(chat.opportunity?.placements)[columnKey(labelId)] ??
   -(chat.lastMessageAt ?? chat.createdAt).getTime();
@@ -63,8 +75,63 @@ export class CrmService {
     private readonly whatsapp: WhatsappService,
   ) {}
 
+  // Snapshot the legacy board once; later label changes never enter stage storage.
+  private async ensureStages(sessionId: string) {
+    const marker = `crm-stages-initialized:${sessionId}`;
+    if (await this.db.operationRecord.findUnique({ where: { id: marker } })) return;
+    await this.db.$transaction(
+      async (tx) => {
+        if (await tx.operationRecord.findUnique({ where: { id: marker } })) return;
+        const labels = await tx.label.findMany({ where: scope(sessionId) });
+        for (const label of labels) {
+          await tx.operationRecord.create({
+            data: {
+              id: stageKey(sessionId, label.id),
+              kind: stageKind(sessionId),
+              data: json({
+                id: label.id,
+                name: label.name,
+                color: label.color,
+                description: label.description,
+                position: label.position,
+                isDeleted: false,
+              }),
+            },
+          });
+        }
+        const chats = await tx.conversation.findMany({
+          where: { sessionId, contact: { isGroup: false } },
+          include: includeChat(sessionId),
+        });
+        for (const chat of chats) {
+          const placements = { ...positions(chat.opportunity?.placements) };
+          for (const link of chat.contact.labels) placements[membershipKey(link.labelId)] = 1;
+          if (chat.contact.labels.length)
+            await tx.crmOpportunity.upsert({
+              where: { conversationId: chat.id },
+              create: { conversationId: chat.id, placements },
+              update: { placements },
+            });
+        }
+        await tx.operationRecord.create({
+          data: { id: marker, kind: 'CRM_STAGE_MIGRATION', data: json({ sessionId, version: 1 }) },
+        });
+      },
+      { timeout: 30_000 },
+    );
+  }
+
+  private async stages(sessionId: string) {
+    const records = await this.db.operationRecord.findMany({ where: { kind: stageKind(sessionId) } });
+    return records
+      .map((row) => stageSchema.parse(row.data))
+      .filter((stage) => !stage.isDeleted)
+      .sort((a, b) => a.position - b.position || a.name.localeCompare(b.name));
+  }
+
   async board(sessionId: string, raw: unknown) {
     await this.whatsapp.snapshot(sessionId);
+    await this.ensureStages(sessionId);
     const query = boardQuery.parse(raw);
     const where: Prisma.ConversationWhereInput = {
       sessionId,
@@ -81,10 +148,7 @@ export class CrmService {
           : { opportunity: { status: query.status } }),
     };
     const [labels, chats, total, jobs] = await Promise.all([
-      this.db.label.findMany({
-        where: scope(sessionId),
-        orderBy: [{ position: 'asc' }, { name: 'asc' }, { id: 'asc' }],
-      }),
+      this.stages(sessionId),
       this.db.conversation.findMany({
         where,
         include: includeChat(sessionId),
@@ -120,9 +184,9 @@ export class CrmService {
       {
         id: 'unlabelled',
         labelId: null as string | null,
-        name: 'Sem etiqueta',
+        name: 'Sem etapa',
         color: '#9294a4',
-        description: 'Contatos ainda sem uma etapa ou etiqueta.',
+        description: 'Negociações sem etapa definida.',
         whatsappId: null as string | null,
       },
       ...labels.map((label) => ({
@@ -131,7 +195,7 @@ export class CrmService {
         name: label.name,
         color: label.color,
         description: label.description,
-        whatsappId: label.whatsappId,
+        whatsappId: null,
       })),
     ].map((column) => {
       const members = chats
@@ -170,6 +234,8 @@ export class CrmService {
 
   async move(sessionId: string, raw: unknown) {
     const body = moveInput.parse(raw);
+    await this.whatsapp.snapshot(sessionId);
+    await this.ensureStages(sessionId);
     return this.mutations.run(async () => {
       await this.whatsapp.snapshot(sessionId);
       await this.db.$transaction(
@@ -185,42 +251,17 @@ export class CrmService {
               'O cartão mudou em outra atualização. Atualize o quadro e tente novamente.',
             );
           const target = body.targetLabelId
-            ? await tx.label.findFirst({ where: { id: body.targetLabelId, ...scope(sessionId) } })
+            ? await tx.operationRecord.findUnique({
+                where: { id: stageKey(sessionId, body.targetLabelId) },
+              })
             : null;
-          if (body.targetLabelId && !target) throw new AppError(422, 'Etapa indisponível nesta conexão.');
-          const others = chat.contact.labels.filter((link) => link.labelId !== body.sourceLabelId);
-          if (!body.targetLabelId && others.length)
-            throw new AppError(
-              409,
-              'Este contato possui outras etiquetas. Remova-as no atendimento antes de mover para Sem etiqueta.',
-            );
-          const jid =
-            chat.contact.identities.find((identity) => identity.jid.endsWith('@lid'))?.jid ??
-            chat.contact.whatsappJid ??
-            chat.contact.identities[0]?.jid;
-          const change = async (label: { id: string; whatsappId: string | null }, active: boolean) => {
-            const key = { contactId: chat.contactId, labelId: label.id };
-            if (active)
-              await tx.contactLabel.upsert({ where: { contactId_labelId: key }, create: key, update: {} });
-            else await tx.contactLabel.deleteMany({ where: key });
-            if (label.whatsappId) {
-              if (!jid)
-                throw new AppError(422, 'Endereço WhatsApp indisponível para sincronizar a etiqueta.');
-              await queueLabelChange(tx, {
-                sessionId,
-                contactId: chat.contactId,
-                labelId: label.id,
-                whatsappId: label.whatsappId,
-                jid,
-                active,
-              });
-            }
-          };
-          if (body.sourceLabelId !== body.targetLabelId) {
-            if (target && !others.some((link) => link.labelId === target.id)) await change(target, true);
-            const source = chat.contact.labels.find((link) => link.labelId === body.sourceLabelId)?.label;
-            if (source) await change(source, false);
-          }
+          if (body.targetLabelId && (!target || stageSchema.parse(target.data).isDeleted))
+            throw new AppError(422, 'Etapa indisponível nesta conexão.');
+          const membership = { ...positions(chat.opportunity?.placements) };
+          if (body.sourceLabelId) delete membership[membershipKey(body.sourceLabelId)];
+          if (body.targetLabelId) membership[membershipKey(body.targetLabelId)] = 1;
+          else
+            for (const key of Object.keys(membership)) if (key.startsWith('stage:')) delete membership[key];
           const candidates = await tx.conversation.findMany({
             where: { sessionId, id: { not: chat.id }, contact: { isGroup: false } },
             include: includeChat(sessionId),
@@ -252,7 +293,7 @@ export class CrmService {
           const position =
             before === null ? (after ?? 1024) - 1024 : after === null ? before + 1024 : (before + after) / 2;
           const placements = {
-            ...positions(chat.opportunity?.placements),
+            ...membership,
             [columnKey(body.targetLabelId)]: position,
           };
           await tx.crmOpportunity.upsert({
@@ -260,8 +301,6 @@ export class CrmService {
             create: { conversationId: chat.id, placements, version: 1 },
             update: { placements, version: { increment: 1 } },
           });
-          if (body.targetLabelId && body.sourceLabelId !== body.targetLabelId && !chat.contact.labels.some(link=>link.labelId===body.targetLabelId))
-            await applyLabelActions(tx,sessionId,chat.id,body.targetLabelId,body);
         },
         { timeout: 30_000 },
       );
@@ -307,52 +346,41 @@ export class CrmService {
     });
   }
 
-  async label(sessionId: string, labelId: string | null, raw: unknown) {
+  // /labels is retained as a CRM API alias for stages, independent of contact labels.
+  async label(sessionId: string, stageId: string | null, raw: unknown) {
     const input = labelInput.parse(raw);
     await this.whatsapp.snapshot(sessionId);
-    let result;
-    if (labelId) {
-      const label = await this.db.label.findFirst({ where: { id: labelId, ...scope(sessionId) } });
-      if (!label) throw new AppError(404, 'Etiqueta não encontrada.');
-      if (label.whatsappId)
-        throw new AppError(
-          409,
-          'Altere nome e cor desta etiqueta no WhatsApp e sincronize novamente. A mudança será refletida aqui.',
-        );
-      result = await this.db.label.update({ where: { id: labelId }, data: input });
-    } else {
-      const last = await this.db.label.aggregate({ where: scope(sessionId), _max: { position: true } });
-      result = await this.db.label.create({
-        data: {
-          id: `local:${randomUUID()}`,
-          sessionId,
-          ...input,
-          position: (last._max.position ?? 0) + 1,
-          createReason: 'Criado no Noctua',
-        },
-      });
-    }
+    await this.ensureStages(sessionId);
+    const stages = await this.stages(sessionId);
+    const existing = stages.find((stage) => stage.id === stageId);
+    if (stageId && !existing) throw new AppError(404, 'Etapa não encontrada.');
+    const stage = {
+      ...input,
+      id: stageId ?? `local:${randomUUID()}`,
+      position: existing?.position ?? Math.max(0, ...stages.map((item) => item.position)) + 1,
+      isDeleted: false,
+    };
+    await this.db.operationRecord.upsert({
+      where: { id: stageKey(sessionId, stage.id) },
+      create: { id: stageKey(sessionId, stage.id), kind: stageKind(sessionId), data: json(stage) },
+      update: { data: json(stage) },
+    });
     this.whatsapp.notify(sessionId, 'labels');
-    return result;
+    return stage;
   }
 
-  async deleteLabel(sessionId: string, labelId: string) {
+  async deleteLabel(sessionId: string, stageId: string) {
+    await this.whatsapp.snapshot(sessionId);
+    await this.ensureStages(sessionId);
     await this.db.$transaction(async (tx) => {
-      const label = await tx.label.findFirst({
-        where: { id: labelId, ...scope(sessionId) },
-        include: { _count: { select: { contacts: true, actions: true, deals: true } } },
-      });
-      if (!label) throw new AppError(404, 'Etiqueta não encontrada.');
-      if (label.whatsappId) throw new AppError(409, 'Etiquetas importadas devem ser excluídas no WhatsApp.');
-      if (Object.values(label._count).some(Boolean))
-        throw new AppError(
-          409,
-          'Remova os vínculos desta etiqueta com contatos, macros ou negócios antes de excluir.',
-        );
-      await tx.label.update({ where: { id: labelId }, data: { isDeleted: true } });
-      await tx.sessionSettings.updateMany({
-        where: { firstMessageLabelId: labelId },
-        data: { autoLabelFirstMessage: false, firstMessageLabelId: null },
+      const stage = await tx.operationRecord.findUnique({ where: { id: stageKey(sessionId, stageId) } });
+      if (!stage || stageSchema.parse(stage.data).isDeleted) throw new AppError(404, 'Etapa não encontrada.');
+      const chats = await tx.conversation.findMany({ where: { sessionId }, include: includeChat(sessionId) });
+      if (chats.some((chat) => belongs(chat, stageId)))
+        throw new AppError(409, 'Mova os cartões antes de excluir a etapa.');
+      await tx.operationRecord.update({
+        where: { id: stage.id },
+        data: { data: json({ ...stageSchema.parse(stage.data), isDeleted: true }) },
       });
     });
     this.whatsapp.notify(sessionId, 'labels');

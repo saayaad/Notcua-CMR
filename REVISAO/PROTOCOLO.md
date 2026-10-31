@@ -580,3 +580,9 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Demais decisões: REQ-197/223 (inventário/aceite por módulo), REQ-401 (eventos, endpoint e métricas), REQ-448 (botões/alvo visual); REQ-523/527/540 permanecem com restrições de infraestrutura/contas/Firebase; REQ-567 adiada e REQ-573 aguarda Parte 8. REQ-126 permanece COMPLETO-LOCAL com critério substituto e ressalva de fonte ausente, sem nova prova.
 - Nenhum lote de implementação independente encontrado. Não executar testes fechados para simular avanço. Próximo lote depende das decisões acima; provas externas futuras permanecem em CHECKLIST-MANUAL.md, sem pedir chave de IA real.
 - Preservados sem escrita, restauração ou staging: REVISAO/evidencias/REQ-686/process.json, REVISAO/evidencias/REQ-686/process-next-run.json e scripts/iniciar-noctua-online.ps1. Artefatos preexistentes não rastreados não incluídos. Sem .env.local, produção ou publicação.
+
+## Lote CRM — BUG-035 / REQ-466 — 31/10/2026
+
+- Decisão atual substitui bloqueio anterior: etiquetas e etapas independentes. Implementação concluída com armazenamento separado e conversão única transacional dos vínculos antigos; nenhuma nova automação. CRM/operações 75/75; UI REQ-466 3/3 viewports; typecheck dos dois workspaces aprovado. Testes usam bancos temporários sob .audit, dados e sockets fictícios.
+- Regressão inicial: 74/75; teste legado exigia venda via movimento de etiqueta e recebeu expected 200 got 409 em operations.test.ts:2122. Causa: contrato antigo de colunas por etiquetas, substituído pela decisão explícita. Corrigido o cenário para etapa própria, mantendo a prova de confirmação/valor da automação quando etiqueta é aplicada explicitamente; reteste 75/75. Sem enfraquecer a regra atual.
+- REQ-466 COMPLETO-LOCAL; BUG-035 corrigido. Nenhum arquivo protegido ou artefato preexistente entrou no lote. Próximo: REQ-461/462/465, conector simulado agora autorizado, sem adaptar conectores de produção.

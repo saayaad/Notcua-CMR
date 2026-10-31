@@ -1,5 +1,5 @@
-import {Select} from '../components/Select';
-import { useLabelActions, LabelRulesButton } from '../components/LabelActions';
+import { Select } from '../components/Select';
+import { LabelRulesButton } from '../components/LabelActions';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { DragDropContext, Draggable, Droppable, type DropResult } from '@hello-pangea/dnd';
@@ -60,7 +60,6 @@ export function CrmPage({
   labelStyles: Record<string, { color: string; icon: string }>;
 }) {
   const { request, notify } = useApi();
-  const {prepare,prompt} = useLabelActions(sessionId);
   const [board, setBoard] = useState<CrmBoard>(blankBoard);
   const [metrics, setMetrics] = useState<CrmMetrics | null>(null);
   const [mode, setMode] = useState<'board' | 'dashboard'>('board');
@@ -124,7 +123,6 @@ export function CrmPage({
     setBusy(true);
     try {
       await request(`${base}/move`, 'POST', {
-        ...(source.labelId !== target.labelId && !card.contact.labels.some(link=>link.labelId===target.labelId) ? await prepare(target.labelId) : {}),
         conversationId: card.conversationId,
         sourceLabelId: source.labelId,
         targetLabelId: target.labelId,
@@ -132,15 +130,7 @@ export function CrmPage({
         version: card.version,
       });
       setSelected(null);
-      notify(
-        source.id === target.id
-          ? 'Ordem salva.'
-          : target.whatsappId || source.whatsappId
-            ? connected
-              ? 'Cartão movido. Sincronizando etiquetas com o WhatsApp…'
-              : 'Cartão movido. A sincronização aguarda o WhatsApp conectar.'
-            : 'Cartão movido.',
-      );
+      notify(source.id === target.id ? 'Ordem salva.' : 'Cartão movido.');
     } catch (error) {
       setBoard(board);
       notify(errorMessage(error), true);
@@ -187,8 +177,7 @@ export function CrmPage({
     );
   return (
     <div className="crm-page">
-      {prompt}
-      <LabelRulesButton sessionId={sessionId}/>
+      <LabelRulesButton sessionId={sessionId} />
       <header className="crm-heading">
         <div>
           <p className="eyebrow">RELACIONAMENTOS QUE EVOLUEM</p>
@@ -326,7 +315,9 @@ export function CrmPage({
                   <header>
                     <div>
                       <i style={{ background: labelStyles[column.id]?.color || column.color }} />
-                      {labelStyles[column.id]?.icon && <b className="kanban-column-icon">{labelStyles[column.id]?.icon}</b>}
+                      {labelStyles[column.id]?.icon && (
+                        <b className="kanban-column-icon">{labelStyles[column.id]?.icon}</b>
+                      )}
                       <h2 title={column.name}>{column.name}</h2>
                       <span>{column.conversationIds.length}</span>
                       {column.whatsappId && <Wifi size={13} aria-label="Etiqueta do WhatsApp" />}
@@ -458,8 +449,7 @@ export function CrmPage({
           </DragDropContext>
           <div className="crm-footer">
             <span>
-              Um contato pode aparecer em várias etapas se tiver várias etiquetas. Os indicadores contam cada
-              negociação uma vez.
+              Etapas são independentes das etiquetas. Os indicadores contam cada negociação uma vez.
             </span>
             {board.loaded < board.total && (
               <button
@@ -722,8 +712,8 @@ function StageEditor({
           />
         </label>
         <p className="muted">
-          Esta etapa será uma etiqueta local do Noctua. Para criar uma etiqueta também no WhatsApp, crie-a no
-          aplicativo e sincronize.
+          Esta etapa organiza apenas o funil local. Etiquetas do contato são gerenciadas no Atendimento e não
+          mudam a etapa do cartão.
         </p>
         <div className="modal-actions">
           <button type="button" className="button" onClick={onClose}>
@@ -757,10 +747,10 @@ function StageManager({
   const [busy, setBusy] = useState(false);
   return (
     <>
-      <Modal title="Etapas e etiquetas" onClose={onClose} wide>
+      <Modal title="Etapas do funil" onClose={onClose} wide>
         <p className="muted">
-          Cada etiqueta é uma coluna do quadro. Etiquetas importadas são mantidas pelo WhatsApp; você pode
-          editar as etapas locais aqui.
+          Cada etapa é uma coluna independente das etiquetas do contato; você pode editar as etapas locais
+          aqui.
         </p>
         <div className="stage-list">
           {board.columns
