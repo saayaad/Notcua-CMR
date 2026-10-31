@@ -1,0 +1,31 @@
+{
+  "req": "REQ-597",
+  "result": "APROVADO",
+  "project": "desktop-1920",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "consoleErrors": [],
+  "pageErrors": [],
+  "blockedExternal": [],
+  "interceptedMutations": [
+    "POST /api/operations/directory/presence",
+    "POST /socket.io/",
+    "POST /socket.io/",
+    "PUT /api/attendance/sessions/audit-session/conversations/audit-conversation-1/labels/audit-label-paid"
+  ],
+  "notes": {
+    "promptRequiredValue": true,
+    "invalidValueBlocked": true,
+    "requestBody": {
+      "active": true,
+      "confirmActions": true,
+      "saleValueInCents": 8990
+    },
+    "outboundMessage": false
+  },
+  "failures": [],
+  "screenshotError": ""
+}

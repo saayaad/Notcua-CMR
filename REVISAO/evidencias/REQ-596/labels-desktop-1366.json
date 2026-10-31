@@ -1,0 +1,44 @@
+{
+  "req": "REQ-596",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "viewport": {
+    "width": 1366,
+    "height": 768
+  },
+  "consoleErrors": [],
+  "pageErrors": [],
+  "blockedExternal": [],
+  "interceptedMutations": [
+    "POST /api/operations/directory/presence",
+    "POST /socket.io/",
+    "POST /socket.io/",
+    "PUT /api/operations/sessions/audit-session/label-rules/audit-label-paid",
+    "POST /api/operations/directory/presence",
+    "POST /socket.io/"
+  ],
+  "notes": {
+    "ruleSaved": {
+      "enabled": true,
+      "recordSale": true,
+      "askValue": true,
+      "fixedValueInCents": 0,
+      "internalNote": "Nota fictícia configurada em REQ-596.",
+      "pinConversation": true,
+      "investmentInCents": 5000
+    },
+    "reloadedRule": {
+      "enabled": true,
+      "recordSale": true,
+      "askValue": true,
+      "fixedValueInCents": 0,
+      "internalNote": "Nota fictícia configurada em REQ-596.",
+      "pinConversation": true,
+      "investmentInCents": 5000
+    },
+    "investmentField": "50.00"
+  },
+  "failures": [],
+  "screenshotError": ""
+}

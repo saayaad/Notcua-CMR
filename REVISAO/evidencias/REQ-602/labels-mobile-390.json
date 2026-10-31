@@ -1,0 +1,30 @@
+{
+  "req": "REQ-602",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "consoleErrors": [
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://apis.google.com/js/api.js?onload=__iframefcb329876"
+  ],
+  "pageErrors": [],
+  "blockedExternal": [
+    "https://apis.google.com"
+  ],
+  "interceptedMutations": [
+    "POST /api/operations/directory/presence",
+    "POST /socket.io/",
+    "POST /socket.io/",
+    "PUT /api/attendance/sessions/audit-session/conversations/audit-conversation-1/labels/audit-label-pin"
+  ],
+  "notes": {
+    "pinPreviewed": true,
+    "actionConfirmed": true,
+    "pinnedConversationAction": true
+  },
+  "failures": [],
+  "screenshotError": ""
+}

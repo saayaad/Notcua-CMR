@@ -226,3 +226,10 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Zero erros de página. Vinte e dois erros de console foram chamadas de apis.google.com bloqueadas de propósito nos casos mobile. Nenhuma falha de produto confirmada; sem entrada nova em BUGS.md.
 - tsx inicialmente não rodou por uv_os_get_passwd ... ENOMEM; preload CommonJS temporário e caminho NODE_OPTIONS com barras / resolveram. Resultado final 1/1; nenhuma dependência alterada.
 - Próximo lote: L-24, Etiquetas e leads, REQ-596–602; preservar REQ-603–608 já completas.
+
+## Lote L-24 — Etiquetas e leads — 30/10/2026
+
+- REQ-596–602 fechadas: 7 COMPLETO; 603–608 preservadas. Playwright 21/21 em 1366×768, 1920×1080 e 390×844; 21 JSON e 21 PNG individuais.
+- Servidor operations.test.ts passou 1/1 em SQLite temporário: regra lida após salvar; confirmação exigida; valor inválido bloqueado; uma venda atribuída; ROI 400%; nota interna e fixação; zero envios fictícios.
+- Writes visuais interceptados; .audit/noctua-audit.db não mudou. Zero erros de página; nove logs de console apis.google.com bloqueados de propósito no mobile. Nenhum defeito novo.
+- Próximo: Revisão e menu contextual, somente pendências REQ-660–668, 673, 675, 676, 678, 680, 682, 684–687.

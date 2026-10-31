@@ -1,0 +1,25 @@
+{
+  "reqs": [
+    "REQ-596",
+    "REQ-597",
+    "REQ-598",
+    "REQ-599",
+    "REQ-600",
+    "REQ-601",
+    "REQ-602"
+  ],
+  "result": "APROVADO",
+  "test": "apps/server/test/operations.test.ts — REQ-596–602 ações de etiqueta persistem, confirmam e calculam retorno",
+  "execution": "1 teste passou; o teste cria SQLite em pasta temporária do sistema e remove a pasta no teardown.",
+  "assertions": [
+    "GET recupera a regra configurada pela API",
+    "sem confirmação a aplicação da etiqueta retorna 409 e não cria vínculo",
+    "venda sem valor retorna 422; confirmação com valor registra uma única venda",
+    "ROI usa receita atribuída de vendas ganhas e investimento (400% neste caso)",
+    "reabrir o negócio remove a atribuição da receita",
+    "a ação gera uma nota interna e fixa a conversa",
+    "nenhum envio foi feito pelo socket WhatsApp fictício"
+  ],
+  "auditDatabase": "Não usado; .audit/noctua-audit.db permaneceu inalterado.",
+  "summary": "pass 1, fail 0"
+}

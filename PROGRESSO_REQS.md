@@ -268,3 +268,13 @@ Sem chave de IA autorizada, não serão repetidos os cenários que cadastram, ed
 - Falha inicial do runner antes das asserções: uv_os_get_passwd ... ENOMEM em tsx no Windows isolado. Contornada com preload CommonJS temporário em %TEMP% e NODE_OPTIONS com caminho normalizado; nenhum pacote/dependência foi alterado. A execução final passou.
 - Não foram encontrados defeitos de produto; falhas anteriores de seletor/setup no E2E foram corrigidas e retestadas conforme evidências. Nenhuma produção acessada.
 - Próximo lote: L-24 Etiquetas e leads, REQ-596–602. REQ-603–608 já completas; preservar sem reexecutar.
+
+## Lote L-24 — Etiquetas e leads — 30/10/2026
+
+- Fechadas 7 REQs (596–602): todas COMPLETO; REQ-603–608 preservadas sem repetição.
+- Playwright e2e/labels-leads.spec.ts: 21/21 em Chromium, 1366×768, 1920×1080 e 390×844; 21 JSON APROVADO e 21 PNG nas pastas individuais.
+- Teste de servidor focado em apps/server/test/operations.test.ts: 1/1. Verificou GET da regra salva, 409 sem confirmação, 422 sem valor, venda única, ROI de 400%, remoção da receita ao reabrir a oportunidade, nota interna, fixação e zero envios pelo socket fictício.
+- Nove erros de console foram chamadas de https://apis.google.com bloqueadas pela isolação nos casos mobile; zero erros de página e zero outras falhas de console.
+- Writes de API nos testes visuais foram interceptados. Teste de servidor usou SQLite em pasta temporária removida no teardown. .audit/noctua-audit.db preservado (2.039.808 bytes, 30/10/2026 15:07:20); API e front existentes responderam HTTP 200.
+- Nenhum defeito novo confirmado; sem mudança de app e sem entrada nova em BUGS.md. Produção não acessada.
+- Próximo lote: Revisão e menu contextual; tratar somente pendentes 660–668, 673, 675, 676, 678, 680, 682 e 684–687. Preservar as REQs já finais.

@@ -1,0 +1,30 @@
+{
+  "req": "REQ-601",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "viewport": {
+    "width": 1366,
+    "height": 768
+  },
+  "consoleErrors": [],
+  "pageErrors": [],
+  "blockedExternal": [],
+  "interceptedMutations": [
+    "POST /api/operations/directory/presence",
+    "POST /socket.io/",
+    "POST /socket.io/",
+    "PUT /api/attendance/sessions/audit-session/conversations/audit-conversation-1/labels/audit-label-note"
+  ],
+  "notes": {
+    "internalNotePreviewed": true,
+    "actionConfirmed": true,
+    "requestBody": {
+      "active": true,
+      "confirmActions": true
+    },
+    "outboundMessage": false
+  },
+  "failures": [],
+  "screenshotError": ""
+}
