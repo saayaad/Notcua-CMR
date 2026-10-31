@@ -79,3 +79,12 @@
 - Falhas/correções de teste: medições mobile foram ajustadas porque a lista de conversas fica oculta enquanto a conversa está aberta; REQ-508 usa o botão direto no cabeçalho; `Personalizar` abre menu, não o editor. Para L-19, preferências e posições foram interceptadas no fixture. A gaveta mobile intercepta atalhos enquanto aberta; o teste fecha antes de escolher o próximo filtro.
 - Nenhuma chamada de produção, mensagem ou gravação no `.audit/noctua-audit.db`. Ledger: 354 REQs com teste vinculado e 349 sem.
 - Próximo módulo: L-20, REQ-520 em diante. `scripts/iniciar-noctua-online.ps1` segue fora do commit.
+
+## Chaves e operações — L-27, REQ-695–697 — 30/10/2026
+
+- Três REQs passaram de `PARCIAL` para `COMPLETO-LOCAL` com testes identificados por REQ em `apps/server/test/access.test.ts`.
+- `access.test.ts`: 20/20; os três casos novos confirmam duas operações isoladas e recusa cruzada (403), ativação por chave com persistência em nova consulta e rejeição da reutilização, e acesso liberado sem registro de aprovação manual.
+- Ledger regenerado: 429 REQs com teste vinculado e 274 sem; estados do inventário: 437 `COMPLETO`, 97 `COMPLETO-LOCAL`, 76 `PARCIAL` (demais estados preservados).
+- Primeira execução abortou antes dos casos com `uv_os_get_passwd ... ENOMEM` no `tsx`; o preload CommonJS temporário indicado no histórico contornou o problema. Nenhuma dependência foi instalada nem resultado esperado foi alterado.
+- API local respondeu 200 e `/api/public/runtime` reportou `authMode=local`. Os testes usam SQLite temporário em `%TEMP%`; banco `.audit/noctua-audit.db` preservado (2.039.808 bytes; `2026-10-30T18:07:20.5497691Z`). Nenhuma conta real, e-mail ou produção foi acessada.
+- Evidências por REQ: `REVISAO/evidencias/REQ-695/`, `REQ-696/`, `REQ-697/`. Validação visual e e-mail confirmado requerem Firebase Auth Emulator, indisponível no ambiente atual; passo a passo está em `CHECKLIST-MANUAL.md`.

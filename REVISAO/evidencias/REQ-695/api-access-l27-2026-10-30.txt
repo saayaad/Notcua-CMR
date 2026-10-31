@@ -1,0 +1,6 @@
+L-27 — REQ-695 — API local / SQLite temporário
+Data: 2026-10-30
+Teste: apps/server/test/access.test.ts — REQ-695: contas fictícias próprias recebem operações separadas e recusam outro espaço.
+Resultado: APROVADO. Duas identidades simuladas audit-a@example.com e audit-b@example.com receberam chaves fictícias; /api/access/me retornou workspaces diferentes e tentativa da conta A no runtime da conta B retornou HTTP 403.
+Suíte access.test.ts: 20/20 passou. SQLite criado em %TEMP% pelo teste e removido no teardown. .audit/noctua-audit.db não foi usado.
+Limite: não prova a criação/validação de e-mail pelo Firebase nem a tela de cadastro. O front informa authMode=local; Firebase Auth Emulator não está configurado. Nenhuma conta/e-mail real usado.

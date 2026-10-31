@@ -1,0 +1,6 @@
+L-27 — REQ-696 — API local / SQLite temporário
+Data: 2026-10-30
+Teste: apps/server/test/access.test.ts — REQ-696: conta fictícia ativa a própria chave pela API e mantém acesso na consulta seguinte.
+Resultado: APROVADO. POST /api/access/activate com chave fictícia retornou HTTP 200; nova consulta /api/access/me permaneceu allowed=true; reutilizar a mesma chave retornou HTTP 409.
+Suíte access.test.ts: 20/20 passou. SQLite criado em %TEMP% pelo teste e removido no teardown. .audit/noctua-audit.db não foi usado.
+Limite: não prova a apresentação/entrada da chave na interface autenticada. O front informa authMode=local; Firebase Auth Emulator não está configurado. Nenhuma chave/conta real usada.

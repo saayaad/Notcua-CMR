@@ -42,6 +42,10 @@ const accounts = {
   owner: { uid: 'platform-owner', email: PLATFORM_OWNER },
   alpha: { uid: 'customer-a', email: 'alpha@example.invalid' },
   beta: { uid: 'customer-b', email: 'beta@example.invalid' },
+  signupA: { uid: 'audit-customer-a', email: 'audit-a@example.com' },
+  signupB: { uid: 'audit-customer-b', email: 'audit-b@example.com' },
+  activationClient: { uid: 'activation-customer', email: 'activation@example.com' },
+  selfServiceClient: { uid: 'self-service-customer', email: 'self-service@example.com' },
   staff: { uid: 'staff-user', email: 'staff@example.invalid' },
   preferenceMember: { uid: 'preference-member', email: 'preference-member@example.invalid' },
 };
@@ -152,6 +156,80 @@ test('REQ-113: token fictício de e-mail não confirmado é recusado antes do ac
     .get('/api/access/me')
     .set('Authorization', 'Bearer unverified')
     .expect(403);
+});
+test('REQ-695: contas fictícias próprias recebem operações separadas e recusam outro espaço', async () => {
+  const firstKey = await access.create(accounts.owner, { label: 'Cadastro A', months: 1 });
+  const secondKey = await access.create(accounts.owner, { label: 'Cadastro B', months: 1 });
+  await request(app)
+    .post('/api/access/activate')
+    .set('Authorization', 'Bearer signupA')
+    .send({ key: firstKey.secret })
+    .expect(200);
+  await request(app)
+    .post('/api/access/activate')
+    .set('Authorization', 'Bearer signupB')
+    .send({ key: secondKey.secret })
+    .expect(200);
+
+  const first = await request(app)
+    .get('/api/access/me')
+    .set('Authorization', 'Bearer signupA')
+    .expect(200);
+  const second = await request(app)
+    .get('/api/access/me')
+    .set('Authorization', 'Bearer signupB')
+    .expect(200);
+  assert.equal(first.body.allowed, true, 'REQ-695: a conta fictícia ativada recebe acesso próprio');
+  assert.equal(second.body.allowed, true, 'REQ-695: a segunda conta fictícia recebe acesso próprio');
+  assert.notEqual(first.body.workspaceId, second.body.workspaceId, 'REQ-695: operações ficam isoladas');
+  await request(runtimes.get(b)!.app)
+    .get('/api/attendance/library')
+    .set('Authorization', 'Bearer signupA')
+    .expect(403);
+});
+test('REQ-696: conta fictícia ativa a própria chave pela API e mantém acesso na consulta seguinte', async () => {
+  const key = await access.create(accounts.owner, { label: 'Ativação por cliente', months: 1 });
+  const activation = await request(app)
+    .post('/api/access/activate')
+    .set('Authorization', 'Bearer activationClient')
+    .send({ key: key.secret })
+    .expect(200);
+  assert.equal(activation.body.activated, true, 'REQ-696: chave válida ativa a operação');
+
+  const statusAfterActivation = await request(app)
+    .get('/api/access/me')
+    .set('Authorization', 'Bearer activationClient')
+    .expect(200);
+  assert.equal(statusAfterActivation.body.allowed, true, 'REQ-696: acesso persiste na consulta seguinte');
+  assert.equal(statusAfterActivation.body.email, accounts.activationClient.email);
+  await request(app)
+    .post('/api/access/activate')
+    .set('Authorization', 'Bearer activationClient')
+    .send({ key: key.secret })
+    .expect(409);
+});
+test('REQ-697: ativação válida libera a conta sem aprovação manual adicional', async () => {
+  const key = await access.create(accounts.owner, { label: 'Autoativação', months: 1 });
+  const before = await request(app)
+    .get('/api/access/me')
+    .set('Authorization', 'Bearer selfServiceClient')
+    .expect(200);
+  assert.equal(before.body.allowed, false, 'REQ-697: conta sem chave ainda não recebe acesso');
+
+  await request(app)
+    .post('/api/access/activate')
+    .set('Authorization', 'Bearer selfServiceClient')
+    .send({ key: key.secret })
+    .expect(200);
+  const approvalRecord = await registry.operationRecord.findUnique({
+    where: { id: `team:${accounts.selfServiceClient.email}` },
+  });
+  const after = await request(app)
+    .get('/api/access/me')
+    .set('Authorization', 'Bearer selfServiceClient')
+    .expect(200);
+  assert.equal(approvalRecord, null, 'REQ-697: não há aprovação manual na equipe');
+  assert.equal(after.body.allowed, true, 'REQ-697: a própria ativação habilita a operação');
 });
 test('somente o e-mail proprietário gera chaves e o código completo não fica armazenado', async () => {
   await assert.rejects(access.create(accounts.alpha, { label: 'No', months: 1 }), /proprietário/);

@@ -241,3 +241,10 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Toque prolongado real, leitor de tela, janela destacada e compatibilidade de navegador permanecem em `CHECKLIST-MANUAL.md`; não contar como prova física.
 - Regra de parada reaplicada no lote: suspender em regra de negócio, exclusão, banco, remoção, tecnologia grande, custo ou ambiguidade; registrar no protocolo e avançar os itens independentes. REQ-680 é o único bloqueio decisório deste módulo.
 - Próximo lote segue o primeiro módulo pendente da LEDGER após REQ-687. `scripts/iniciar-noctua-online.ps1` continua intocado e fora do commit. Sem push/publicação.
+
+## Ponto de retomada — 30/10/2026 — após L-27 Chaves e operações
+
+- REQ-695–697 receberam prova API local por contas fictícias e estão `COMPLETO-LOCAL`: operações isoladas, ativação por chave, persistência na consulta seguinte, uso único e dispensa de aprovação manual passaram em `apps/server/test/access.test.ts` (20/20 na suíte).
+- A primeira chamada `tsx` falhou antes dos testes com `uv_os_get_passwd ... ENOMEM`; preload CommonJS de processo com `NODE_OPTIONS` resolveu sem alterar dependências nem asserções. A suíte usou SQLite em `%TEMP%` e removeu o diretório ao terminar; `.audit/noctua-audit.db` permaneceu intacto.
+- O front local reporta `authMode=local`; não há Firebase Auth Emulator configurado. Cadastro/verificação de e-mail e percurso visual de uma segunda conta permanecem no `CHECKLIST-MANUAL.md`; nenhum cadastro ou e-mail real foi feito.
+- Próximo passo: primeiro módulo não finalizado pela ordem do `LEDGER.csv`; conferir status, log, API e metadados do banco antes de qualquer novo teste. `scripts/iniciar-noctua-online.ps1` permanece fora do lote. Sem push/publicação.

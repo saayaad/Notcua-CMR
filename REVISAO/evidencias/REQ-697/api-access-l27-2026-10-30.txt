@@ -1,0 +1,6 @@
+L-27 — REQ-697 — API local / SQLite temporário
+Data: 2026-10-30
+Teste: apps/server/test/access.test.ts — REQ-697: ativação válida libera a conta sem aprovação manual adicional.
+Resultado: APROVADO. A conta fictícia começou allowed=false; após ativar chave válida, ficou allowed=true sem registro team: de aprovação.
+Suíte access.test.ts: 20/20 passou. SQLite criado em %TEMP% pelo teste e removido no teardown. .audit/noctua-audit.db não foi usado.
+Limite: validação visual com e-mail confirmado requer Firebase Auth Emulator, não configurado no ambiente local. Nenhuma conta/e-mail real usada.

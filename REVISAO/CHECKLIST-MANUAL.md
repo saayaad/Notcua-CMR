@@ -1,5 +1,11 @@
 # Checklist manual externo
 
+## REQ-695–697 — Firebase Auth Emulator e ativação de conta
+
+1. Em ambiente local de teste isolado com Firebase Auth Emulator, crie duas contas fictícias `@example.com` e confirme o e-mail pela caixa de entrada do próprio emulador.
+2. Ative uma chave fictícia na interface local, recarregue e confira acesso persistente; entre com a segunda conta e confirme que ela não vê a operação da primeira.
+3. Confirme que a ativação válida libera o acesso sem aprovação da equipe e que a mesma chave não pode ser usada novamente; guarde capturas por REQ. Não use Firebase, e-mail, conta ou chave de produção.
+
 ## Firebase e e-mail
 
 ### REQ-098 — login com Google
