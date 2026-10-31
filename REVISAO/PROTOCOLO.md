@@ -267,9 +267,9 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - `scripts/iniciar-noctua-online.ps1` permanece fora do lote e do commit.
 ## Ponto de retomada — 31/10/2026 — após Mensagens L-03
 
-- REQ-024–053 avaliadas: 14 COMPLETO, 10 COMPLETO-LOCAL, REQ-036 DECISÃO; REQs já finais foram preservadas.
+- REQ-024–053 avaliadas: 14 COMPLETO, 10 COMPLETO-LOCAL; REQ-036 foi posteriormente esclarecida e fechada como COMPLETO, conforme registro ao final deste protocolo. REQs já finais foram preservadas.
 - Playwright: 21/21 em três viewports. Servidor focado: 9/9 em SQLite temporário. Front/API: HTTP 200. .audit/noctua-audit.db preservado (2.039.808 bytes; 2026-10-30 18:07:20 UTC). As mutações visuais e envios foram interceptados; nenhuma produção acessada.
-- REQ-036 aguarda definição: Gerar PIX aleatório significa emitir uma nova chave bancária ou cadastrar uma chave já emitida e gerar QR/Copia e Cola? Não solicitar chave real nem fazer pagamento.
+- REQ-036: decisão pendente à época deste checkpoint; atualizada após esclarecimento do usuário no registro de 31/10/2026 ao final deste protocolo.
 - Conferências externas pendentes estão agrupadas no REVISAO/CHECKLIST-MANUAL.md; nenhum envio real foi feito.
 - Próximo lote por módulo: Fluxos e CRM, REQ-054–075 (22 pendentes). Não resetar o banco nem refazer itens já completos.
 - scripts/iniciar-noctua-online.ps1 permanece modificado fora do lote e fora de staging; sem push ou publicação.
@@ -444,3 +444,10 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 
 - `REVISAO/evidencias/REQ-686/process.json` foi sobrescrito pelo teste histórico. O artefato precisa ser regenerado a partir de uma nova execução verificável; não restaurar nem tentar reconstruí-lo com versões antigas.
 - Regra: testes não podem gravar, substituir ou remover arquivos em `REVISAO/evidencias/REQ-<id>/` de REQs já fechadas sem autorização explícita do usuário. Para reexecuções, usar saída temporária fora dessas pastas; evidência fechada só pode ser atualizada com autorização.
+
+## Decisão e fechamento local — REQ-036 — 31/10/2026
+
+- Decisão do usuário: a chave aleatória deve ser a própria chave EVP/UUID do usuário, obtida do participante Pix e cadastrada por ele no Noctua. O Noctua salva e usa a chave para montar QR/Copia e Cola; não emite uma EVP válida no DICT.
+- O Banco Central especifica a EVP como UUID gerado pelo DICT; a prova desta auditoria usa somente UUIDs fictícios. Não se cadastrou chave real nem se enviou pagamento.
+- Usadas provas já existentes, sem executar testes novos: `apps/server/test/attendance.test.ts` cobre cadastro, consulta e payload/QR; `e2e/messages-audit.spec.ts` cobre cadastro na Biblioteca, recarga e prévia. Evidências existentes em `REVISAO/evidencias/REQ-036/`.
+- REQ-036 atualizada para `COMPLETO` no LEDGER e em REQUISITOS; removida da lista de decisões. Nenhum código, banco, evidência, `scripts/iniciar-noctua-online.ps1` ou `REVISAO/evidencias/REQ-686/process.json` foi alterado.

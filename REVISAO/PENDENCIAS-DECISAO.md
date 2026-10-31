@@ -1,12 +1,11 @@
 # Pendências que exigem decisão ou definição
 
-Fonte: `REVISAO/LEDGER.csv`, consultado em 31/10/2026. Esta lista reflete os estados registrados no ledger; não foram executados testes nem alterado código.
+Fonte: `REVISAO/LEDGER.csv`, consultado em 31/10/2026, após registrar decisão e prova existente de REQ-036. Sem testes novos nem alteração de código.
 
-## DECISÃO — 24 requisitos
+## DECISÃO — 23 requisitos
 
 Decida os critérios/escopos abaixo para que os itens possam ser especificados e verificados. REQ-523, REQ-527, REQ-540, REQ-567 e REQ-573 já têm decisão registrada; seguem listados como DECISÃO porque dependem de decisão futura ou do artefato indicado.
 
-- REQ-036 — PIX aleatório significa emitir uma nova chave válida no banco ou cadastrar uma chave aleatória já emitida e gerar QR/Copia e Cola?
 - REQ-126 — Quais funções ou capturas da fonte 6.txt ainda devem ser aceitas por este ID sem duplicar as outras REQs?
 - REQ-194 — Quais rotas, resoluções e tolerância em pixels formam o aceite fechado?
 - REQ-195 — Qual padrão visual é normativo e quais componentes/telas entram na homologação?
