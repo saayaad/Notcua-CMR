@@ -528,3 +528,11 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - A captura REQ-463 foi substituída pela prova descritiva do conjunto de macros antes do fechamento definitivo; reabri o item, repeti o teste específico em 3 viewports e confirmei que as novas capturas mostram seleção da imagem fictícia com URL na legenda. REQ-463 foi então fechada novamente.
 - Durante a correção, `REVISAO/evidencias/REQ-463/server-caption-test.json` foi criado enquanto o item ainda constava fechado. É um artefato adicional não necessário ao fechamento; fica fora do commit e não será removido nem regravado nesta rodada.
 - Fora os efeitos colaterais já registrados do runner integral em REQ-686, os retestes direcionados não gravaram em pastas fechadas. O reteste REQ-419–422 permaneceu em `.audit/`.
+
+## Retomada — REQ condicionais de macro — 31/10/2026
+
+- Reteste visual REQ-419–422 confirmado em Playwright, três viewports (1366×768, 1920×1080 e 390×844), com recibos em `.audit/req419-retest-evidence/` para preservar as evidências fechadas. Commit `c27ec02` foi enviado a `origin/auditoria-reqs`; branch alinhada após push.
+- Front `127.0.0.1:5180` e API `127.0.0.1:3340/health` responderam HTTP 200.
+- Próximos itens A VERIFICAR na ordem do ledger, ignorando REQ-126 bloqueada: REQ-461, REQ-462 e REQ-465. A inspeção visual já confirmou a ausência das três ações no editor; não salvar macros nem enviar mensagens.
+- Para fechar a condição “se suportado pelo conector”, falta um conector descartável de teste que declare suporte a convite nativo, vCard e lista interativa. O fake connector disponível não expõe essas capacidades e o código não define um contrato local para elas; não inferir compatibilidade de produção.
+- REQ-126 segue bloqueada aguardando a fonte `6.txt`. Nenhum novo teste foi executado nesta retomada e nenhuma evidência de REQ fechada foi alterada.
