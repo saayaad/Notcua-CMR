@@ -1,0 +1,13 @@
+{
+  "req": "REQ-453",
+  "result": "DECISÃO",
+  "project": "mobile-390",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "consoleErrors": [],
+  "currentToolsPanelVisible": true,
+  "buttonsHaveAccessibleLabels": true,
+  "questions": {
+    "REQ-448": "Quais botões devem mudar de aparência ou rótulo, e qual exemplo visual define “melhorar”?",
+    "REQ-453": "Quais mudanças de layout quer e quais funções do painel lateral devem permanecer visíveis?"
+  }
+}

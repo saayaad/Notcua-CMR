@@ -4,9 +4,6 @@
   "project": "mobile-390",
   "url": "http://127.0.0.1:5180/atendimento",
   "consoleErrors": [],
-  "positionChoices": [
-    "top",
-    "bottom"
-  ],
-  "question": "A barra deve aparecer simultaneamente em cima e embaixo ou apenas permitir escolher uma posição?"
+  "functionToolbarBottomAndShortcutToolbarTop": true,
+  "exactQuestion": "REQ-483 exige duplicar a mesma barra de funções no topo e no rodapé, ou basta manter a barra de funções e a barra de atalhos em posições opostas?"
 }

@@ -151,6 +151,26 @@ test('REQ-446/REQ-447 painel lateral compacta, oculta e reabre', async ({ page }
   await saveEvidence(page, ['REQ-446', 'REQ-447'], info, { initialWidth, compactWidth, hiddenThenShown: true, width15RemPersistedAfterReload: true, mobileDrawerUsesViewportWidth: page.viewportSize()!.width <= 768, preferencesFixture: true });
 });
 
+test('REQ-448/REQ-453 registra superfície atual e limite do pedido visual', async ({ page }, info) => {
+  await openConversation(page);
+  await ensureToolsOpen(page);
+  const tools = page.getByLabel('Ferramentas de atendimento');
+  await expect(tools).toBeVisible();
+  await expect(tools.getByRole('button', { name: 'Biblioteca' })).toBeVisible();
+  const unnamedButtons = await page.locator('button:visible').evaluateAll((buttons) => buttons
+    .filter((button) => ![button.getAttribute('aria-label'), button.getAttribute('title'), button.textContent]
+      .some((value) => value?.trim()))
+    .map((button) => button.outerHTML.slice(0, 180)));
+  expect(unnamedButtons).toEqual([]);
+  await saveEvidence(page, ['REQ-448', 'REQ-453'], info, {
+    result: 'DECISÃO', currentToolsPanelVisible: true, buttonsHaveAccessibleLabels: true,
+    questions: {
+      'REQ-448': 'Quais botões devem mudar de aparência ou rótulo, e qual exemplo visual define “melhorar”?',
+      'REQ-453': 'Quais mudanças de layout quer e quais funções do painel lateral devem permanecer visíveis?',
+    },
+  });
+});
+
 test('REQ-449 atalhos podem ser reordenados e continuam ordenados após reload', async ({ page }, info) => {
   await openConversation(page);
   await page.locator('.chat-more-actions summary').click();
@@ -172,6 +192,32 @@ test('REQ-449 atalhos podem ser reordenados e continuam ordenados após reload',
   await reopened.getByRole('tab', { name: 'Atalhos', exact: true }).click();
   await expect(reopened.getByRole('list', { name: 'Ordem dos atalhos' }).locator('li').first().locator('span')).toHaveText(firstAfter);
   await saveEvidence(page, ['REQ-449'], info, { firstBefore: firstName, firstAfter, persistsAfterReload: true, preferencesFixture: true });
+});
+
+test('REQ-482 lista de ferramentas aceita reordenação com setas e mantém ordem após reload', async ({ page }, info) => {
+  await openConversation(page);
+  await ensureToolsOpen(page);
+  const tools = page.getByLabel('Ferramentas de atendimento');
+  await tools.getByRole('button', { name: 'Personalizar posição das mensagens fixadas' }).click();
+  const dialog = page.getByRole('dialog').last();
+  await dialog.getByRole('tab', { name: 'Funções', exact: true }).click();
+  const list = dialog.getByRole('list', { name: 'Ordem das ferramentas' });
+  await expect(list).toBeVisible();
+  const firstBefore = (await list.locator('li').first().locator('span').innerText()).trim();
+  await list.getByRole('button', { name: `Descer ${firstBefore}` }).click();
+  const firstAfter = (await list.locator('li').first().locator('span').innerText()).trim();
+  expect(firstAfter).not.toBe(firstBefore);
+  const saved = page.waitForResponse((response) => response.url().endsWith('/api/operations/settings/preferences') && response.request().method() === 'PUT' && response.ok());
+  await dialog.getByRole('button', { name: 'Confirmar alterações' }).click();
+  await saved;
+  await page.reload();
+  await openConversation(page);
+  await ensureToolsOpen(page);
+  await tools.getByRole('button', { name: 'Personalizar posição das mensagens fixadas' }).click();
+  const reopened = page.getByRole('dialog').last();
+  await reopened.getByRole('tab', { name: 'Funções', exact: true }).click();
+  await expect(reopened.getByRole('list', { name: 'Ordem das ferramentas' }).locator('li').first().locator('span')).toHaveText(firstAfter);
+  await saveEvidence(page, ['REQ-482'], info, { firstBefore, firstAfter, orderPersistedAfterReload: true, namedArrowControls: true, fixtureApi: true });
 });
 
 test('REQ-455/REQ-457/REQ-458 ficha fictícia salva perfil e negócio e reaparece após reload', async ({ page }, info) => {
@@ -251,6 +297,65 @@ test('REQ-450 ordem das categorias salva e reaparece após reload', async ({ pag
     const restored = await page.request.put(organizationUrl, { data: original });
     expect(restored.status()).toBe(200);
   }
+});
+
+test('REQ-461/REQ-462/REQ-463/REQ-465/REQ-466 registra ações de macro disponíveis e formatos pendentes', async ({ page }, info) => {
+  await openConversation(page);
+  await ensureToolsOpen(page);
+  const tools = page.getByLabel('Ferramentas de atendimento');
+  await tools.locator('.workbench-create summary').click();
+  await tools.locator('.workbench-create').getByRole('button', { name: 'Macros', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('heading', { name: 'Criar macro de atendimento' })).toBeVisible();
+  const categories = dialog.locator('.macro-action-chooser details');
+  for (const name of ['Enviar mensagem', 'Aba do CRM', 'Etiquetas', 'Temporizadores', 'Utilitários e transferência'])
+    await categories.filter({ has: page.getByText(name, { exact: true }) }).locator('summary').click();
+  const choices = (await dialog.locator('.macro-action-chooser button').allTextContents()).map((text) => text.trim());
+  for (const option of ['Adicionar etapa ou etiqueta', 'Remover etapa ou etiqueta', 'Remover todas as etiquetas'])
+    expect(choices).toContain(option);
+  for (const absent of ['Convidar para grupo', 'Enviar contato', 'Banner com link', 'Lista interativa', 'Bloquear contato'])
+    expect(choices).not.toContain(absent);
+  await saveEvidence(page, ['REQ-461', 'REQ-462', 'REQ-463', 'REQ-465', 'REQ-466'], info, {
+    result: 'DECISÃO', availableChoices: choices, macroNotSaved: true, noMessageSent: true,
+    questions: {
+      'REQ-461': 'Convite por macro significa enviar link em texto ou convite nativo do WhatsApp para grupo?',
+      'REQ-462': 'Contato por macro deve ser compartilhado como vCard nativo ou como texto com dados?',
+      'REQ-463': 'Imagem/legenda com URL atende ao banner ou precisa banner clicável específico?',
+      'REQ-465': 'Lista por macro deve ser lista interativa nativa ou texto formatado?',
+      'REQ-466': '“Limpar vínculo de CRM” significa remover etiqueta, etapa do funil ou negócio associado?',
+    },
+  });
+});
+
+test('REQ-472 bloquear contato pede confirmação e chama somente endpoint fictício', async ({ page }, info) => {
+  let blockRequest: Record<string, unknown> | undefined;
+  await page.route('**/api/attendance/sessions/audit-session/conversations/audit-conversation-1/block', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    blockRequest = route.request().postDataJSON() as Record<string, unknown>;
+    return route.fulfill({ json: { saved: true } });
+  });
+  await openConversation(page);
+  const tools = page.getByLabel('Ferramentas de atendimento');
+  if (await tools.isVisible()) await tools.getByRole('button', { name: 'Fechar ferramentas' }).click();
+  await expect(tools).toBeHidden();
+  await page.getByRole('button', { name: 'Personalizar Atendimento com prévia' }).click();
+  const editor = page.getByRole('dialog').last();
+  await editor.getByRole('tab', { name: 'Funções', exact: true }).click();
+  const toolOrder = editor.getByRole('list', { name: 'Ordem das ferramentas' });
+  const showActions = toolOrder.getByRole('button', { name: 'Mostrar Ações', exact: true });
+  if (await showActions.count()) await showActions.click();
+  await expect(toolOrder.getByRole('button', { name: 'Ocultar Ações', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  const preferencesSaved = page.waitForResponse((response) => response.url().endsWith('/api/operations/settings/preferences') && response.request().method() === 'PUT' && response.ok());
+  await editor.getByRole('button', { name: 'Confirmar alterações' }).click();
+  await preferencesSaved;
+  await page.getByRole('navigation', { name: 'Funções do atendimento' }).getByRole('button', { name: 'Ações', exact: true }).click();
+  const actions = page.getByRole('dialog', { name: 'Ações' });
+  await actions.getByRole('button', { name: 'Bloquear contato', exact: true }).click();
+  const confirm = page.getByRole('dialog', { name: 'Bloquear contato no WhatsApp' });
+  await expect(confirm).toBeVisible();
+  await confirm.getByRole('button', { name: 'Confirmar alteração' }).click();
+  await expect.poll(() => blockRequest).toEqual({ blocked: true });
+  await saveEvidence(page, ['REQ-472'], info, { result: 'APROVADO', confirmationRequired: true, endpointIntercepted: true, whatsappContactBlocked: false });
 });
 
 test('REQ-454/REQ-460/REQ-471/REQ-473 macro combina ações pelo painel lateral sem envio', async ({ page }, info) => {
@@ -442,15 +547,42 @@ test('REQ-484/REQ-485/REQ-486 funções laterais mantêm Biblioteca, fixados e f
   await tools.getByRole('button', { name: 'Personalizar posição das mensagens fixadas' }).click();
   const customization = page.getByRole('dialog').last();
   await customization.getByRole('tab', { name: 'Funções', exact: true }).click();
+  const toolOrder = customization.getByRole('list', { name: 'Ordem das ferramentas' });
+  const showActionTool = toolOrder.getByRole('button', { name: 'Mostrar Ações', exact: true });
+  if (await showActionTool.count()) await showActionTool.click();
+  await expect(toolOrder.getByRole('button', { name: 'Ocultar Ações', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await customization.getByRole('tab', { name: 'Atalhos', exact: true }).click();
+  const shortcutOrder = customization.getByRole('list', { name: 'Ordem dos atalhos' });
+  const showStandardReplies = shortcutOrder.getByRole('button', { name: 'Mostrar Respostas padrão', exact: true });
+  if (await showStandardReplies.count()) await showStandardReplies.click();
+  await expect(shortcutOrder.getByRole('button', { name: 'Ocultar Respostas padrão', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await customization.getByRole('tab', { name: 'Funções', exact: true }).click();
   const nav = customization.getByRole('combobox', { name: 'Navegação na biblioteca completa' });
   await nav.click();
   await page.getByRole('option', { name: 'Ícones na lateral', exact: true }).click();
+  await customization.getByRole('tab', { name: 'Painéis', exact: true }).click();
+  const shortcutsPosition = customization.getByRole('combobox', { name: 'Posição dos atalhos de atendimento' });
+  await shortcutsPosition.click();
+  await page.getByRole('option', { name: 'Em cima da conversa', exact: true }).click();
+  await customization.getByRole('tab', { name: 'Funções', exact: true }).click();
   const position = customization.getByRole('combobox', { name: 'Barra de funções do atendimento' });
-  await expect(position).toBeVisible();
-  await page.getByRole('tab', { name: 'Painéis', exact: true }).click();
-  await page.getByRole('tab', { name: 'Funções', exact: true }).click();
-  await saveEvidence(page, ['REQ-483', 'REQ-487'], info, { result: 'DECISÃO', positionChoices: ['top', 'bottom'], question: 'A barra deve aparecer simultaneamente em cima e embaixo ou apenas permitir escolher uma posição?' });
+  await position.click();
+  await page.getByRole('option', { name: 'Embaixo da conversa', exact: true }).click();
+  const preview = customization.locator('.hud-sample-chat').first();
+  await expect(preview).toHaveClass(/hud-sample-shortcuts-top/u);
+  await expect(preview).toHaveClass(/hud-sample-functions-bottom/u);
   await customization.getByRole('button', { name: 'Confirmar alterações' }).click();
+  await page.reload();
+  await openConversation(page);
+  const chatBody = page.locator('.attendance-chat-body');
+  await expect(chatBody).toHaveClass(/shortcuts-position-top/u);
+  await expect(chatBody).toHaveClass(/functions-position-bottom/u);
+  const functionBox = await chatBody.locator('.attendance-functions').boundingBox();
+  const shortcutBox = await chatBody.locator('.attendance-shortcuts').boundingBox();
+  const messagesBox = await chatBody.locator('.message-area').boundingBox();
+  expect(functionBox && shortcutBox && messagesBox).not.toBeNull();
+  expect(shortcutBox!.y).toBeLessThan(messagesBox!.y);
+  expect(functionBox!.y).toBeGreaterThan(messagesBox!.y);
   await ensureToolsOpen(page);
   await expect(tools).toHaveAttribute('data-tool-nav', 'side');
   const sideLayout = await tools.evaluate((element) => ({ display: getComputedStyle(element).display, mode: element.querySelector('.workbench-mode-tabs')?.getBoundingClientRect().toJSON(), content: element.querySelector('.workbench-pane-content')?.getBoundingClientRect().toJSON() }));
@@ -466,5 +598,7 @@ test('REQ-484/REQ-485/REQ-486 funções laterais mantêm Biblioteca, fixados e f
     await chips.getByRole('button', { name: kind, exact: true }).click();
     await expect(chips.getByRole('button', { name: kind, exact: true })).toHaveAttribute('aria-pressed', 'true');
   }
+  await saveEvidence(page, ['REQ-487'], info, { functionToolbarTopAndBottomOptions: true, selectedFunctionToolbar: 'bottom', shortcutToolbarSelected: 'top', bothPositionsPersistAfterReload: true });
+  await saveEvidence(page, ['REQ-483'], info, { result: 'DECISÃO', functionToolbarBottomAndShortcutToolbarTop: true, exactQuestion: 'REQ-483 exige duplicar a mesma barra de funções no topo e no rodapé, ou basta manter a barra de funções e a barra de atalhos em posições opostas?' });
   await saveEvidence(page, ['REQ-484', 'REQ-485', 'REQ-486'], info, { lateralFunctionsConfigured: true, libraryAndPinnedTabsAvailable: true, filters: ['text', 'audio', 'media', 'document', 'funnel', 'flow'], noResourceSent: true });
 });

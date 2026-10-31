@@ -192,6 +192,7 @@ dateOverrides['REQ-425'] = '2026-10-31';
 dateOverrides['REQ-464'] = '2026-10-31';
 dateOverrides['REQ-512'] = '2026-10-31';
 for (const id of ['REQ-523', 'REQ-527', 'REQ-530', 'REQ-533', 'REQ-534', 'REQ-540', 'REQ-541', 'REQ-542']) dateOverrides[id] = '2026-10-31';
+for (const id of ['REQ-448', 'REQ-453', 'REQ-455', 'REQ-457', 'REQ-458', 'REQ-461', 'REQ-462', 'REQ-463', 'REQ-465', 'REQ-466', 'REQ-472', 'REQ-475', 'REQ-482', 'REQ-483', 'REQ-487', 'REQ-499']) dateOverrides[id] = '2026-10-31';
 const rows = [];
 for (const line of source.split(/\r?\n/)) {
   if (!/^\| REQ-\d+ \|/.test(line)) continue;

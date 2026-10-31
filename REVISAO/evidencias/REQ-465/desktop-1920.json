@@ -1,0 +1,33 @@
+{
+  "req": "REQ-465",
+  "result": "DECISÃO",
+  "project": "desktop-1920",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "consoleErrors": [],
+  "availableChoices": [
+    "Texto",
+    "Imagem, vídeo, áudio ou documento",
+    "Figurinha WebP da biblioteca",
+    "Adicionar etapa ou etiqueta",
+    "Remover etapa ou etiqueta",
+    "Adicionar etiqueta",
+    "Remover etiqueta",
+    "Remover todas as etiquetas",
+    "Esperar e mostrar presença",
+    "Arquivar conversa",
+    "Reabrir conversa",
+    "Fixar conversa",
+    "Desafixar conversa",
+    "Marcar como não lida",
+    "Transferir atendimento"
+  ],
+  "macroNotSaved": true,
+  "noMessageSent": true,
+  "questions": {
+    "REQ-461": "Convite por macro significa enviar link em texto ou convite nativo do WhatsApp para grupo?",
+    "REQ-462": "Contato por macro deve ser compartilhado como vCard nativo ou como texto com dados?",
+    "REQ-463": "Imagem/legenda com URL atende ao banner ou precisa banner clicável específico?",
+    "REQ-465": "Lista por macro deve ser lista interativa nativa ou texto formatado?",
+    "REQ-466": "“Limpar vínculo de CRM” significa remover etiqueta, etapa do funil ou negócio associado?"
+  }
+}

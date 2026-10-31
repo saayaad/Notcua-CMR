@@ -368,3 +368,15 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - REQ-425 foi fechada como `COMPLETO-LOCAL` no commit `b5cbd76`, já publicado na branch `auditoria-reqs`.
 - Próximo módulo aberto na ordem do LEDGER: Atendimento (REQ-448–499). Os 15 IDs ainda não finais estão todos em `DECISÃO`: critérios pedem mudanças amplas de visual, estrutura, dados ou ações rápidas sem definir resultado esperado; detalhes individuais permanecem no LEDGER.
 - Não alterei código nem dados para esses critérios vagos. Próxima ação depende de definir quais comportamentos/escopo são desejados para Atendimento. Nenhum acesso a produção.
+
+
+## Atendimento — fechamento visual parcial — 31/10/2026
+
+- REQ-455/457/458: os recibos e capturas correspondem aos testes E2E em `http://127.0.0.1:5180/atendimento`; os metadados registram `fixtureApi: true`, valores sintéticos e nenhum erro de console. 455/457 ficam `DECISÃO` porque persistência não resolve se telefone é editável nem se valor sincroniza com CRM. 458 permanece `COMPLETO`.
+- REQ-686 `process.json` não é evidência de teste: registra apenas um `git status` e o estado de dois arquivos. Permanece pendente e fora do commit. `scripts/iniciar-noctua-online.ps1` também segue intocado por esta auditoria e fora do staging.
+- Regressão Playwright focal: 21/21 casos passaram em 1366x768, 1920x1080 e 390x844 para REQ-448/453, 455/457/458, 461–466, 472, 475, 482 e 484–486/487. Primeiro comando falhou antes de executar por omitir `--config e2e/playwright.config.ts` (`/atendimento` foi tratado como URL inválida); comando corrigido usou a configuração correta e os servidores já ativos. Nenhuma expectativa foi alterada para forçar aprovação.
+- REQ-472 foi verificada até o pedido POST `{blocked:true}` com confirmação; endpoint interceptado pelo fixture, portanto contato WhatsApp real não foi bloqueado. `COMPLETO-LOCAL`; prova externa somente em conector descartável.
+- REQ-475, 482 e 499 fechadas como `COMPLETO`: ativação de atalho persistida, reordenação por setas persistida, e ausência de campo numérico de ordenação (teclas ficam separadas). REQ-448/453/455/457/461/462/463/465/466/483/487 continuam `DECISÃO`, com perguntas exatas no LEDGER.
+- Validação de segurança: front e API local responderam HTTP 200; `.audit/noctua-audit.db` permaneceu com 2.039.808 bytes e `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`. Sem produção, WhatsApp real, Firebase, Vercel, túnel ou `.env.local`.
+- Embeddings REQ-425: `@huggingface/transformers` 3.8.1 e `Xenova/paraphrase-multilingual-MiniLM-L12-v2` revisão `2c4055b12046f11709e9df2c122e59ffbdc2f900`; inferência local **não exige chave de API** e **não transmite dados de conversas**. Só o download inicial obtém artefatos públicos fixos; inferência usa `allowRemoteModels=false`.
+- Próximo ponto: concluir commit/push deste lote e prosseguir pelo próximo módulo não final do LEDGER.

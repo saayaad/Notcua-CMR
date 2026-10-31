@@ -1,6 +1,6 @@
 {
   "req": "REQ-455",
-  "result": "APROVADO",
+  "result": "DECISÃO",
   "project": "mobile-390",
   "url": "http://127.0.0.1:5180/atendimento",
   "consoleErrors": [],
@@ -12,5 +12,6 @@
     "language": "pt-BR"
   },
   "fixtureApi": true,
-  "saved": true
+  "saved": true,
+  "openQuestion": "Telefone deve ser editável na ficha apesar de ser a identidade do conector?"
 }

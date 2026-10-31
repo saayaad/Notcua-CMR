@@ -1,12 +1,11 @@
 {
   "req": "REQ-487",
-  "result": "DECISÃO",
+  "result": "APROVADO",
   "project": "mobile-390",
   "url": "http://127.0.0.1:5180/atendimento",
   "consoleErrors": [],
-  "positionChoices": [
-    "top",
-    "bottom"
-  ],
-  "question": "A barra deve aparecer simultaneamente em cima e embaixo ou apenas permitir escolher uma posição?"
+  "functionToolbarTopAndBottomOptions": true,
+  "selectedFunctionToolbar": "bottom",
+  "shortcutToolbarSelected": "top",
+  "bothPositionsPersistAfterReload": true
 }

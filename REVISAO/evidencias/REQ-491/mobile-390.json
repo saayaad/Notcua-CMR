@@ -8,5 +8,6 @@
   "previewVisible": true,
   "shortcutOrderHasDragAndArrows": true,
   "numericOrderFields": 0,
+  "keyboardShortcutsAreSeparateAndPersist": true,
   "keyboardShortcutPersistedAfterReload": true
 }

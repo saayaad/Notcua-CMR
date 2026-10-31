@@ -195,3 +195,10 @@
 
 - Próximo módulo aberto na ordem do ledger: Atendimento (REQ-448–499). Os 15 requisitos ainda não finais requerem decisões de escopo/comportamento já discriminadas em `REVISAO/LEDGER.csv`; não alterei essas funções sem critérios definidos.
 - Commit da correção: `b5cbd76`; commit de preservação do histórico: `2d6fd67`; ambos publicados em `auditoria-reqs`.
+
+
+## Atendimento — retomada 31/10/2026
+
+- Confirmados recibos de REQ-455/457/458 como saídas dos testes E2E com fixture local. 455/457 seguem DECISÃO por perguntas de escopo; 458 aprovado. REQ-686/process.json não é prova de teste, ficou pendente e sem commit.
+- Playwright focal: 21/21 aprovado nos três viewports após corrigir a invocação para `--config e2e/playwright.config.ts`. REQ-472: confirmação e POST local interceptado, sem bloqueio WhatsApp real; COMPLETO-LOCAL. REQ-475/482/499: atalho adicionável/persistente, reordenação prática persistente, sem campos numéricos de ordem; COMPLETO.
+- Demais decisões do módulo mantidas com questões objetivas no LEDGER. Banco `.audit` preservado (2.039.808 bytes; timestamp original), API/front HTTP 200.

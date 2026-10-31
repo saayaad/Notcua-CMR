@@ -48,7 +48,7 @@ test.beforeEach(async ({ page }, testInfo) => {
   } : {};
   let preferences: Record<string, unknown> = {
     toolsVisible: true, toolsDocked: true, toolsCompact: false, hudToolsWidth: 20,
-    attendanceCustomizationVersion: 3, attendanceHiddenShortcuts: [], hudHiddenTools: [],
+    attendanceCustomizationVersion: 3, attendanceHiddenShortcuts: testInfo.title.includes('REQ-475') ? ['faq'] : [], hudHiddenTools: [],
     attendanceShortcutOrder: ['faq', 'MESSAGE', 'AUDIO', 'MEDIA', 'FUNNEL', 'client', 'schedule', 'notes', 'next', 'transfers'],
     shortcutLabels: {}, shortcutKeys: {}, pinnedResourceIds: [], pinnedButtonSettings: {}, showPinnedPreview: false,
     attendanceShortcutPosition: 'top', attendanceFunctionsPosition: 'top', hudToolNav: 'top', density: 'compact',
@@ -86,7 +86,7 @@ test('REQ-488/489 atalhos abrem cada destino sem abrir modal e lateral juntos', 
   await saveEvidence(page, ['REQ-488', 'REQ-489'], info, { sidebarShortcut: 'Textos', dialogShortcuts: ['Respostas padrão', 'Cliente e etiquetas'], simultaneousDialogAndToolbox: false });
 });
 
-test('REQ-490/491/497/498/499 editor centraliza barra, atalhos e teclas com controles claros', async ({ page }, info) => {
+test('REQ-475/490/491/497/498/499 editor permite adicionar atalhos e ordenar sem campo numérico', async ({ page }, info) => {
   await openConversation(page);
   const dialog = await openEditor(page);
   const tabs = dialog.getByRole('tab');
@@ -97,6 +97,8 @@ test('REQ-490/491/497/498/499 editor centraliza barra, atalhos e teclas com cont
   const order = dialog.getByRole('list', { name: 'Ordem dos atalhos' });
   await expect(order.getByRole('button', { name: 'Subir Respostas padrão' })).toBeVisible();
   await expect(order.locator('input[type=number]')).toHaveCount(0);
+  await order.getByRole('button', { name: 'Mostrar Respostas padrão' }).click();
+  await expect(order.getByRole('button', { name: 'Ocultar Respostas padrão' })).toHaveAttribute('aria-pressed', 'true');
   await dialog.getByRole('tab', { name: 'Teclas de atalho', exact: true }).click();
   const key = dialog.getByLabel('Tecla para Respostas padrão');
   await key.fill('Alt+M');
@@ -104,12 +106,14 @@ test('REQ-490/491/497/498/499 editor centraliza barra, atalhos e teclas com cont
   await dialog.getByRole('button', { name: 'Confirmar alterações' }).click();
   await page.reload();
   await page.locator('button.chat-item:not(.chat-item-more)').first().click();
+  await expect(page.locator('.attendance-shortcuts').getByRole('button', { name: 'Respostas padrão', exact: true })).toBeVisible();
+  await saveEvidence(page, ['REQ-475'], info, { addedShortcut: 'Respostas padrão', visibleAfterReload: true, fixtureApi: true });
   const reopened = await openEditor(page);
   await reopened.getByRole('tab', { name: 'Teclas de atalho', exact: true }).click();
   await expect(reopened.getByLabel('Tecla para Respostas padrão')).toHaveValue('Alt+M');
   await reopened.getByRole('tab', { name: 'Funções', exact: true }).click();
   await expect(reopened.getByText('Barra de funções do atendimento')).toBeVisible();
-  await saveEvidence(page, ['REQ-490', 'REQ-491', 'REQ-497', 'REQ-498', 'REQ-499'], info, { sevenTabs: true, previewVisible: true, shortcutOrderHasDragAndArrows: true, numericOrderFields: 0, keyboardShortcutPersistedAfterReload: true });
+  await saveEvidence(page, ['REQ-490', 'REQ-491', 'REQ-497', 'REQ-498', 'REQ-499'], info, { sevenTabs: true, previewVisible: true, shortcutOrderHasDragAndArrows: true, numericOrderFields: 0, keyboardShortcutsAreSeparateAndPersist: true, keyboardShortcutPersistedAfterReload: true });
 });
 
 test('REQ-492/493/494/495/502/503 filtra, fixa, configura e remove um recurso sem enviar', async ({ page }, info) => {
@@ -350,12 +354,12 @@ test('REQ-512 revisão global confirma estados finais das Partes 1 e 2', async (
   await openConversation(page);
   await openEditor(page);
   await expect(page.getByRole('tablist', { name: 'Configurações do atendimento' }).getByRole('tab')).toHaveCount(7);
-  expect(reviewed['REQ-499']).toMatch(/DECISÃO/u);
+  expect(reviewed['REQ-499']).toMatch(/COMPLETO-LOCAL/u);
   await saveEvidence(page, ['REQ-512'], info, {
     parentAndChildStatusesReviewed: true,
     reviewedRange: 'REQ-488–REQ-511',
     reviewedCount: Object.keys(reviewed).length,
-    registeredDecision: ['REQ-499'],
+    registeredCompleteLocal: ['REQ-499'],
     parentComplete: true,
   });
 });
