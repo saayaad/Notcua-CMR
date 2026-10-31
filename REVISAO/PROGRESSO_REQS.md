@@ -165,3 +165,9 @@
 - `npm run audit:ledger`: 506 com teste vinculado, 197 sem; 473 `COMPLETO`, 142 `COMPLETO-LOCAL`, 3 `AUSENTE`, 1 `DEFEITO`, 4 `DESCONECTADO`, 29 decisões (7 + 7 + 15) e 51 substituídas/canceladas.
 - API local HTTP 200; banco `.audit/noctua-audit.db` intacto (2.039.808 bytes; LastWriteTimeUtc 2026-10-30T18:07:20.5497691Z). REQ-530 usou SQLite temporário. Nenhuma produção acessada.
 - Branch `auditoria-reqs`; `scripts/iniciar-noctua-online.ps1` permaneceu fora do staging e não foi executado.
+
+## Automações — revalidação REQ-408/409 — 31/10/2026
+
+- 3/3 Playwright em três viewports confirmou ausência de seletor para dividir fila entre conexões e de failover. Estados `AUSENTE` mantidos; nenhuma campanha criada ou salva.
+- PNGs/JSON atualizados em `REVISAO/evidencias/REQ-408/` e `REQ-409/`; API/front HTTP 200; banco `.audit` inalterado.
+- Nenhum bug de código novo confirmado. Próximo lote: Economia de IA, usando somente testes locais simulados, sem chave/serviço externo.

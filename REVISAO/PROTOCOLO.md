@@ -330,3 +330,10 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - API local retornou HTTP 200. `.audit/noctua-audit.db` preservado: 2.039.808 bytes, `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`. Teste REQ-530 usou SQLite temporário; nenhuma gravação no banco `.audit`.
 - Branch `auditoria-reqs`; único arquivo preexistente fora do escopo segue modificado: `scripts/iniciar-noctua-online.ps1`, não executado nem staged. Sem push/publicação.
 - Próxima retomada: escolher próximo defeito/ausência/desconexão que possa ser verificado localmente sem chave de IA ou produção; manter decisões para o usuário agrupadas.
+
+## Lote — Automações REQ-408/409 — 31/10/2026
+
+- Revalidei no front local a distribuição entre conexões (REQ-408) e o failover de chip (REQ-409). Os controles seguem ausentes; estados `AUSENTE` mantidos, sem alterar regra esperada ou código do produto.
+- Playwright `e2e/automations.spec.ts`, caso REQ-408/409: 3/3 em 1366×768, 1920×1080 e 390×844. Capturas PNG e recibos JSON individuais em `REVISAO/evidencias/REQ-408/` e `REQ-409/`.
+- O teste só abriu o editor; não criou nem salvou campanha. API/front responderam HTTP 200; `.audit/noctua-audit.db` permaneceu com 2.039.808 bytes e `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`.
+- Branch `auditoria-reqs` sincronizada antes do lote. Próximo módulo com itens não aprovados: Economia de IA (REQ-419–422, 425, 430). IA real/chave real não será usada.
