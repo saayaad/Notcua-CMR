@@ -100,7 +100,7 @@ after(async () => {
   await rm(directory, { recursive: true, force: true });
 });
 
-test('texto personaliza #nome, reserva ID remoto e não duplica requisições ou eco do WhatsApp', async () => {
+test('REQ-028 texto personaliza #nome pelo nome do contato, reserva ID remoto e não duplica requisições ou eco do WhatsApp', async () => {
   const input = { requestId: 'same-text', kind: 'text', text: 'Olá, *#nome*! Tudo bem?' };
   const before = socket.sends.length;
   const [first, repeated] = await Promise.all([
@@ -180,7 +180,7 @@ test('REQ-265 ajusta a duração de digitando conforme o tamanho do texto', asyn
   assert.ok(longMs > shortMs + 800, `longa=${longMs} ms, curta=${shortMs} ms`);
 });
 
-test('REQ-570 conversão de áudio de voz WAV produz OGG/Opus e envia como PTT pelo socket fictício', async () => {
+test('REQ-030/REQ-570 áudio de voz WAV produz OGG/Opus, envia como PTT e bloqueia resgate após visualização única', async () => {
   const samples = 8000;
   const pcm = Buffer.alloc(samples * 2);
   const wav = Buffer.alloc(44 + pcm.length);
@@ -269,7 +269,7 @@ test('qualquer áudio enviado pelo chat vira mensagem de voz mesmo se o arquivo 
   assert.ok(bytes.includes(Buffer.from('OpusHead')));
 });
 
-test('vídeo circular e imagem preservam opções, legenda e formato nativo', async () => {
+test('REQ-032/REQ-033/REQ-034 vídeo circular preserva visualização única, legenda e formato nativo', async () => {
   const ffmpeg = createRequire(import.meta.url)('ffmpeg-static') as string;
   const clip = execFileSync(ffmpeg, [
     '-nostdin', '-v', 'error', '-f', 'lavfi', '-i', 'color=c=black:s=32x32:d=0.1',
@@ -349,7 +349,7 @@ test('PIX usa TLV, moeda BRL e CRC16; chave aleatória deve existir no banco do 
   );
 });
 
-test('API cadastra chave PIX fictícia de formato aleatório e gera Copia e Cola e QR sem enviar', async () => {
+test('REQ-035/REQ-036/REQ-037 API cadastra chave PIX fictícia aleatória e gera Copia e Cola e QR sem enviar', async () => {
   const app = createApp(db, whatsapp, sequences, messaging);
   const sendsBefore = socket.sends.length;
   const key = await request(app).post('/api/attendance/pix-keys').send({
@@ -407,7 +407,7 @@ test('funil aguarda o intervalo, usa snapshot e pode ser cancelado sem enviar a 
   assert.equal((await db.sequenceRun.findUniqueOrThrow({ where: { id: run.id } })).status, 'CANCELLED');
 });
 
-test('macro espera antes do texto e aplica tempo de digitação configurado', async () => {
+test('REQ-045 macro espera antes do texto e aplica tempo de digitação configurado', async () => {
   await db.macro.create({
     data: {
       id: 'macro-delayed-text-test',
@@ -446,7 +446,7 @@ test('macro espera antes do texto e aplica tempo de digitação configurado', as
   assert.equal((await db.sequenceRun.findUniqueOrThrow({ where: { id: run.id } })).status, 'COMPLETED');
 });
 
-test('funil envia texto, áudio de voz e imagem em ordem com atraso entre etapas', async () => {
+test('REQ-049/REQ-050/REQ-051/REQ-052 funil multimídia mantém ordem, atraso e presença durante etapa de áudio', async () => {
   const ffmpeg = createRequire(import.meta.url)('ffmpeg-static') as string;
   const wav = execFileSync(ffmpeg, [
     '-nostdin', '-v', 'error', '-f', 'lavfi', '-i', 'sine=frequency=523:duration=0.15',
@@ -551,7 +551,7 @@ test('API filtra, protege escopo, salva ativos/funis/notas e entrega o históric
     .expect(404);
 });
 
-test('REQ-180/REQ-181/REQ-182: biblioteca cria, edita, lista, baixa e exclui áudio, imagem, vídeo e documento', async () => {
+test('REQ-040/REQ-041/REQ-042/REQ-180/REQ-181/REQ-182 biblioteca cria, edita, lista, baixa e exclui áudio, imagem, vídeo e documento', async () => {
   const app = createApp(db, whatsapp, sequences, messaging);
   const sendsBefore = socket.sends.length;
   const ffmpeg = createRequire(import.meta.url)('ffmpeg-static') as string;

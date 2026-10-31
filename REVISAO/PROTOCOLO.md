@@ -265,3 +265,11 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Pendência externa: validar agenda, fotos visíveis, histórico disponível e etiqueta importada em conta WhatsApp descartável; seguir `REVISAO/CHECKLIST-MANUAL.md`.
 - Próximo lote: módulo Mensagens, primeira REQ pendente após REQ-021. Reconfirmar Git, API/front e metadados do banco antes de testar.
 - `scripts/iniciar-noctua-online.ps1` permanece fora do lote e do commit.
+## Ponto de retomada — 31/10/2026 — após Mensagens L-03
+
+- REQ-024–053 avaliadas: 14 COMPLETO, 10 COMPLETO-LOCAL, REQ-036 DECISÃO; REQs já finais foram preservadas.
+- Playwright: 21/21 em três viewports. Servidor focado: 9/9 em SQLite temporário. Front/API: HTTP 200. .audit/noctua-audit.db preservado (2.039.808 bytes; 2026-10-30 18:07:20 UTC). As mutações visuais e envios foram interceptados; nenhuma produção acessada.
+- REQ-036 aguarda definição: Gerar PIX aleatório significa emitir uma nova chave bancária ou cadastrar uma chave já emitida e gerar QR/Copia e Cola? Não solicitar chave real nem fazer pagamento.
+- Conferências externas pendentes estão agrupadas no REVISAO/CHECKLIST-MANUAL.md; nenhum envio real foi feito.
+- Próximo lote por módulo: Fluxos e CRM, REQ-054–075 (22 pendentes). Não resetar o banco nem refazer itens já completos.
+- scripts/iniciar-noctua-online.ps1 permanece modificado fora do lote e fora de staging; sem push ou publicação.

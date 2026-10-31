@@ -1,0 +1,73 @@
+{
+  "req": "REQ-040",
+  "result": "APROVADO",
+  "project": "desktop-1920",
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "consoleErrors": [],
+  "pageErrors": [],
+  "blockedExternal": [],
+  "interceptedWrites": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/files",
+      "body": {
+        "filename": "audit.ogg",
+        "mimeType": "audio/ogg",
+        "voice": true
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/assets",
+      "body": {
+        "name": "Áudio criado pela auditoria",
+        "kind": "AUDIO",
+        "fileId": "audit-ui-file-1",
+        "isPtt": true,
+        "isPtv": false,
+        "asViewOnce": false,
+        "isFavorite": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "PUT",
+      "path": "/api/attendance/assets/audit-ui-asset-7",
+      "body": {
+        "name": "Áudio criado pela auditoria",
+        "kind": "AUDIO",
+        "fileId": "audit-ui-file-1",
+        "isPtt": true,
+        "isPtv": false,
+        "asViewOnce": false,
+        "isFavorite": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/attendance/assets/audit-ui-asset-7"
+    }
+  ],
+  "kind": "AUDIO",
+  "createdEditedAndReloaded": true,
+  "deletedOnlyFixture": "Áudio criado pela auditoria",
+  "writesIntercepted": true
+}

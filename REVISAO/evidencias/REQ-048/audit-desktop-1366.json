@@ -1,0 +1,138 @@
+{
+  "req": "REQ-048",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "viewport": {
+    "width": 1366,
+    "height": 768
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "consoleErrors": [],
+  "pageErrors": [],
+  "blockedExternal": [],
+  "interceptedWrites": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/sessions/audit-session/conversations/audit-conversation-1/read",
+      "body": null
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/macros",
+      "body": {
+        "name": "Macro auditada desktop-1366",
+        "actions": [
+          {
+            "uiId": "6379f863-2da1-4419-9028-d861a26d9914",
+            "type": "TEXT",
+            "actionId": "",
+            "text": "Olá, #nome! *Mensagem fictícia*.",
+            "assetId": "",
+            "labelId": "",
+            "delayMs": 1000,
+            "composingMs": 1000,
+            "command": "WAIT",
+            "target": "",
+            "presence": "none"
+          },
+          {
+            "uiId": "30d2642e-3948-4cf4-94b7-aa76a6f4dee1",
+            "type": "UTILITY",
+            "actionId": "",
+            "text": "",
+            "assetId": "",
+            "labelId": "",
+            "delayMs": 2500,
+            "composingMs": 1000,
+            "command": "WAIT",
+            "target": "",
+            "presence": "recording"
+          },
+          {
+            "uiId": "1d2d67f3-2497-4c07-ad2b-4c2d74707ac6",
+            "type": "ADD_LABEL",
+            "actionId": "",
+            "text": "",
+            "assetId": "",
+            "labelId": "audit-label-warm",
+            "delayMs": 1000,
+            "composingMs": 1000,
+            "command": "WAIT",
+            "target": "",
+            "presence": "none"
+          },
+          {
+            "uiId": "6a275786-1345-4900-abe9-c31075307214",
+            "type": "REMOVE_LABEL",
+            "actionId": "",
+            "text": "",
+            "assetId": "",
+            "labelId": "audit-label-customer",
+            "delayMs": 1000,
+            "composingMs": 1000,
+            "command": "WAIT",
+            "target": "",
+            "presence": "none"
+          },
+          {
+            "uiId": "5bb7e517-597f-46d6-b699-fd4cf18986db",
+            "type": "ASSET",
+            "actionId": "",
+            "text": "",
+            "assetId": "audit-asset-audio",
+            "labelId": "",
+            "delayMs": 1000,
+            "composingMs": 1000,
+            "command": "WAIT",
+            "target": "",
+            "presence": "none"
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/sessions/audit-session/conversations/audit-conversation-1/sequences",
+      "body": {
+        "kind": "MACRO",
+        "sourceId": "audit-ui-macro",
+        "requestId": "44c697aa-b932-4cfa-b91d-5b7e7c687ad1"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/toolbox/usage",
+      "body": {
+        "id": "audit-ui-macro"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    }
+  ],
+  "notes": {
+    "macroName": "Macro auditada desktop-1366",
+    "actionTypes": [
+      "TEXT",
+      "UTILITY",
+      "ADD_LABEL",
+      "REMOVE_LABEL",
+      "ASSET"
+    ],
+    "waitMs": 2500,
+    "presence": "recording",
+    "audioAssetId": "audit-asset-audio",
+    "persistedAfterReload": true,
+    "launchedByUserAction": true,
+    "launchIntercepted": true,
+    "serverProof": "operations.test.ts e attendance.test.ts usam conector fictício e SQLite temporário para execução da sequência e presença."
+  },
+  "failures": []
+}

@@ -36,6 +36,11 @@ const external = /WhatsApp real|iPhone|Android|aparelho|dispositivo físico|segu
 const visual = /exibir|mostrar|abrir|interface|tela|botão|modal|layout|painel|menu|tooltip|arrastar|redimensionar|prévia|visualizar|tema|cor|ícone|responsiv/i;
 const typeOverrides = {
   'REQ-017': 'C', 'REQ-018': 'C', 'REQ-019': 'C', 'REQ-020': 'C', 'REQ-021': 'B',
+  'REQ-024': 'B', 'REQ-027': 'B', 'REQ-028': 'B',
+  'REQ-030': 'C', 'REQ-031': 'C', 'REQ-032': 'C', 'REQ-033': 'C', 'REQ-034': 'C', 'REQ-035': 'C',
+  'REQ-037': 'C', 'REQ-038': 'C',
+  'REQ-040': 'B', 'REQ-041': 'B', 'REQ-042': 'B', 'REQ-044': 'B', 'REQ-045': 'C', 'REQ-046': 'B',
+  'REQ-047': 'B', 'REQ-048': 'B', 'REQ-049': 'B', 'REQ-050': 'B', 'REQ-051': 'B', 'REQ-052': 'C', 'REQ-053': 'B',
   'REQ-098': 'C', 'REQ-099': 'C', 'REQ-100': 'C', 'REQ-101': 'A', 'REQ-102': 'B',
   'REQ-103': 'B', 'REQ-104': 'B', 'REQ-105': 'B', 'REQ-106': 'B', 'REQ-107': 'B',
   'REQ-108': 'B', 'REQ-109': 'B', 'REQ-110': 'B', 'REQ-111': 'C', 'REQ-112': 'C',
@@ -142,7 +147,7 @@ const typeOverrides = {
   'REQ-684': 'A', 'REQ-685': 'A', 'REQ-686': 'A', 'REQ-687': 'A',
   'REQ-695': 'C', 'REQ-696': 'C', 'REQ-697': 'C',
 };
-const dateOverrides = { 'REQ-017': '2026-10-31', 'REQ-018': '2026-10-31', 'REQ-019': '2026-10-31', 'REQ-020': '2026-10-31', 'REQ-021': '2026-10-31' };
+const dateOverrides = { 'REQ-017': '2026-10-31', 'REQ-018': '2026-10-31', 'REQ-019': '2026-10-31', 'REQ-020': '2026-10-31', 'REQ-021': '2026-10-31', 'REQ-024': '2026-10-31', 'REQ-027': '2026-10-31', 'REQ-028': '2026-10-31', 'REQ-030': '2026-10-31', 'REQ-031': '2026-10-31', 'REQ-032': '2026-10-31', 'REQ-033': '2026-10-31', 'REQ-034': '2026-10-31', 'REQ-035': '2026-10-31', 'REQ-036': '2026-10-31', 'REQ-037': '2026-10-31', 'REQ-038': '2026-10-31', 'REQ-040': '2026-10-31', 'REQ-041': '2026-10-31', 'REQ-042': '2026-10-31', 'REQ-044': '2026-10-31', 'REQ-045': '2026-10-31', 'REQ-046': '2026-10-31', 'REQ-047': '2026-10-31', 'REQ-048': '2026-10-31', 'REQ-049': '2026-10-31', 'REQ-050': '2026-10-31', 'REQ-051': '2026-10-31', 'REQ-052': '2026-10-31', 'REQ-053': '2026-10-31' };
 const rows = [];
 for (const line of source.split(/\r?\n/)) {
   if (!/^\| REQ-\d+ \|/.test(line)) continue;

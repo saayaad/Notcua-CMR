@@ -1,0 +1,126 @@
+{
+  "req": "REQ-034",
+  "result": "APROVADO",
+  "project": "desktop-1920",
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "consoleErrors": [
+    "An empty string (\"\") was passed to the %s attribute. This may cause the browser to download the whole page again over the network. To fix this, either do not render the element at all or pass null to %s instead of an empty string. src src @ http://127.0.0.1:5180/node_modules/.vite/deps/react-dom_client.js?v=e6f622ef"
+  ],
+  "pageErrors": [],
+  "blockedExternal": [],
+  "interceptedWrites": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/sessions/audit-session/conversations/audit-conversation-1/read",
+      "body": null
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/files",
+      "body": {
+        "filename": "audio-ficticio.ogg",
+        "mimeType": "audio/ogg",
+        "voice": true
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/sessions/audit-session/conversations/audit-conversation-1/send",
+      "body": {
+        "requestId": "816ff950-485f-412a-a29e-47e235b8e71e",
+        "kind": "audio",
+        "fileId": "audit-ui-file-1",
+        "isPtt": true,
+        "isPtv": false,
+        "asViewOnce": true
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/files",
+      "body": {
+        "filename": "imagem-ficticia.png",
+        "mimeType": "image/png",
+        "voice": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/sessions/audit-session/conversations/audit-conversation-1/send",
+      "body": {
+        "requestId": "8140658e-824e-48f2-9191-9a22605347f3",
+        "kind": "image",
+        "fileId": "audit-ui-file-2",
+        "caption": "Imagem de exemplo #nome",
+        "isPtt": false,
+        "isPtv": false,
+        "asViewOnce": true
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/files",
+      "body": {
+        "filename": "video-ficticio.mp4",
+        "mimeType": "video/mp4",
+        "voice": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/sessions/audit-session/conversations/audit-conversation-1/send",
+      "body": {
+        "requestId": "42289adb-7966-4132-9c70-7b81f4c897a9",
+        "kind": "video",
+        "fileId": "audit-ui-file-3",
+        "caption": "Vídeo de exemplo #nome",
+        "isPtt": false,
+        "isPtv": true,
+        "asViewOnce": true
+      }
+    }
+  ],
+  "notes": {
+    "sends": [
+      {
+        "requestId": "816ff950-485f-412a-a29e-47e235b8e71e",
+        "kind": "audio",
+        "fileId": "audit-ui-file-1",
+        "isPtt": true,
+        "isPtv": false,
+        "asViewOnce": true
+      },
+      {
+        "requestId": "8140658e-824e-48f2-9191-9a22605347f3",
+        "kind": "image",
+        "fileId": "audit-ui-file-2",
+        "caption": "Imagem de exemplo #nome",
+        "isPtt": false,
+        "isPtv": false,
+        "asViewOnce": true
+      },
+      {
+        "requestId": "42289adb-7966-4132-9c70-7b81f4c897a9",
+        "kind": "video",
+        "fileId": "audit-ui-file-3",
+        "caption": "Vídeo de exemplo #nome",
+        "isPtt": false,
+        "isPtv": true,
+        "asViewOnce": true
+      }
+    ],
+    "filesUploaded": 3,
+    "connector": "interceptado e fictício",
+    "noExternalSend": true
+  },
+  "failures": []
+}

@@ -1,0 +1,95 @@
+{
+  "req": "REQ-036",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "viewport": {
+    "width": 1366,
+    "height": 768
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "consoleErrors": [],
+  "pageErrors": [],
+  "blockedExternal": [],
+  "interceptedWrites": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/pix-keys",
+      "body": {
+        "name": "Chave aleatória de auditoria",
+        "value": "550e8400-e29b-41d4-a716-446655440000",
+        "merchantName": "Recebedor fixture",
+        "merchantCity": "São Paulo",
+        "type": "RANDOM"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/sessions/audit-session/conversations/audit-conversation-1/read",
+      "body": null
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/pix-preview",
+      "body": {
+        "keyId": "audit-pix-existing"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/sessions/audit-session/conversations/audit-conversation-1/send",
+      "body": {
+        "requestId": "e80bc08b-845b-4fbf-9767-2278cb1e9112",
+        "kind": "text",
+        "text": "Segue a chave PIX para pagamento:\n\n123e4567-e89b-12d3-a456-426614174000"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/pix-preview",
+      "body": {
+        "keyId": "audit-pix-existing",
+        "amountInCents": 15000
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/sessions/audit-session/conversations/audit-conversation-1/send",
+      "body": {
+        "requestId": "e16780f0-bdf1-4263-a760-c49c4461bc06",
+        "kind": "text",
+        "text": "Segue o PIX Copia e Cola para pagamento:\n\n00020101021226890014br.gov.bcb.pix.fixture\n\nApós o pagamento, pode me enviar o comprovante, #nome?"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/sessions/audit-session/conversations/audit-conversation-1/send-asset",
+      "body": {
+        "assetId": "audit-asset-audio",
+        "requestId": "97f805ce-0999-47b1-b826-03e1cb7e331b"
+      }
+    }
+  ],
+  "notes": {
+    "randomKeyWasSuppliedAsFictitiousBankKey": true,
+    "previewGeneratedLocally": true,
+    "amountCents": 15000,
+    "keyOnlyCopyPasteAndReceiptAudioComposed": true,
+    "allSendRoutesIntercepted": true
+  },
+  "failures": []
+}

@@ -195,3 +195,14 @@ O comportamento foi aprovado localmente com provedor simulado e está marcado `C
 1. Na conta descartável, crie uma etiqueta e associe-a a um contato fictício já existente.
 2. Aguarde a sincronização e confira nome, cor e vínculo no app local.
 3. Recarregue e confirme persistência e origem “Importado do whatsapp”; não altere uma conta real.
+## Mensagens — REQ-030–035, 037–038 — conta e aparelho descartáveis
+
+1. Em uma conta WhatsApp de teste, use destinatário fictício e chave Pix de ambiente de teste; confira áudio PTT, imagem/vídeo com legenda, visualização única e vídeo circular onde o cliente suportar.
+2. Confira o recebimento da chave, do QR/Copia e Cola e do pedido de comprovante com texto/áudio. Não use conta, contato ou chave de produção e não faça pagamento.
+3. Registre aparelho, versão do cliente e limitações de suporte; não transforme uma opção não suportada pelo cliente em defeito do app.
+
+## Mensagens — REQ-045 e REQ-052 — presença durante macros/funis
+
+1. Em uma sessão descartável, configure espera e tempo de digitação em uma macro e presença de gravação durante uma etapa do funil.
+2. Execute somente para o destinatário de teste e observe no aparelho a ordem, o atraso e o sinal de digitando/gravação.
+3. Registre duração e resultado; não use contatos reais nem campanha ativa.

@@ -1,0 +1,140 @@
+{
+  "req": "REQ-044",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "consoleErrors": [
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://apis.google.com/js/api.js?onload=__iframefcb671614",
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://apis.google.com/js/api.js?onload=__iframefcb500928"
+  ],
+  "pageErrors": [],
+  "blockedExternal": [
+    "https://apis.google.com"
+  ],
+  "interceptedWrites": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/sessions/audit-session/conversations/audit-conversation-1/read",
+      "body": null
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/macros",
+      "body": {
+        "name": "Macro auditada mobile-390",
+        "actions": [
+          {
+            "uiId": "a8b8f1cf-4cad-4a51-bae1-06493680dd14",
+            "type": "TEXT",
+            "actionId": "",
+            "text": "Olá, #nome! *Mensagem fictícia*.",
+            "assetId": "",
+            "labelId": "",
+            "delayMs": 1000,
+            "composingMs": 1000,
+            "command": "WAIT",
+            "target": "",
+            "presence": "none"
+          },
+          {
+            "uiId": "de4e85f8-7002-42fa-8590-709ced4e1a05",
+            "type": "UTILITY",
+            "actionId": "",
+            "text": "",
+            "assetId": "",
+            "labelId": "",
+            "delayMs": 2500,
+            "composingMs": 1000,
+            "command": "WAIT",
+            "target": "",
+            "presence": "recording"
+          },
+          {
+            "uiId": "ea6041e8-a7ce-49eb-b63e-b790f6eb1cba",
+            "type": "ADD_LABEL",
+            "actionId": "",
+            "text": "",
+            "assetId": "",
+            "labelId": "audit-label-warm",
+            "delayMs": 1000,
+            "composingMs": 1000,
+            "command": "WAIT",
+            "target": "",
+            "presence": "none"
+          },
+          {
+            "uiId": "6925086d-94dc-426c-813c-571b8f70b129",
+            "type": "REMOVE_LABEL",
+            "actionId": "",
+            "text": "",
+            "assetId": "",
+            "labelId": "audit-label-customer",
+            "delayMs": 1000,
+            "composingMs": 1000,
+            "command": "WAIT",
+            "target": "",
+            "presence": "none"
+          },
+          {
+            "uiId": "d4d49f74-f795-42ac-ba91-ac7e4ea5aeb5",
+            "type": "ASSET",
+            "actionId": "",
+            "text": "",
+            "assetId": "audit-asset-audio",
+            "labelId": "",
+            "delayMs": 1000,
+            "composingMs": 1000,
+            "command": "WAIT",
+            "target": "",
+            "presence": "none"
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/sessions/audit-session/conversations/audit-conversation-1/sequences",
+      "body": {
+        "kind": "MACRO",
+        "sourceId": "audit-ui-macro",
+        "requestId": "9dea3b14-05a3-479f-a42f-939065cba385"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/toolbox/usage",
+      "body": {
+        "id": "audit-ui-macro"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    }
+  ],
+  "macroName": "Macro auditada mobile-390",
+  "actionTypes": [
+    "TEXT",
+    "UTILITY",
+    "ADD_LABEL",
+    "REMOVE_LABEL",
+    "ASSET"
+  ],
+  "waitMs": 2500,
+  "presence": "recording",
+  "audioAssetId": "audit-asset-audio",
+  "persistedAfterReload": true,
+  "launchedByUserAction": true,
+  "launchIntercepted": true,
+  "serverProof": "operations.test.ts e attendance.test.ts usam conector fictício e SQLite temporário para execução da sequência e presença."
+}

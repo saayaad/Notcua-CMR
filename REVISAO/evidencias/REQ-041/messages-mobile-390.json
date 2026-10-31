@@ -1,0 +1,138 @@
+{
+  "req": "REQ-041",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "consoleErrors": [
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://apis.google.com/js/api.js?onload=__iframefcb701418",
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://apis.google.com/js/api.js?onload=__iframefcb557123",
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://apis.google.com/js/api.js?onload=__iframefcb669125",
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://apis.google.com/js/api.js?onload=__iframefcb468973",
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://apis.google.com/js/api.js?onload=__iframefcb391549",
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://apis.google.com/js/api.js?onload=__iframefcb47726"
+  ],
+  "pageErrors": [],
+  "blockedExternal": [
+    "https://apis.google.com"
+  ],
+  "interceptedWrites": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/files",
+      "body": {
+        "filename": "audit.ogg",
+        "mimeType": "audio/ogg",
+        "voice": true
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/assets",
+      "body": {
+        "name": "Áudio criado pela auditoria",
+        "kind": "AUDIO",
+        "fileId": "audit-ui-file-1",
+        "isPtt": true,
+        "isPtv": false,
+        "asViewOnce": false,
+        "isFavorite": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "PUT",
+      "path": "/api/attendance/assets/audit-ui-asset-7",
+      "body": {
+        "name": "Áudio criado pela auditoria",
+        "kind": "AUDIO",
+        "fileId": "audit-ui-file-1",
+        "isPtt": true,
+        "isPtv": false,
+        "asViewOnce": false,
+        "isFavorite": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/attendance/assets/audit-ui-asset-7"
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/files",
+      "body": {
+        "filename": "audit.png",
+        "mimeType": "image/png",
+        "voice": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/assets",
+      "body": {
+        "name": "Mídia criada pela auditoria",
+        "kind": "MEDIA",
+        "caption": "Legenda fictícia REQ-041",
+        "fileId": "audit-ui-file-2",
+        "isPtt": false,
+        "isPtv": false,
+        "asViewOnce": false,
+        "isFavorite": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "PUT",
+      "path": "/api/attendance/assets/audit-ui-asset-7",
+      "body": {
+        "name": "Mídia criada pela auditoria",
+        "kind": "MEDIA",
+        "caption": "Legenda editada REQ-041",
+        "fileId": "audit-ui-file-2",
+        "isPtt": false,
+        "isPtv": false,
+        "asViewOnce": false,
+        "isFavorite": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/attendance/assets/audit-ui-asset-7"
+    }
+  ],
+  "kind": "MEDIA",
+  "createdEditedAndReloaded": true,
+  "deletedOnlyFixture": "Mídia criada pela auditoria",
+  "writesIntercepted": true
+}

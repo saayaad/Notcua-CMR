@@ -96,3 +96,12 @@
 - Correções de teste: o scan inicial marcou duas frases portuguesas com “todo” como `TODO`; regex passou a exigir marcador explícito em comentário. No E2E, a origem saía do viewport ao rolar para o destino; seletor por contato e rolagem automática estabilizaram o gesto. O teste agora trata POSTs de presença como chamadas esperadas interceptadas e ainda falha diante de qualquer outra mutação.
 - As duas primeiras rodadas visuais deixaram JSON/PNG/trace de falha no diretório de evidências; a rodada final aprovada e a captura de desktop diagnóstico também foram preservadas. Nenhum BUG de produto confirmado.
 - Servidores existentes mantidos; front/API HTTP 200. Escritas E2E interceptadas e CRM testado em SQLite temporário; `.audit/noctua-audit.db` preservado. Sem login, mensagens, conexão real ou produção.
+## Mensagens — L-03, REQ-024–053 — 31/10/2026
+
+- 25 estados atualizados: 14 COMPLETO, 10 COMPLETO-LOCAL e REQ-036 em DECISÃO. REQs sem lacuna não foram refeitas.
+- Playwright e2e/messages-audit.spec.ts: 21/21 em 1366×768, 1920×1080 e 390×844. Servidor focado: 9/9 em SQLite temporário. Capturas e JSON individuais em REVISAO/evidencias/REQ-024/–REQ-053/ para os requisitos exercitados.
+- API e front locais responderam HTTP 200. .audit/noctua-audit.db ficou em 2.039.808 bytes, LastWriteTimeUtc=2026-10-30 18:07:20; writes de API, preferências e envios da UI ficaram interceptados em memória. Os testes do servidor usaram SQLite temporário. Nenhuma produção ou WhatsApp real foi acessado.
+- Correções do harness sem alterar critérios: chamadas de presença do Socket.IO deixaram de ser interceptadas pelo bloqueador geral; a asserção Pix passou a verificar amountInCents no payload (o valor não precisa aparecer no texto); seletores passaram a aceitar rótulos de ativos com extensão; cenários de macro/funil usaram o painel clássico para evitar sobreposição do dock; removida a expectativa incorreta de habilitar envio com texto vazio. Regressão final 21/21.
+- REQ-036 continua em DECISÃO: o app cadastra chave aleatória já emitida e gera QR/Copia e Cola, mas não pode criar chave bancária. A pergunta de escopo está registrada em REQUISITOS.md; os itens externos estão no CHECKLIST-MANUAL.md.
+- Contagens após o lote: 5 A VERIFICAR; 454 COMPLETO; 111 COMPLETO-LOCAL; 46 PARCIAL; 51 substituídos/cancelados; 26 decisões (2 confirmadas); 4 desconectados; 3 defeitos; 3 ausentes.
+- Próximo módulo: Fluxos e CRM, REQ-054–075 (22 pendentes), conforme ordem da LEDGER. Sem reset, sem mudança no app e sem publicação.

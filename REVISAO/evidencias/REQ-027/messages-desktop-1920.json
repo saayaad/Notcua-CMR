@@ -1,0 +1,32 @@
+{
+  "req": "REQ-027",
+  "result": "APROVADO",
+  "project": "desktop-1920",
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "consoleErrors": [],
+  "pageErrors": [],
+  "blockedExternal": [],
+  "interceptedWrites": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/sessions/audit-session/conversations/audit-conversation-1/read",
+      "body": null
+    }
+  ],
+  "formatted": "*Negrito* _Itálico_ ~Riscado~ ```Código```",
+  "renderedTags": [
+    "strong",
+    "em",
+    "s",
+    "code"
+  ]
+}

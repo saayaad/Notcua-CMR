@@ -1,0 +1,80 @@
+{
+  "req": "REQ-051",
+  "result": "APROVADO",
+  "project": "desktop-1920",
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "consoleErrors": [],
+  "pageErrors": [],
+  "blockedExternal": [],
+  "interceptedWrites": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/sessions/audit-session/conversations/audit-conversation-1/read",
+      "body": null
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/funnels",
+      "body": {
+        "name": "Funil auditado desktop-1920",
+        "itemsSequence": [
+          {
+            "uiId": "1597e3ea-46bd-4d5d-8ed4-6eaed6198562",
+            "itemId": "audit-asset-budget",
+            "delayBeforeSend": 0
+          },
+          {
+            "uiId": "bd8234c0-a33d-4ac2-b8f8-578f746a3da9",
+            "itemId": "audit-asset-image",
+            "delayBeforeSend": 3500
+          },
+          {
+            "uiId": "cf26c040-f6e4-479e-b0f0-67bd1c191531",
+            "itemId": "audit-asset-audio",
+            "delayBeforeSend": 10000
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/sessions/audit-session/conversations/audit-conversation-1/sequences",
+      "body": {
+        "kind": "FUNNEL",
+        "sourceId": "audit-ui-funnel",
+        "requestId": "affc8faf-7c64-416d-ae5e-efaed37bd938"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    }
+  ],
+  "notes": {
+    "orderedAssetIds": [
+      "audit-asset-budget",
+      "audit-asset-image",
+      "audit-asset-audio"
+    ],
+    "delaysMs": [
+      0,
+      3500,
+      10000
+    ],
+    "persistedAfterReload": true,
+    "launchedBySingleConfirmation": true,
+    "launchIntercepted": true,
+    "presenceDuringDelayServerProof": "attendance.test.ts funil multimídia: conector fictício recebeu recording durante a espera da etapa de áudio."
+  },
+  "failures": []
+}

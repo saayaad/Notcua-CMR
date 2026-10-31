@@ -1,0 +1,87 @@
+{
+  "req": "REQ-052",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "viewport": {
+    "width": 1366,
+    "height": 768
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "consoleErrors": [],
+  "pageErrors": [],
+  "blockedExternal": [],
+  "interceptedWrites": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/sessions/audit-session/conversations/audit-conversation-1/read",
+      "body": null
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/funnels",
+      "body": {
+        "name": "Funil auditado desktop-1366",
+        "itemsSequence": [
+          {
+            "uiId": "c8954a1d-f7ec-4877-8c81-874ce2bc3244",
+            "itemId": "audit-asset-budget",
+            "delayBeforeSend": 0
+          },
+          {
+            "uiId": "0ff23a04-5ed3-4b9f-ada4-ef0e019743e2",
+            "itemId": "audit-asset-image",
+            "delayBeforeSend": 3500
+          },
+          {
+            "uiId": "249b6eb3-88ca-4ca4-a1c2-69945b3c7a2a",
+            "itemId": "audit-asset-audio",
+            "delayBeforeSend": 10000
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/sessions/audit-session/conversations/audit-conversation-1/sequences",
+      "body": {
+        "kind": "FUNNEL",
+        "sourceId": "audit-ui-funnel",
+        "requestId": "e8b45a72-152b-410d-a5fa-45fcd0e16783"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/toolbox/usage",
+      "body": {
+        "id": "audit-ui-funnel"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    }
+  ],
+  "notes": {
+    "orderedAssetIds": [
+      "audit-asset-budget",
+      "audit-asset-image",
+      "audit-asset-audio"
+    ],
+    "delaysMs": [
+      0,
+      3500,
+      10000
+    ],
+    "persistedAfterReload": true,
+    "launchedBySingleConfirmation": true,
+    "launchIntercepted": true,
+    "presenceDuringDelayServerProof": "attendance.test.ts funil multimídia: conector fictício recebeu recording durante a espera da etapa de áudio."
+  },
+  "failures": []
+}

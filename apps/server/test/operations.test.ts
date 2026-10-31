@@ -462,7 +462,7 @@ test('REQ-142: fila ativa no servidor executa sem requisição do painel', async
   }
 });
 
-test('REQ-460/467/468/469/470: macro combina resposta, etiquetas, presença, arquivamento e fixação', async () => {
+test('REQ-044/REQ-047/REQ-048/REQ-460/467/468/469/470 macro combina resposta, etiquetas, presença, arquivamento e fixação', async () => {
   const chat = await makeContact('5511777770007');
   const label = await db.label.findFirstOrThrow({ where: { sessionId } });
   const removedLabel = await db.label.create({
@@ -2003,7 +2003,7 @@ test('Kanban confirma ações de etiqueta e desfaz movimentação sem valor obri
   assert.equal(won.status,'WON');assert.equal(won.valueInCents,9000);
 });
 
-test('macro importada usa mídia Base64 como áudio de voz no conector fictício', async () => {
+test('REQ-046 macro importada usa mídia Base64 como áudio de voz no conector fictício', async () => {
   const ffmpeg = createRequire(import.meta.url)('ffmpeg-static') as string;
   const wav = execFileSync(ffmpeg, [
     '-nostdin', '-v', 'error', '-f', 'lavfi', '-i', 'sine=frequency=660:duration=0.15',

@@ -1,0 +1,89 @@
+{
+  "req": "REQ-052",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "consoleErrors": [
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://apis.google.com/js/api.js?onload=__iframefcb792126",
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://apis.google.com/js/api.js?onload=__iframefcb200370"
+  ],
+  "pageErrors": [],
+  "blockedExternal": [
+    "https://apis.google.com"
+  ],
+  "interceptedWrites": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/sessions/audit-session/conversations/audit-conversation-1/read",
+      "body": null
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/funnels",
+      "body": {
+        "name": "Funil auditado mobile-390",
+        "itemsSequence": [
+          {
+            "uiId": "1fc50431-abbe-4a99-8cb5-3f28b5918a27",
+            "itemId": "audit-asset-budget",
+            "delayBeforeSend": 0
+          },
+          {
+            "uiId": "6a32df37-637f-4184-871c-716f16577918",
+            "itemId": "audit-asset-image",
+            "delayBeforeSend": 3500
+          },
+          {
+            "uiId": "98ee3158-b485-4eb7-bfcc-4d65b249f37c",
+            "itemId": "audit-asset-audio",
+            "delayBeforeSend": 10000
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/sessions/audit-session/conversations/audit-conversation-1/sequences",
+      "body": {
+        "kind": "FUNNEL",
+        "sourceId": "audit-ui-funnel",
+        "requestId": "7c1b82f2-e75a-426a-8b5a-3668850e66f0"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/toolbox/usage",
+      "body": {
+        "id": "audit-ui-funnel"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    }
+  ],
+  "orderedAssetIds": [
+    "audit-asset-budget",
+    "audit-asset-image",
+    "audit-asset-audio"
+  ],
+  "delaysMs": [
+    0,
+    3500,
+    10000
+  ],
+  "persistedAfterReload": true,
+  "launchedBySingleConfirmation": true,
+  "launchIntercepted": true,
+  "presenceDuringDelayServerProof": "attendance.test.ts funil multimídia: conector fictício recebeu recording durante a espera da etapa de áudio."
+}

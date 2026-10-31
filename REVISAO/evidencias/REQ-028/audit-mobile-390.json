@@ -1,0 +1,34 @@
+{
+  "req": "REQ-028",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "consoleErrors": [
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://apis.google.com/js/api.js?onload=__iframefcb845782"
+  ],
+  "pageErrors": [],
+  "blockedExternal": [
+    "https://apis.google.com"
+  ],
+  "interceptedWrites": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": {}
+    },
+    {
+      "method": "POST",
+      "path": "/api/attendance/sessions/audit-session/conversations/audit-conversation-1/read",
+      "body": null
+    }
+  ],
+  "notes": {
+    "formattingRendered": true,
+    "req028ServerProof": "apps/server/test/attendance.test.ts testa a substituição pelo nome do contato com socket fictício; texto da interface mantém o marcador até a API local."
+  },
+  "failures": []
+}
