@@ -1,3 +1,4 @@
+import { attributionTelemetry } from './local-telemetry.js';
 import { Router } from 'express';
 import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
@@ -83,6 +84,7 @@ export async function campaignRevenue(db: PrismaClient, sessionId: string) {
 
 export function campaignRevenueRoutes(db: PrismaClient) {
   const router = Router();
+  router.use(attributionTelemetry(db));
   const batchFor = async (sessionId: string, campaignId: string) => {
     const batch = await record<Batch | null>(db, campaignId, null);
     if (!batch || batch.sessionId !== sessionId || batch.mode !== 'CAMPAIGN')

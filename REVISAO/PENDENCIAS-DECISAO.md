@@ -14,7 +14,7 @@ Fonte: LEDGER.csv, decisões do usuário e execução local de 31/10/2026. Esta 
 
 - REQ-197 — DECISÃO pendente de escopo: a decisão A está registrada; prova parcial cobriu botões visíveis nas quatro telas REQ-194, mas não todas as 504 ações. Pergunta: aprovar homologação por módulo/amostragem segura ou fornecer inventário versionado com resultado esperado de ação/sucesso/erro para cada botão?
 - REQ-223 — DECISÃO: inventário revalidado em 504 botões/70 arquivos, mas vínculo sintático não prova efeito. Pergunta: aprova homologação segura por módulo/amostragem ou fornecerá inventário versionado das 504 ações com resultado esperado de sucesso/erro e permissões?
-- REQ-401 — A, escolha do usuário; execução/verificação pendente, sem ampliar o escopo nesta atualização.
+- REQ-401 — DECISÃO somente do contrato externo: telemetria local de atribuição CRM validada 2/2, sem PII. Informar eventos CTWA/referral, campos do payload, destino e autenticação; não há base documental para inferir esse contrato.
 - REQ-448 — A escolhida, mas a inspeção visual em 3 viewports não identifica quais botões ou qual mudança visual são o aceite. Pergunta: quais botões devem mudar e qual resultado visual define “melhorar”?
 - REQ-461 — COMPLETO-LOCAL: conector fictício autorizado e validado; prova externa futura no checklist.
 - REQ-462 — COMPLETO-LOCAL: conector fictício autorizado e validado; prova externa futura no checklist.

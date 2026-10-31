@@ -1,0 +1,33 @@
+{
+  "req": "REQ-401",
+  "result": "APROVADO-LOCAL-PARCIAL",
+  "events": [
+    {
+      "category": "campaign.attribution",
+      "source": "CRM",
+      "occurredAt": "2026-10-31T20:53:54.171Z",
+      "result": "ERROR",
+      "status": 403,
+      "durationMs": 3
+    },
+    {
+      "category": "campaign.attribution",
+      "source": "CRM",
+      "occurredAt": "2026-10-31T20:53:54.152Z",
+      "result": "ERROR",
+      "status": 422,
+      "durationMs": 5
+    },
+    {
+      "category": "campaign.attribution",
+      "source": "CRM",
+      "occurredAt": "2026-10-31T20:53:54.135Z",
+      "result": "SUCCESS",
+      "status": 200,
+      "durationMs": 30
+    }
+  ],
+  "persistenceReopened": true,
+  "externalDestinations": 0,
+  "remainingDecision": "Eventos CTWA/referral, destino/autenticação e contrato de webhook não especificados; nenhuma integração externa implementada."
+}
