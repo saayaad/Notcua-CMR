@@ -209,3 +209,10 @@
 - Commit do lote Atendimento: `8365815`, push confirmado em `origin/auditoria-reqs`. 21/21 testes E2E; 4 estados alterados; 11 decisões específicas permanecem no LEDGER.
 - Próximo módulo: Infraestrutura (REQ-523/527/540), bloqueado por decisões de hospedagem, escopo de contas externas e credenciais/configuração Firebase local. A sequência também tem REQ-567 (horário/filas de sono), REQ-573 (aguarda Parte 8 já adiada) e REQ-680 (aprovação de reações).
 - REQ-686/process.json não é comprovante de teste e continua fora do commit. O iniciador online não foi tocado nem staged. Banco local preservado.
+
+
+## Decisões do usuário e próxima fila — 31/10/2026
+
+- REQ-523, REQ-527 e REQ-540 registradas como DECISÃO conforme instrução; hospedagem, contas externas e Firebase não foram alterados.
+- Revisão local do módulo Qualidade: não foi encontrada política global de horário de sono; regras de pausa existentes são por fluxo/campanha/sequência. REQ-567 segue à espera de horários, escopo de envios e retomada automática; REQ-573 aguarda a Parte 8 previamente adiada.
+- REQ-680 continua aguardando aprovação. Nenhum teste com comportamento externo foi iniciado. Próximo avanço depende dessas escolhas/artefatos do usuário.

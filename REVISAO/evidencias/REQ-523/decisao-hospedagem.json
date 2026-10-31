@@ -4,5 +4,7 @@
   "result": "DECISAO",
   "finding": "O painel publicado depende da API, do PC e do tunel do modelo local; a falha volta quando esse processo para.",
   "question": "Manter PC+tunel ou autorizar hospedagem persistente com provedor, orcamento, regiao, volume e backup definidos?",
-  "sideEffects": "Nenhum acesso de escrita a producao."
+  "sideEffects": "Nenhum acesso de escrita a producao.",
+  "userDecision": "Usuário decidiu não implementar hospedagem persistente; manter a infraestrutura atual, sem publicação ou mudança de provedor.",
+  "implementation": "nao iniciada"
 }

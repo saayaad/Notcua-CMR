@@ -389,3 +389,13 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Próximo módulo na sequência: Infraestrutura. REQ-523 depende de escolher PC+túnel versus hospedagem persistente, incluindo provedor/orçamento/região/volume/backup; REQ-527 depende de lista de serviços/contas e escopo de acesso por serviço; REQ-540 depende de IDs públicos do Firebase de teste ou de manter authMode local. Perguntas completas já constam em REQUISITOS/LEDGER. Não houve conexão externa nem alteração.
 - Verificação seguinte: Qualidade e documentação, REQ-567 depende de horários, filas/tipos de envio e retomada automática; REQ-573 permanece adiada até o usuário enviar Parte 8, conforme decisão já registrada. Em Revisão e menu contextual, REQ-680 aguarda aprovação do proprietário para ações de reação/permissão/persistência.
 - Serviços locais continuam HTTP 200; banco `.audit/noctua-audit.db` preservado. Nenhum serviço de produção acessado. Retomar após as decisões/artefatos que só o usuário pode fornecer ou aprovar.
+
+
+## Retomada — decisões de Infraestrutura e auditoria de Qualidade — 31/10/2026
+
+- Decisões do usuário registradas: REQ-523 permanece `DECISÃO` sem implementar hospedagem; REQ-527 permanece `DECISÃO` sem conectar contas; REQ-540 permanece `DECISÃO` sem tocar em Firebase ou configuração de produção. Evidências JSON guardam a decisão. Nenhum serviço externo foi acessado.
+- Os dois arquivos E2E `e2e/side-tools.spec.ts` e `e2e/personalization-attendance.spec.ts` estão commitados no `8365815`; push dos commits `8365815` e `f183e33` confirmado.
+- Próximo módulo independente, Qualidade e documentação: busca local em `apps`/`e2e` não encontrou política global de horário de sono; há pausas de campanhas, sequências e fluxos, mas o período, tipos de mensagem e retomada requerem decisão. REQ-567 continua `PRECISA DE DECISÃO` com pergunta exata no LEDGER; não alterei filas nem envios.
+- REQ-573 continua adiada, conforme decisão anterior do usuário, até o envio da Parte 8. Não há artefato para especificar ou testar.
+- Depois, REQ-680 segue bloqueada por aprovação do proprietário para a semântica e efeitos das reações. Nenhuma implementação de reação foi iniciada.
+- REQ-686/process.json e `scripts/iniciar-noctua-online.ps1` continuam fora do staging/commit. API/front locais responderam HTTP 200; banco .audit preservado.

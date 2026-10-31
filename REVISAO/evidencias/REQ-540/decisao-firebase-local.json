@@ -4,5 +4,7 @@
   "result": "DECISAO",
   "finding": "Os quatro nomes VITE_FIREBASE_* existem, mas os identificadores publicos do aplicativo autorizado nao estao configurados nesta copia local.",
   "question": "Fornecer identificadores publicos de um aplicativo Firebase de teste ou manter authMode=local?",
-  "secretsRead": false
+  "secretsRead": false,
+  "userDecision": "Usuário decidiu não tocar no Firebase nem na configuração de produção; manter authMode local.",
+  "implementation": "nao iniciada"
 }

@@ -4,5 +4,7 @@
   "result": "DECISAO",
   "finding": "O requisito nao identifica servico, conta nem operacao autorizada.",
   "question": "Quais contas de GitHub, Vercel, Firebase, WhatsApp ou Google podem ser conectadas e com quais permissoes?",
-  "sideEffects": "Nenhuma conta externa criada, conectada ou alterada."
+  "sideEffects": "Nenhuma conta externa criada, conectada ou alterada.",
+  "userDecision": "Usuário decidiu não conectar contas externas nem alterar produção.",
+  "implementation": "nao iniciada"
 }
