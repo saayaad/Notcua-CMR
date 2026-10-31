@@ -1,0 +1,29 @@
+{
+  "req": "REQ-126",
+  "result": "APROVADO-LOCAL",
+  "project": "desktop-1366",
+  "checkpoints": {
+    "csvColumnMapping": {
+      "phoneColumn": 1,
+      "nameColumn": 0,
+      "mappedName": "Lead CSV Fictício",
+      "mappedPhone": "558811122233"
+    },
+    "previewBeforeSave": true,
+    "importMutationCalls": 0,
+    "nonPreviewWritesBlocked": [],
+    "pageErrors": []
+  },
+  "supportingEvidence": [
+    "REQ-315/316: segmentação por listas importadas, etiquetas e inatividade; contador de público.",
+    "REQ-317/318: conteúdo e intervalo, rascunho persistido e sem envio.",
+    "REQ-288/320: cancelamento de campanha e agendamento fictício persistido como rascunho; nenhum envio.",
+    "REQ-309: XLSX com colunas invertidas, mapeamento manual, prévia e reload; REQ-311/314: CSV, prévia antes da gravação e reload."
+  ],
+  "safety": {
+    "fictitiousCsv": true,
+    "databaseMutation": false,
+    "messagesSent": 0
+  },
+  "url": "http://127.0.0.1:5180/atendimento"
+}

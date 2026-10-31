@@ -543,3 +543,23 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Atualizados os motivos no LEDGER.csv e na lista de pendências. Não foram executados testes nem alteradas evidências.
 - REQ-126 continua bloqueada pela falta de `6.txt`. Não há outros itens `A VERIFICAR` na ordem do ledger.
 - Arquivos protegidos e pastas de REQs fechadas permanecem sem staging ou alteração nesta ação.
+
+## Critério substituto aprovado — REQ-126 — 31/10/2026
+
+- O texto original em `REVISAO/REQUISITOS.md` (L-06, item 6) diz: “Integrar funcionalidades de referência ao site agora; extensão fica para o futuro” e pede uma lista fechada derivada de `6.txt`, que não foi encontrada.
+- O item 6 de `docs/revisao-solicitada.md` cobre parte do escopo: detalha operações de campanhas, segmentação, conteúdo/recursos, intervalos, prévia, agendamento/cancelamento e importação com mapeamento/revisão. A identidade completa com o `6.txt` ausente não pode ser confirmada; classificar como cobertura parcial/temática, não equivalente integral.
+- Decisão do usuário: usar esse item como critério substituto. Checkpoints: segmentação por etiquetas, inatividade e lista importada; conteúdo e intervalo; prévia do público; agendamento/cancelamento; importação CSV/XLSX com mapeamento e revisão antes de gravar. Dados fictícios, sem envio e sem extensão.
+- Ledger atualizado para `A VERIFICAR` com a fonte ausente e o critério substituto explícitos. Nenhum teste ainda foi executado nesta etapa.
+
+## REQ-126 — checkpoints do critério substituto auditados — 31/10/2026
+
+- Escopo: o texto original de REQ-126 em `REVISAO/REQUISITOS.md` (L-06, item 6) é “Integrar funcionalidades de referência ao site agora; extensão fica para o futuro” e exige uma lista fechada derivada de `6.txt`. O texto substituto, seção 6 de `docs/revisao-solicitada.md`, detalha operação de campanhas e importação. Classificação: cobre parte/mesmo tema, mas não há como demonstrar equivalência integral com a fonte ausente.
+- O usuário aprovou o texto substituto. Sem extensão, sem envio de mensagem e com dados fictícios.
+- Segmentação por etiquetas, inatividade e listas importadas: provas já fechadas REQ-315/316 e teste `e2e/campaigns.spec.ts`; seleção combinada e contador aprovados.
+- Conteúdo e intervalo: provas REQ-317/318; mídia em sequência, intervalo mínimo/máximo, pausas e rascunho após reload, sem envio.
+- Prévia do público: contador e seleção manual verificados em REQ-315/316 antes de gravar.
+- Agendamento e cancelamento: REQ-320 salvou agendamento fictício como rascunho, confirmou após reload e o removeu da fila; REQ-288 confirmou cancelamento no monitor. Nenhum envio real.
+- CSV/XLSX com mapeamento/revisão: REQ-309 aprovou XLSX com colunas invertidas, mapeamento manual, prévia e reload; REQ-311/314 têm CSV, revisão prévia, confirmação e reload. Novo teste `e2e/req126-operation-acceptance.spec.ts` comprovou mapeamento CSV e prévia antes de gravar em Playwright, 3/3 viewports, com dados fictícios. A chamada de importação não ocorreu.
+- Reexecução dos testes dos REQs fechados foi evitada. Os resultados e screenshots existentes foram somente lidos. Mutações de API no teste novo foram bloqueadas/mockadas; `.audit/noctua-audit.db` manteve o mesmo tamanho e horário. O teste não gravou no banco.
+- Primeira tentativa do teste focal falhou por bloquear a chamada automática de presença; a causa foi corrigida no harness, que passou a mockar presença sem persistência. Duas falhas de sintaxe no harness durante a edição foram corrigidas; execução final passou 3/3. Nenhum bug de produto identificado; não foi alterada expectativa.
+- REQ-126 fechada como `COMPLETO` pelo critério substituto, com a ressalva documental da fonte original ausente. Evidências agregadas em `REVISAO/evidencias/REQ-126/operation-acceptance-*`; o recibo `blocked-missing-source.json` é preservado como histórico.

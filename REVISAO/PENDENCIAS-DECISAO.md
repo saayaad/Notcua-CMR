@@ -10,9 +10,8 @@ Fonte: LEDGER.csv, decisões do usuário e execução local de 31/10/2026. Esta 
 - REQ-567 — adiada; política de pausa e horários de envio não definidos.
 - REQ-573 — Parte 8 não fornecida; depende do envio futuro do texto.
 
-## Decisões registradas; execução/verificação pendente — 9 requisitos
+## Decisões registradas; execução/verificação pendente — 8 requisitos
 
-- REQ-126 — Tipo B. Bloqueada: a fonte `6.txt` não existe nesta cópia; falta o artefato para identificar e testar as funções previstas. Evidência de bloqueio em `REVISAO/evidencias/REQ-126/blocked-missing-source.json`. Ação do usuário: enviar/anexar a fonte.
 - REQ-197 — DECISÃO pendente de escopo: a decisão A está registrada; prova parcial cobriu botões visíveis nas quatro telas REQ-194, mas não todas as 504 ações. Pergunta: aprovar homologação por módulo/amostragem segura ou fornecer inventário versionado com resultado esperado de ação/sucesso/erro para cada botão?
 - REQ-223 — DECISÃO: inventário revalidado em 504 botões/70 arquivos, mas vínculo sintático não prova efeito. Pergunta: aprova homologação segura por módulo/amostragem ou fornecerá inventário versionado das 504 ações com resultado esperado de sucesso/erro e permissões?
 - REQ-401 — A, escolha do usuário; execução/verificação pendente, sem ampliar o escopo nesta atualização.
@@ -30,7 +29,7 @@ Fonte: LEDGER.csv, decisões do usuário e execução local de 31/10/2026. Esta 
 ## Contagens atuais após atualização documental
 
 - DECISÃO no LEDGER: 10 (inclui os 5 itens de infraestrutura/documentação acima).
-- A VERIFICAR no LEDGER: 4 (REQ-126, 461, 462 e 465).
+- A VERIFICAR no LEDGER: 3 (REQ-461, REQ-462 e REQ-465).
 - AUSENTE no LEDGER: 0.
 - DESCONECTADO no LEDGER: 0.
 - SUBSTITUÍDO OU CANCELADO: 2.
