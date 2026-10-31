@@ -16,7 +16,7 @@ Fonte: LEDGER.csv e decisões do usuário registradas em 31/10/2026. Nesta atual
 - REQ-194 — Telas Atendimento, CRM, Campanhas e Configurações; viewports 1366×768, 1920×1080 e 390×844; tolerância de 2 px.
 - REQ-195 — A: usar o visual atual do app como referência.
 - REQ-196 — A, escolha do usuário; execução/verificação pendente, sem acrescentar parâmetros que não constam nesta decisão.
-- REQ-197 — A, escolha do usuário; execução/verificação pendente, sem ampliar o escopo nesta atualização.
+- REQ-197 — DECISÃO pendente de escopo: a decisão A está registrada; prova parcial cobriu botões visíveis nas quatro telas REQ-194, mas não todas as 504 ações. Pergunta: aprovar homologação por módulo/amostragem segura ou fornecer inventário versionado com resultado esperado de ação/sucesso/erro para cada botão?
 - REQ-223 — A, escolha do usuário; execução/verificação pendente, sem ampliar o escopo nesta atualização.
 - REQ-401 — A, escolha do usuário; execução/verificação pendente, sem ampliar o escopo nesta atualização.
 - REQ-448 — A, escolha do usuário; execução/verificação pendente, sem ampliar o escopo nesta atualização.

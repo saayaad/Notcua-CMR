@@ -18,6 +18,8 @@ async function save(page: Page, req: string, info: TestInfo, name: string, data:
 async function open(page: Page) {
   await page.goto('/atendimento');
   await expect(page.locator('.app-shell')).toBeVisible();
+  await expect(page.locator('[aria-label="Atendimento com painéis encaixáveis"], .inbox-layout')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(/Carregando painéis…/)).toBeHidden({ timeout: 15_000 });
 }
 
 async function navigate(page: Page, name: string, heading: RegExp) {
@@ -40,7 +42,7 @@ test('REQ-194 telas definidas cabem nas resoluções acordadas com tolerância d
     const metric = await page.evaluate((screenName) => {
       const root = document.documentElement;
       const selector = screenName === 'Atendimento'
-        ? '[aria-label="Atendimento com painéis encaixáveis"]'
+        ? '[aria-label="Atendimento com painéis encaixáveis"], .inbox-layout'
         : screenName === 'CRM' ? '.crm-page'
           : screenName === 'Campanhas' ? '.operations-page'
             : '.settings-page, [data-page="settings"], main';
@@ -62,42 +64,62 @@ test('REQ-194 telas definidas cabem nas resoluções acordadas com tolerância d
   expect(measurements).toHaveLength(4);
 });
 
-test('REQ-195 visual atual fornece tokens e controles de formulário/botão estilizados', async ({ page }, info) => {
+test('REQ-195 compara a identidade visual atual nas quatro telas definidas', async ({ page }, info) => {
   await open(page);
-  await navigate(page, 'Configurações', /Configurações/i);
-  await page.getByRole('main').getByRole('button', { name: 'Personalização', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Identidade e cores' })).toBeVisible();
+  const reports: Record<string, unknown>[] = [];
+  const screens = [
+    { name: 'Atendimento', heading: /Atendimento|Conversa/i },
+    { name: 'CRM', heading: /CRM e negócios/i },
+    { name: 'Campanhas', heading: /Campanhas/i },
+    { name: 'Configurações', heading: /Configurações/i },
+  ];
+  for (const screen of screens) {
+    if (screen.name !== 'Atendimento') await navigate(page, screen.name, screen.heading);
+    if (screen.name === 'Configurações') {
+      await page.getByRole('main').getByRole('button', { name: 'Personalização', exact: true }).click();
+      await expect(page.getByRole('heading', { name: 'Identidade e cores' })).toBeVisible();
+    }
+    const visual = await page.evaluate(() => {
+      const visible = (element: Element) => {
+        const rect = element.getBoundingClientRect();
+        const css = getComputedStyle(element);
+        return rect.width > 0 && rect.height > 0 && css.visibility !== 'hidden' && css.display !== 'none';
+      };
+      const style = (element: Element | null) => element ? {
+        fontFamily: getComputedStyle(element).fontFamily,
+        borderRadius: getComputedStyle(element).borderRadius,
+        borderStyle: getComputedStyle(element).borderStyle,
+        backgroundColor: getComputedStyle(element).backgroundColor,
+      } : null;
+    const root = getComputedStyle(document.documentElement);
+      const button = [...document.querySelectorAll('button.button')].find(visible) ?? [...document.querySelectorAll('button')].find(visible);
+      const input = [...document.querySelectorAll('input:not([type="checkbox"]):not([type="file"]):not([type="color"])')].find(visible);
+      const card = [...document.querySelectorAll('.surface, .personalization-card, .crm-column, article, [class*="card"]')].find(visible);
+      return {
+        tokens: Object.fromEntries(['--bg', '--surface', '--line', '--text', '--accent'].map((key) => [key, root.getPropertyValue(key).trim()])),
+        button: style(button), input: style(input), card: style(card),
+        tableCount: document.querySelectorAll('table, [role="table"]').length,
+      };
+    });
+    for (const [token, value] of Object.entries(visual.tokens)) expect(value, `${screen.name}: ${token} definido no tema atual`).not.toBe('');
+    expect(visual.button, `${screen.name}: botão visível`).not.toBeNull();
+    expect(visual.button!.fontFamily, `${screen.name}: botão usa tipografia computada`).not.toBe('');
+    if (visual.input) expect(visual.input.fontFamily, `${screen.name}: campo usa tipografia computada`).not.toBe('');
+    if (visual.card) expect(visual.card.fontFamily, `${screen.name}: card usa tipografia computada`).not.toBe('');
+    reports.push({ screen: screen.name, ...visual });
+    await save(page, 'REQ-195', info, `visual-${screen.name.toLowerCase()}`, { reference: 'visual atual do app', ...visual });
+  }
+  expect(reports.every((report) => (report as { tableCount: number }).tableCount === 0), 'telas cobertas não usam tabela HTML/role=table').toBe(true);
   await page.getByRole('button', { name: 'Personalizar Atendimento com prévia' }).click();
   const modal = page.locator('dialog.modal[open]');
   await expect(modal).toBeVisible();
-  const visual = await page.evaluate(() => {
-    const root = getComputedStyle(document.documentElement);
-    const button = document.querySelector('.personalization-card button.button');
-    const input = document.querySelector('.personalization-card input:not([type="checkbox"]):not([type="file"])');
-    const card = document.querySelector('.personalization-card');
-    const style = (element: Element | null) => element ? {
-      fontFamily: getComputedStyle(element).fontFamily,
-      borderRadius: getComputedStyle(element).borderRadius,
-      borderStyle: getComputedStyle(element).borderStyle,
-      backgroundColor: getComputedStyle(element).backgroundColor,
-    } : null;
-    return {
-      tokens: Object.fromEntries(['--bg', '--surface', '--line', '--text', '--accent'].map((key) => [key, root.getPropertyValue(key).trim()])),
-      button: style(button), input: style(input), card: style(card),
-    };
-  });
-  for (const [token, value] of Object.entries(visual.tokens)) expect(value, `${token} definido no tema atual`).not.toBe('');
-  expect(visual.button, 'botão visível com estilo de produto').not.toBeNull();
-  expect(visual.input, 'campo de formulário visível').not.toBeNull();
-  expect(visual.button!.borderRadius).not.toBe('0px');
-  expect(visual.input!.borderRadius).not.toBe('0px');
   const modalVisual = await modal.evaluate((el) => ({
     borderRadius: getComputedStyle(el).borderRadius,
     backgroundColor: getComputedStyle(el).backgroundColor,
     animationName: getComputedStyle(el).animationName,
   }));
   expect(modalVisual.borderRadius).not.toBe('0px');
-  await save(page, 'REQ-195', info, 'visual-atual', { visual, modalVisual, reference: 'tokens e componentes atuais de botão, campo, card e modal' });
+  await save(page, 'REQ-195', info, 'visual-modal', { reports, modalVisual, reference: 'tokens e controles do visual atual nas quatro telas' });
 });
 
 test('REQ-196 páginas e modal animam normalmente e respeitam movimento reduzido', async ({ page }, info) => {

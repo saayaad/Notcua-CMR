@@ -490,3 +490,15 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - REQ-455 e REQ-457 têm testes de aceitação falhos em SQLite temporário e BUG-033/034 registrados; não foram corrigidos conforme a instrução de não implementar função nova. REQ-448/453 e REQ-461/462/463/465/466/483/487 têm registros estáticos parciais, sem falsa aprovação visual.
 - Arquivos protegidos `REVISAO/evidencias/REQ-686/process.json` e `scripts/iniciar-noctua-online.ps1` não devem entrar no staging/commit. Evidências de REQs fechadas não foram escritas.
 - Próximo passo por ordem do LEDGER: retomar prova visual de REQ-419–422 quando o front já existente voltar a responder; depois REQ-448 e 453, então seguir em ordem. Não reexecutar REQ-126 até receber `6.txt`.
+
+## Economia de IA — reteste e fechamento — 31/10/2026
+
+- Front e API locais responderam HTTP 200. Teste focal `e2e/economy.spec.ts` das REQ-419–422 passou 3/3 viewports (1366×768, 1920×1080, 390×844); os quatro controles removidos não aparecem e autoReply, copilot e summaries permanecem. Apenas fixtures de GET; nenhum dado persistido ou envio externo.
+- Capturas/recibos atualizados em `REVISAO/evidencias/REQ-419/` a `REQ-422/`. Não atualizar essas pastas novamente após o fechamento.
+- REQ-419–422: `COMPLETO-LOCAL`, decisão B aplicada. Módulo Economia de IA (REQ-414–443) sem itens A VERIFICAR; fechar e commitar este lote.
+- Próximo item em aberto na ordem do LEDGER, ignorando REQ-126 bloqueada: REQ-194. Revisão das capturas anteriores mostrou que Atendimento foi fotografado durante o carregamento lazy; o teste foi corrigido para esperar o layout real e repetido em 3 viewports, 3/3 aprovado. Capturas de REQ-194 atualizadas somente na pasta ainda aberta.
+- Ao seguir, nunca regravar as evidências fechadas REQ-419–422 nem REQ-196/430. `process.json` e `scripts/iniciar-noctua-online.ps1` permanecem fora do staging.
+- REQ-194: reteste corrigiu a espera de carregamento lazy e passou 3/3 viewports; layout atual medido, 0 px overflow, conteúdo dentro de 2 px. Fechada COMPLETO-LOCAL.
+- REQ-195: matriz ampliada passou 3/3 viewports nas quatro telas; tokens/tipografia/estilos computados registrados, tabela não aplicável (nenhuma tabela HTML/role=table). Fechada COMPLETO-LOCAL. Um primeiro ensaio mobile supôs raio arredondado para todo botão; a falha decorreu da suposição de teste, removida por não ser parte do critério. Reteste passou.
+- REQ-197: verificação parcial confirmou nomes acessíveis e fluxos seguros; não comprova os 504 botões/ações globais. Estado DECISÃO com pergunta exata em LEDGER/PENDENCIAS-DECISAO.md. Interface Global (REQ-194–197) fica auditada: 194/195/196 locais completos; 197 depende da definição de inventário/aceite.
+- Próximo item na ordem do LEDGER, exceto REQ-126 bloqueada: REQ-223 (Personalização). Retomar a prova parcial já registrada; não tocar em evidências fechadas.

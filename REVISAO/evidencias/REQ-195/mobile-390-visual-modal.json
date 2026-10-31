@@ -1,0 +1,124 @@
+{
+  "req": "REQ-195",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "reports": [
+    {
+      "screen": "Atendimento",
+      "tokens": {
+        "--bg": "#101116",
+        "--surface": "#181920",
+        "--line": "#2a2b37",
+        "--text": "#e8e9ee",
+        "--accent": "#a68bfa"
+      },
+      "button": {
+        "fontFamily": "Inter, \"Segoe UI\", sans-serif",
+        "borderRadius": "0px",
+        "borderStyle": "none",
+        "backgroundColor": "rgba(0, 0, 0, 0)"
+      },
+      "input": {
+        "fontFamily": "Inter, \"Segoe UI\", sans-serif",
+        "borderRadius": "8px",
+        "borderStyle": "none",
+        "backgroundColor": "rgba(0, 0, 0, 0)"
+      },
+      "card": null,
+      "tableCount": 0
+    },
+    {
+      "screen": "CRM",
+      "tokens": {
+        "--bg": "#101116",
+        "--surface": "#181920",
+        "--line": "#2a2b37",
+        "--text": "#e8e9ee",
+        "--accent": "#a68bfa"
+      },
+      "button": {
+        "fontFamily": "Inter, \"Segoe UI\", sans-serif",
+        "borderRadius": "10.4px",
+        "borderStyle": "solid",
+        "backgroundColor": "rgb(30, 31, 40)"
+      },
+      "input": {
+        "fontFamily": "Inter, \"Segoe UI\", sans-serif",
+        "borderRadius": "8px",
+        "borderStyle": "none",
+        "backgroundColor": "rgba(0, 0, 0, 0)"
+      },
+      "card": {
+        "fontFamily": "Inter, \"Segoe UI\", sans-serif",
+        "borderRadius": "12px",
+        "borderStyle": "solid",
+        "backgroundColor": "rgb(24, 25, 32)"
+      },
+      "tableCount": 0
+    },
+    {
+      "screen": "Campanhas",
+      "tokens": {
+        "--bg": "#101116",
+        "--surface": "#181920",
+        "--line": "#2a2b37",
+        "--text": "#e8e9ee",
+        "--accent": "#a68bfa"
+      },
+      "button": {
+        "fontFamily": "Inter, \"Segoe UI\", sans-serif",
+        "borderRadius": "10.4px",
+        "borderStyle": "solid",
+        "backgroundColor": "rgba(0, 0, 0, 0)"
+      },
+      "input": {
+        "fontFamily": "Inter, \"Segoe UI\", sans-serif",
+        "borderRadius": "8px",
+        "borderStyle": "none",
+        "backgroundColor": "rgba(0, 0, 0, 0)"
+      },
+      "card": null,
+      "tableCount": 0
+    },
+    {
+      "screen": "Configurações",
+      "tokens": {
+        "--bg": "#101116",
+        "--surface": "#181920",
+        "--line": "#2a2b37",
+        "--text": "#e8e9ee",
+        "--accent": "#a68bfa"
+      },
+      "button": {
+        "fontFamily": "Inter, \"Segoe UI\", sans-serif",
+        "borderRadius": "10.4px",
+        "borderStyle": "solid",
+        "backgroundColor": "rgb(30, 31, 40)"
+      },
+      "input": {
+        "fontFamily": "Inter, \"Segoe UI\", sans-serif",
+        "borderRadius": "8px",
+        "borderStyle": "solid",
+        "backgroundColor": "rgb(16, 17, 22)"
+      },
+      "card": {
+        "fontFamily": "Inter, \"Segoe UI\", sans-serif",
+        "borderRadius": "12px",
+        "borderStyle": "solid",
+        "backgroundColor": "rgb(24, 25, 32)"
+      },
+      "tableCount": 0
+    }
+  ],
+  "modalVisual": {
+    "borderRadius": "14px",
+    "backgroundColor": "color(srgb 0.0941176 0.0980392 0.12549 / 0.92)",
+    "animationName": "noctua-modal-in"
+  },
+  "reference": "tokens e controles do visual atual nas quatro telas"
+}

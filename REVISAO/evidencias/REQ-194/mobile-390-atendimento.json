@@ -9,8 +9,8 @@
   "url": "http://127.0.0.1:5180/atendimento",
   "criterion": "overflow/limites do conteúdo até 2 px",
   "horizontalOverflowPx": 0,
-  "mainLeft": 0,
+  "mainLeft": 68,
   "mainRightExcess": 0,
-  "mainTop": 0,
+  "mainTop": 60,
   "mainBottomExcess": 0
 }
