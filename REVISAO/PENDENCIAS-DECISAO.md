@@ -17,7 +17,7 @@ Fonte: LEDGER.csv e decisões do usuário registradas em 31/10/2026. Nesta atual
 - REQ-195 — A: usar o visual atual do app como referência.
 - REQ-196 — A, escolha do usuário; execução/verificação pendente, sem acrescentar parâmetros que não constam nesta decisão.
 - REQ-197 — DECISÃO pendente de escopo: a decisão A está registrada; prova parcial cobriu botões visíveis nas quatro telas REQ-194, mas não todas as 504 ações. Pergunta: aprovar homologação por módulo/amostragem segura ou fornecer inventário versionado com resultado esperado de ação/sucesso/erro para cada botão?
-- REQ-223 — A, escolha do usuário; execução/verificação pendente, sem ampliar o escopo nesta atualização.
+- REQ-223 — DECISÃO: inventário revalidado em 504 botões/70 arquivos, mas vínculo sintático não prova efeito. Pergunta: aprova homologação segura por módulo/amostragem ou fornecerá inventário versionado das 504 ações com resultado esperado de sucesso/erro e permissões?
 - REQ-401 — A, escolha do usuário; execução/verificação pendente, sem ampliar o escopo nesta atualização.
 - REQ-448 — A, escolha do usuário; execução/verificação pendente, sem ampliar o escopo nesta atualização.
 - REQ-453 — A: manter busca, enviar e anexar visíveis.
@@ -50,3 +50,4 @@ Fonte: LEDGER.csv e decisões do usuário registradas em 31/10/2026. Nesta atual
 - SUBSTITUÍDO OU CANCELADO: 2.
 
 Nenhuma função nova foi implementada, nenhum teste foi executado e nenhuma evidência de REQ fechada foi alterada.
+

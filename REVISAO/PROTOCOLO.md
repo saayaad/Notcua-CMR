@@ -502,3 +502,9 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - REQ-195: matriz ampliada passou 3/3 viewports nas quatro telas; tokens/tipografia/estilos computados registrados, tabela não aplicável (nenhuma tabela HTML/role=table). Fechada COMPLETO-LOCAL. Um primeiro ensaio mobile supôs raio arredondado para todo botão; a falha decorreu da suposição de teste, removida por não ser parte do critério. Reteste passou.
 - REQ-197: verificação parcial confirmou nomes acessíveis e fluxos seguros; não comprova os 504 botões/ações globais. Estado DECISÃO com pergunta exata em LEDGER/PENDENCIAS-DECISAO.md. Interface Global (REQ-194–197) fica auditada: 194/195/196 locais completos; 197 depende da definição de inventário/aceite.
 - Próximo item na ordem do LEDGER, exceto REQ-126 bloqueada: REQ-223 (Personalização). Retomar a prova parcial já registrada; não tocar em evidências fechadas.
+
+## Personalização — REQ-223 — 31/10/2026
+
+- Inventário estático revalidado; 504 controles em 70 arquivos, sem arquivo ausente ou registro sem ligação sintática. A prova não demonstra resultado real, persistência, permissão ou sucesso/erro.
+- REQ-223 classificada DECISÃO com pergunta exata em LEDGER/PENDENCIAS-DECISAO.md. Nenhuma função ou preferência foi alterada.
+- Próximo item aberto em ordem do LEDGER: REQ-448 (Atendimento); REQ-126 segue bloqueada por falta de `6.txt` e continua fora da sequência de teste.
