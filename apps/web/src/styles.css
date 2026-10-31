@@ -960,6 +960,24 @@ html[data-theme='light'] nav button.selected {
   min-width: 90px;
   box-shadow: 0 2px 3px #00000008;
 }
+.message-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+.message-reaction {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 2px 6px;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.message-reaction.selected { border-color: var(--accent); background: var(--accent-bg); }
+.message-reaction span { margin-left: 4px; color: var(--muted); font-size: 10px; }
 .outbound .message-bubble {
   background: var(--outgoing);
   border-color: #a68bfa12;

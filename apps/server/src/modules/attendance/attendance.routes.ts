@@ -23,6 +23,7 @@ const pageSchema = z.object({
   page: z.coerce.number().int().min(1).max(10_000).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(50),
 });
+const reactionSchema = z.object({ emoji: z.enum(['👍', '❤️', '😂', '😮', '😢', '🙏']) });
 const ids = (req: Request) => ({
   sessionId: stringId.parse(req.params.sessionId),
   conversationId: stringId.parse(req.params.conversationId),
@@ -390,6 +391,7 @@ export function attendanceRoutes(
         orderBy: { createdAt: 'desc' },
       }),
     ]);
+    const reactions = items.length ? await db.chatReaction.findMany({ where: { messageId: { in: items.map((item) => item.id) } } }) : [];
     const notes = noteRows.flatMap((row) => {
       const note = row.data as { conversationId?: string; text?: string; author?: string; sentAt?: string };
       return note.conversationId === conversationId && note.text && note.sentAt
@@ -415,6 +417,16 @@ export function attendanceRoutes(
     });
     const messages = items.map((item) => ({
       ...item,
+      reactions: reactions
+        .filter((reaction) => reaction.messageId === item.id)
+        .reduce<{ emoji: string; count: number; reactedByMe: boolean }[]>((groups, reaction) => {
+          const group = groups.find((entry) => entry.emoji === reaction.emoji);
+          if (group) {
+            group.count += 1;
+            group.reactedByMe ||= reaction.actorId === res.locals.identity?.uid;
+          } else groups.push({ emoji: reaction.emoji, count: 1, reactedByMe: reaction.actorId === res.locals.identity?.uid });
+          return groups;
+        }, []),
       deletedByClient: Boolean((item.rawPayload as { deletedByClient?: boolean } | null)?.deletedByClient),
       rawPayload: undefined,
     }));
@@ -424,6 +436,32 @@ export function attendanceRoutes(
     );
     const skip = (page - 1) * pageSize;
     res.json({ items: timeline.slice(skip, skip + pageSize), total: total + notes.length, page, pageSize });
+  });
+  router.post('/sessions/:sessionId/conversations/:conversationId/messages/:messageId/reactions', async (req, res) => {
+    const { sessionId, conversationId } = ids(req);
+    const actor = res.locals.identity;
+    if (!actor || !['ADMIN', 'MEMBER'].includes(actor.role)) throw new AppError(403, 'Somente integrantes ativos podem reagir.');
+    await messaging.chat(sessionId, conversationId);
+    const { messageId } = z.object({ messageId: stringId }).parse(req.params);
+    const { emoji } = reactionSchema.parse(req.body);
+    const message = await db.chatMessage.findFirst({ where: { id: messageId, conversationId }, select: { id: true } });
+    if (!message) throw new AppError(404, 'Mensagem não encontrada nesta conversa.');
+    const current = await db.chatReaction.findUnique({ where: { messageId_actorId: { messageId, actorId: actor.uid } } });
+    if (current?.emoji === emoji) await db.chatReaction.delete({ where: { id: current.id } });
+    else await db.chatReaction.upsert({
+      where: { messageId_actorId: { messageId, actorId: actor.uid } },
+      create: { messageId, actorId: actor.uid, emoji },
+      update: { emoji },
+    });
+    const stored = await db.chatReaction.findMany({ where: { messageId } });
+    const groups = stored.reduce<{ emoji: string; count: number; reactedByMe: boolean }[]>((result, reaction) => {
+      const group = result.find((entry) => entry.emoji === reaction.emoji);
+      if (group) { group.count += 1; group.reactedByMe ||= reaction.actorId === actor.uid; }
+      else result.push({ emoji: reaction.emoji, count: 1, reactedByMe: reaction.actorId === actor.uid });
+      return result;
+    }, []);
+    whatsapp.notify(sessionId, 'messages');
+    res.json({ reactions: groups });
   });
   router.post('/sessions/:sessionId/conversations/:conversationId/internal-notes', async (req, res) => {
     const { sessionId, conversationId } = ids(req);

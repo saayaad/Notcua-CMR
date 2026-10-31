@@ -1,6 +1,10 @@
 {
   "req": "REQ-661",
   "result": "APROVADO",
-  "source": "apps/web/src/components/ChatPane.tsx:530; existing onToolRequest handlers",
-  "messagingServiceChanged": false
+  "source": [
+    "apps/web/src/components/ChatPane.tsx: existing context-menu and FAQ handlers plus reaction control",
+    "apps/server/src/modules/attendance/attendance.routes.ts: validated reaction endpoint"
+  ],
+  "existingHandlersPreserved": true,
+  "reactionHandlerAdded": true
 }

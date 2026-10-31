@@ -2,6 +2,13 @@
   "req": "REQ-664",
   "result": "APROVADO",
   "source": "REVISAO/PENDENCIAS.md: lote L-25",
+  "closedItemExcludedFromPending": "REQ-680",
+  "remainingManualChecks": [
+    "REQ-668",
+    "REQ-676",
+    "REQ-678",
+    "REQ-682"
+  ],
   "fields": [
     "prioridade",
     "esforço",

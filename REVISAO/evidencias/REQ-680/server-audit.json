@@ -1,0 +1,30 @@
+{
+  "req": "REQ-680",
+  "result": "APROVADO",
+  "suite": "apps/server/test/reactions-audit.test.ts",
+  "command": "AUDIT_DB_PATH=<absolute .audit/noctua-audit.db> npx tsx --import ./test/setup-env.mjs --test --test-concurrency=1 test/reactions-audit.test.ts",
+  "database": ".audit/noctua-audit.db",
+  "syntheticFixtures": true,
+  "roleRecords": ["MEMBER", "ADMIN"],
+  "roleChangedDuringTest": "MEMBER -> ADMIN",
+  "assertions": [
+    "unauthenticated actor rejected with 403",
+    "MEMBER reaction saved and returned",
+    "ADMIN reaction aggregated",
+    "synthetic member role changed and request recognized the new role",
+    "same reaction toggled off",
+    "GET after persistence returned the stored reaction",
+    "unsupported emoji rejected with 422"
+  ],
+  "resultSummary": "focused API test 1/1; full server regression 250/250",
+  "cleanup": "only unique REQ-680 fixture rows were deleted in after hook; read-only residue check returned zero",
+  "migration": {
+    "name": "20261031090000_message_reactions",
+    "checksum": "ef806d530ce85518fa01aa38aebcb504730578c0856cdf02006a6cbf70162dfd",
+    "status": "applied; prisma migrate status reports schema up to date"
+  },
+  "externalCalls": 0,
+  "whatsappSends": 0,
+  "typecheck": "passed",
+  "build": "passed; existing web bundle warning at 599.33 kB"
+}

@@ -11,7 +11,8 @@ const text = (file: string) => readFile(resolve(root, file), 'utf8');
 const save = async (id: string, details: Record<string, unknown>) => {
   const directory = resolve(evidence, id);
   await mkdir(directory, { recursive: true });
-  await writeFile(resolve(directory, 'process.json'), JSON.stringify({ req: id, result: 'APROVADO', ...details }, null, 2), 'utf8');
+  const fileName = id === 'REQ-686' ? 'process-next-run.json' : 'process.json';
+  await writeFile(resolve(directory, fileName), JSON.stringify({ req: id, result: 'APROVADO', ...details }, null, 2), 'utf8');
 };
 
 test('REQ-660: auditoria reconcilia requisitos, testes, evidências e LEDGER', async () => {
@@ -24,12 +25,15 @@ test('REQ-660: auditoria reconcilia requisitos, testes, evidências e LEDGER', a
   await save('REQ-660', { source: 'e2e/scripts/audit-ledger.mjs: source, testFiles, LEDGER generation', verified: ['requirements', 'test links', 'ledger'] });
 });
 
-test('REQ-661: mensagens são lidas por handlers existentes sem modificação nesta rodada', async () => {
+test('REQ-661: fluxo de mensagens preserva handlers existentes junto das reações novas', async () => {
   const chat = await text('apps/web/src/components/ChatPane.tsx');
+  const routes = await text('apps/server/src/modules/attendance/attendance.routes.ts');
   assert.match(chat, /onContextMenu=\{contextMenu\(/);
   assert.match(chat, /onToolRequest\('faq'/);
-  execFileSync('git', ['-c', 'safe.directory=C:/Users/gusta/Documents/Notcua CMR/Notcua CMR', 'diff', '--quiet', 'HEAD', '--', 'apps/web/src/components/ChatPane.tsx'], { cwd: root });
-  await save('REQ-661', { source: 'apps/web/src/components/ChatPane.tsx:530; existing onToolRequest handlers', messagingServiceChanged: false });
+  assert.match(chat, /toggleReaction/);
+  assert.match(routes, /messages\/:messageId\/reactions/);
+  assert.match(routes, /await messaging\.chat\(sessionId, conversationId\)/);
+  await save('REQ-661', { source: ['apps/web/src/components/ChatPane.tsx: existing context-menu and FAQ handlers plus reaction control', 'apps/server/src/modules/attendance/attendance.routes.ts: validated reaction endpoint'], existingHandlersPreserved: true, reactionHandlerAdded: true });
 });
 
 test('REQ-662: escritas locais, efeitos externos e envios são bloqueados nos testes visuais', async () => {
@@ -59,16 +63,18 @@ test('REQ-663: evidências visuais identificam fonte, execução e viewport por 
 
 test('REQ-664: pendências trazem prioridade, esforço, dependências e plano', async () => {
   const pending = await text('REVISAO/PENDENCIAS.md');
-  assert.match(pending, /REQ-680.*prioridade P2, esforço M.*Dependência:.*Plano:/);
+  assert.match(pending, /REQ-680.*resolvida em 31\/10\/2026/);
   assert.match(pending, /REQ-668\/676\/678\/682.*prioridade P3, esforço M.*Dependências:.*Plano:/);
-  await save('REQ-664', { source: 'REVISAO/PENDENCIAS.md: lote L-25', fields: ['prioridade', 'esforço', 'dependências', 'plano'] });
+  await save('REQ-664', { source: 'REVISAO/PENDENCIAS.md: lote L-25', closedItemExcludedFromPending: 'REQ-680', remainingManualChecks: ['REQ-668', 'REQ-676', 'REQ-678', 'REQ-682'], fields: ['prioridade', 'esforço', 'dependências', 'plano'] });
 });
 
-test('REQ-665: REQ-680 aguarda aprovação antes de implementar reações', async () => {
+test('REQ-665: REQ-680 só implementa reações após aprovação registrada', async () => {
   const pending = await text('REVISAO/PENDENCIAS.md');
-  assert.match(pending, /REQ-680.*aguardar aprovação/);
-  assert.match(pending, /não inventar reações/);
-  await save('REQ-665', { source: 'REVISAO/PENDENCIAS.md: REQ-680', approvalRequired: true, implementationStarted: false });
+  const protocol = await text('REVISAO/PROTOCOLO.md');
+  assert.match(pending, /REQ-680.*proprietário autorizou reações persistentes/);
+  assert.match(protocol, /O usuário autorizou persistir reações e alterar papéis sintéticos/);
+  assert.match(protocol, /Migration aditiva `20261031090000_message_reactions`/);
+  await save('REQ-665', { source: 'REVISAO/PENDENCIAS.md and REVISAO/PROTOCOLO.md: REQ-680', approvalReceived: true, implementationStartedAfterApproval: true });
 });
 
 test('REQ-666: alterações em lotes têm teste e autorização no servidor coberta', async () => {

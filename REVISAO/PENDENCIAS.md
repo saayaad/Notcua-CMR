@@ -275,6 +275,6 @@ REQ-596 a REQ-602 passaram de “a verificar” para “parcial”: regras de et
 ---
 ## Lote L-25 — Revisão e menu contextual — 30/10/2026
 
-- **REQ-680 — prioridade P2, esforço M.** Dependência: decisão do proprietário sobre oferecer reações reais a mensagens (ações, permissões e persistência). Plano: aguardar aprovação; até lá, não inventar reações, controles visuais sem efeito ou chamadas de envio.
+- **REQ-680 — resolvida em 31/10/2026.** O proprietário autorizou reações persistentes no ambiente `.audit`, incluindo alteração de papéis sintéticos. Implementação e evidências estão no lote de Revisão e menu contextual; nenhuma chamada externa foi usada.
 - **REQ-668/676/678/682 — prioridade P3, esforço M.** Dependências: aparelho tátil real, leitor de tela e janela destacada real. Plano: registrar no CHECKLIST-MANUAL.md; prova Chromium responsiva local concluída, sem declarar equivalência física.
 - **Regra de parada:** suspender somente a ação ambígua, destrutiva, que grava dados, remove recurso, amplia tecnologia ou gera custo; registrar motivo e seguir os itens independentes.

@@ -237,6 +237,16 @@ A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, po
 - Reteste: REQ-345 passou 3/3; lacunas Sandbox passaram 24/24 em 3 viewports; suíte do servidor passou 220/220.
 - Estado: corrigido. O MP4 usado por outros cenários de mídia não foi alterado.
 
+## BUG-032 — Embeddings locais não eram encontrados quando o servidor rodava dentro do workspace — corrigido em 31/10/2026
+
+- REQ: REQ-425.
+- Reprodução: executar o teste semântico pelo workspace `apps/server` com o modelo já baixado em `.audit/models/`; aprovar uma resposta similar e consultar uma paráfrase.
+- Resultado: a consulta não reutilizava o cache, pois a busca do modelo apontava para `apps/server/.audit/models/` e a exceção era absorvida como indisponibilidade opcional.
+- Causa: o caminho local dependia de `process.cwd()`, que muda conforme npm/tsx executa o workspace.
+- Correção: resolver `.audit/models/` a partir da localização de `ai.service.ts`, estável em execução e teste.
+- Reteste: `REQ-424/REQ-425` passou na suíte de servidor; o modelo local 384D reutilizou a paráfrase, recusou pergunta sem relação e manteve revisão/privacidade.
+- Escopo: inferência local sem rede; nenhum dado de conversa saiu do computador.
+
 ## BUG-031 — Menu contextual de mensagem fechava ao focar em viewport 1920×1080 — corrigido localmente
 
 - REQs: REQ-678, REQ-682.

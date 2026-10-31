@@ -1,7 +1,7 @@
 {
   "req": "REQ-682",
   "result": "APROVADO",
-  "test": "REQ-680/682 registra menu de mensagem sem reações antes de aprovação",
+  "test": "REQ-682 mantém menu contextual da mensagem acessível com a faixa de reações",
   "project": "mobile-390",
   "url": "http://127.0.0.1:5180/atendimento",
   "viewport": {
@@ -29,6 +29,7 @@
   "pageErrors": [],
   "area": "ChatPane",
   "menuItems": [
+    "Reagir",
     "Copiar mensagem",
     "Cadastrar resposta padrão",
     "Voltar à página anterior",
@@ -38,7 +39,6 @@
   "blockedSetupWrites": [
     "POST /api/operations/directory/presence",
     "POST /socket.io/",
-    "POST /socket.io/",
     "POST /socket.io/"
   ],
   "menuInteractionWrites": [
@@ -46,7 +46,7 @@
   ],
   "trigger": "synthetic contextmenu event in mobile viewport",
   "receivedContextMenuEvent": "{\"defaultPrevented\":true,\"target\":\"DIV.message-bubble  \",\"editable\":false}",
-  "menuLifecycle": "[{\"at\":1882.5999999996275,\"event\":\"showPopover\",\"className\":\"noctua-context-menu\"},{\"at\":1889.2999999988824,\"event\":\"menu-added\"}]",
+  "menuLifecycle": "[{\"at\":1783.800000000745,\"event\":\"showPopover\",\"className\":\"noctua-context-menu\"},{\"at\":1791.2000000011176,\"event\":\"menu-added\"}]",
   "menuDiagnostics": [
     {
       "popoverOpen": true,
@@ -54,9 +54,9 @@
       "visibility": "visible",
       "rect": {
         "x": 124,
-        "y": 314.2914733886719,
+        "y": 313.6109924316406,
         "width": 229.40625,
-        "height": 248.43753051757812
+        "height": 282.3124694824219
       }
     }
   ],

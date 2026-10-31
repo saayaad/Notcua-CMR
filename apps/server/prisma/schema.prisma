@@ -200,9 +200,23 @@ model ChatMessage {
   updatedAt         DateTime         @updatedAt
   conversation      Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   file              StoredFile?      @relation(fields: [fileId], references: [id], onDelete: SetNull)
+  reactions         ChatReaction[]
 
   @@unique([conversationId, whatsappMessageId])
   @@index([conversationId, sentAt])
+}
+
+model ChatReaction {
+  id        String      @id @default(cuid())
+  messageId String
+  actorId   String
+  emoji     String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, actorId])
+  @@index([messageId, emoji])
 }
 
 // Decoded media stays in SQLite so each backup import is a single atomic transaction.

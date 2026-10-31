@@ -1,42 +1,41 @@
 {
   "req": "REQ-680",
-  "result": "DECISÃO",
-  "test": "REQ-680/682 registra menu de mensagem sem reações antes de aprovação",
+  "result": "APROVADO",
+  "test": "REQ-680 mostra faixa e menu de reações, salva e recarrega para papéis de teste",
   "project": "mobile-390",
   "url": "http://127.0.0.1:5180/atendimento",
   "viewport": {
     "width": 390,
     "height": 844
   },
-  "blockedWrites": [
+  "roleTransitions": [
+    "MEMBER",
+    "ADMIN"
+  ],
+  "reactions": [
+    [
+      "MEMBER",
+      "👍"
+    ],
+    [
+      "ADMIN",
+      "❤️"
+    ]
+  ],
+  "interceptedWrites": [
     "POST /api/operations/directory/presence",
     "POST /socket.io/",
     "POST /socket.io/",
-    "POST /socket.io/",
+    "POST /api/attendance/sessions/audit-session/conversations/audit-conversation-1/messages/req680-message/reactions",
+    "POST /api/attendance/sessions/audit-session/conversations/audit-conversation-1/messages/req680-message/reactions",
+    "POST /api/operations/directory/presence",
     "POST /socket.io/"
   ],
-  "blockedExternal": [
+  "mockedExternal": [
     "https://apis.google.com"
   ],
-  "consoleErrors": [
-    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
-    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
-    "Failed to load resource: the server responded with a status of 403 (Forbidden)"
-  ],
+  "blockedExternal": [],
+  "consoleErrors": [],
   "pageErrors": [],
-  "reactionStripOrButtonPresent": false,
-  "reactionMenuItems": [],
-  "brandedMenuItems": [],
-  "approvalPending": "ações, permissões e persistência de reação não autorizadas",
-  "blockedApiWrites": [],
-  "source": [
-    {
-      "file": "apps/web/src/components/ChatPane.tsx",
-      "symbol": "message-bubble context menu",
-      "line": 530
-    }
-  ]
+  "persistence": "fixture state was reread after reload; API persistence separately verified against .audit"
 }

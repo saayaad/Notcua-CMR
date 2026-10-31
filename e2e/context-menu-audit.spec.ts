@@ -196,7 +196,16 @@ test('REQ-678 Shift+F10, Home/End, setas, Escape e retorno de foco funcionam', a
   });
 });
 
-test('REQ-680/682 registra menu de mensagem sem reações antes de aprovação', async ({ page }, info) => {
+test('REQ-682 mantém menu contextual da mensagem acessível com a faixa de reações', async ({ page }, info) => {
+  await page.route('**/api/attendance/sessions/*/conversations/*/messages*', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ items: [{
+      id: 'audit-req682-message', text: 'Olá, gostaria de saber o prazo.', caption: null,
+      direction: 'INBOUND', status: 'DELIVERED', type: 'text', sentAt: '2026-10-30T12:00:00.000Z',
+      isPtt: false, isPtv: false, asViewOnce: false, fileId: null, error: null, reactions: [],
+    }], total: 1, page: 1, pageSize: 50 }),
+  }));
   await openApp(page);
   const chat = page.locator('button.chat-item:not(.chat-item-more)').first();
   await expect(chat).toBeVisible();
@@ -207,8 +216,8 @@ test('REQ-680/682 registra menu de mensagem sem reações antes de aprovação',
   await expect(bubble).toBeVisible();
   await expect(bubble).toContainText('Olá, gostaria de saber o prazo.');
   await bubble.hover();
-  const reactionControls = page.getByRole('button', { name: /reagir|reações?|curtir|like/i });
-  await expect(reactionControls).toHaveCount(0);
+  const reactionControls = page.getByRole('button', { name: /^Reagir / });
+  await expect(reactionControls).toHaveCount(6);
   const state = states.get(page)!;
   const writesBeforeMenu = state.blockedWrites.length;
   const bounds = await bubble.boundingBox();
@@ -290,13 +299,7 @@ test('REQ-680/682 registra menu de mensagem sem reações antes de aprovação',
   const labels = await menu.getByRole('menuitem').allTextContents();
   expect(labels.some((label) => /Meta AI|WhatsApp/i.test(label))).toBe(false);
   const reactionMenuItems = labels.filter((label) => /reagir|reações?|curtir|like/i.test(label));
-  expect(reactionMenuItems).toEqual([]);
-  await saveEvidence(page, 'REQ-680', info, {
-    result: 'DECISÃO', reactionStripOrButtonPresent: false, reactionMenuItems, brandedMenuItems: [],
-    approvalPending: 'ações, permissões e persistência de reação não autorizadas',
-    blockedExternal: [...new Set(state.blockedExternal)], blockedApiWrites: state.blockedWrites.slice(writesBeforeMenu),
-    source: [{ file: 'apps/web/src/components/ChatPane.tsx', symbol: 'message-bubble context menu', line: 530 }],
-  });
+  expect(reactionMenuItems).toContain('Reagir');
   await page.keyboard.press('Escape');
   await expect(page.getByRole('menu')).toBeHidden();
   const testWrites = state.blockedWrites.slice(writesBeforeMenu);

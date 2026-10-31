@@ -5,7 +5,8 @@ import { AppError } from '../../shared/errors.js';
 import { hasConfiguredKey, putRecord, record, type AgentSettings } from './records.js';
 import { textCompletion } from './ai-provider.js';
 import { env, pipeline } from '@huggingface/transformers';
-import { resolve, sep } from 'node:path';
+import { dirname, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 type Economy = { enabled: boolean; semanticCache: boolean; rag: boolean; cacheDays: number; summaryEvery: number; systems: Record<string, boolean> };
 type ConversationSummary = { text: string; covered: number; cursor?: { sentAt: string; id: string } };
 const defaultEconomy: Economy = { enabled: true, semanticCache: true, rag: true, cacheDays: 14, summaryEvery: 10, systems: { autoReply: true, copilot: true, summaries: true, campaigns: true, training: true, receipts: true, dailyDigest: true } };
@@ -23,7 +24,7 @@ function localEmbeddingExtractor() {
     env.allowRemoteModels = false;
     env.allowLocalModels = true;
     env.useFS = true;
-    env.localModelPath = resolve(process.cwd(), '.audit', 'models') + sep;
+    env.localModelPath = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../../.audit', 'models') + sep;
     extractorPromise = pipeline('feature-extraction', embeddingModel, { dtype: 'q8' }) as unknown as Promise<EmbeddingExtractor>;
   }
   return extractorPromise;

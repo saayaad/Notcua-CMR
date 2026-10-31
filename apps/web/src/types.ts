@@ -38,6 +38,7 @@ export interface Message {
   internal?: boolean;
   author?: string;
   deletedByClient?: boolean;
+  reactions?: { emoji: string; count: number; reactedByMe: boolean }[];
 }
 export interface Conversation {
   pinned?: boolean;
