@@ -380,3 +380,12 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Validação de segurança: front e API local responderam HTTP 200; `.audit/noctua-audit.db` permaneceu com 2.039.808 bytes e `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`. Sem produção, WhatsApp real, Firebase, Vercel, túnel ou `.env.local`.
 - Embeddings REQ-425: `@huggingface/transformers` 3.8.1 e `Xenova/paraphrase-multilingual-MiniLM-L12-v2` revisão `2c4055b12046f11709e9df2c122e59ffbdc2f900`; inferência local **não exige chave de API** e **não transmite dados de conversas**. Só o download inicial obtém artefatos públicos fixos; inferência usa `allowRemoteModels=false`.
 - Próximo ponto: concluir commit/push deste lote e prosseguir pelo próximo módulo não final do LEDGER.
+
+
+## Ponto de parada — decisões necessárias após Atendimento — 31/10/2026
+
+- Lote Atendimento fechado no commit `8365815`, push confirmado em `origin/auditoria-reqs`. Playwright: 21/21 em três viewports. Estados alterados: REQ-472 para `COMPLETO-LOCAL`, REQ-475/482/499 para `COMPLETO`. REQ-455/457/458 capturas confirmadas; 455/457 mantidas em decisão e 458 completa. Restam 11 decisões no módulo Atendimento: 448, 453, 455, 457, 461, 462, 463, 465, 466, 483 e 487; perguntas exatas no LEDGER.
+- REQ-686/process.json segue não confirmado como evidência de teste e não foi commitado; `scripts/iniciar-noctua-online.ps1` permaneceu fora do staging.
+- Próximo módulo na sequência: Infraestrutura. REQ-523 depende de escolher PC+túnel versus hospedagem persistente, incluindo provedor/orçamento/região/volume/backup; REQ-527 depende de lista de serviços/contas e escopo de acesso por serviço; REQ-540 depende de IDs públicos do Firebase de teste ou de manter authMode local. Perguntas completas já constam em REQUISITOS/LEDGER. Não houve conexão externa nem alteração.
+- Verificação seguinte: Qualidade e documentação, REQ-567 depende de horários, filas/tipos de envio e retomada automática; REQ-573 permanece adiada até o usuário enviar Parte 8, conforme decisão já registrada. Em Revisão e menu contextual, REQ-680 aguarda aprovação do proprietário para ações de reação/permissão/persistência.
+- Serviços locais continuam HTTP 200; banco `.audit/noctua-audit.db` preservado. Nenhum serviço de produção acessado. Retomar após as decisões/artefatos que só o usuário pode fornecer ou aprovar.
