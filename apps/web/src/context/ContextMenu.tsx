@@ -331,8 +331,17 @@ export function ContextMenuProvider({ children }: { children: ReactNode }) {
     }
     const rect = el.getBoundingClientRect();
     setPosition(menuPosition(menu.x, menu.y, rect.width, rect.height, win.innerWidth, win.innerHeight));
-    el.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
+    el.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus({ preventScroll: true });
+    let scrollDismissEnabled = false;
+    let secondFrame = 0;
+    const firstFrame = win.requestAnimationFrame(() => {
+      secondFrame = win.requestAnimationFrame(() => {
+        scrollDismissEnabled = true;
+      });
+    });
     const dismiss = (event: Event) => {
+      // Popover focus/placement may emit a scroll in its opening frame; keep the menu open for that layout correction.
+      if (event.type === 'scroll' && !scrollDismissEnabled) return;
       if (!el.contains(event.target as Node)) setMenu(null);
     };
     const resize = () => setMenu(null);
@@ -343,6 +352,8 @@ export function ContextMenuProvider({ children }: { children: ReactNode }) {
       menu.target.ownerDocument.removeEventListener('pointerdown', dismiss, true);
       menu.target.ownerDocument.removeEventListener('scroll', dismiss, true);
       win.removeEventListener('resize', resize);
+      win.cancelAnimationFrame(firstFrame);
+      win.cancelAnimationFrame(secondFrame);
     };
   }, [menu]);
 

@@ -1,0 +1,11 @@
+{
+  "req": "REQ-664",
+  "result": "APROVADO",
+  "source": "REVISAO/PENDENCIAS.md: lote L-25",
+  "fields": [
+    "prioridade",
+    "esforço",
+    "dependências",
+    "plano"
+  ]
+}

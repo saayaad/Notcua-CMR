@@ -272,3 +272,9 @@ REQ-025/026 passaram de parciais a completos após teste na interface publicada 
 O site continuava acessível, mas o servidor e o túnel do PC estavam desligados. O iniciador restaurou ambos, atualizou a variável pública da API na Vercel e publicou `dpl_AikyJa3WDdZXDmxvtTQX3JoXzZyk` como READY. Saúde local, saúde pelo túnel e `/atendimento` responderam 200; a rota de arquivo sem autenticação respondeu 401. A primeira tentativa em janela oculta falhou porque o PowerShell não carregou o módulo de verificação de assinatura. O iniciador agora importa o módulo explicitamente com três tentativas; sintaxe e assinatura foram conferidas. Falta homologar esse retry em outro reinício real. Evidência: `evidencias/reinicio-2026-10-28.json`.
 
 REQ-596 a REQ-602 passaram de “a verificar” para “parcial”: regras de etiqueta, confirmação de ações, registro de venda e ROI foram conferidos em 2 testes isolados com banco descartável e conector fictício. Falta o percurso visual completo e persistência após recarregar. Contagem: 385 a verificar, 98 completos, 154 parciais; demais estados inalterados. Evidência: `evidencias/acoes-etiquetas-2026-10-28.json`.
+---
+## Lote L-25 — Revisão e menu contextual — 30/10/2026
+
+- **REQ-680 — prioridade P2, esforço M.** Dependência: decisão do proprietário sobre oferecer reações reais a mensagens (ações, permissões e persistência). Plano: aguardar aprovação; até lá, não inventar reações, controles visuais sem efeito ou chamadas de envio.
+- **REQ-668/676/678/682 — prioridade P3, esforço M.** Dependências: aparelho tátil real, leitor de tela e janela destacada real. Plano: registrar no CHECKLIST-MANUAL.md; prova Chromium responsiva local concluída, sem declarar equivalência física.
+- **Regra de parada:** suspender somente a ação ambígua, destrutiva, que grava dados, remove recurso, amplia tecnologia ou gera custo; registrar motivo e seguir os itens independentes.

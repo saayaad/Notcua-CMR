@@ -1,0 +1,10 @@
+{
+  "req": "REQ-660",
+  "result": "APROVADO",
+  "source": "e2e/scripts/audit-ledger.mjs: source, testFiles, LEDGER generation",
+  "verified": [
+    "requirements",
+    "test links",
+    "ledger"
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "req": "REQ-661",
+  "result": "APROVADO",
+  "source": "apps/web/src/components/ChatPane.tsx:530; existing onToolRequest handlers",
+  "messagingServiceChanged": false
+}

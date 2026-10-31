@@ -1,0 +1,7 @@
+{
+  "req": "REQ-667",
+  "result": "APROVADO",
+  "source": "REVISAO/PROTOCOLO.md §4; REVISAO/PENDENCIAS.md L-25",
+  "ambiguity": "REQ-680 reaction behavior",
+  "stoppedOnlyThatAction": true
+}

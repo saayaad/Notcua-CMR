@@ -106,3 +106,12 @@ Copie este trecho para o Notion; cada caixa pode ser marcada independentemente.
 Essa execução não encerra a auditoria geral: o livro de requisitos ainda tem itens a verificar; BUG-001 (erro silencioso de preferências), contas cliente reais, integrações com cota disponível e cobertura entre navegadores permanecem pendentes.
 
 Rodada seguinte: compilação final com ícones aprovada; adicionada fumaça da lista e bolha do ChatPane usando apenas uma identidade/mensagem fictícia no banco temporário. Nenhuma mudança no serviço original de Mensagens. BUG-002 e BUG-003 de economia de IA reproduzidos com provedor falso e documentados em BUGS.md. Contagens individuais atualizadas no livro, sem promover todos os módulos a completos.
+## Reteste L-25 — 30/10/2026
+
+- `ContextMenuProvider` continua sendo único. Chromium conferiu menu específico da Biblioteca, menu de conversa e menu de mensagem; as ações existentes foram exibidas sem executá-las.
+- Ação desabilitada permaneceu desabilitada ao ser derivada de botão desabilitado. O botão ⋯ abriu o menu sem selecionar conversa; foco desktop e viewport 390×844 mantiveram o botão visível/operável.
+- Teclas Shift+F10, setas, Home, End e Escape funcionaram; o foco retornou ao botão. O teste de mensagem verificou cópia/resposta padrão sem acionar, sem envio.
+- A rede Playwright aceitou somente GET local. Chamadas externas e POST de API/socket foram interceptados. `.audit/noctua-audit.db` permaneceu inalterado.
+- Capturas por requisito em `evidencias/REQ-668/`, `REQ-673/`, `REQ-675/`, `REQ-676/`, `REQ-678/` e `REQ-682/`. Toque prolongado físico, leitor de tela e janelas destacadas reais permanecem no `CHECKLIST-MANUAL.md`.
+- Primeira execução: corrigida a contagem do menu (oito itens) e estabilizado o seletor da mensagem fictícia. O clique direito real revelou o defeito BUG-031 no viewport 1920×1080.
+- BUG-031: em 1920×1080, scroll automático do painel de mensagens fechava o popover logo após abrir. O foco agora usa `preventScroll` e o fechamento por scroll aguarda dois frames; 18/18 testes visuais finais passaram.

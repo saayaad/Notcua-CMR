@@ -1,0 +1,25 @@
+{
+  "req": "REQ-684",
+  "result": "APROVADO",
+  "source": ".audit/noctua-audit.db metadata before and after tests",
+  "sizeBefore": 2039808,
+  "sizeAfter": 2039808,
+  "lastWriteBefore": "2026-10-30T18:07:20.550Z",
+  "lastWriteAfter": "2026-10-30T18:07:20.550Z",
+  "isolatedTestOutput": [
+    ".audit/context-menu-1920-diagnostic",
+    ".audit/context-menu-bug031-retest",
+    ".audit/context-menu-bug031-retest-2",
+    ".audit/context-menu-event-debug",
+    ".audit/context-menu-final-results",
+    ".audit/context-menu-fixed-results",
+    ".audit/context-menu-lifecycle-debug",
+    ".audit/context-menu-pointer-debug",
+    ".audit/context-menu-release-results",
+    ".audit/context-menu-results",
+    ".audit/context-menu-retry-results",
+    ".audit/context-menu-wait-debug"
+  ],
+  "removedTestOutputCount": 12,
+  "remainingTestOutputs": 0
+}

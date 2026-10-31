@@ -86,3 +86,14 @@ O lote seguinte classificou REQ-064/065 pela prova já existente de fluxo de áu
 Nova continuação: funil com texto, áudio e imagem e macro com áudio Base64 importado passaram em conector fictício. Atendimento 18/18, operações 45/45, tipagem aprovada. REQ-046 parcial; REQ-050/051/052 com evidência reforçada. Contagem atual: 436 a verificar, 85 completos, 116 parciais, 5 não testados. O controle visual do navegador do usuário não foi usado por falta de confirmação segura da URL; seguir com ambiente isolado. Mudanças ainda locais. Ver `evidencias/funil-macro-multimidia-2026-10-28.json`.
 
 Atualização: as mudanças desse lote foram registradas em `eef1d31` e enviadas a `revisao-completa` e `main`; o status Vercel do commit foi success. Domínio HTTP 200 e saúde do túnel 200. O cabeçalho de `REQUISITOS.md` agora reflete 436/85/116/5. A frase anterior sobre mudanças locais descreve o período antes do push. Ver `evidencias/publicacao-auditoria-2026-10-28.json`.
+# Handoff curto — auditoria Noctua — 30/10/2026
+
+**Escopo fechado nesta sequência:** L-23 REQ-574–595, L-24 REQ-596–602 e L-25 Revisão/menu contextual. Branch local `auditoria-reqs`; produção, Vercel, Firebase, WhatsApp real e túnel não foram acessados. A API/front locais foram usados só para GET; os testes interceptaram escritas e chamadas externas.
+
+**Prova L-25:** Playwright Chromium em 1366×768, 1920×1080 e 390×844. Menus da Biblioteca, conversa e mensagem; botão ⋯; foco; Shift+F10, setas, Home/End e Escape; ação desabilitada preservada. Evidências individuais em `evidencias/REQ-668/`, `REQ-673/`, `REQ-675/`, `REQ-676/`, `REQ-678/` e `REQ-682/`. Nenhuma ação do menu foi executada, nenhuma mensagem enviada. Banco `.audit/noctua-audit.db` permaneceu em 2.039.808 bytes e timestamp 15:07:20.
+
+Regressão L-25: 18/18 visuais, 12/12 testes processuais, suíte completa do servidor 232/232, typecheck e build aprovados. BUG-031 foi corrigido; o build mantém aviso de chunk >500 kB.
+
+19 REQs mudaram: 15 `COMPLETO`, 3 `COMPLETO-LOCAL`, 1 `DECISÃO` (REQ-680). LEDGER: 426 com teste vinculado e 277 sem.
+
+**Risco/decisão:** REQ-680 aguarda autorização para reações reais (ações, permissões e persistência); nenhum controle sem efeito foi criado. REQ-668/676/678/682 mantêm conferência manual em aparelho tátil, leitor de tela e janela destacada. Não abrir redesign nem auditoria geral do Prompt 2. Próximo escopo independente após commit: REQ-695 em diante, conforme a LEDGER.

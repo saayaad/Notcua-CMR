@@ -1,0 +1,11 @@
+{
+  "req": "REQ-666",
+  "result": "APROVADO",
+  "source": [
+    "apps/web/src/context/ContextMenu.tsx:248",
+    "apps/server/test/access.test.ts:361,600"
+  ],
+  "batchTested": true,
+  "serverAuthorizationCovered": true,
+  "noDatabaseMutation": true
+}

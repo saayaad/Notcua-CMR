@@ -1,0 +1,14 @@
+{
+  "req": "REQ-663",
+  "result": "APROVADO",
+  "source": "REVISAO/evidencias/REQ-668–682/",
+  "verifiedRequirements": [
+    "668",
+    "673",
+    "675",
+    "676",
+    "678",
+    "682"
+  ],
+  "eachHasSourceTestViewportAndPng": true
+}

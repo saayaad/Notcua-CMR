@@ -1,0 +1,8 @@
+{
+  "req": "REQ-662",
+  "result": "APROVADO",
+  "source": "e2e/context-menu-audit.spec.ts: route guard",
+  "externalRequests": "aborted",
+  "localApiWrites": "intercepted",
+  "sends": 0
+}

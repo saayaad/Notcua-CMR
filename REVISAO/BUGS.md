@@ -234,3 +234,13 @@ A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, po
 - Correção: criada amostra local WebM/VP8 e o Espaço de Teste passou a usá-la. O critério de reprodução permaneceu igual.
 - Reteste: REQ-345 passou 3/3; lacunas Sandbox passaram 24/24 em 3 viewports; suíte do servidor passou 220/220.
 - Estado: corrigido. O MP4 usado por outros cenários de mídia não foi alterado.
+
+## BUG-031 — Menu contextual de mensagem fechava ao focar em viewport 1920×1080 — corrigido localmente
+
+- REQs: REQ-678, REQ-682.
+- Reprodução: abrir Atendimento em Chromium 1920×1080, selecionar a conversa fictícia Ana Exemplo e clicar com o botão direito na mensagem recebida.
+- Resultado: o evento era cancelado pelo handler e o popover era montado, mas uma rolagem automática de `.message-area` acionava o listener de fechamento e removia o menu.
+- Causa: o foco inicial no primeiro item usava `focus()` sem `preventScroll`, deslocando a área rolável durante a abertura.
+- Correção: o foco inicial agora usa `focus({ preventScroll: true })`; o fechamento por scroll espera dois frames para ignorar apenas a rolagem de colocação inicial. Rolagens posteriores do usuário continuam fechando o menu.
+- Reteste: `e2e/context-menu-audit.spec.ts` passou 18/18 em 1366×768, 1920×1080 e 390×844, inclusive clique direito real em 1920×1080. Nenhum envio ou mutação real.
+- Estado: corrigido localmente em 30/10/2026.

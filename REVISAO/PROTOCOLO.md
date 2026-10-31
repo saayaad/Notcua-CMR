@@ -233,3 +233,11 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Servidor operations.test.ts passou 1/1 em SQLite temporário: regra lida após salvar; confirmação exigida; valor inválido bloqueado; uma venda atribuída; ROI 400%; nota interna e fixação; zero envios fictícios.
 - Writes visuais interceptados; .audit/noctua-audit.db não mudou. Zero erros de página; nove logs de console apis.google.com bloqueados de propósito no mobile. Nenhum defeito novo.
 - Próximo: Revisão e menu contextual, somente pendências REQ-660–668, 673, 675, 676, 678, 680, 682, 684–687.
+## Ponto de retomada — 30/10/2026 — após L-25
+
+- L-25 Revisão/menu contextual conferiu as REQs 660–668, 673, 675, 676, 678, 680, 682 e 684–687. Resultados e limites por ID estão no LEDGER; decisão REQ-680 aguarda aprovação para ações de reação reais.
+- Playwright `e2e/context-menu-audit.spec.ts`: 18/18 nas três viewports após correção. Testes processuais 12/12; suíte completa do servidor 232/232; typecheck/build aprovados (aviso de chunk web >500 kB). Chromium local; escritas API/socket e chamadas externas interceptadas. Nenhum envio/exclusão/ação de menu executado; banco `.audit/noctua-audit.db` preservado.
+- Evidências individuais em `REVISAO/evidencias/REQ-668/`, `REQ-673/`, `REQ-675/`, `REQ-676/`, `REQ-678/`, `REQ-682/`; a suíte de processo cobre REQ-660–667 e 684–687.
+- Toque prolongado real, leitor de tela, janela destacada e compatibilidade de navegador permanecem em `CHECKLIST-MANUAL.md`; não contar como prova física.
+- Regra de parada reaplicada no lote: suspender em regra de negócio, exclusão, banco, remoção, tecnologia grande, custo ou ambiguidade; registrar no protocolo e avançar os itens independentes. REQ-680 é o único bloqueio decisório deste módulo.
+- Próximo lote segue o primeiro módulo pendente da LEDGER após REQ-687. `scripts/iniciar-noctua-online.ps1` continua intocado e fora do commit. Sem push/publicação.

@@ -162,3 +162,8 @@ O comportamento foi aprovado localmente com provedor simulado e está marcado `C
 1. Em uma sessão local com dados de teste, abra o atendimento no primeiro monitor e registre a resolução/estado que deve permanecer intacto.
 2. Abra ou mova a janela de teste para o segundo monitor; use navegação e um painel/popout sem reposicionar nem ocultar a janela do primeiro monitor.
 3. Confira ambos os monitores, registre captura/foco/resoluções e feche a janela de teste. Não faça login real nem altere dados de produção.
+## REQ-668/676/678/682 — revisão contextual manual
+
+1. Em Android/iOS real, faça toque prolongado em uma conversa e numa mensagem fictícia; confirme abertura do menu sem selecionar texto inesperadamente. Use ⋯ na conversa e confira foco/contraste.
+2. Em janela destacada real, abra e feche o menu em Biblioteca e Mensagem; confirme que permanece no painel/documento correto.
+3. Com leitor de tela e teclado, percorra os itens por seta, Home/End, escolha sem executar exclusão/envio e confirme retorno do foco. Registre navegador/dispositivo e captura.

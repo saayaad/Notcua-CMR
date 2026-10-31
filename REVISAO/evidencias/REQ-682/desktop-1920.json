@@ -1,0 +1,69 @@
+{
+  "req": "REQ-682",
+  "result": "APROVADO",
+  "test": "REQ-682 menu de mensagem fictícia oferece ações sem enviar",
+  "project": "desktop-1920",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "blockedWrites": [
+    "POST /api/operations/directory/presence",
+    "POST /socket.io/",
+    "POST /socket.io/",
+    "POST /socket.io/",
+    "POST /socket.io/"
+  ],
+  "blockedExternal": [],
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+  ],
+  "pageErrors": [],
+  "area": "ChatPane",
+  "menuItems": [
+    "Copiar mensagem",
+    "Cadastrar resposta padrão",
+    "Voltar à página anterior",
+    "Atualizar página",
+    "Copiar endereço desta página"
+  ],
+  "blockedSetupWrites": [
+    "POST /api/operations/directory/presence",
+    "POST /socket.io/",
+    "POST /socket.io/",
+    "POST /socket.io/"
+  ],
+  "menuInteractionWrites": [
+    "POST /socket.io/"
+  ],
+  "trigger": "right-click",
+  "receivedContextMenuEvent": "{\"defaultPrevented\":true,\"shiftKey\":false,\"target\":\"DIV.message-bubble  \",\"editable\":false}",
+  "menuLifecycle": "[{\"at\":2091.5999999996275,\"event\":\"pointerdown\",\"target\":\"DIV.message-bubble  \"},{\"at\":2099.800000000745,\"event\":\"showPopover\",\"className\":\"noctua-context-menu\"},{\"at\":2105.300000000745,\"event\":\"menu-added\"},{\"at\":2106.4000000003725,\"event\":\"scroll\",\"target\":\"DIV.message-area\"}]",
+  "menuDiagnostics": [
+    {
+      "popoverOpen": true,
+      "display": "block",
+      "visibility": "visible",
+      "rect": {
+        "x": 1127,
+        "y": 382.4266662597656,
+        "width": 229.40625,
+        "height": 248.43746948242188
+      }
+    }
+  ],
+  "source": [
+    {
+      "file": "apps/web/src/components/ChatPane.tsx",
+      "symbol": "message-bubble onContextMenu",
+      "line": 530
+    }
+  ],
+  "bug": "BUG-031: focus-triggered scroll closed the popover at 1920×1080; focus preventScroll and two-frame scroll-dismiss guard fixed it; final 18/18 regression passed",
+  "firstAttempt": "right-click event was canceled and popover added then removed by scroll on .message-area; actual cause and fix recorded in BUGS.md"
+}

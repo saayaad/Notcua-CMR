@@ -134,6 +134,11 @@ const typeOverrides = {
   'REQ-600': 'B',
   'REQ-601': 'B',
   'REQ-602': 'B',
+  'REQ-660': 'A', 'REQ-661': 'A', 'REQ-662': 'A', 'REQ-663': 'A',
+  'REQ-664': 'A', 'REQ-665': 'A', 'REQ-666': 'A', 'REQ-667': 'A',
+  'REQ-668': 'C', 'REQ-673': 'B', 'REQ-675': 'B', 'REQ-676': 'C',
+  'REQ-678': 'C', 'REQ-680': 'D', 'REQ-682': 'B',
+  'REQ-684': 'A', 'REQ-685': 'A', 'REQ-686': 'A', 'REQ-687': 'A',
 };
 const rows = [];
 for (const line of source.split(/\r?\n/)) {

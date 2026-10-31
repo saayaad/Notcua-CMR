@@ -278,3 +278,14 @@ Sem chave de IA autorizada, não serão repetidos os cenários que cadastram, ed
 - Writes de API nos testes visuais foram interceptados. Teste de servidor usou SQLite em pasta temporária removida no teardown. .audit/noctua-audit.db preservado (2.039.808 bytes, 30/10/2026 15:07:20); API e front existentes responderam HTTP 200.
 - Nenhum defeito novo confirmado; sem mudança de app e sem entrada nova em BUGS.md. Produção não acessada.
 - Próximo lote: Revisão e menu contextual; tratar somente pendentes 660–668, 673, 675, 676, 678, 680, 682 e 684–687. Preservar as REQs já finais.
+## Lote L-25 — Revisão e menu contextual — 30/10/2026
+
+- Playwright `e2e/context-menu-audit.spec.ts`: 18/18 aprovados após reteste nas viewports 1366×768, 1920×1080 e 390×844.
+- Governança/documentação: 12/12; suíte completa do servidor: 232/232; typecheck e build passaram. Build mantém apenas o aviso de chunk web acima de 500 kB.
+- 19 estados atualizados: 15 COMPLETO, 3 COMPLETO-LOCAL e REQ-680 DECISÃO. LEDGER: 426 com teste vinculado e 277 sem.
+- Cobertos Biblioteca, conversa, bolha de mensagem, ação desabilitada, botão ⋯, foco, Shift+F10, setas, Home/End e Escape. Ações destrutivas/de envio não foram executadas.
+- Falhas iniciais foram de asserção de contagem e seletor de balão; corrigimos para os 8 itens observados e o texto fictício selecionado. Clique direito desktop confirmado; no viewport móvel o evento foi simulado, sem alegar toque físico.
+- BUG-031 confirmado em 1920×1080: o foco inicial rolava `.message-area` e o listener fechava o popover. Corrigido com foco `preventScroll` e atraso de dois frames no fechamento por scroll; reteste final 18/18.
+- Writes de API/socket e chamadas externas foram interceptados. `.audit/noctua-audit.db` permaneceu 2.039.808 bytes, `30/10/2026 15:07:20`.
+- REQ-680 aguarda aprovação para eventual reação real. A lista de verificações externas está em `REVISAO/CHECKLIST-MANUAL.md`.
+- Próximo módulo: primeiro módulo pendente depois de REQ-687 na LEDGER. Script `scripts/iniciar-noctua-online.ps1` não entra no commit; sem push/publicação.
