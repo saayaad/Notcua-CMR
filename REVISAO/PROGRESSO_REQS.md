@@ -157,3 +157,11 @@
 - Testes locais: `infrastructure-audit.test.ts` 4/4 e REQ-530 em `whatsapp.test.ts` 1/1. A primeira tentativa não iniciou porque `|` no filtro foi interpretado pelo wrapper `.cmd`; as duas suítes foram separadas e passaram sem mudar expectativas.
 - REQ-533/534/541 foram verificadas sem executar o iniciador: caminhos relativos, BOM/UTF-8, mensagens acentuadas, URL exata e `Start-Process` foram afirmados. REQ-542 comprovou branch/remoto/build local, sem push.
 - `.audit/noctua-audit.db` permaneceu em 2.039.808 bytes e `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`. `scripts/iniciar-noctua-online.ps1` continuou fora do staging; nenhuma conta, Vercel, Firebase, túnel ou WhatsApp real foi alterado.
+
+## Fechamento da regressão de Infraestrutura — 31/10/2026
+
+- Confirmei que Sandbox e suporte REQ-328–356 já estavam finalizados no LEDGER, com 21 `COMPLETO` e 8 `COMPLETO-LOCAL`; as evidências existentes foram preservadas e os testes não foram repetidos.
+- Regressão de infraestrutura passou: `infrastructure-audit.test.ts` 4/4; REQ-530 em `whatsapp.test.ts` 1/1. Falha inicial foi somente caminho relativo incorreto; nova execução ocorreu na pasta do servidor.
+- `npm run audit:ledger`: 506 com teste vinculado, 197 sem; 473 `COMPLETO`, 142 `COMPLETO-LOCAL`, 3 `AUSENTE`, 1 `DEFEITO`, 4 `DESCONECTADO`, 29 decisões (7 + 7 + 15) e 51 substituídas/canceladas.
+- API local HTTP 200; banco `.audit/noctua-audit.db` intacto (2.039.808 bytes; LastWriteTimeUtc 2026-10-30T18:07:20.5497691Z). REQ-530 usou SQLite temporário. Nenhuma produção acessada.
+- Branch `auditoria-reqs`; `scripts/iniciar-noctua-online.ps1` permaneceu fora do staging e não foi executado.

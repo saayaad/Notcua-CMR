@@ -321,3 +321,12 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Testes: infraestrutura 4/4 e persistência REQ-530 1/1, todos locais. Banco `.audit` inalterado. Evidências individuais em `REVISAO/evidencias/REQ-523/`, `527/`, `530/`, `533/`, `534/`, `540/`, `541/` e `542/`.
 - O iniciador não foi executado; `scripts/iniciar-noctua-online.ps1` permanece modificado fora do staging/commit. Nenhum push, publicação, Firebase, túnel ou WhatsApp real foi alterado.
 - Próximo trabalho: regenerar ledger, rodar regressões dos dois arquivos e fechar o commit; depois recontar apenas defeitos/ausências/desconexões e decisões restantes.
+
+## Retomada — 31/10/2026 — fechamento da regressão de Infraestrutura
+
+- O pedido de retomar Sandbox foi conferido: REQ-328–356 já estão finais no LEDGER (21 `COMPLETO`, 8 `COMPLETO-LOCAL`), com evidências existentes. Não repeti testes nem mexi nos dados.
+- Fechamento pendente do ponto anterior concluído: `infrastructure-audit.test.ts` 4/4 e teste REQ-530 em `whatsapp.test.ts` 1/1. Primeira execução falhou antes de iniciar por diretório de trabalho relativo errado; corrigido o diretório, sem mudar teste ou expectativa.
+- LEDGER regenerado: 506 REQs com teste vinculado, 197 sem. Estados atuais: 473 `COMPLETO`, 142 `COMPLETO-LOCAL`, 3 `AUSENTE`, 1 `DEFEITO`, 4 `DESCONECTADO`, 29 em decisão (7 `DECISÃO`, 7 `PRECISA DE DECISÃO`, 15 decisões registradas), 51 substituídas/canceladas.
+- API local retornou HTTP 200. `.audit/noctua-audit.db` preservado: 2.039.808 bytes, `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`. Teste REQ-530 usou SQLite temporário; nenhuma gravação no banco `.audit`.
+- Branch `auditoria-reqs`; único arquivo preexistente fora do escopo segue modificado: `scripts/iniciar-noctua-online.ps1`, não executado nem staged. Sem push/publicação.
+- Próxima retomada: escolher próximo defeito/ausência/desconexão que possa ser verificado localmente sem chave de IA ou produção; manter decisões para o usuário agrupadas.
