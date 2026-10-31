@@ -32,7 +32,7 @@ Fonte: LEDGER.csv, decisões do usuário e execução local de 31/10/2026. Esta 
 - A VERIFICAR no LEDGER: 3 (REQ-461, REQ-462 e REQ-465).
 - AUSENTE no LEDGER: 0.
 - DESCONECTADO no LEDGER: 0.
-- SUBSTITUÍDO OU CANCELADO: 2.
+- SUBSTITUÍDO OU CANCELADO: 53 no ledger (REQ-408/409 são as duas decisões destacadas acima).
 
 Fechados neste lote local: REQ-453, 455, 457, 463, 483 e 487. REQ-419–422 foram retestadas em 3 viewports com as capturas direcionadas a `.audit/req419-retest-evidence/`; as pastas fechadas em `REVISAO/evidencias/` não foram regravadas.
 

@@ -6,7 +6,7 @@ A verificação começou sem alterar o aplicativo. O usuário autorizou depois a
 ## Contagens
 
 - **28 blocos de fontes/listas e 703 registros atômicos rastreáveis.** Repetições são mantidas para preservar a origem; não são 687 funcionalidades distintas.
-- **Status atuais conforme REVISAO/LEDGER.csv:** 0 ⬜ A VERIFICAR; 473 ✅ COMPLETO; 142 ✅ COMPLETO-LOCAL; 0 🟡 PARCIAL; 51 🔁 SUBSTITUÍDO OU CANCELADO; 29 ⚠️/🟣 DECISÃO (2 decisões confirmadas); 4 🔌 DESCONECTADO; 1 ❌ DEFEITO; 3 ❌ AUSENTE.
+- **Status atuais conforme REVISAO/LEDGER.csv:** 3 ⚠️ A VERIFICAR; 478 ✅ COMPLETO; 159 ✅ COMPLETO-LOCAL; 0 🟡 PARCIAL; 53 🔁 SUBSTITUÍDO OU CANCELADO; 10 🟣 DECISÃO; 0 🔌 DESCONECTADO; 0 ❌ DEFEITO; 0 ❌ AUSENTE. BUG-035 permanece aberto sob REQ-466 em DECISÃO; a contagem de DEFEITO não representa ausência de bugs.
 - Os estados completos abaixo têm evidência desta etapa. Em 30/10/2026, a suíte inteira do servidor passou 232/232 com bancos temporários e conectores fictícios. Isso não confirma os itens externos do CHECKLIST-MANUAL.md.
 - Esta rodada fechou lacunas de REQ-024–053 com UI isolada, fixtures locais e conectores fictícios. Nada foi enviado ao WhatsApp real.
 

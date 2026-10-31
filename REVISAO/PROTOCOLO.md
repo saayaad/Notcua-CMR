@@ -569,3 +569,14 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - REQ-126 está `COMPLETO-LOCAL` pelo critério substituto aprovado. Não retomar agora; voltar após os demais A VERIFICAR para revisão final e confirmação da ressalva de que a fonte `6.txt` original está ausente e a equivalência integral não foi comprovada.
 - REQ-461, REQ-462 e REQ-465 são os únicos outros itens `A VERIFICAR` no LEDGER.csv. Permanecem bloqueados pelo motivo registrado: “depende de conector de teste com suporte a convite, vCard e lista interativa; não implementado”. Nenhum outro item A VERIFICAR sem dependência externa foi encontrado.
 - Ajuste de estado/observação de REQ-126 no LEDGER.csv foi commitado e enviado em `eb21527`; protocolo atualizado separadamente.
+
+## Retomada verificada — 31/10/2026 — dependências restantes
+
+- Escrita autorizada pelo ambiente declarado, sem criar arquivo de sondagem. Branch auditoria-reqs; nenhum teste, serviço ou código de produto executado/alterado nesta retomada.
+- Ledger lido: 703 registros; 478 COMPLETO, 159 COMPLETO-LOCAL, 53 SUBSTITUÍDO OU CANCELADO, 10 DECISÃO e 3 A VERIFICAR. Sem mudanças de estado. Resumos de REQUISITOS.md e PENDENCIAS-DECISAO.md alinhados ao ledger, sem regenerar evidências.
+- Únicos A VERIFICAR: REQ-461/462/465, dependentes de conector descartável com convite nativo, vCard e lista interativa. Decisão anterior proíbe criar conector novo; aguardar conector fornecido/autorizado pelo usuário.
+- BUG-035/REQ-466 aberto: etiquetas também definem colunas CRM (crm.service.ts, belongs). Decidir entre separar entidades de etiquetas/etapas ou aceitar o movimento do cartão; não presumir regra de negócio. BUG-033/034 já corrigidos conforme evidências e registros existentes, sem reteste nesta rodada.
+- BUG-011 tem correção parcial: validação restante exige desligamento/reinício e iniciador online protegido; não executar nem modificar. INT-001/LAC-001 são relatos históricos com resoluções posteriores nas REQ-419–425/430; não reabrir requisitos fechados apenas pelo texto antigo.
+- Demais decisões: REQ-197/223 (inventário/aceite por módulo), REQ-401 (eventos, endpoint e métricas), REQ-448 (botões/alvo visual); REQ-523/527/540 permanecem com restrições de infraestrutura/contas/Firebase; REQ-567 adiada e REQ-573 aguarda Parte 8. REQ-126 permanece COMPLETO-LOCAL com critério substituto e ressalva de fonte ausente, sem nova prova.
+- Nenhum lote de implementação independente encontrado. Não executar testes fechados para simular avanço. Próximo lote depende das decisões acima; provas externas futuras permanecem em CHECKLIST-MANUAL.md, sem pedir chave de IA real.
+- Preservados sem escrita, restauração ou staging: REVISAO/evidencias/REQ-686/process.json, REVISAO/evidencias/REQ-686/process-next-run.json e scripts/iniciar-noctua-online.ps1. Artefatos preexistentes não rastreados não incluídos. Sem .env.local, produção ou publicação.
