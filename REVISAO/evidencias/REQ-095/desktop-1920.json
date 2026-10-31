@@ -1,0 +1,27 @@
+{
+  "req": "REQ-095",
+  "result": "APROVADO",
+  "project": "desktop-1920",
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "writes": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": "{}"
+    }
+  ],
+  "forbiddenWrites": [],
+  "blockedExternal": [],
+  "consoleErrors": [
+    "Failed to load resource: net::ERR_INTERNET_DISCONNECTED @ http://127.0.0.1:3340/api/operations/toolbox/organization",
+    "Failed to load resource: net::ERR_INTERNET_DISCONNECTED @ http://127.0.0.1:3340/api/operations/toolbox/usage"
+  ],
+  "pageErrors": [],
+  "metrics": {},
+  "screenshotError": "",
+  "failures": []
+}

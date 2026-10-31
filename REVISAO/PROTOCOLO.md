@@ -282,3 +282,12 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Mobile registra somente chamadas `apis.google.com` bloqueadas pelo isolamento; sem erros de página ou mutações não interceptadas. REQ-064/065 aguardam recebimento em aparelho descartável; conferir `CHECKLIST-MANUAL.md`. Modo teclado do Kanban permanece conferência opcional.
 - Próximo módulo por ordem: L-05 Backups, REQ-076–097. Antes de testes: confirmar status/log, front/API e metadados do `.audit`; testes graváveis devem usar SQLite temporário ou fixture, nunca resetar o banco.
 - Sem push/publicação. `scripts/iniciar-noctua-online.ps1` segue modificado e fora de staging.
+
+## Ponto de retomada — 31/10/2026 — após Backups L-05
+
+- L-05 REQ-076–097 fechado: 15 COMPLETO, 5 COMPLETO-LOCAL; REQ-091/092 preservadas. LEDGER.csv deve refletir as provas individuais e o commit ao final da etapa.
+- Resultados: Playwright 49 aprovados/2 pulados; backup.test.ts 16/16; authenticated-request.test.ts 5/5. Casos e correções do harness em REVISAO/evidencias/lote-L05-backups-2026-10-31.md.
+- Front/API existentes responderam HTTP 200. .audit/noctua-audit.db permaneceu em 2.039.808 bytes com LastWriteTimeUtc 2026-10-30T18:07:20.5497691Z. Sem servidor adicional, reset, produção, envio ou publicação.
+- Pendências manuais: arquivo histórico/reporte Teste para REQ-089/090; futura inicialização local segura REQ-093; QR em aparelho descartável REQ-094; túnel real não interrompido REQ-095. Detalhes e limites em CHECKLIST-MANUAL.md.
+- REQ-126 permanece DECISÃO. Próximo defeito aberto não relacionado a chave de IA: REQ-381/BUG-022, compressão de vídeo; investigar e tentar uma correção local segura, preservando o resultado esperado.
+- scripts/iniciar-noctua-online.ps1 continua modificado e não deve ser staged, committed ou executado; não publicar nem fazer push.

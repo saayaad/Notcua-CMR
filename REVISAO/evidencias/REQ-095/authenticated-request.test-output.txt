@@ -1,0 +1,13 @@
+✔ REQ-098/REQ-099: requisição autenticada usa o token Firebase atual (25.4624ms)
+✔ 401 renova uma vez e preserva o mesmo corpo e identificador do envio (1.4945ms)
+✔ REQ-095: falhas de rede e respostas 403/500 não repetem uma operação de resultado incerto (1.3272ms)
+✔ requisição cancelada não força renovação nem repete a chamada (0.8259ms)
+✔ falha ao renovar a credencial impede envio com uma credencial antiga (0.4946ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 382.9846

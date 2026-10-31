@@ -1,0 +1,33 @@
+{
+  "req": "REQ-094",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "writes": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": "{}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/whatsapp/sessions/audit-req094-connection/connect",
+      "body": "{}"
+    }
+  ],
+  "forbiddenWrites": [],
+  "blockedExternal": [
+    "https://apis.google.com"
+  ],
+  "consoleErrors": [
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://apis.google.com/js/api.js?onload=__iframefcb268439"
+  ],
+  "pageErrors": [],
+  "metrics": {},
+  "screenshotError": "",
+  "failures": []
+}

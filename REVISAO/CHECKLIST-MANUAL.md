@@ -211,3 +211,28 @@ O comportamento foi aprovado localmente com provedor simulado e está marcado `C
 
 - REQ-064/065: em conta e aparelho WhatsApp descartáveis, receber áudio e mídia enviados pelo fluxo publicado; confirmar recurso, atraso, ordem e conteúdo. Não usar conta de produção.
 - REQ-073 (opcional): confirmar movimentação do cartão usando somente teclado no Chromium desktop 1366×768. No teste visual local, mouse passou nos dois desktops e o caminho Mover cartão passou no mobile; sequência teclado teve resultado inconsistente.
+
+## Backups — L-05, validações que dependem do usuário ou de ambiente externo
+
+### REQ-089 — arquivo Sutofly histórico
+1. Disponibilizar uma cópia integral descartável do backup e o relatório da conexão Teste; manter o original intacto.
+2. Importar apenas a cópia em ambiente local descartável depois de conferir o caminho .audit/SQLite temporário.
+3. Conferir os nove agendamentos e o fluxo como DRAFT/desativados após recarregar; não executar envios.
+
+### REQ-090 — arquivo ZapVoice histórico
+1. Disponibilizar uma cópia fictícia/descartável e o relatório da conexão Teste; não usar backup de produção.
+2. Importar somente no ambiente local descartável e conferir o lote após recarregar.
+3. Confirmar que os fluxos permanecem desativados e que os bytes/original são preservados.
+
+### REQ-093 — inicialização após reinício do PC
+1. Na próxima reinicialização de rotina, conferir se já existe um listener antes de iniciar o frontend ou API.
+2. Não executar scripts/iniciar-noctua-online.ps1: ele grava variável de produção na Vercel e chama vercel --prod.
+3. Registrar as portas e o processo; não iniciar uma segunda instância enquanto a sessão atual estiver ativa.
+
+### REQ-094 — leitura de QR em aparelho descartável
+1. Usar apenas conta e aparelho WhatsApp de teste, nunca a conta de produção.
+2. Solicitar o QR em conexão local fictícia/de teste e verificar leitura e estado conectado.
+3. Registrar o resultado sem enviar mensagem nem apagar dados reais.
+
+### REQ-095 — túnel
+O teste local de desconexão/reconexão e de não repetição de POST passou. A queda do túnel real não foi provocada porque a regra atual mantém túnel e produção somente para leitura.

@@ -1,0 +1,67 @@
+{
+  "req": "REQ-097",
+  "result": "APROVADO",
+  "project": "desktop-1920",
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "writes": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": "{}"
+    }
+  ],
+  "forbiddenWrites": [],
+  "blockedExternal": [],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "metrics": {
+    "layout": {
+      "vw": 1920,
+      "vh": 1080,
+      "scrollWidth": 1920,
+      "docked": true,
+      "layout": {
+        "x": 68,
+        "y": 68,
+        "right": 1920,
+        "bottom": 1080,
+        "width": 1852,
+        "height": 1012,
+        "visible": true
+      },
+      "list": {
+        "x": 68,
+        "y": 100,
+        "right": 994,
+        "bottom": 1080,
+        "width": 926,
+        "height": 980,
+        "visible": true
+      },
+      "chat": {
+        "x": 994,
+        "y": 100,
+        "right": 1620,
+        "bottom": 1080,
+        "width": 626,
+        "height": 980,
+        "visible": true
+      },
+      "tools": {
+        "x": 1620,
+        "y": 100,
+        "right": 1920,
+        "bottom": 1080,
+        "width": 300,
+        "height": 980,
+        "visible": true
+      }
+    }
+  },
+  "screenshotError": "",
+  "failures": []
+}

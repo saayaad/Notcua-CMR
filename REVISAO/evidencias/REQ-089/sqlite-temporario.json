@@ -1,0 +1,12 @@
+{
+  "req": "REQ-089",
+  "result": "APROVADO",
+  "database": "SQLite temporário descartável",
+  "source": "fixture Sutofly fictício, não arquivo histórico",
+  "session": "Conexão Teste fictícia",
+  "schedules": 9,
+  "status": "DRAFT",
+  "flowEnabled": false,
+  "queuedTasksRetained": 9,
+  "sends": 0
+}

@@ -1,0 +1,24 @@
+✔ REQ-076/077/080/081/082: importa módulos, mídia e converte segundos de macros (96.3897ms)
+✔ reimportação é idempotente mesmo com outra ordem das chaves (3.6244ms)
+✔ referência inválida desfaz arquivos, etiquetas e ativos da transação (19.99ms)
+✔ exportação pode ser importada em outro banco preservando relações e bytes (57.1567ms)
+✔ aceita macros isoladas como array e objectsList em mapa (36.5018ms)
+✔ rejeita Base64 inválido, IDs duplicados, nós órfãos e tipos incompatíveis (17.162ms)
+✔ HTTP: health, importação, exportação, original, mídia, erros e autenticação (121.2187ms)
+✔ hash incremental preserva a identidade dos backups existentes (1.1582ms)
+✔ Sutofly recupera nomes cifrados, propriedades, áudio, figurinha, PIX, fluxo incompleto e configurações (223.612ms)
+✔ Sutofly reutiliza etiquetas existentes da conexão em vez de criar cópias (94.2623ms)
+✔ REQ-521 upload de backup acima de 100 MiB aceita mídia grande via API e processa em segundo plano (11180.6084ms)
+✔ upload inválido falha sem gravar importação e exige autenticação antes de receber o arquivo (180.7005ms)
+✔ backup ZapVoice importa imagem e vídeo válidos com bytes preservados (712.4204ms)
+✔ REQ-079: importa documento Base64 com MIME e bytes preservados e reexporta a referência (593.7924ms)
+✔ REQ-089: mantém nove agendamentos Sutofly e fluxo como rascunhos na conexão de teste (133.8432ms)
+✔ REQ-090: importa ZapVoice na conexão fictícia com todos os fluxos desativados (40.5892ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 24152.4049

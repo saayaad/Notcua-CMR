@@ -1,0 +1,33 @@
+{
+  "req": "REQ-083",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "writes": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": "{}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/backups/upload",
+      "body": "filename=objectsList.json; bytes=143"
+    }
+  ],
+  "forbiddenWrites": [],
+  "blockedExternal": [
+    "https://apis.google.com"
+  ],
+  "consoleErrors": [
+    "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ https://apis.google.com/js/api.js?onload=__iframefcb575239"
+  ],
+  "pageErrors": [],
+  "metrics": {},
+  "screenshotError": "",
+  "failures": []
+}

@@ -1,6 +1,6 @@
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,6 +15,7 @@ import { env } from '../src/config/env.js';
 import { decodeBase64 } from '../src/modules/backups/validation.js';
 import { stableDigest, stableStringify, digest } from '../src/modules/backups/validation.js';
 import { setTimeout as delay } from 'node:timers/promises';
+import { DeliveryWorker } from '../src/modules/operations/delivery.worker.js';
 
 const directory = await mkdtemp(join(tmpdir(), 'noctua-test-'));
 const db = createSqliteClient(`file:${join(directory, 'test.db').replace(/\\/g, '/')}`);
@@ -46,7 +47,7 @@ after(async () => {
   await rm(directory, { recursive: true, force: true });
 });
 
-test('importa todos os módulos, decodifica mídia e converte segundos de macros', async () => {
+test('REQ-076/077/080/081/082: importa módulos, mídia e converte segundos de macros', async () => {
   const report = await service.import(fixture, 'teste.json');
   assert.equal(report.duplicate, false);
   assert.deepEqual(report.counts, {
@@ -60,10 +61,24 @@ test('importa todos os módulos, decodifica mídia e converte segundos de macros
   });
   const file = await db.storedFile.findFirstOrThrow();
   assert.equal(Buffer.from(file.data).toString(), 'Noctua');
+  const message = await db.asset.findUniqueOrThrow({ where: { id: 'msg-boas-vindas' } });
+  assert.equal(message.kind, 'MESSAGE');
+  assert.equal(message.text, 'Olá, #nome! Como posso ajudar?');
+  const audio = await db.asset.findUniqueOrThrow({ where: { id: 'audio-exemplo' }, include: { file: true } });
+  assert.equal(audio.kind, 'AUDIO');
+  assert.equal(audio.file?.mimeType, 'text/plain');
+  const label = await db.label.findUniqueOrThrow({ where: { id: 'label-novo' } });
+  assert.equal(label.name, 'Novo lead');
+  const funnel = await db.funnel.findUniqueOrThrow({ where: { id: 'funil-inicial' }, include: { items: true } });
+  assert.equal(funnel.items.length, 1);
+  assert.equal(funnel.items[0]!.assetId, 'msg-boas-vindas');
   const action = await db.macroAction.findFirstOrThrow({ where: { type: 'TEXT' } });
   assert.equal(action.waitMs, 1000);
   assert.equal(action.composingMs, 2000);
-  assert.equal((await db.flowNode.findMany()).length, 4);
+  const flow = await db.flow.findUniqueOrThrow({ where: { id: 'fluxo-inicial' }, include: { versions: true } });
+  assert.equal(flow.enabled, false);
+  assert.deepEqual(flow.versions.map((version) => version.status), ['DRAFT']);
+  assert.equal(await db.flowNode.count(), 4);
   assert.deepEqual(
     (await db.importBatch.findUniqueOrThrow({ where: { id: report.batchId } })).payload,
     fixture,
@@ -378,4 +393,114 @@ test('backup ZapVoice importa imagem e vídeo válidos com bytes preservados', a
     assert.equal(exportedFile?.mimeType, mimeType);
     assert.deepEqual(Buffer.from(exportedFile!.base64, 'base64'), expected);
   }
+});
+
+test('REQ-079: importa documento Base64 com MIME e bytes preservados e reexporta a referência', async () => {
+  const bytes = Buffer.from('%PDF-1.4\nFixture documental fictícia.\n', 'utf8');
+  const report = await service.import({
+    format: 'ZV_backup',
+    docs: [{ id: 'req079-document', name: 'Contrato fictício', objectId: 'req079-object' }],
+    objectsList: [{ id: 'req079-object', filename: 'contrato-ficticio.pdf', mimeType: 'application/pdf', base64: bytes.toString('base64') }],
+  }, 'REQ-079-documento-ficticio.json');
+  assert.equal(report.counts.assets, 1);
+  assert.equal(report.counts.files, 1);
+  const document = await db.asset.findUniqueOrThrow({ where: { id: 'req079-document' }, include: { file: true } });
+  assert.equal(document.kind, 'DOCUMENT');
+  assert.equal(document.file?.mimeType, 'application/pdf');
+  assert.deepEqual(Buffer.from(document.file!.data), bytes);
+  const exported = await service.export();
+  const doc = exported.docs.find((item) => item.id === 'req079-document');
+  assert.equal(doc?.objectId, document.fileId);
+  const object = exported.objectsList.find((item) => item.id === document.fileId);
+  assert.equal(object?.mimeType, 'application/pdf');
+  assert.deepEqual(Buffer.from(object!.base64, 'base64'), bytes);
+  const directory = fileURLToPath(new URL('../../../REVISAO/evidencias/REQ-079/', import.meta.url));
+  await mkdir(directory, { recursive: true });
+  await writeFile(join(directory, 'sqlite-temporario.json'), JSON.stringify({
+    req: 'REQ-079', result: 'APROVADO', database: 'SQLite temporário descartável',
+    assetKind: document.kind, mimeType: document.file?.mimeType, bytes: bytes.byteLength,
+    reexportedBytes: Buffer.from(object!.base64, 'base64').byteLength,
+  }, null, 2), 'utf8');
+});
+
+test('REQ-089: mantém nove agendamentos Sutofly e fluxo como rascunhos na conexão de teste', async () => {
+  const input = JSON.parse(
+    await readFile(new URL('../../../examples/Sutofly_backup_ficticio.json', import.meta.url), 'utf8'),
+  ) as Record<string, unknown>;
+  const schedules = Array.from({ length: 9 }, (_, index) => ({
+    id: `req089-schedule-${index + 1}`,
+    data: '2000-01-01',
+    hora: '10:30',
+    titulo: `Agendamento descartável ${index + 1}`,
+    mensagem: 'Lembrete fictício de auditoria.',
+    userID: String(5511999000800 + index),
+    tipo: 'txt',
+  }));
+  input.agendamentosNaoDisparados = schedules;
+  const session = await db.whatsappSession.create({ data: { name: 'Conexão Teste fictícia REQ-089' } });
+  const report = await service.import(input, 'REQ-089-sutofly-nove-agendamentos.json', { sessionId: session.id });
+  assert.equal(report.format, 'Sutofly');
+  assert.equal(report.configurations?.schedules, 9);
+  const batchIds = schedules.map((schedule) => `sutofly:schedule:${schedule.id}`);
+  for (const id of batchIds) {
+    const record = await db.operationRecord.findUniqueOrThrow({ where: { id } });
+    assert.equal((record.data as { status: string; sessionId: string }).status, 'DRAFT');
+    assert.equal((record.data as { status: string; sessionId: string }).sessionId, session.id);
+  }
+  const flow = await db.flow.findUniqueOrThrow({ where: { id: 'suto-flow' }, include: { versions: true } });
+  assert.equal(flow.enabled, false);
+  assert.ok(flow.versions.every((version) => version.status === 'DRAFT'));
+  const queuedBefore = await db.deliveryTask.count({ where: { batchId: { in: batchIds }, status: 'QUEUED' } });
+  assert.equal(queuedBefore, 9);
+  const sends: unknown[] = [];
+  const messaging = { send: async (...args: unknown[]) => { sends.push(args); } } as never;
+  const worker = new DeliveryWorker(db, {} as never, messaging, {} as never);
+  await worker.flush();
+  assert.equal(await db.deliveryTask.count({ where: { batchId: { in: batchIds }, status: 'QUEUED' } }), 9);
+  assert.deepEqual(sends, []);
+  const directory = fileURLToPath(new URL('../../../REVISAO/evidencias/REQ-089/', import.meta.url));
+  await mkdir(directory, { recursive: true });
+  await writeFile(join(directory, 'sqlite-temporario.json'), JSON.stringify({
+    req: 'REQ-089', result: 'APROVADO', database: 'SQLite temporário descartável',
+    source: 'fixture Sutofly fictício, não arquivo histórico', session: 'Conexão Teste fictícia',
+    schedules: 9, status: 'DRAFT', flowEnabled: false, queuedTasksRetained: 9, sends: 0,
+  }, null, 2), 'utf8');
+});
+
+test('REQ-090: importa ZapVoice na conexão fictícia com todos os fluxos desativados', async () => {
+  const session = await db.whatsappSession.create({ data: { name: 'Conexão Teste fictícia REQ-090' } });
+  const result = await service.import({
+    type: 'full',
+    messages: [{ id: 'req090-message', name: 'Texto fictício' }],
+    objectsList: [{ id: 'req090-message', data: 'Mensagem fictícia de auditoria.' }],
+    flows: [{
+      id: 'req090-flow', name: 'Fluxo fictício ZapVoice',
+      draft: { nodes: [{ id: 'req090-text', type: 'text', position: { x: 120, y: 0 }, data: { itemId: 'req090-message', nextNodeIds: [] } }], edges: [] },
+      draftStartNode: { id: 'req090-start', type: 'start', position: { x: 0, y: 0 }, data: { nextNodeIds: ['req090-text'] } },
+    }],
+  }, 'REQ-090-zapvoice-ficticio.json', { sessionId: session.id });
+  assert.equal(result.duplicate, false);
+  assert.ok(result.warnings.some((warning) => warning.includes('ZapVoice importados desativados')));
+  const flow = await db.flow.findUniqueOrThrow({ where: { id: 'req090-flow' }, include: { versions: true } });
+  assert.equal(flow.sessionId, session.id);
+  assert.equal(flow.enabled, false);
+  assert.deepEqual(flow.versions.map((version) => version.status), ['DRAFT']);
+  const batch = await db.importBatch.findFirstOrThrow({ where: { sourceName: 'REQ-090-zapvoice-ficticio.json' } });
+  assert.deepEqual(batch.payload, {
+    type: 'full',
+    messages: [{ id: 'req090-message', name: 'Texto fictício' }],
+    objectsList: [{ id: 'req090-message', data: 'Mensagem fictícia de auditoria.' }],
+    flows: [{
+      id: 'req090-flow', name: 'Fluxo fictício ZapVoice',
+      draft: { nodes: [{ id: 'req090-text', type: 'text', position: { x: 120, y: 0 }, data: { itemId: 'req090-message', nextNodeIds: [] } }], edges: [] },
+      draftStartNode: { id: 'req090-start', type: 'start', position: { x: 0, y: 0 }, data: { nextNodeIds: ['req090-text'] } },
+    }],
+  });
+  const directory = fileURLToPath(new URL('../../../REVISAO/evidencias/REQ-090/', import.meta.url));
+  await mkdir(directory, { recursive: true });
+  await writeFile(join(directory, 'sqlite-temporario.json'), JSON.stringify({
+    req: 'REQ-090', result: 'APROVADO', database: 'SQLite temporário descartável',
+    source: 'fixture ZapVoice fictício, não arquivo histórico', session: 'Conexão Teste fictícia',
+    flow: 'req090-flow', enabled: flow.enabled, versionStatuses: flow.versions.map((version) => version.status),
+  }, null, 2), 'utf8');
 });

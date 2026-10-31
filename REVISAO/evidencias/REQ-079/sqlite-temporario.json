@@ -1,0 +1,9 @@
+{
+  "req": "REQ-079",
+  "result": "APROVADO",
+  "database": "SQLite temporário descartável",
+  "assetKind": "DOCUMENT",
+  "mimeType": "application/pdf",
+  "bytes": 39,
+  "reexportedBytes": 39
+}

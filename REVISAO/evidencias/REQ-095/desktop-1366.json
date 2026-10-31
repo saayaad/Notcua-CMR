@@ -1,0 +1,24 @@
+{
+  "req": "REQ-095",
+  "result": "APROVADO",
+  "project": "desktop-1366",
+  "viewport": {
+    "width": 1366,
+    "height": 768
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "writes": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": "{}"
+    }
+  ],
+  "forbiddenWrites": [],
+  "blockedExternal": [],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "metrics": {},
+  "screenshotError": "",
+  "failures": []
+}

@@ -40,7 +40,7 @@ test('401 renova uma vez e preserva o mesmo corpo e identificador do envio', asy
   } finally { globalThis.fetch = originalFetch; }
 });
 
-test('falhas de rede e respostas 403/500 não repetem uma operação de resultado incerto', async () => {
+test('REQ-095: falhas de rede e respostas 403/500 não repetem uma operação de resultado incerto', async () => {
   const originalFetch = globalThis.fetch;
   try {
     for (const status of [403, 500]) {

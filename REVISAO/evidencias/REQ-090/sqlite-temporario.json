@@ -1,0 +1,12 @@
+{
+  "req": "REQ-090",
+  "result": "APROVADO",
+  "database": "SQLite temporário descartável",
+  "source": "fixture ZapVoice fictício, não arquivo histórico",
+  "session": "Conexão Teste fictícia",
+  "flow": "req090-flow",
+  "enabled": false,
+  "versionStatuses": [
+    "DRAFT"
+  ]
+}

@@ -118,3 +118,12 @@
 - Ledger regenerado após L-04: 482 REQs com teste vinculado, 221 sem.
 
 - Commit do lote L-04: `3ea699a`; ledger regenerado depois do commit.
+
+## Backups — L-05, REQ-076–097 — 31/10/2026
+
+- L-05 Backups REQ-076–097: 20 estados mudaram — 15 COMPLETO e 5 COMPLETO-LOCAL; REQ-091/092 permaneceram completos. Contagem atual no inventário: 469 ✅ COMPLETO; 138 ✅ COMPLETO-LOCAL; 4 ⚠️ DECISÃO; 51 🔁 SUBSTITUÍDO OU CANCELADO; 7 ⚠️ PRECISA DE DECISÃO; 2 ❌ DEFEITO; 3 ❌ AUSENTE; 4 🔌 DESCONECTADO; 15 🟣 DECISÃO; 1 🔴 DEFEITO; 6 🟡 PARCIAL; 3 ⬜ A VERIFICAR.
+- Provas visuais Playwright: 49 aprovadas e 2 puladas de 51 execuções. O cenário de upload visual acima de 40 MiB rodou no Chromium desktop; os dois projetos restantes foram pulados para manter o consumo de memória controlado. Evidências individuais em REVISAO/evidencias/REQ-076/–REQ-088/ e REQ-094/–REQ-097/.
+- Testes de servidor em SQLite temporário: backup.test.ts 16/16; authenticated-request.test.ts 5/5. Evidências de saída em REVISAO/evidencias/REQ-079/ e REQ-095/. O banco .audit/noctua-audit.db manteve 2.039.808 bytes e o mesmo LastWriteTimeUtc.
+- REQ-089/090 ficaram COMPLETO-LOCAL com nove agendamentos/fluxos fictícios DRAFT/desativados e sem envio. REQ-093/094/095 também COMPLETO-LOCAL; as provas manuais externas estão agrupadas no CHECKLIST-MANUAL.md. REQ-096/097 concluídas. Nenhum defeito novo de produto; testes falhos iniciais e correções do harness constam em evidencias/lote-L05-backups-2026-10-31.md.
+- Nenhum serviço extra, reset, chamada de produção, envio de mensagem ou acesso a conta real. scripts/iniciar-noctua-online.ps1 permanece fora do lote e do commit.
+- Acesso e operação REQ-098–127 já está em estado final, exceto REQ-126 em DECISÃO, preservada sem repetição. Próximo item não final com falha reproduzida: REQ-381 (BUG-022, compressão de vídeo); prosseguir apenas se o defeito puder ser corrigido e validado no local.

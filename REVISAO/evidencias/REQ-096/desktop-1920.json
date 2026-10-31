@@ -1,0 +1,33 @@
+{
+  "req": "REQ-096",
+  "result": "APROVADO",
+  "project": "desktop-1920",
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "url": "http://127.0.0.1:5180/atendimento",
+  "writes": [
+    {
+      "method": "POST",
+      "path": "/api/operations/directory/presence",
+      "body": "{}"
+    }
+  ],
+  "forbiddenWrites": [],
+  "blockedExternal": [],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "metrics": {
+    "modal": {
+      "x": 624,
+      "y": 54,
+      "width": 672,
+      "height": 972,
+      "vw": 1920,
+      "vh": 1080
+    }
+  },
+  "screenshotError": "",
+  "failures": []
+}
