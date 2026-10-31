@@ -223,3 +223,9 @@
 - REQ-567: DECISÃO adiada; sem horários ou política de pausa.
 - REQ-573: DECISÃO; texto da Parte 8 não fornecido, depende de envio futuro. Recibo criado em `REVISAO/evidencias/REQ-573/decisao-parte-8.json`.
 - Próximo lote independente: REQ-680 em Revisão e menu contextual, sujeito à aprovação já indicada no protocolo.
+
+
+## Revisão e menu contextual — REQ-680 — 31/10/2026
+
+- Playwright focal 3/3. Menu da mensagem fictícia não tem controle acessível de reação; recebidos POST de presença/socket bloqueados pela guarda. Sem chamadas externas nem alteração do banco.
+- REQ-680 permanece DECISÃO aguardando aprovação sobre ações, permissões e persistência. Capturas em `REVISAO/evidencias/REQ-680/`.

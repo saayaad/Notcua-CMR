@@ -1,7 +1,7 @@
 {
   "req": "REQ-682",
   "result": "APROVADO",
-  "test": "REQ-682 menu de mensagem fictícia oferece ações sem enviar",
+  "test": "REQ-680/682 registra menu de mensagem sem reações antes de aprovação",
   "project": "mobile-390",
   "url": "http://127.0.0.1:5180/atendimento",
   "viewport": {
@@ -13,7 +13,6 @@
     "POST /socket.io/",
     "POST /socket.io/",
     "POST /socket.io/",
-    "POST /socket.io/",
     "POST /socket.io/"
   ],
   "blockedExternal": [
@@ -21,7 +20,6 @@
   ],
   "consoleErrors": [
     "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
-    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
     "Failed to load resource: the server responded with a status of 403 (Forbidden)",
     "Failed to load resource: the server responded with a status of 403 (Forbidden)",
     "Failed to load resource: the server responded with a status of 403 (Forbidden)",
@@ -44,12 +42,11 @@
     "POST /socket.io/"
   ],
   "menuInteractionWrites": [
-    "POST /socket.io/",
     "POST /socket.io/"
   ],
   "trigger": "synthetic contextmenu event in mobile viewport",
   "receivedContextMenuEvent": "{\"defaultPrevented\":true,\"target\":\"DIV.message-bubble  \",\"editable\":false}",
-  "menuLifecycle": "[{\"at\":1541.800000000745,\"event\":\"showPopover\",\"className\":\"noctua-context-menu\"},{\"at\":1547.5,\"event\":\"menu-added\"}]",
+  "menuLifecycle": "[{\"at\":1882.5999999996275,\"event\":\"showPopover\",\"className\":\"noctua-context-menu\"},{\"at\":1889.2999999988824,\"event\":\"menu-added\"}]",
   "menuDiagnostics": [
     {
       "popoverOpen": true,
@@ -57,9 +54,9 @@
       "visibility": "visible",
       "rect": {
         "x": 124,
-        "y": 9.310267448425293,
+        "y": 314.2914733886719,
         "width": 229.40625,
-        "height": 248.4375
+        "height": 248.43753051757812
       }
     }
   ],

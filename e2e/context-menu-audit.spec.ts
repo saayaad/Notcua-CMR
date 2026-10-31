@@ -196,7 +196,7 @@ test('REQ-678 Shift+F10, Home/End, setas, Escape e retorno de foco funcionam', a
   });
 });
 
-test('REQ-682 menu de mensagem fictícia oferece ações sem enviar', async ({ page }, info) => {
+test('REQ-680/682 registra menu de mensagem sem reações antes de aprovação', async ({ page }, info) => {
   await openApp(page);
   const chat = page.locator('button.chat-item:not(.chat-item-more)').first();
   await expect(chat).toBeVisible();
@@ -206,6 +206,9 @@ test('REQ-682 menu de mensagem fictícia oferece ações sem enviar', async ({ p
   const bubble = page.locator('.message-bubble').filter({ hasText: 'Olá, gostaria de saber o prazo.' }).first();
   await expect(bubble).toBeVisible();
   await expect(bubble).toContainText('Olá, gostaria de saber o prazo.');
+  await bubble.hover();
+  const reactionControls = page.getByRole('button', { name: /reagir|reações?|curtir|like/i });
+  await expect(reactionControls).toHaveCount(0);
   const state = states.get(page)!;
   const writesBeforeMenu = state.blockedWrites.length;
   const bounds = await bubble.boundingBox();
@@ -286,6 +289,14 @@ test('REQ-682 menu de mensagem fictícia oferece ações sem enviar', async ({ p
   await expect(menu.getByRole('menuitem', { name: 'Copiar mensagem', exact: true })).toBeVisible();
   const labels = await menu.getByRole('menuitem').allTextContents();
   expect(labels.some((label) => /Meta AI|WhatsApp/i.test(label))).toBe(false);
+  const reactionMenuItems = labels.filter((label) => /reagir|reações?|curtir|like/i.test(label));
+  expect(reactionMenuItems).toEqual([]);
+  await saveEvidence(page, 'REQ-680', info, {
+    result: 'DECISÃO', reactionStripOrButtonPresent: false, reactionMenuItems, brandedMenuItems: [],
+    approvalPending: 'ações, permissões e persistência de reação não autorizadas',
+    blockedExternal: [...new Set(state.blockedExternal)], blockedApiWrites: state.blockedWrites.slice(writesBeforeMenu),
+    source: [{ file: 'apps/web/src/components/ChatPane.tsx', symbol: 'message-bubble context menu', line: 530 }],
+  });
   await page.keyboard.press('Escape');
   await expect(page.getByRole('menu')).toBeHidden();
   const testWrites = state.blockedWrites.slice(writesBeforeMenu);

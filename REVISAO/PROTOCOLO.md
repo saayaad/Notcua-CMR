@@ -406,3 +406,11 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - REQ-567: decisão do usuário registrada como `DECISÃO`, adiada. Não definir política de pausa, horários, filas ou retomada automática. Nenhum fluxo/envio foi alterado.
 - REQ-573: a Parte 8 não foi fornecida; registrar como `DECISÃO` dependente de envio futuro do texto. Não presumir escopo nem declarar conclusão. Recibo em `REVISAO/evidencias/REQ-573/decisao-parte-8.json`.
 - Próximo módulo não fechado independente dessas duas decisões: Revisão e menu contextual, REQ-680. Conferir apenas o que já pode ser verificado localmente; aprovação do proprietário ainda é necessária antes de alterar ações, permissões ou persistência de reações.
+
+
+## Revisão e menu contextual — REQ-680 — 31/10/2026
+
+- Playwright local focal: REQ-680 passou 3/3 (1366x768, 1920x1080 e 390x844). Menu de mensagem fictícia não apresentou botão acessível/faixa nem item de reação; itens sem marca foram conferidos. Capturas e recibos em `REVISAO/evidencias/REQ-680/`.
+- Mantido `DECISÃO`: implementação requer aprovação do proprietário sobre ação, permissão e persistência das reações. Não criei controle nem alterei o app.
+- O teste bloqueou gravações de API e origens externas. Os 403 no console foram gerados pela guarda ao interceptar POSTs de presença e socket; nenhuma escrita chegou ao servidor. `.audit/noctua-audit.db` manteve 2.039.808 bytes e timestamp 2026-10-30T18:07:20Z.
+- Nenhum outro módulo com requisito A/B independente ficou na sequência imediata; restantes itens pendentes no LEDGER dependem de decisões, artefatos ausentes ou funções já registradas como AUSENTE/DESCONECTADO. Retomar após aprovação da semântica de REQ-680 ou avançar para outro módulo independentemente escolhido.

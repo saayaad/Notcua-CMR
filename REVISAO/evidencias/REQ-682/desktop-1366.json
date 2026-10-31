@@ -1,7 +1,7 @@
 {
   "req": "REQ-682",
   "result": "APROVADO",
-  "test": "REQ-682 menu de mensagem fictícia oferece ações sem enviar",
+  "test": "REQ-680/682 registra menu de mensagem sem reações antes de aprovação",
   "project": "desktop-1366",
   "url": "http://127.0.0.1:5180/atendimento",
   "viewport": {
@@ -13,12 +13,10 @@
     "POST /socket.io/",
     "POST /socket.io/",
     "POST /socket.io/",
-    "POST /socket.io/",
     "POST /socket.io/"
   ],
   "blockedExternal": [],
   "consoleErrors": [
-    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
     "Failed to load resource: the server responded with a status of 403 (Forbidden)",
     "Failed to load resource: the server responded with a status of 403 (Forbidden)",
     "Failed to load resource: the server responded with a status of 403 (Forbidden)",
@@ -38,15 +36,13 @@
     "POST /api/operations/directory/presence",
     "POST /socket.io/",
     "POST /socket.io/",
-    "POST /socket.io/"
-  ],
-  "menuInteractionWrites": [
     "POST /socket.io/",
     "POST /socket.io/"
   ],
+  "menuInteractionWrites": [],
   "trigger": "right-click",
   "receivedContextMenuEvent": "{\"defaultPrevented\":true,\"shiftKey\":false,\"target\":\"DIV.message-bubble  \",\"editable\":false}",
-  "menuLifecycle": "[{\"at\":2403.5,\"event\":\"scroll\",\"target\":\"DIV.message-area\"},{\"at\":2410.39999999851,\"event\":\"pointerdown\",\"target\":\"DIV.message-bubble  \"},{\"at\":2418.5999999996275,\"event\":\"showPopover\",\"className\":\"noctua-context-menu\"},{\"at\":2424,\"event\":\"menu-added\"}]",
+  "menuLifecycle": "[{\"at\":2688.300000000745,\"event\":\"pointerdown\",\"target\":\"DIV.message-bubble  \"},{\"at\":2697.300000000745,\"event\":\"showPopover\",\"className\":\"noctua-context-menu\"},{\"at\":2702.9000000003725,\"event\":\"menu-added\"}]",
   "menuDiagnostics": [
     {
       "popoverOpen": true,
@@ -54,9 +50,9 @@
       "visibility": "visible",
       "rect": {
         "x": 850,
-        "y": 366.8227844238281,
+        "y": 366.4273376464844,
         "width": 229.40625,
-        "height": 248.43746948242188
+        "height": 248.43753051757812
       }
     }
   ],
