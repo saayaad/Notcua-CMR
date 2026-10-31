@@ -248,3 +248,11 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - A primeira chamada `tsx` falhou antes dos testes com `uv_os_get_passwd ... ENOMEM`; preload CommonJS de processo com `NODE_OPTIONS` resolveu sem alterar dependências nem asserções. A suíte usou SQLite em `%TEMP%` e removeu o diretório ao terminar; `.audit/noctua-audit.db` permaneceu intacto.
 - O front local reporta `authMode=local`; não há Firebase Auth Emulator configurado. Cadastro/verificação de e-mail e percurso visual de uma segunda conta permanecem no `CHECKLIST-MANUAL.md`; nenhum cadastro ou e-mail real foi feito.
 - Próximo passo: primeiro módulo não finalizado pela ordem do `LEDGER.csv`; conferir status, log, API e metadados do banco antes de qualquer novo teste. `scripts/iniciar-noctua-online.ps1` permanece fora do lote. Sem push/publicação.
+
+## Ponto de retomada — 31/10/2026 — após L-01 Estrutura
+
+- REQ-001 e REQ-008 concluídas: `REQ-001` compilou os dois workspaces em modo estrito e não encontrou marcadores de implementação pendente em comentários; `REQ-008` moveu cartão com a alça do Kanban, persistiu a etapa em SQLite temporário e confirmou a ordem visual após recarregar.
+- Testes finais: estrutura + CRM 9/9; Playwright REQ-008 3/3 (1366×768, 1920×1080, 390×844). Evidências sob `REVISAO/evidencias/REQ-001/` e `REQ-008/`.
+- Falhas de teste corrigidas sem alterar critérios: o detector de pendências confundiu o português “todo” com `TODO`; agora exige marcador de comentário explícito. No Playwright, a rolagem da lista ocultava a origem e o índice do cartão mudava durante o arraste; destino passou a ser selecionado pelo contato e a rolagem automática foi exercitada. Dois POSTs de presença esperados foram isolados junto com o POST de movimento; todos foram interceptados.
+- Nenhum defeito de produto confirmado e nenhum código funcional do app alterado. Front/API responderam 200; `.audit/noctua-audit.db` permaneceu em 2.039.808 bytes com `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`.
+- Próximo módulo pela ordem do ledger: Conexões, REQ-017–021. Reconfirmar `git status`, `git log`, serviços e banco antes dos testes. Sem reset, push ou produção.

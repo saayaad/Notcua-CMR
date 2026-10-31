@@ -88,3 +88,11 @@
 - Primeira execução abortou antes dos casos com `uv_os_get_passwd ... ENOMEM` no `tsx`; o preload CommonJS temporário indicado no histórico contornou o problema. Nenhuma dependência foi instalada nem resultado esperado foi alterado.
 - API local respondeu 200 e `/api/public/runtime` reportou `authMode=local`. Os testes usam SQLite temporário em `%TEMP%`; banco `.audit/noctua-audit.db` preservado (2.039.808 bytes; `2026-10-30T18:07:20.5497691Z`). Nenhuma conta real, e-mail ou produção foi acessada.
 - Evidências por REQ: `REVISAO/evidencias/REQ-695/`, `REQ-696/`, `REQ-697/`. Validação visual e e-mail confirmado requerem Firebase Auth Emulator, indisponível no ambiente atual; passo a passo está em `CHECKLIST-MANUAL.md`.
+
+## Estrutura — L-01, REQ-001 e REQ-008 — 31/10/2026
+
+- REQ-001 ficou `COMPLETO`: o teste identificado compilou `apps/server` e `apps/web` com `tsc --noEmit` e procurou marcadores explícitos de pendência em comentários do código-fonte. Os dois checks passaram.
+- REQ-008 ficou `COMPLETO`: `apps/server/test/crm.test.ts` confirmou a etapa destino após nova leitura; `e2e/structure-audit.spec.ts` arrastou o cartão com a alça e conferiu ordem após reload em 1366×768, 1920×1080 e 390×844 (3/3).
+- Correções de teste: o scan inicial marcou duas frases portuguesas com “todo” como `TODO`; regex passou a exigir marcador explícito em comentário. No E2E, a origem saía do viewport ao rolar para o destino; seletor por contato e rolagem automática estabilizaram o gesto. O teste agora trata POSTs de presença como chamadas esperadas interceptadas e ainda falha diante de qualquer outra mutação.
+- As duas primeiras rodadas visuais deixaram JSON/PNG/trace de falha no diretório de evidências; a rodada final aprovada e a captura de desktop diagnóstico também foram preservadas. Nenhum BUG de produto confirmado.
+- Servidores existentes mantidos; front/API HTTP 200. Escritas E2E interceptadas e CRM testado em SQLite temporário; `.audit/noctua-audit.db` preservado. Sem login, mensagens, conexão real ou produção.
