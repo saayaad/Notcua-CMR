@@ -344,3 +344,21 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - `operations.test.ts`, caso REQ-424/425: 1/1 em SQLite criado sob `%TEMP%`. Evidência REQ-425 atualizada. O teste passou; `BUG-025` e estado `DEFEITO` permanecem porque a reutilização lexical controlada não satisfaz equivalência semântica geral.
 - Mantidos `DESCONECTADO` para REQ-419–422 e `AUSENTE` para REQ-430. Sem chamada externa, chave real, modelo externo ou gravação no banco `.audit`; API/front locais permanecem ativos.
 - Entre os itens não aprovados tipo A/B no LEDGER, REQ-425 é o único restante. Corrigi-la exige escolher/autorizar tecnologia de modelo ou embedding local; sinônimos adicionais não resolvem o critério. Próxima retomada aguarda essa decisão técnica; demais decisões e verificações externas seguem registrados no LEDGER/CHECKLIST-MANUAL.
+
+## REQ-425 — dependência e modelo local autorizados — 31/10/2026
+
+- Autorização recebida para dependência/modelo de embeddings gratuita, open source e local, sem chave paga e sem envio de conversas.
+- Dependência fixada: `@huggingface/transformers` 3.8.1 (Apache-2.0). Modelo: `Xenova/paraphrase-multilingual-MiniLM-L12-v2`, revisão `2c4055b12046f11709e9df2c122e59ffbdc2f900`, ONNX quantizado `model_quantized.onnx` (118 MB); base `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` sob Apache-2.0, 50 idiomas incluindo português.
+- Motivo: produzir vetores semânticos multilíngues localmente para cumprir REQ-425. O runtime será configurado com `allowRemoteModels=false`; os arquivos do modelo ficam em `.audit/models/`, ignorado pelo Git. O downloader busca somente arquivos estáticos públicos e valida SHA-256 do ONNX; não transmite conversas.
+- Referências: [Transformers.js Node/offline](https://huggingface.co/docs/transformers.js/en/tutorials/node), [modelo multilíngue e licença](https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2), [modelo ONNX compatível](https://huggingface.co/Xenova/paraphrase-multilingual-MiniLM-L12-v2).
+
+## Retificação e fechamento da REQ-425 — 31/10/2026
+
+- Retifica os apontamentos anteriores que deixavam REQ-425 como bloqueada/defeito: a decisão de usar embeddings locais foi recebida e implementada abaixo; REQ-430 permanece separada como `AUSENTE` porque não há ferramenta de indexação vetorial de histórico/regras na interface.
+- Dependência: `@huggingface/transformers` 3.8.1, Apache-2.0. Modelo: `Xenova/paraphrase-multilingual-MiniLM-L12-v2`, revisão `2c4055b12046f11709e9df2c122e59ffbdc2f900`, Apache-2.0; ONNX quantizado 118 MB; inclui português.
+- `npm run model:download -w @noctua/server` baixa apenas arquivos públicos para `.audit/models/` (ignorado pelo Git) e valida SHA-256. Inferência local força `allowRemoteModels=false`; nenhum texto de conversa sai do processo.
+- Cache compara embeddings normalizados por cosseno com limiar 0,84; mantém aprovação, validade e filtro de PII. Vetor e revisão ficam internos e não são retornados pela API. Falha ao indexar uma nova resposta não bloqueia a sugestão.
+- Teste focal REQ-424/425 passou 1/1 em SQLite temporário e provedor simulado: paráfrase PT-BR reutilizada, pergunta sem relação recusada, vetor de 384 dimensões persistido sem vazamento. Typecheck aprovado. Banco `.audit` preservado.
+- Tentativas registradas: chamada de teste com filtro após o glob iniciou suíte ampla; interrompida e substituída por comando focal correto. Caso negativo novo revelou contador esperado desatualizado; corrigida só a expectativa de chamadas simuladas, e reteste passou.
+- Instalação relatou 13 vulnerabilidades transitivas (11 moderadas, 2 altas); `npm audit fix` não foi executado. Revisar em tarefa separada.
+- Próximo passo: atualizar LEDGER, commitar e fazer push desta correção na branch `auditoria-reqs`; depois seguir pelo próximo módulo não final, sem produção ou novo servidor.

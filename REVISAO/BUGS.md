@@ -182,10 +182,12 @@ A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, po
 
 - REQ: REQ-425.
 - Reprodução: habilitar cache aprovado e comparar paráfrases que preservam sentido, mas não compartilham as palavras indexadas nem os sinônimos codificados.
-- Resultado: o cache não encontra equivalência semântica geral; usa palavras, um dicionário curto de sinônimos e Jaccard.
-- Causa: não existe embedding, índice vetorial nem classificador de intenção no cache. Embeddings locais também não estão implementados (REQ-430 AUSENTE).
-- Validação: teste do cache confirma revisão, expiração, isolamento e reutilização para equivalência lexical; não comprova compreensão semântica geral.
-- Estado: defeito aberto em 30/10/2026. Nenhum serviço ou modelo externo foi ativado.
+- Resultado anterior: o cache usava palavras, sinônimos curtos e Jaccard, sem equivalência semântica.
+- Causa corrigida: embeddings locais não estavam implementados.
+- Correção local: cache agora compara vetores normalizados por cosseno, com limiar conservador 0,84; exige aprovação, validade e resposta sem PII. Vetores ficam internos e são removidos da resposta administrativa. Inferência offline com `allowRemoteModels=false`; falha ao indexar uma nova resposta não bloqueia a sugestão.
+- Reteste 31/10/2026: `operations.test.ts` focal passou 1/1 em SQLite temporário. Paráfrase em português foi reutilizada; pergunta sem relação não foi; vetor 384D e revisão do modelo persistiram; revisão, expiração, privacidade e isolamento continuaram passando.
+- Limite: equivalência semântica é aproximada e depende do limiar/modelo. Casos ambíguos podem não reutilizar; avaliação local não prova todas as formulações.
+- Estado: corrigido localmente em 31/10/2026. Sem serviço externo ou dados de conversa enviados.
 
 ## BUG-026 — Macro anunciava figurinha, mas enviava apenas recurso de imagem — corrigido em 31/10/2026
 

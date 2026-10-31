@@ -1449,14 +1449,17 @@ test('REQ-431/REQ-432/REQ-433/REQ-434 resumo reduz contexto, retoma e usa resumo
     }
   }));
 
-test('REQ-424/REQ-425 cache exige revisão, limita equivalência lexical e isola clientes', async () =>
+test('REQ-424/REQ-425 cache exige revisão, compara embeddings e isola clientes', async () =>
   aiTest(async () => {
     await configureAi();
     const first = await makeContact('5511777770061', 'Joana Exemplo');
     const second = await makeContact('5511777770062', 'Pedro Exemplo');
     const third = await makeContact('5511777770063', 'Ana Exemplo');
-    for (const chat of [first, second, third])
+    const unrelated = await makeContact('5511777770064', 'Bruno Exemplo');
+    for (const chat of [first, second, third, unrelated])
       await db.chatMessage.create({ data: { conversationId: chat.id, direction: 'INBOUND', text: 'Como funciona mascote?', sentAt: new Date() } });
+    await db.chatMessage.updateMany({ where: { conversationId: third.id }, data: { text: 'Como é que o mascote funciona?' } });
+    await db.chatMessage.updateMany({ where: { conversationId: unrelated.id }, data: { text: 'Qual é o horário de funcionamento da loja?' } });
     let calls = 0;
     globalThis.fetch = async () => {
       calls++;
@@ -1473,6 +1476,7 @@ test('REQ-424/REQ-425 cache exige revisão, limita equivalência lexical e isola
     const cache = await request(app).get('/api/operations/economy/cache').expect(200);
     const entry = cache.body.items.find((item: { sourceConversationId?: string }) => item.sourceConversationId === first.id);
     assert.ok(entry);
+    assert.equal(entry.embedding, undefined, 'embedding internals must not be exposed by the cache API');
     assert.equal(entry.approvedAt, undefined);
     await request(app).put(`/api/operations/economy/cache/${entry.id}`)
       .send({ answer: 'Oi, Joana! Podemos conversar sobre o mascote.', approve: true }).expect(422);
@@ -1482,10 +1486,17 @@ test('REQ-424/REQ-425 cache exige revisão, limita equivalência lexical e isola
     assert.equal(wasCached(reused), true);
     assert.equal(reused.text, 'Podemos conversar sobre o mascote.');
     assert.equal(calls, 2);
+    const stored = await db.operationRecord.findUnique({ where: { id: entry.id } });
+    const storedData = stored!.data as { embedding?: number[]; embeddingModel?: string; embeddingRevision?: string };
+    assert.equal(storedData.embedding?.length, 384);
+    assert.equal(storedData.embeddingModel, 'Xenova/paraphrase-multilingual-MiniLM-L12-v2');
+    assert.equal(storedData.embeddingRevision, '2c4055b12046f11709e9df2c122e59ffbdc2f900');
+    assert.equal(wasCached(await generateSuggestion(db, unrelated.id, task)), false, 'unrelated content must not reuse approved answer');
+    assert.equal(calls, 3);
     await request(app).put(`/api/operations/economy/cache/${entry.id}`)
       .send({ answer: 'Resposta em revisão.' }).expect(200);
     assert.equal(wasCached(await generateSuggestion(db, third.id, task)), false);
-    assert.equal(calls, 3);
+    assert.equal(calls, 4);
     const expired = await makeContact('5511777770098', 'Cliente Cache Vencido');
     await db.chatMessage.create({ data: { conversationId: expired.id, direction: 'INBOUND', text: 'Qual prazo para mascote?', sentAt: new Date() } });
     const oldDate = new Date(Date.now() - 30 * 86_400_000).toISOString();
@@ -1494,7 +1505,7 @@ test('REQ-424/REQ-425 cache exige revisão, limita equivalência lexical e isola
       sourceConversationId: first.id, createdAt: oldDate, approvedAt: oldDate, hits: 0,
     });
     assert.equal(wasCached(await generateSuggestion(db, expired.id, task)), false);
-    assert.equal(calls, 4);
+    assert.equal(calls, 5);
     await db.operationRecord.deleteMany({ where: { id: 'expired-cache-fixture' } });
     await request(app).delete(`/api/operations/economy/cache/${entry.id}`).expect(200);
     const afterDelete = await request(app).get('/api/operations/economy/cache').expect(200);

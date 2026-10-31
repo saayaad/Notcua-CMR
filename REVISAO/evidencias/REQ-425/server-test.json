@@ -1,18 +1,21 @@
 {
   "req": "REQ-425",
-  "resultado": "DEFEITO",
+  "resultado": "COMPLETO-LOCAL",
   "teste": "apps/server/test/operations.test.ts",
-  "caso": "REQ-424/REQ-425 cache exige revisão, limita equivalência lexical e isola clientes",
-  "observacao": "Prova confirmou cache aprovado, validade, isolamento e bloqueio de dados pessoais. O algoritmo usa sinônimos curtos e Jaccard; não atende equivalência semântica geral. BUG-025 aberto.",
-  "banco": "SQLite temporário criado pela suíte; .audit/noctua-audit.db não usado",
-  "provider": "simulado local; nenhuma chamada externa",
-  "data": "2026-10-30",
-  "revalidacao_2026_10_31": {
-    "teste": "apps/server/test/operations.test.ts",
-    "caso": "REQ-424/REQ-425 cache exige revisão, limita equivalência lexical e isola clientes",
-    "resultado": "1/1 aprovado",
-    "estado": "DEFEITO mantido: equivalência semântica geral não é atendida",
-    "banco": "SQLite temporário; .audit não usado",
-    "provedor": "simulado local; nenhuma chamada externa"
-  }
+  "caso": "REQ-424/REQ-425 cache exige revisão, compara embeddings e isola clientes",
+  "resultado_teste": "1/1 aprovado; typecheck aprovado",
+  "verificacoes": [
+    "paráfrase em português reutilizada após aprovação do cache",
+    "pergunta sem relação não reutilizou a resposta",
+    "embedding de 384 dimensões e revisão do modelo persistidos internamente",
+    "API administrativa não expõe embedding nem revisão",
+    "filtros de privacidade, aprovação, validade e isolamento mantidos"
+  ],
+  "modelo": "Xenova/paraphrase-multilingual-MiniLM-L12-v2@2c4055b12046f11709e9df2c122e59ffbdc2f900",
+  "dependencia": "@huggingface/transformers@3.8.1",
+  "inferencia": "local, allowRemoteModels=false",
+  "banco": "SQLite temporário da suíte; .audit/noctua-audit.db não usado",
+  "provedor": "simulado; sem chamadas externas",
+  "limite": "similaridade aproximada; limiar conservador 0,84",
+  "data": "2026-10-31"
 }

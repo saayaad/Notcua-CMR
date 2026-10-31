@@ -14,9 +14,11 @@
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "backup:import": "tsx src/cli/import-backup.ts",
-    "backup:export": "tsx src/cli/export-backup.ts"
+    "backup:export": "tsx src/cli/export-backup.ts",
+    "model:download": "node scripts/download-embedding-model.mjs"
   },
   "dependencies": {
+    "@huggingface/transformers": "3.8.1",
     "@prisma/client": "6.19.3",
     "@whiskeysockets/baileys": "7.0.0-rc14",
     "archiver": "^8.0.0",

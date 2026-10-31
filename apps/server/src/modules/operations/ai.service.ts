@@ -4,6 +4,8 @@ import { randomUUID } from 'node:crypto';
 import { AppError } from '../../shared/errors.js';
 import { hasConfiguredKey, putRecord, record, type AgentSettings } from './records.js';
 import { textCompletion } from './ai-provider.js';
+import { env, pipeline } from '@huggingface/transformers';
+import { resolve, sep } from 'node:path';
 type Economy = { enabled: boolean; semanticCache: boolean; rag: boolean; cacheDays: number; summaryEvery: number; systems: Record<string, boolean> };
 type ConversationSummary = { text: string; covered: number; cursor?: { sentAt: string; id: string } };
 const defaultEconomy: Economy = { enabled: true, semanticCache: true, rag: true, cacheDays: 14, summaryEvery: 10, systems: { autoReply: true, copilot: true, summaries: true, campaigns: true, training: true, receipts: true, dailyDigest: true } };
@@ -12,10 +14,36 @@ function keywords(value: string) {
   const synonyms: Record<string, string> = { demora: 'prazo', tempo: 'prazo', dias: 'prazo', leva: 'prazo', custo: 'preco', custa: 'preco', valor: 'preco', mascotes: 'mascote', avatar: 'mascote', avatares: 'mascote', finalizar: 'entrega', pronto: 'entrega' };
   return new Set((value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().match(/[\p{L}\d]{3,}/gu) ?? []).filter((word) => !ignored.has(word)).map((word) => synonyms[word] ?? word));
 }
-function similarity(left: Set<string>, right: Set<string>) {
-  if (!left.size || !right.size) return 0;
-  const overlap = [...left].filter((word) => right.has(word)).length;
-  return overlap / (left.size + right.size - overlap);
+const embeddingModel = 'Xenova/paraphrase-multilingual-MiniLM-L12-v2';
+const embeddingRevision = '2c4055b12046f11709e9df2c122e59ffbdc2f900';
+type EmbeddingExtractor = (texts: string[], options: { pooling: 'mean'; normalize: true }) => Promise<{ tolist(): number[][] }>;
+let extractorPromise: Promise<EmbeddingExtractor> | undefined;
+function localEmbeddingExtractor() {
+  if (!extractorPromise) {
+    env.allowRemoteModels = false;
+    env.allowLocalModels = true;
+    env.useFS = true;
+    env.localModelPath = resolve(process.cwd(), '.audit', 'models') + sep;
+    extractorPromise = pipeline('feature-extraction', embeddingModel, { dtype: 'q8' }) as unknown as Promise<EmbeddingExtractor>;
+  }
+  return extractorPromise;
+}
+async function embed(text: string) {
+  const extractor = await localEmbeddingExtractor();
+  const output = await extractor([text.slice(0, 2000)], { pooling: 'mean', normalize: true });
+  return output.tolist()[0]!;
+}
+function cosine(left: number[], right: number[]) {
+  if (left.length !== right.length || left.length === 0) return 0;
+  let dot = 0;
+  let leftNorm = 0;
+  let rightNorm = 0;
+  for (let i = 0; i < left.length; i++) {
+    dot += left[i]! * right[i]!;
+    leftNorm += left[i]! ** 2;
+    rightNorm += right[i]! ** 2;
+  }
+  return leftNorm && rightNorm ? dot / Math.sqrt(leftNorm * rightNorm) : 0;
 }
 export function reusableCacheAnswer(answer: string, sourceName = '') {
   const normalized = answer.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
@@ -46,18 +74,33 @@ export async function generateSuggestion(db: PrismaClient, conversationId: strin
   const enabledForSystem = economy.enabled && economy.systems?.[systemName] !== false;
   const cacheEligible = enabledForSystem && economy.semanticCache && systemName === 'autoReply' && Boolean(latestInbound?.text?.trim());
   const questionWords = cacheEligible ? keywords(latestInbound!.text!) : new Set<string>();
-  if (cacheEligible && questionWords.size >= 2) {
+  if (cacheEligible && questionWords.size >= 1) {
+    let queryVector: number[] | undefined;
+    try { queryVector = await embed(latestInbound!.text!); } catch { /* Modelo local indisponível: seguir sem cache. */ }
+    if (queryVector) {
     const rows = await db.operationRecord.findMany({ where: { kind: 'AI_SEMANTIC_CACHE' }, orderBy: { updatedAt: 'desc' }, take: 1000 });
     const cutoff = Date.now() - Math.max(1, economy.cacheDays) * 86_400_000;
-    const candidate = rows.map((row) => ({ row, data: row.data as { question?: string; answer?: string; createdAt?: string; approvedAt?: string; system?: string; hits?: number } }))
+    const candidateRows = rows.map((row) => ({ row, data: row.data as { question?: string; answer?: string; createdAt?: string; approvedAt?: string; system?: string; hits?: number; embedding?: number[]; embeddingModel?: string } }))
       .filter(({ data }) => data.system === 'autoReply' && data.question && data.answer && Date.parse(data.approvedAt ?? '') > 0 && reusableCacheAnswer(data.answer) && Date.parse(data.createdAt ?? '') >= cutoff)
-      .map(({ row, data }) => ({ row, data, score: similarity(questionWords, keywords(data.question!)) }))
-      .sort((a, b) => b.score - a.score)[0];
-    if (candidate && candidate.score >= (questionWords.size <= 4 ? 0.88 : 0.76)) {
+      .slice(0, 100);
+    const scored: { row: typeof rows[number]; data: (typeof candidateRows)[number]['data'] & { embedding: number[]; embeddingModel: string; embeddingRevision: string }; score: number }[] = [];
+    for (const { row, data } of candidateRows) {
+      try {
+        let vector = data.embeddingModel === embeddingModel ? data.embedding : undefined;
+        if (!vector) {
+          vector = await embed(data.question!);
+          await putRecord(db, row.id, 'AI_SEMANTIC_CACHE', { ...data, embedding: vector, embeddingModel, embeddingRevision });
+        }
+        scored.push({ row, data: { ...data, embedding: vector, embeddingModel, embeddingRevision }, score: cosine(queryVector, vector) });
+      } catch { /* Um item legado sem vetor não deve bloquear sugestões. */ }
+    }
+    const candidate = scored.sort((a, b) => b.score - a.score)[0];
+    if (candidate && candidate.score >= 0.84) {
       const savings = Math.min(16000, Math.ceil(Buffer.byteLength(task + latestInbound!.text!) / 3) + 400);
       await putRecord(db, `ai-economy-saved:${randomUUID()}`, 'AI_ECONOMY_SAVING', { tokens: savings, requests: 1, createdAt: new Date().toISOString(), system: systemName });
       await putRecord(db, candidate.row.id, 'AI_SEMANTIC_CACHE', { ...candidate.data, hits: (candidate.data.hits ?? 0) + 1, lastHitAt: new Date().toISOString() });
       return { text: candidate.data.answer!, usage: { inputTokens: 0, outputTokens: 0 }, sent: false, cached: true };
+    }
     }
   }
   const lines: string[] = [];
@@ -153,7 +196,9 @@ export async function generateSuggestion(db: PrismaClient, conversationId: strin
     route,
   );
   if (cacheEligible && questionWords.size >= 2) {
-    await putRecord(db, `ai-semantic-cache:${randomUUID()}`, 'AI_SEMANTIC_CACHE', { question: latestInbound!.text, answer: response.text.slice(0, 4000), system: systemName, sourceConversationId: conversationId, createdAt: new Date().toISOString(), hits: 0 });
+    let embedding: number[] | undefined;
+    try { embedding = await embed(latestInbound!.text!); } catch { /* Model indisponível: preservar a sugestão, sem indexar a entrada. */ }
+    await putRecord(db, `ai-semantic-cache:${randomUUID()}`, 'AI_SEMANTIC_CACHE', { question: latestInbound!.text, answer: response.text.slice(0, 4000), system: systemName, sourceConversationId: conversationId, createdAt: new Date().toISOString(), hits: 0, ...(embedding ? { embedding, embeddingModel, embeddingRevision } : {}) });
   }
   return response;
 }

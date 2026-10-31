@@ -1071,7 +1071,10 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
   router.get('/economy/cache', async (_req, res) => {
     admin(res.locals.identity.role);
     const rows = await db.operationRecord.findMany({ where: { kind: 'AI_SEMANTIC_CACHE' }, orderBy: { updatedAt: 'desc' }, take: 1000 });
-    res.json({ items: rows.map((row) => ({ id: row.id, ...(row.data as object) })) });
+    res.json({ items: rows.map((row) => {
+      const { embedding: _embedding, embeddingModel: _embeddingModel, embeddingRevision: _embeddingRevision, ...publicData } = row.data as Record<string, unknown>;
+      return { id: row.id, ...publicData };
+    }) });
   });
   router.put('/economy/cache/:cacheId', async (req, res) => {
     admin(res.locals.identity.role);
