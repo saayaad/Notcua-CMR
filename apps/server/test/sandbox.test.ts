@@ -52,7 +52,7 @@ test('mídias de demonstração são arquivos locais com formatos reconhecíveis
   const audio = await readFile(new URL('audio.wav', root));
   assert.equal(audio.subarray(0, 4).toString(), 'RIFF');
   assert.equal(audio.subarray(8, 12).toString(), 'WAVE');
-  const video = await readFile(new URL('video.mp4', root));
-  assert.equal(video.subarray(4, 8).toString(), 'ftyp');
+  const video = await readFile(new URL('video.webm', root));
+  assert.equal(video.subarray(0, 4).toString('hex'), '1a45dfa3');
   assert.match(await readFile(new URL('projeto.svg', root), 'utf8'), /<svg\b/);
 });

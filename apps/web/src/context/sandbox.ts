@@ -26,7 +26,7 @@ export function exampleSandbox(now = Date.now()): SandboxState {
     { id: 'deadline', name: 'Prazo de entrega', kind: 'text', text: 'Após a aprovação, o prazo estimado é de 2 dias úteis.', category: 'Produção' },
     { id: 'voice', name: 'Áudio de demonstração', kind: 'audio', text: 'Transcrição fictícia: “Olá! Este é um áudio de demonstração. O prazo estimado é de dois dias úteis.”', url: '/sandbox-media/audio.wav', category: 'Atendimento' },
     { id: 'photo', name: 'Prévia de projeto', kind: 'image', text: 'Imagem ilustrativa de um projeto fictício.', url: image, category: 'Portfólio' },
-    { id: 'video', name: 'Vídeo de demonstração', kind: 'video', text: 'Padrão de cores e movimento para testar o reprodutor.', url: '/sandbox-media/video.mp4', category: 'Portfólio' }
+    { id: 'video', name: 'Vídeo de demonstração', kind: 'video', text: 'Padrão de cores e movimento para testar o reprodutor.', url: '/sandbox-media/video.webm', category: 'Portfólio' }
   ];
   return {
     version: 1,

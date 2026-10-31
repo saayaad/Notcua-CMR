@@ -224,3 +224,13 @@ A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, po
 - Correção: abas e conteúdo receberam áreas próprias do grid; Biblioteca e Fixados estão agrupados num contêiner de conteúdo.
 - Reteste: Playwright local clicou Biblioteca/Fixados e alternou todas as categorias em desktop e celular; teste passou 3/3 nos viewports.
 - Estado: corrigido localmente em 30/10/2026.
+
+## BUG-030 — Vídeo fictício do Espaço de Teste não abria no Chromium Playwright — corrigido em 30/10/2026
+
+- REQ: REQ-345.
+- Reprodução: Espaço de Teste → Biblioteca e atalhos → Vídeo de demonstração.
+- Resultado: Chromium recebeu HTTP 206, mas o MP4 permaneceu em readyState=0, com DEMUXER_ERROR_NO_SUPPORTED_STREAMS; canPlayType retornou vazio para H.264/AAC.
+- Causa: o Chromium Playwright instalado não inclui o decodificador proprietário usado pelo MP4 de demonstração.
+- Correção: criada amostra local WebM/VP8 e o Espaço de Teste passou a usá-la. O critério de reprodução permaneceu igual.
+- Reteste: REQ-345 passou 3/3; lacunas Sandbox passaram 24/24 em 3 viewports; suíte do servidor passou 220/220.
+- Estado: corrigido. O MP4 usado por outros cenários de mídia não foi alterado.

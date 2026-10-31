@@ -1,0 +1,17 @@
+{
+  "req": "REQ-346",
+  "result": "APROVADO",
+  "project": "desktop-1920",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "databaseWrites": 0,
+  "blockedExternal": [],
+  "blockedApiWrites": [
+    "POST /api/operations/directory/presence",
+    "POST /socket.io/",
+    "POST /socket.io/"
+  ],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "internalNoteVisible": true,
+  "recoveredMessageLabeledAsExample": true
+}

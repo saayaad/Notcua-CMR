@@ -83,6 +83,8 @@ const typeOverrides = {
   'REQ-327': 'C',
   'REQ-328': 'B', 'REQ-329': 'B', 'REQ-330': 'C', 'REQ-331': 'C', 'REQ-332': 'C',
   'REQ-333': 'B', 'REQ-334': 'C', 'REQ-335': 'B', 'REQ-336': 'B',
+  'REQ-337': 'B', 'REQ-338': 'B', 'REQ-339': 'B', 'REQ-343': 'B',
+  'REQ-345': 'B', 'REQ-346': 'B', 'REQ-351': 'B', 'REQ-352': 'B',
   'REQ-340': 'B', 'REQ-341': 'B', 'REQ-342': 'B', 'REQ-344': 'B',
   'REQ-347': 'B', 'REQ-348': 'B', 'REQ-349': 'B', 'REQ-350': 'B',
   'REQ-353': 'B', 'REQ-354': 'B', 'REQ-355': 'B', 'REQ-356': 'B',

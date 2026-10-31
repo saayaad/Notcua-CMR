@@ -1,0 +1,27 @@
+{
+  "req": "REQ-345",
+  "result": "APROVADO",
+  "project": "mobile-390",
+  "url": "http://127.0.0.1:5180/atendimento",
+  "databaseWrites": 0,
+  "blockedExternal": [
+    "https://apis.google.com"
+  ],
+  "blockedApiWrites": [
+    "POST /api/operations/directory/presence",
+    "POST /socket.io/",
+    "POST /socket.io/"
+  ],
+  "consoleErrors": [
+    "Failed to load resource: net::ERR_FAILED"
+  ],
+  "pageErrors": [],
+  "imageLoaded": true,
+  "videoReadyState": 4,
+  "mediaDiagnostics": {
+    "src": "http://127.0.0.1:5180/sandbox-media/video.webm",
+    "readyState": 4,
+    "errorCode": 0,
+    "canPlayWebm": "probably"
+  }
+}

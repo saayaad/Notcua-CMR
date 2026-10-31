@@ -97,7 +97,7 @@ test('REQ-546/REQ-555 alterna chaves só em cota diária e não confunde outros 
   const data: AgentSettings = {
     ...config,
     encryptedKey: cipher.encrypt(primary).toString('base64'),
-    fallbackKeys: [{ id: 'fallback-1', label: 'Projeto de teste B', enabled: true, encryptedKey: cipher.encrypt(fallback).toString('base64') }],
+    fallbackKeys: [{ id: 'fallback-1', label: 'Projeto de teste B', enabled: true, addedAt: '2026-10-30T00:00:00.000Z', encryptedKey: cipher.encrypt(fallback).toString('base64') }],
   };
   const guardedFetch = globalThis.fetch;
   try {
@@ -120,7 +120,7 @@ test('REQ-546/REQ-555 alterna chaves só em cota diária e não confunde outros 
       { status: 404, message: 'Model not found', reason: 'MODEL_NOT_FOUND' },
     ]) {
       await db.operationRecord.deleteMany({ where: { id: { startsWith: 'ai-key-quota:' } } });
-      const callsBefore = used.length;
+      const callsBefore: number = used.length;
       globalThis.fetch = async (_input, init) => {
         used.push(new Headers(init?.headers).get('x-goog-api-key') ?? '');
         return new Response(JSON.stringify({ error: { message: failure.message, details: [{ reason: failure.reason }] } }), { status: failure.status });

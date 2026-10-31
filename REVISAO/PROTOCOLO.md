@@ -206,3 +206,15 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Prova de reconexão WhatsApp foi feita apenas com QR fictício na interface; botão não acionado. PTT testado em WAV fictício/socket. Áudio de iPhone e resposta de follow-up são provas históricas do contato de teste, não autorização para novos envios.
 - Próximo lote: L-23, painéis encaixáveis e recuperação de controles (REQ-574 em diante). Produção continua somente leitura.
 - `scripts/iniciar-noctua-online.ps1` permanece fora de staging/commit.
+
+## Auditoria Sandbox e suporte — complemento REQ-337/338/339/343/345/346/351/352 — 30/10/2026
+
+- O módulo já tinha 21 REQs com prova. Foram fechadas as 8 lacunas sem teste vinculado, preservando os estados finais existentes.
+- e2e/sandbox-support-gaps.spec.ts: 24/24 em 1366×768, 1920×1080 e 390×844; REQ-345 repetida 3/3 após correção. Capturas e JSON individuais em REVISAO/evidencias/REQ-337/, REQ-338/, REQ-339/, REQ-343/, REQ-345/, REQ-346/, REQ-351/ e REQ-352/.
+- Suíte completa do servidor: 220/220. Banco .audit/noctua-audit.db preservado, sem reset; mutações de API e chamadas externas foram bloqueadas nos testes visuais.
+- BUG-030 corrigido: Chromium do Playwright não decodificava o MP4 H.264/AAC; exemplo trocado por WebM VP8 local sem mudar o resultado esperado.
+- API local 127.0.0.1:3340/atendimento respondeu HTTP 200. Console registrou somente falhas esperadas de https://apis.google.com, bloqueado pela isolação do teste; zero erros de página.
+- scripts/iniciar-noctua-online.ps1 permanece fora de staging/commit. Nenhuma publicação foi executada.
+- Próximo lote do protocolo: L-23, painéis encaixáveis e recuperação de controles, começando REQ-574.
+
+- Typecheck geral do repositório passou; foram ajustados apenas os tipos do fixture em pps/server/test/ai-feature.test.ts, sem mudar asserções ou resultados esperados.
