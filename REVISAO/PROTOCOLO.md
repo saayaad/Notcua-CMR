@@ -536,3 +536,10 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Próximos itens A VERIFICAR na ordem do ledger, ignorando REQ-126 bloqueada: REQ-461, REQ-462 e REQ-465. A inspeção visual já confirmou a ausência das três ações no editor; não salvar macros nem enviar mensagens.
 - Para fechar a condição “se suportado pelo conector”, falta um conector descartável de teste que declare suporte a convite nativo, vCard e lista interativa. O fake connector disponível não expõe essas capacidades e o código não define um contrato local para elas; não inferir compatibilidade de produção.
 - REQ-126 segue bloqueada aguardando a fonte `6.txt`. Nenhum novo teste foi executado nesta retomada e nenhuma evidência de REQ fechada foi alterada.
+
+## Decisão registrada — REQ-461/462/465 — 31/10/2026
+
+- Decisão do usuário: manter REQ-461, REQ-462 e REQ-465 como `A VERIFICAR`, com o motivo comum: “depende de conector de teste com suporte a convite, vCard e lista interativa; não implementado”. Não criar conector novo.
+- Atualizados os motivos no LEDGER.csv e na lista de pendências. Não foram executados testes nem alteradas evidências.
+- REQ-126 continua bloqueada pela falta de `6.txt`. Não há outros itens `A VERIFICAR` na ordem do ledger.
+- Arquivos protegidos e pastas de REQs fechadas permanecem sem staging ou alteração nesta ação.

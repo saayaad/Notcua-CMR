@@ -17,9 +17,9 @@ Fonte: LEDGER.csv, decisões do usuário e execução local de 31/10/2026. Esta 
 - REQ-223 — DECISÃO: inventário revalidado em 504 botões/70 arquivos, mas vínculo sintático não prova efeito. Pergunta: aprova homologação segura por módulo/amostragem ou fornecerá inventário versionado das 504 ações com resultado esperado de sucesso/erro e permissões?
 - REQ-401 — A, escolha do usuário; execução/verificação pendente, sem ampliar o escopo nesta atualização.
 - REQ-448 — A escolhida, mas a inspeção visual em 3 viewports não identifica quais botões ou qual mudança visual são o aceite. Pergunta: quais botões devem mudar e qual resultado visual define “melhorar”?
-- REQ-461 — B: convite nativo se suportado. UI visual 3/3 confirmou ausência da ação no editor; falta conector descartável para provar suporte, sem envio real.
-- REQ-462 — B: vCard se suportado. UI visual 3/3 confirmou ausência da ação no editor; falta conector descartável para provar suporte, sem envio real.
-- REQ-465 — B: lista interativa se suportada. UI visual 3/3 confirmou ausência da ação no editor; falta conector descartável para provar suporte, sem envio real.
+- REQ-461 — A VERIFICAR: depende de conector de teste com suporte a convite, vCard e lista interativa; não implementado.
+- REQ-462 — A VERIFICAR: depende de conector de teste com suporte a convite, vCard e lista interativa; não implementado.
+- REQ-465 — A VERIFICAR: depende de conector de teste com suporte a convite, vCard e lista interativa; não implementado.
 - REQ-466 — A: somente etiqueta. Teste falhou pois o editor oferece ações de etapa; BUG-035 registrado. Pergunta: separar tags de etapas (hoje ambas usam `Label`) ou aceitar que etiqueta que representa coluna mova o cartão?
 
 ## Retirados do escopo — 2 requisitos
