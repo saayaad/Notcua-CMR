@@ -273,3 +273,12 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Conferências externas pendentes estão agrupadas no REVISAO/CHECKLIST-MANUAL.md; nenhum envio real foi feito.
 - Próximo lote por módulo: Fluxos e CRM, REQ-054–075 (22 pendentes). Não resetar o banco nem refazer itens já completos.
 - scripts/iniciar-noctua-online.ps1 permanece modificado fora do lote e fora de staging; sem push ou publicação.
+
+## Ponto de retomada — 31/10/2026 — após Fluxos e CRM L-04
+
+- L-04 fechado no commit `3ea699a`: REQ-054–075, 22 COMPLETO-LOCAL. Playwright final 21/21 nos três viewports; evidências PNG/JSON individuais em `REVISAO/evidencias/REQ-054/`–`REQ-075/`.
+- LEDGER regenerado após o commit: 482 REQs com teste vinculado, 221 sem. Contagens: 454 COMPLETO, 133 COMPLETO-LOCAL, 24 PARCIAL; demais estados preservados.
+- Local continua em `127.0.0.1:5180` e `:3340`; ambos HTTP 200. `.audit/noctua-audit.db` sem alteração (2.039.808 bytes, `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`). Não resetar, não iniciar outro servidor, sem produção.
+- Mobile registra somente chamadas `apis.google.com` bloqueadas pelo isolamento; sem erros de página ou mutações não interceptadas. REQ-064/065 aguardam recebimento em aparelho descartável; conferir `CHECKLIST-MANUAL.md`. Modo teclado do Kanban permanece conferência opcional.
+- Próximo módulo por ordem: L-05 Backups, REQ-076–097. Antes de testes: confirmar status/log, front/API e metadados do `.audit`; testes graváveis devem usar SQLite temporário ou fixture, nunca resetar o banco.
+- Sem push/publicação. `scripts/iniciar-noctua-online.ps1` segue modificado e fora de staging.

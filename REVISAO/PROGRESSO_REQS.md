@@ -116,3 +116,5 @@
 - Limites: REQ-064/065 continuam locais; recebimento em aparelho WhatsApp descartável está em `CHECKLIST-MANUAL.md`. Um teste teclado-only de CRM teve resultado inconsistente entre viewports; REQ-073 foi validada pelo gesto de mouse descrito no critério e o modo teclado ficou como conferência manual opcional.
 - Nenhum arquivo funcional do app foi alterado. Próximo módulo por ordem do ledger: Backups, REQ-076–097. Sem reset, push, publicação ou escrita em produção. `scripts/iniciar-noctua-online.ps1` segue fora do commit.
 - Ledger regenerado após L-04: 482 REQs com teste vinculado, 221 sem.
+
+- Commit do lote L-04: `3ea699a`; ledger regenerado depois do commit.
