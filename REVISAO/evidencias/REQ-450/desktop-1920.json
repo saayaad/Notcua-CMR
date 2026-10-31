@@ -5,8 +5,8 @@
   "url": "http://127.0.0.1:5180/atendimento",
   "consoleErrors": [],
   "orderedCategories": [
-    "Categoria Beta Fixture 1793396657529",
-    "Categoria Alfa Fixture 1793396657529"
+    "Categoria Beta Fixture 1793442930032",
+    "Categoria Alfa Fixture 1793442930032"
   ],
   "database": ".audit/noctua-audit.db",
   "persistsAfterReload": true,

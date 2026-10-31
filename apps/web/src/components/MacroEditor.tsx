@@ -17,6 +17,7 @@ interface Action {
   command: string;
   target: string;
   presence: string;
+  asSticker: boolean;
 }
 const blank = (): Action => ({
   uiId: crypto.randomUUID(),
@@ -30,6 +31,7 @@ const blank = (): Action => ({
   command: 'WAIT',
   target: '',
   presence: 'none',
+  asSticker: false,
 });
 export function MacroEditor({
   initialId,
@@ -139,11 +141,11 @@ export function MacroEditor({
                 <button type="button" onClick={() => update(index, { type: 'TEXT' })}>
                   Texto
                 </button>
-                <button type="button" onClick={() => update(index, { type: 'ASSET' })}>
+                <button type="button" onClick={() => update(index, { type: 'ASSET', asSticker: false })}>
                   Imagem, vídeo, áudio ou documento
                 </button>
-                <button type="button" onClick={() => update(index, { type: 'ASSET' })}>
-                  PIX ou figurinha da biblioteca
+                <button type="button" onClick={() => update(index, { type: 'ASSET', asSticker: true })}>
+                  Figurinha WebP da biblioteca
                 </button>
               </details>
               <details>
@@ -238,11 +240,28 @@ export function MacroEditor({
               </p>
             )}
             {action.type === 'ASSET' && (
-              <ResourcePicker
-                library={library}
-                value={action.assetId}
-                onChange={(assetId) => update(index, { assetId })}
-              />
+              <>
+                <ResourcePicker
+                  library={library}
+                  value={action.assetId}
+                  onChange={(assetId) => update(index, { assetId })}
+                />
+                {library.assets.find((asset) => asset.id === action.assetId)?.file?.mimeType === 'image/webp' && (
+                  <label className="checkbox">
+                    <input
+                      type="checkbox"
+                      checked={action.asSticker}
+                      onChange={(event) => update(index, { asSticker: event.target.checked })}
+                    />
+                    Enviar este WebP como figurinha
+                  </label>
+                )}
+                {action.asSticker &&
+                  action.assetId &&
+                  library.assets.find((asset) => asset.id === action.assetId)?.file?.mimeType !== 'image/webp' && (
+                    <p className="notice">Escolha uma imagem WebP da Biblioteca para enviar como figurinha.</p>
+                  )}
+              </>
             )}
             {['ADD_LABEL', 'REMOVE_LABEL'].includes(action.type) && (
               <label>

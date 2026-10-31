@@ -512,6 +512,51 @@ test('REQ-044/REQ-047/REQ-048/REQ-460/467/468/469/470 macro combina resposta, et
   assert.equal(finalChat.status, 'OPEN');
   assert.equal(finalChat.pinned, false);
 });
+
+test('REQ-464 macro persiste e envia recurso WebP como figurinha', async () => {
+  const chat = await makeContact('5511777770464', 'Contato Figurinha');
+  const webp = Buffer.from('UklGRgAAAABXRUJQ', 'base64');
+  const file = await db.storedFile.create({
+    data: {
+      id: 'req-464-sticker-file',
+      sha256: '464'.padEnd(64, '0'),
+      filename: 'figurinha-ficticia.webp',
+      mimeType: 'image/webp',
+      byteLength: webp.byteLength,
+      data: webp,
+    },
+  });
+  const asset = await db.asset.create({
+    data: { id: 'req-464-sticker-asset', name: 'Figurinha fictícia', kind: 'MEDIA', fileId: file.id },
+  });
+  const created = await request(app)
+    .post('/api/operations/macros')
+    .send({
+      name: 'Macro com figurinha',
+      actions: [{ type: 'ASSET', assetId: asset.id, asSticker: true, delayMs: 0, composingMs: 0 }],
+    })
+    .expect(201);
+  const action = await db.macroAction.findFirstOrThrow({ where: { macroId: created.body.id } });
+  assert.equal((action.payload as { send: { kind: string } }).send.kind, 'sticker');
+  const loaded = await request(app).get(`/api/operations/macros/${created.body.id}`).expect(200);
+  assert.equal(loaded.body.actions[0].asSticker, true);
+  const png = await db.storedFile.create({
+    data: { id: 'req-464-png-file', sha256: '464-png'.padEnd(64, '0'), filename: 'imagem.png', mimeType: 'image/png', byteLength: 3, data: Buffer.from('png') },
+  });
+  const pngAsset = await db.asset.create({ data: { id: 'req-464-png-asset', name: 'PNG comum', kind: 'MEDIA', fileId: png.id } });
+  await request(app)
+    .post('/api/operations/macros')
+    .send({ name: 'Macro inválida', actions: [{ type: 'ASSET', assetId: pngAsset.id, asSticker: true }] })
+    .expect(422);
+  const before = socket.sends.length;
+  await sequences.enqueue(sessionId, chat.id, 'MACRO', created.body.id, 'req-464-sticker-run');
+  await sequences.flush();
+  assert.equal(socket.sends.length, before + 1);
+  const sent = socket.sends.at(-1)!;
+  assert.ok('sticker' in sent);
+  assert.equal(sent.mimetype, 'image/webp');
+  assert.deepEqual(Buffer.from(sent.sticker as Uint8Array), webp);
+});
 test('REQ-114/115/455/457/458: perfil completo e observações persistem; histórico exporta ZIP', async () => {
   const chat = await makeContact('5511777770008');
   const profile = {
@@ -564,13 +609,8 @@ test('encerramento automático não fecha conversa quando a última mensagem é 
 });
 
 test('REQ-402/REQ-403: resumo às 08h prioriza conversa aguardando e intenção de fechamento uma vez ao dia', async () => {
-  const now = new Date();
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23',
-  }).formatToParts(now);
-  const part = (type: string) => parts.find((entry) => entry.type === type)?.value ?? '';
-  assert.ok(Number(part('hour')) >= 8, 'teste exige horário local após 08h');
-  const day = `${part('year')}-${part('month')}-${part('day')}`;
+  const now = new Date('2026-10-31T11:00:00.000Z');
+  const day = '2026-10-31';
   await putRecord(db, 'night-summary:last-run', 'STATE', { day: '2000-01-01' });
   await putRecord(db, 'settings:business', 'SETTINGS', {});
   const awaiting = await makeContact('5511777770331', 'Lead aguardando fictício');
@@ -580,7 +620,7 @@ test('REQ-402/REQ-403: resumo às 08h prioriza conversa aguardando e intenção 
   await db.conversation.update({ where: { id: awaiting.id }, data: { lastMessageAt: now } });
   await db.chatMessage.create({ data: { conversationId: closing.id, direction: 'OUTBOUND', status: 'SENT', text: 'Enviei o preço e prazo fictícios.', sentAt: earlier } });
   await db.conversation.update({ where: { id: closing.id }, data: { lastMessageAt: earlier } });
-  const business = new BusinessWorker(db, whatsapp);
+  const business = new BusinessWorker(db, whatsapp, () => now);
   await business.flush();
   const key = `night-summary:${sessionId}:${day}`;
   const notice = await record<{ title?: string; text?: string }>(db, key, {});

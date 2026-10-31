@@ -11,6 +11,7 @@ export class BusinessWorker {
   constructor(
     private db: PrismaClient,
     private whatsapp: WhatsappService,
+    private readonly now: () => Date = () => new Date(),
   ) {}
   start() {
     this.schedule();
@@ -87,7 +88,7 @@ export class BusinessWorker {
     }
   }
   private async nightSummary() {
-    const now = new Date();
+    const now = this.now();
     const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' }).formatToParts(now);
     const part = (type: string) => parts.find((item) => item.type === type)?.value ?? '';
     if (Number(part('hour')) < 8) return;

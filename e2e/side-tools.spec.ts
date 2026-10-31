@@ -314,7 +314,23 @@ test('REQ-454/REQ-460/REQ-471/REQ-473 macro combina ações pelo painel lateral 
   await saveEvidence(page, ['REQ-454', 'REQ-460', 'REQ-467', 'REQ-468', 'REQ-469', 'REQ-470', 'REQ-471', 'REQ-473'], info, { macroEditorOpenedFromToolsPanel: true, actionsComposed: ['TEXT', 'CLEAR_LABELS', 'WAIT/recording', 'ARCHIVE', 'UNARCHIVE', 'PIN', 'UNPIN', 'MARK_UNREAD', 'TRANSFER'], apiWriteIntercepted: true, noRealMacroSavedOrSent: true });
 });
 
-test('REQ-464 seletor da macro não oferece tipo figurinha', async ({ page }, info) => {
+test('REQ-464 macro seleciona WebP, persiste modo figurinha e não envia ao salvar', async ({ page }, info) => {
+  await page.route('**/api/attendance/library', async (route) => {
+    const response = await route.fetch();
+    const body = await response.json() as Record<string, any>;
+    body.assets = [...body.assets, {
+      id: 'req-464-sticker-asset', name: 'Figurinha fictícia', kind: 'MEDIA', text: null, caption: null,
+      fileId: 'req-464-sticker-file', isFavorite: false, isPtt: false, isPtv: false, asViewOnce: false,
+      file: { id: 'req-464-sticker-file', filename: 'figurinha-ficticia.webp', mimeType: 'image/webp', byteLength: 12 },
+    }];
+    return route.fulfill({ response, json: body });
+  });
+  let savedMacro: Record<string, any> | undefined;
+  await page.route('**/api/operations/macros', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    savedMacro = route.request().postDataJSON() as Record<string, any>;
+    return route.fulfill({ status: 201, json: { id: 'req-464-macro', name: savedMacro.name } });
+  });
   await openConversation(page);
   await ensureToolsOpen(page);
   const tools = page.getByLabel('Ferramentas de atendimento');
@@ -322,14 +338,21 @@ test('REQ-464 seletor da macro não oferece tipo figurinha', async ({ page }, in
   await tools.locator('.workbench-create').getByRole('button', { name: 'Macros', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByText('Enviar mensagem', { exact: true }).click();
-  await dialog.getByRole('button', { name: 'PIX ou figurinha da biblioteca', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Figurinha WebP da biblioteca', exact: true }).click();
   const category = dialog.getByLabel('Categoria do recurso');
   await expect(category).toBeVisible();
   await category.click();
-  const assetKinds = page.getByRole('option');
-  await expect(assetKinds.filter({ hasText: 'Imagem / vídeo' })).toBeVisible();
-  expect((await assetKinds.allTextContents()).join(' ')).not.toContain('Figurinha');
-  await saveEvidence(page, ['REQ-464'], info, { result: 'DEFEITO', reproduction: 'O atalho diz figurinha, mas o seletor oferece só Texto, Áudio, Imagem/vídeo e Documento.', noStickerKind: true, noMessageSent: true });
+  await page.getByRole('option', { name: 'Imagem / vídeo', exact: true }).click();
+  const resource = dialog.getByLabel('Resposta da etapa');
+  await resource.click();
+  await page.getByRole('option', { name: /Figurinha fictícia.*webp/ }).click();
+  await expect(dialog.getByLabel('Enviar este WebP como figurinha')).toBeChecked();
+  await dialog.getByLabel('Nome da macro').fill('Macro de figurinha fictícia');
+  await dialog.getByRole('button', { name: 'Salvar macro', exact: true }).click();
+  await expect.poll(() => savedMacro?.actions?.[0]).toMatchObject({
+    type: 'ASSET', assetId: 'req-464-sticker-asset', asSticker: true,
+  });
+  await saveEvidence(page, ['REQ-464'], info, { stickerWebpSelected: true, asStickerPersistedInRequest: true, apiWriteIntercepted: true, noMessageSent: true });
 });
 
 test('REQ-474 coruja recolhe e expande o menu principal', async ({ page }, info) => {

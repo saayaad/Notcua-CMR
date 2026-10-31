@@ -58,6 +58,7 @@ export function macroRoutes(db: PrismaClient) {
               command: command.default('WAIT'),
               target: z.string().max(200).default(''),
               presence: z.enum(['none', 'composing', 'recording']).default('none'),
+              asSticker: z.boolean().default(false),
             }),
           )
           .min(1)
@@ -103,6 +104,8 @@ export function macroRoutes(db: PrismaClient) {
               include: { file: true },
             });
             if (!asset) throw new AppError(422, 'Escolha um recurso da biblioteca.');
+            if (action.asSticker && (asset.kind !== 'MEDIA' || asset.file?.mimeType !== 'image/webp'))
+              throw new AppError(422, 'A figurinha deve ser uma imagem WebP da Biblioteca.');
             text = asset.text ?? asset.caption ?? '';
             fileId = asset.fileId ?? undefined;
             type = asset.kind === 'MESSAGE' ? 'TEXT' : 'MEDIA';
@@ -115,7 +118,9 @@ export function macroRoutes(db: PrismaClient) {
               editor: action,
               send: {
                 kind:
-                  asset.kind === 'MESSAGE'
+                  action.asSticker
+                    ? 'sticker'
+                    : asset.kind === 'MESSAGE'
                     ? 'text'
                     : asset.kind === 'AUDIO'
                       ? 'audio'

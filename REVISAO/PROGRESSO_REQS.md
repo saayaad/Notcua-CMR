@@ -135,3 +135,11 @@
 - Prova visual: chat e Biblioteca usaram `/api/attendance/files` com salvamento/envio interceptados. `e2e/ai-media.spec.ts`: 24/24 nas três viewports; `.audit/playwright-results/.last-run.json` registrou `passed`.
 - O primeiro reteste tentou validar um frame bruto por pipe; no Windows, `spawnSync` reportou `EOF` mesmo com FFmpeg em código 0. A validação passou a ler o MP4 em arquivo temporário e passou sem mudar o critério.
 - `.audit/noctua-audit.db` permaneceu com 2.039.808 bytes e `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`. Nenhum envio, conta, provedor ou produção foi usado.
+
+## Correção funcional — REQ-464 / BUG-026 — 31/10/2026
+
+- REQ-464 passou de DEFEITO para COMPLETO. A macro agora oferece figurinha WebP, persiste `asSticker` e o servidor grava `send.kind=sticker`; arquivos não-WebP são rejeitados nesse modo.
+- Teste de servidor executou a macro com SQLite e socket fictícios: bytes WebP chegaram no campo `sticker`, sem WhatsApp real. Regressão `operations.test.ts`: 62/62.
+- Playwright selecionou o recurso WebP e salvou a ação nas três viewports, com POST interceptado e zero envio. Regressão `side-tools.spec.ts`: 30/30; zero erros de console.
+- A regressão inicialmente falhou em REQ-402/403 porque o teste dependia do relógio real estar após 08h. `BusinessWorker` recebeu relógio opcional apenas para teste; o cenário passou com 08h fixas sem alterar o relógio padrão de produção.
+- Front/API responderam HTTP 200; `.audit/noctua-audit.db` permaneceu em 2.039.808 bytes e `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`. Sem produção, envio, reset ou nova dependência.

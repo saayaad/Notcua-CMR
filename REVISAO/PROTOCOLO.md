@@ -299,3 +299,11 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Banco `.audit/noctua-audit.db` intacto; testes do servidor usaram SQLite temporário e mutações visuais foram interceptadas. Sem produção, envio ou chave real.
 - Próximas pendências não finais: REQ-408/409 ausentes, REQ-419–422 desconectadas, REQ-425 defeito de cache semântico e REQ-430 ausente; seguir pelo próximo item corrigível sem chave real e registrar decisões/ausências conforme o protocolo.
 - `scripts/iniciar-noctua-online.ps1` permanece fora de staging/commit. Sem push ou publicação.
+
+## Ponto de retomada — 31/10/2026 — após correção REQ-464
+
+- BUG-026 corrigido: macros aceitam mídia WebP como figurinha por meio de `asSticker`; servidor valida MIME, persiste `send.kind=sticker` e a execução usa o campo sticker do conector fictício. REQ-464 agora está COMPLETO.
+- Regressões: `operations.test.ts` 62/62; `side-tools.spec.ts` 30/30 nas três viewports; typecheck aprovado. Salvamento visual interceptado e nenhum envio real.
+- A falha incidental de REQ-402/403 foi corrigida no teste por injeção de relógio opcional no `BusinessWorker`; produção continua usando `new Date()` por padrão.
+- Banco `.audit/noctua-audit.db` intacto; front/API existentes HTTP 200. Próximo defeito aberto: REQ-425/BUG-025, cache “semântico” apenas lexical; IA externa continua fora do escopo, mas a implementação local pode ser investigada.
+- `scripts/iniciar-noctua-online.ps1` permanece fora de staging/commit. Sem push ou publicação.

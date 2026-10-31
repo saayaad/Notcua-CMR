@@ -1,10 +1,11 @@
 {
   "req": "REQ-464",
-  "result": "DEFEITO",
+  "result": "APROVADO",
   "project": "desktop-1366",
   "url": "http://127.0.0.1:5180/atendimento",
   "consoleErrors": [],
-  "reproduction": "O atalho diz figurinha, mas o seletor oferece só Texto, Áudio, Imagem/vídeo e Documento.",
-  "noStickerKind": true,
+  "stickerWebpSelected": true,
+  "asStickerPersistedInRequest": true,
+  "apiWriteIntercepted": true,
   "noMessageSent": true
 }

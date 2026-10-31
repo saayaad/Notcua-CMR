@@ -187,15 +187,15 @@ A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, po
 - Validação: teste do cache confirma revisão, expiração, isolamento e reutilização para equivalência lexical; não comprova compreensão semântica geral.
 - Estado: defeito aberto em 30/10/2026. Nenhum serviço ou modelo externo foi ativado.
 
-## BUG-026 — Macro anuncia figurinha, mas envia apenas recurso de imagem
+## BUG-026 — Macro anunciava figurinha, mas enviava apenas recurso de imagem — corrigido em 31/10/2026
 
 - REQ: REQ-464.
 - Reprodução: Atendimento → Ferramentas → Criar → Macros → Enviar mensagem → “PIX ou figurinha da biblioteca”.
-- Resultado: a ação muda para `ASSET`, mas o seletor de recursos não oferece tipo Figurinha. A biblioteca classifica mídia sem modalidade de figurinha e `macros.routes.ts` converte mídia em imagem.
-- Causa: não há tipo de recurso figurinha nem payload dedicado de figurinha no editor/execução da macro; o texto do atalho sugere suporte inexistente.
-- Reteste: Playwright local reproduziu o seletor sem opção Figurinha em Chromium desktop e mobile; nenhum envio foi feito.
-- Correção: pendente; demanda suporte explícito ao tipo sticker no modelo de recurso, seletor e dispatch, ou remoção do texto enganoso.
-- Estado: defeito aberto em 30/10/2026.
+- Resultado anterior: a ação mudava para `ASSET`, mas o editor não distinguia imagem comum de figurinha; o servidor convertia toda mídia visual não-vídeo em `image`.
+- Causa: faltava a modalidade `asSticker` na ação editável e a validação WebP no servidor. O recurso pode continuar classificado como mídia; a ação decide se o WebP será enviado como imagem ou figurinha.
+- Correção: o editor oferece “Figurinha WebP da biblioteca”, conserva a escolha após selecionar o recurso e envia `asSticker`. O servidor aceita somente mídia `image/webp`, rejeita PNG/JPEG nesse modo e grava `send.kind=sticker`.
+- Reteste: `operations.test.ts` persistiu, releu e executou a macro; o socket fictício recebeu bytes WebP em `sticker`. Playwright salvou a ação em 1366×768, 1920×1080 e 390×844 sem envio. Regressões: operações 62/62, ferramentas laterais 30/30 e typecheck aprovado.
+- Estado: corrigido localmente. Evidências em `REVISAO/evidencias/REQ-464/`.
 
 ## BUG-027 — Grid do HUD impedia reduzir o painel lateral a 15 rem
 
