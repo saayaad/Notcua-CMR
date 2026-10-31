@@ -1,52 +1,52 @@
-# Pendências que exigem decisão ou definição
+# Pendências e decisões aplicadas
 
-Fonte: `REVISAO/LEDGER.csv`, consultado em 31/10/2026, após registrar decisão e prova existente de REQ-036. Sem testes novos nem alteração de código.
+Fonte: LEDGER.csv e decisões do usuário registradas em 31/10/2026. Nesta atualização não rodei testes nem alterei código. Os estados abaixo distinguem decisão registrada de execução/verificação ainda pendente.
 
-## DECISÃO — 23 requisitos
+## Decisões restantes ou dependentes de artefato — 5 requisitos
 
-Decida os critérios/escopos abaixo para que os itens possam ser especificados e verificados. REQ-523, REQ-527, REQ-540, REQ-567 e REQ-573 já têm decisão registrada; seguem listados como DECISÃO porque dependem de decisão futura ou do artefato indicado.
+- REQ-523 — decisão anterior: não implementar hospedagem.
+- REQ-527 — decisão anterior: não conectar contas externas nem tocar em produção.
+- REQ-540 — decisão anterior: não tocar em Firebase/configuração de produção.
+- REQ-567 — adiada; política de pausa e horários de envio não definidos.
+- REQ-573 — Parte 8 não fornecida; depende do envio futuro do texto.
 
-- REQ-126 — Quais funções ou capturas da fonte 6.txt ainda devem ser aceitas por este ID sem duplicar as outras REQs?
-- REQ-194 — Quais rotas, resoluções e tolerância em pixels formam o aceite fechado?
-- REQ-195 — Qual padrão visual é normativo e quais componentes/telas entram na homologação?
-- REQ-196 — Quais elementos animar e quais duração, easing e regra `prefers-reduced-motion` aplicar?
-- REQ-197 — Aprovar um inventário versionado de controles e matriz ação/sucesso/erro?
-- REQ-223 — Confirmar um inventário por módulo com critérios próprios antes de homologar globalmente “todos os botões”?
-- REQ-401 — Especificar eventos de origem, endpoint/destinatário e métricas esperadas?
-- REQ-448 — Quais botões devem mudar de aparência/rótulo e qual resultado visual espera?
-- REQ-453 — Quais mudanças de layout quer e quais funções devem permanecer visíveis?
-- REQ-455 — Telefone deve ser editável na ficha apesar de ser a identidade do conector?
-- REQ-457 — Valor da ficha sincroniza com a oportunidade no CRM ou é campo independente?
-- REQ-461 — Link de convite em texto ou convite nativo para grupo?
-- REQ-462 — Compartilhar contato como vCard ou como texto com dados?
-- REQ-463 — Imagem/legenda com URL atende ou precisa banner clicável específico?
-- REQ-465 — Lista interativa nativa ou lista textual formatada?
-- REQ-466 — Limpar etiqueta, etapa do funil ou negócio associado?
-- REQ-483 — Quer duas barras ao mesmo tempo ou apenas escolher uma posição?
-- REQ-487 — Quer duas barras ao mesmo tempo ou apenas escolher uma posição?
-- REQ-523 — Decisão já registrada: não implementar hospedagem; nenhuma publicação ou mudança de infraestrutura.
-- REQ-527 — Decisão já registrada: não conectar contas externas; integrações e produção permanecem intocadas.
-- REQ-540 — Decisão já registrada: não tocar em Firebase/configuração de produção; `authMode` local permanece.
-- REQ-567 — Adiado por decisão do usuário; se retomado, definir política de pausa, horários, filas e comportamento de retomada.
-- REQ-573 — A Parte 8 não foi fornecida; enviar o texto para especificar e testar o item.
+## Decisões registradas; execução/verificação pendente — 23 requisitos
 
-## AUSENTE — 3 requisitos
+- REQ-126 — B, escolha do usuário. A fonte `6.txt` continua ausente; a opção foi registrada sem presumir conteúdo não disponível.
+- REQ-194 — Telas Atendimento, CRM, Campanhas e Configurações; viewports 1366×768, 1920×1080 e 390×844; tolerância de 2 px.
+- REQ-195 — A: usar o visual atual do app como referência.
+- REQ-196 — A, escolha do usuário; execução/verificação pendente, sem acrescentar parâmetros que não constam nesta decisão.
+- REQ-197 — A, escolha do usuário; execução/verificação pendente, sem ampliar o escopo nesta atualização.
+- REQ-223 — A, escolha do usuário; execução/verificação pendente, sem ampliar o escopo nesta atualização.
+- REQ-401 — A, escolha do usuário; execução/verificação pendente, sem ampliar o escopo nesta atualização.
+- REQ-448 — A, escolha do usuário; execução/verificação pendente, sem ampliar o escopo nesta atualização.
+- REQ-453 — A: manter busca, enviar e anexar visíveis.
+- REQ-455 — B: telefone editável na ficha; escolha do usuário com risco registrado. Execução pendente.
+- REQ-457 — A: valor único para ficha/oportunidade. Execução pendente.
+- REQ-461 — B: convite nativo para grupo; escolha do usuário com ressalva de suporte do conector. Execução pendente.
+- REQ-462 — B: vCard; escolha do usuário com ressalva de suporte do conector. Execução pendente.
+- REQ-463 — A: link na legenda. Execução pendente.
+- REQ-465 — B: lista interativa; escolha do usuário com ressalva de suporte do conector. Execução pendente.
+- REQ-466 — A: ação rápida atua somente sobre etiqueta. Execução pendente.
+- REQ-483 — A: uma posição por vez. Execução/verificação pendente.
+- REQ-487 — A: uma posição por vez. Execução/verificação pendente.
+- REQ-419 — B: remover o controle de economia de campaigns/A-B. Controle ainda não removido.
+- REQ-420 — B: remover o controle de training. Controle ainda não removido.
+- REQ-421 — B: remover o controle de receipts. Controle ainda não removido.
+- REQ-422 — B: remover o controle de dailyDigest. Controle ainda não removido.
+- REQ-430 — A: manter busca por palavras; sem adicionar índice vetorial. Verificação do código: REQ-425 não atende por si só à REQ-430. REQ-425 consulta cache semântico de respostas aprovadas por embeddings locais; `ai.service.ts` também ranqueia `AI_KNOWLEDGE` e trechos de `settings.knowledge` por palavras. O histórico é limitado às mensagens recentes/resumo, sem índice vetorial de histórico. O resultado fica pendente de validação específica da busca lexical; nenhuma função foi implementada nesta atualização.
 
-Decida se deseja implementar a função ausente em ambiente local ou manter a ausência e retirar/substituir o requisito; não foi feita alteração.
+## Retirados do escopo — 2 requisitos
 
-- REQ-408 — Distribuição multiconexão e failover configurável para campanhas não existem.
-- REQ-409 — Distribuição multiconexão e failover configurável para campanhas não existem.
-- REQ-430 — O ledger registra embeddings locais ausentes e proíbe chamar serviço externo.
+- REQ-408 — B: retirar do escopo; cancelado por decisão do usuário.
+- REQ-409 — B: retirar do escopo; cancelado por decisão do usuário.
 
-## DESCONECTADO — 4 requisitos
+## Contagens atuais após atualização documental
 
-Decida, para cada controle sem efeito, se deve ser conectado ao consumidor correspondente ou removido da interface.
+- DECISÃO/artefato pendente: 5.
+- A VERIFICAR: 23.
+- AUSENTE: 0 (REQ-430 reclassificada para verificação da busca por palavras; REQ-408/409 canceladas).
+- DESCONECTADO: 0 (REQ-419–422 têm decisão de remoção, ainda não executada).
+- SUBSTITUÍDO OU CANCELADO: 2.
 
-- REQ-419 — Flag `campaigns/A-B` salva, mas não altera o sistema consumidor.
-- REQ-420 — Flag `training` salva, mas não altera o sistema consumidor.
-- REQ-421 — Flag `receipts` salva, mas não altera o sistema consumidor.
-- REQ-422 — Flag `dailyDigest` salva, mas não altera o sistema consumidor.
-
-## A VERIFICAR — 0 requisitos
-
-Nenhum requisito está com esse estado no LEDGER.csv; nenhuma decisão do usuário é necessária neste grupo.
+Nenhuma função nova foi implementada, nenhum teste foi executado e nenhuma evidência de REQ fechada foi alterada.
