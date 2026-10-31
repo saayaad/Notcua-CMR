@@ -563,3 +563,9 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Reexecução dos testes dos REQs fechados foi evitada. Os resultados e screenshots existentes foram somente lidos. Mutações de API no teste novo foram bloqueadas/mockadas; `.audit/noctua-audit.db` manteve o mesmo tamanho e horário. O teste não gravou no banco.
 - Primeira tentativa do teste focal falhou por bloquear a chamada automática de presença; a causa foi corrigida no harness, que passou a mockar presença sem persistência. Duas falhas de sintaxe no harness durante a edição foram corrigidas; execução final passou 3/3. Nenhum bug de produto identificado; não foi alterada expectativa.
 - REQ-126 fechada como `COMPLETO` pelo critério substituto, com a ressalva documental da fonte original ausente. Evidências agregadas em `REVISAO/evidencias/REQ-126/operation-acceptance-*`; o recibo `blocked-missing-source.json` é preservado como histórico.
+
+## Ordem de retomada — REQ-126 ao final — 31/10/2026
+
+- REQ-126 está `COMPLETO-LOCAL` pelo critério substituto aprovado. Não retomar agora; voltar após os demais A VERIFICAR para revisão final e confirmação da ressalva de que a fonte `6.txt` original está ausente e a equivalência integral não foi comprovada.
+- REQ-461, REQ-462 e REQ-465 são os únicos outros itens `A VERIFICAR` no LEDGER.csv. Permanecem bloqueados pelo motivo registrado: “depende de conector de teste com suporte a convite, vCard e lista interativa; não implementado”. Nenhum outro item A VERIFICAR sem dependência externa foi encontrado.
+- Ajuste de estado/observação de REQ-126 no LEDGER.csv foi commitado e enviado em `eb21527`; protocolo atualizado separadamente.
