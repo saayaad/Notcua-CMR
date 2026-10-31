@@ -1,0 +1,9 @@
+{
+  "req": "REQ-573",
+  "date": "2026-10-31",
+  "result": "DECISAO",
+  "finding": "O texto da Parte 8 não foi fornecido nesta auditoria.",
+  "userDecision": "O item depende de envio futuro da Parte 8 pelo usuário.",
+  "implementation": "nao iniciada",
+  "test": "nao executado: especificacao ausente"
+}

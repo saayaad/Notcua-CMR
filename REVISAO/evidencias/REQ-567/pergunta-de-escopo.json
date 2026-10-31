@@ -1,1 +1,8 @@
-Pendente decisão sobre horários de sono, filas abrangidas e se retomada automática é permitida; nenhuma política de envios foi alterada.
+{
+  "req": "REQ-567",
+  "date": "2026-10-31",
+  "result": "DECISAO",
+  "userDecision": "Adiado; nenhuma política de pausa nem horários de envio foram definidos.",
+  "question": "Quais horários e quais tipos de envio devem ficar pausados enquanto você dorme, e o app deve retomar automaticamente?",
+  "implementation": "nenhuma política alterada"
+}

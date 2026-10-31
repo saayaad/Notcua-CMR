@@ -399,3 +399,10 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - REQ-573 continua adiada, conforme decisão anterior do usuário, até o envio da Parte 8. Não há artefato para especificar ou testar.
 - Depois, REQ-680 segue bloqueada por aprovação do proprietário para a semântica e efeitos das reações. Nenhuma implementação de reação foi iniciada.
 - REQ-686/process.json e `scripts/iniciar-noctua-online.ps1` continuam fora do staging/commit. API/front locais responderam HTTP 200; banco .audit preservado.
+
+
+## Decisões registradas — Qualidade e documentação — 31/10/2026
+
+- REQ-567: decisão do usuário registrada como `DECISÃO`, adiada. Não definir política de pausa, horários, filas ou retomada automática. Nenhum fluxo/envio foi alterado.
+- REQ-573: a Parte 8 não foi fornecida; registrar como `DECISÃO` dependente de envio futuro do texto. Não presumir escopo nem declarar conclusão. Recibo em `REVISAO/evidencias/REQ-573/decisao-parte-8.json`.
+- Próximo módulo não fechado independente dessas duas decisões: Revisão e menu contextual, REQ-680. Conferir apenas o que já pode ser verificado localmente; aprovação do proprietário ainda é necessária antes de alterar ações, permissões ou persistência de reações.

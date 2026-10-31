@@ -216,3 +216,10 @@
 - REQ-523, REQ-527 e REQ-540 registradas como DECISÃO conforme instrução; hospedagem, contas externas e Firebase não foram alterados.
 - Revisão local do módulo Qualidade: não foi encontrada política global de horário de sono; regras de pausa existentes são por fluxo/campanha/sequência. REQ-567 segue à espera de horários, escopo de envios e retomada automática; REQ-573 aguarda a Parte 8 previamente adiada.
 - REQ-680 continua aguardando aprovação. Nenhum teste com comportamento externo foi iniciado. Próximo avanço depende dessas escolhas/artefatos do usuário.
+
+
+## Qualidade e documentação — decisões — 31/10/2026
+
+- REQ-567: DECISÃO adiada; sem horários ou política de pausa.
+- REQ-573: DECISÃO; texto da Parte 8 não fornecido, depende de envio futuro. Recibo criado em `REVISAO/evidencias/REQ-573/decisao-parte-8.json`.
+- Próximo lote independente: REQ-680 em Revisão e menu contextual, sujeito à aprovação já indicada no protocolo.
