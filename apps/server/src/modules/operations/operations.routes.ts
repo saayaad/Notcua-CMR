@@ -51,6 +51,7 @@ function moneyToCents(value?: string) {
 }
 const profile = z.object({
   name: z.string().min(1).max(100).optional(),
+  phoneNumber: z.string().regex(/^\d{8,15}$/).optional(),
   email: z.string().max(200).optional(),
   gender: z.string().max(40).optional(),
   birthday: z.string().max(30).optional(),

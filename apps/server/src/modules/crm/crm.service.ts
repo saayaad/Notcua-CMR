@@ -6,6 +6,7 @@ import { AppError } from '../../shared/errors.js';
 import { SerialQueue } from '../../shared/serial-queue.js';
 import type { WhatsappService } from '../whatsapp/whatsapp.service.js';
 import { queueLabelChange, type LabelChange } from '../whatsapp/label-changes.js';
+import { json } from '../backups/validation.js';
 
 const id = z.string().min(1).max(200);
 export const boardQuery = z.object({
@@ -275,7 +276,7 @@ export class CrmService {
       const result = await this.db.$transaction(async (tx) => {
         const chat = await tx.conversation.findFirst({
           where: { id: conversationId, sessionId, contact: { isGroup: false } },
-          include: { opportunity: true },
+          include: { opportunity: true, contact: true },
         });
         if (!chat) throw new AppError(404, 'Negociação não encontrada nesta conexão.');
         const previous = chat.opportunity;
@@ -289,11 +290,17 @@ export class CrmService {
           lostAt:
             input.status === 'LOST' ? (previous?.status === 'LOST' ? previous.lostAt : new Date()) : null,
         };
-        return tx.crmOpportunity.upsert({
+        const opportunity = await tx.crmOpportunity.upsert({
           where: { conversationId },
           create: { conversationId, ...data, version: 1 },
           update: { ...data, version: { increment: 1 } },
         });
+        const metadata = {
+          ...(chat.contact.metadata as Record<string, unknown>),
+          dealValue: `${(input.valueInCents / 100).toFixed(2).replace('.', ',')}`,
+        };
+        await tx.contact.update({ where: { id: chat.contactId }, data: { metadata: json(metadata) } });
+        return opportunity;
       });
       this.whatsapp.notify(sessionId, 'chats');
       return result;

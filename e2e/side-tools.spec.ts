@@ -82,7 +82,8 @@ test.beforeEach(async ({ page }) => {
     const mergeContact = (contact: Record<string, any>) => ({
       ...contact,
       ...(typeof profilePatch.name === 'string' ? { name: profilePatch.name } : {}),
-      metadata: { ...(contact.metadata ?? {}), ...profilePatch },
+      ...(typeof profilePatch.phoneNumber === 'string' ? { phoneNumber: profilePatch.phoneNumber } : {}),
+      metadata: { ...(contact.metadata ?? {}), ...Object.fromEntries(Object.entries(profilePatch).filter(([key]) => key !== 'phoneNumber')) },
     });
     if (Array.isArray(body.items)) {
       body.items = body.items.map((item: Record<string, any>) => item.id === 'audit-conversation-1'
@@ -157,17 +158,25 @@ test('REQ-448/REQ-453 registra superfície atual e limite do pedido visual', asy
   const tools = page.getByLabel('Ferramentas de atendimento');
   await expect(tools).toBeVisible();
   await expect(tools.getByRole('button', { name: 'Biblioteca' })).toBeVisible();
+  const librarySearch = tools.getByRole('textbox', { name: 'Buscar em toda a Biblioteca' });
+  const attachButton = page.getByRole('button', { name: 'Anexar arquivo' });
+  const sendButton = page.getByRole('button', { name: 'Enviar mensagem' });
+  await expect(librarySearch).toBeVisible();
+  await expect(attachButton).toBeVisible();
+  await expect(sendButton).toBeVisible();
   const unnamedButtons = await page.locator('button:visible').evaluateAll((buttons) => buttons
     .filter((button) => ![button.getAttribute('aria-label'), button.getAttribute('title'), button.textContent]
       .some((value) => value?.trim()))
     .map((button) => button.outerHTML.slice(0, 180)));
   expect(unnamedButtons).toEqual([]);
-  await saveEvidence(page, ['REQ-448', 'REQ-453'], info, {
+  await saveEvidence(page, ['REQ-448'], info, {
     result: 'DECISÃO', currentToolsPanelVisible: true, buttonsHaveAccessibleLabels: true,
-    questions: {
-      'REQ-448': 'Quais botões devem mudar de aparência ou rótulo, e qual exemplo visual define “melhorar”?',
-      'REQ-453': 'Quais mudanças de layout quer e quais funções do painel lateral devem permanecer visíveis?',
-    },
+    question: 'Quais botões devem mudar de aparência ou rótulo, e qual exemplo visual define “melhorar”?',
+  });
+  await saveEvidence(page, ['REQ-453'], info, {
+    result: 'APROVADO', searchVisible: true, attachVisible: true, sendVisible: true,
+    noSearchQueryOrMessageSubmitted: true,
+    note: 'A busca fica na Biblioteca lateral; anexar e enviar permanecem visíveis no compositor da conversa. Controles de envio podem estar desabilitados quando desconectado.',
   });
 });
 
@@ -220,16 +229,17 @@ test('REQ-482 lista de ferramentas aceita reordenação com setas e mantém orde
   await saveEvidence(page, ['REQ-482'], info, { firstBefore, firstAfter, orderPersistedAfterReload: true, namedArrowControls: true, fixtureApi: true });
 });
 
-test('REQ-455/REQ-457/REQ-458 ficha fictícia salva perfil e negócio e reaparece após reload', async ({ page }, info) => {
+test('REQ-455/REQ-457 ficha fictícia salva telefone e negócio e reaparece após reload', async ({ page }, info) => {
   await openConversation(page);
   await page.locator('.client-name-button').click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('heading', { name: 'Informações do cliente' })).toBeVisible();
   const profileValues = {
-    name: 'Perfil de Auditoria Fixture', email: 'perfil.audit@example.com', gender: 'Feminino',
+    name: 'Perfil de Auditoria Fixture', phoneNumber: '5511999999902', email: 'perfil.audit@example.com', gender: 'Feminino',
     birthday: '1992-04-12', language: 'pt-BR',
   };
   await dialog.getByLabel('Nome', { exact: true }).fill(profileValues.name);
+  await dialog.getByLabel('Telefone', { exact: true }).fill(profileValues.phoneNumber);
   await dialog.getByLabel('E-mail', { exact: true }).fill(profileValues.email);
   await dialog.getByLabel('Sexo / gênero', { exact: true }).fill(profileValues.gender);
   await dialog.getByLabel('Data de nascimento', { exact: true }).fill(profileValues.birthday);
@@ -254,10 +264,10 @@ test('REQ-455/REQ-457/REQ-458 ficha fictícia salva perfil e negócio e reaparec
   const reopened = page.getByRole('dialog');
   await reopened.getByRole('button', { name: 'Negócio', exact: true }).click();
   for (const [name, value] of Object.entries(businessValues)) await expect(reopened.locator(`[name="${name}"]`)).toHaveValue(value);
-  await saveEvidence(page, ['REQ-457', 'REQ-458'], info, { businessValues, profileStillSavedAfterReload: true, fixtureApi: true });
+  await saveEvidence(page, ['REQ-457'], info, { businessValues, profileStillSavedAfterReload: true, fixtureApi: true });
   await reopened.getByRole('button', { name: 'Perfil', exact: true }).click();
   for (const [name, value] of Object.entries(profileValues)) await expect(reopened.locator(`[name="${name}"]`)).toHaveValue(value);
-  await expect(reopened.getByText(/\+5511999999901/)).toBeVisible();
+  await expect(reopened.getByText(/\+5511999999902/)).toBeVisible();
 });
 
 test('REQ-450 ordem das categorias salva e reaparece após reload', async ({ page }, info) => {
@@ -316,15 +326,81 @@ test('REQ-461/REQ-462/REQ-463/REQ-465/REQ-466 registra ações de macro disponí
   for (const absent of ['Convidar para grupo', 'Enviar contato', 'Banner com link', 'Lista interativa', 'Bloquear contato'])
     expect(choices).not.toContain(absent);
   await saveEvidence(page, ['REQ-461', 'REQ-462', 'REQ-463', 'REQ-465', 'REQ-466'], info, {
-    result: 'DECISÃO', availableChoices: choices, macroNotSaved: true, noMessageSent: true,
-    questions: {
-      'REQ-461': 'Convite por macro significa enviar link em texto ou convite nativo do WhatsApp para grupo?',
-      'REQ-462': 'Contato por macro deve ser compartilhado como vCard nativo ou como texto com dados?',
-      'REQ-463': 'Imagem/legenda com URL atende ao banner ou precisa banner clicável específico?',
-      'REQ-465': 'Lista por macro deve ser lista interativa nativa ou texto formatado?',
-      'REQ-466': '“Limpar vínculo de CRM” significa remover etiqueta, etapa do funil ou negócio associado?',
-    },
+    result: 'PARCIAL', availableChoices: choices, macroNotSaved: true, noMessageSent: true,
+    nativeInviteAvailable: false, vCardAvailable: false, interactiveListAvailable: false,
+    limitation: 'A interface e a enumeração local não oferecem as ações nativas. O conector fictício não comprova suporte externo para os três formatos condicionais.',
+    req466Finding: 'A interface também expõe ações “Adicionar etapa ou etiqueta” e “Remover etapa ou etiqueta”; ver teste de aceitação REQ-466.',
   });
+});
+
+test('REQ-466 ação rápida de CRM deve limitar-se a etiquetas, sem ações de etapa', async ({ page }, info) => {
+  test.skip(page.viewportSize()?.width !== 1366, 'captura de falha focal no desktop');
+  await openConversation(page);
+  await ensureToolsOpen(page);
+  const tools = page.getByLabel('Ferramentas de atendimento');
+  await tools.locator('.workbench-create summary').click();
+  await tools.locator('.workbench-create').getByRole('button', { name: 'Macros', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('heading', { name: 'Criar macro de atendimento' }).waitFor();
+  await dialog.locator('.macro-action-chooser details').filter({ has: page.getByText('Aba do CRM', { exact: true }) }).locator('summary').click();
+  const choices = (await dialog.locator('.macro-action-chooser button').allTextContents()).map((text) => text.trim());
+  const stageActions = choices.filter((choice) => /etapa/i.test(choice));
+  await saveEvidence(page, ['REQ-466'], info, { result: 'FALHOU', decision: 'A: somente etiqueta', stageActionsVisible: stageActions, macroNotSaved: true, noMessageSent: true });
+  expect(stageActions, 'a decisão A proíbe a ação de macro sobre etapa do CRM').toEqual([]);
+});
+
+test('REQ-463 recurso de imagem mantém link na legenda sem exigir banner clicável', async ({ page }, info) => {
+  const captionUrl = 'https://example.invalid/auditoria-req-463';
+  await page.route('**/api/attendance/library', async (route) => {
+    const response = await route.fetch();
+    const body = await response.json() as Record<string, any>;
+    body.assets = [...body.assets, {
+      id: 'req-463-caption-asset', name: 'Imagem com link fictício', kind: 'MEDIA', text: null, caption: captionUrl,
+      fileId: 'req-463-caption-file', isFavorite: false, isPtt: false, isPtv: false, asViewOnce: false,
+      file: { id: 'req-463-caption-file', filename: 'imagem-ficticia.png', mimeType: 'image/png', byteLength: 16 },
+    }];
+    return route.fulfill({ response, json: body });
+  });
+  await openConversation(page);
+  await ensureToolsOpen(page);
+  const tools = page.getByLabel('Ferramentas de atendimento');
+  await tools.locator('.workbench-create summary').click();
+  await tools.locator('.workbench-create').getByRole('button', { name: 'Macros', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: 'Adicionar ação' }).click();
+  await dialog.getByText('Enviar mensagem', { exact: true }).first().click();
+  await dialog.getByRole('button', { name: 'Imagem, vídeo, áudio ou documento', exact: true }).click();
+  await dialog.getByLabel('Categoria do recurso').click();
+  await page.getByRole('option', { name: 'Imagem / vídeo', exact: true }).click();
+  await dialog.getByLabel('Resposta da etapa').click();
+  await page.getByRole('option', { name: /Imagem com link fictício/ }).click();
+  await expect(dialog.locator('.resource-choice-preview')).toContainText('imagem-ficticia.png');
+  await expect(dialog.getByRole('button', { name: 'Salvar macro' })).toBeVisible();
+  await saveEvidence(page, ['REQ-463'], info, { result: 'APROVADO-LOCAL', selectedImageAsset: true, captionUrlInLibraryFixture: captionUrl, macroNotSaved: true, noMessageSent: true });
+});
+
+test('REQ-483/REQ-487 barra de funções tem posição única e mantém escolha após reload', async ({ page }, info) => {
+  await openConversation(page);
+  await page.getByRole('button', { name: 'Personalizar Atendimento com prévia' }).click();
+  let editor = page.getByRole('dialog').last();
+  await editor.getByRole('tab', { name: 'Funções', exact: true }).click();
+  const position = editor.getByLabel('Barra de funções do atendimento');
+  await position.click();
+  await expect(page.getByRole('option')).toHaveCount(2);
+  await expect(page.getByRole('option', { name: 'Em cima da conversa' })).toHaveAttribute('aria-selected', 'true');
+  await page.getByRole('option', { name: 'Embaixo da conversa' }).click();
+  const saved = page.waitForResponse((response) => response.url().endsWith('/api/operations/settings/preferences') && response.request().method() === 'PUT' && response.ok());
+  await editor.getByRole('button', { name: 'Confirmar alterações' }).click();
+  await saved;
+  await expect(page.locator('.attendance-chat-body')).toHaveClass(/functions-position-bottom/);
+  await page.reload();
+  await openConversation(page);
+  await expect(page.locator('.attendance-chat-body')).toHaveClass(/functions-position-bottom/);
+  await page.getByRole('button', { name: 'Personalizar Atendimento com prévia' }).click();
+  editor = page.getByRole('dialog').last();
+  await editor.getByRole('tab', { name: 'Funções', exact: true }).click();
+  await expect(editor.getByLabel('Barra de funções do atendimento')).toHaveText('Embaixo da conversa');
+  await saveEvidence(page, ['REQ-483', 'REQ-487'], info, { result: 'APROVADO', onlyTwoExclusivePositions: true, selectedPosition: 'bottom', persistsAfterReload: true, preferenceApiMocked: true });
 });
 
 test('REQ-472 bloquear contato pede confirmação e chama somente endpoint fictício', async ({ page }, info) => {

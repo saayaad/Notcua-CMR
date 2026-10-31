@@ -4,8 +4,8 @@
   "project": "desktop-1920",
   "url": "http://127.0.0.1:5180/atendimento",
   "consoleErrors": [],
-  "functionToolbarTopAndBottomOptions": true,
-  "selectedFunctionToolbar": "bottom",
-  "shortcutToolbarSelected": "top",
-  "bothPositionsPersistAfterReload": true
+  "onlyTwoExclusivePositions": true,
+  "selectedPosition": "bottom",
+  "persistsAfterReload": true,
+  "preferenceApiMocked": true
 }

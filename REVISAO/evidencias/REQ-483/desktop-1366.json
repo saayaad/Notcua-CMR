@@ -1,9 +1,11 @@
 {
   "req": "REQ-483",
-  "result": "DECISÃO",
+  "result": "APROVADO",
   "project": "desktop-1366",
   "url": "http://127.0.0.1:5180/atendimento",
   "consoleErrors": [],
-  "functionToolbarBottomAndShortcutToolbarTop": true,
-  "exactQuestion": "REQ-483 exige duplicar a mesma barra de funções no topo e no rodapé, ou basta manter a barra de funções e a barra de atalhos em posições opostas?"
+  "onlyTwoExclusivePositions": true,
+  "selectedPosition": "bottom",
+  "persistsAfterReload": true,
+  "preferenceApiMocked": true
 }

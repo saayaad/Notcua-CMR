@@ -61,14 +61,31 @@ export class ContactsService {
           include: { contact: true },
         });
         if (!chat) throw new AppError(404, 'Conversa não encontrada nesta conexão.');
-        const { name, ...fields } = data;
+        const { name, phoneNumber, dealValue, ...fields } = data;
+        if (typeof phoneNumber === 'string' && phoneNumber !== chat.contact.phoneNumber) {
+          const duplicate = await tx.contact.findFirst({ where: { phoneNumber, NOT: { id: chat.contactId } }, select: { id: true } });
+          if (duplicate) throw new AppError(409, 'Este telefone já pertence a outro contato.');
+        }
+        const metadata = { ...(chat.contact.metadata as Record<string, unknown>), ...fields };
+        if (dealValue !== undefined) metadata.dealValue = dealValue;
         await tx.contact.update({
           where: { id: chat.contactId },
           data: {
             ...(name ? { name } : {}),
-            metadata: json({ ...(chat.contact.metadata as object), ...fields }),
+            ...(phoneNumber ? { phoneNumber } : {}),
+            metadata: json(metadata),
           },
         });
+        if (typeof dealValue === 'string') {
+          const normalized = dealValue.replace(/[^\d,.-]/g, '').replace(/\.(?=\d{3}(?:\D|$))/g, '').replace(',', '.');
+          const amount = Number(normalized);
+          const valueInCents = Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) : 0;
+          await tx.crmOpportunity.upsert({
+            where: { conversationId: chat.id },
+            create: { conversationId: chat.id, valueInCents },
+            update: { valueInCents, version: { increment: 1 } },
+          });
+        }
         if (data.pinned !== undefined || data.assignedTo !== undefined)
           await tx.conversation.update({
             where: { id: chat.id },

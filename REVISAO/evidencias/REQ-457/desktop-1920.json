@@ -1,6 +1,6 @@
 {
   "req": "REQ-457",
-  "result": "DECISÃO",
+  "result": "APROVADO",
   "project": "desktop-1920",
   "url": "http://127.0.0.1:5180/atendimento",
   "consoleErrors": [],
@@ -15,6 +15,5 @@
     "observation": "Anotação sintética."
   },
   "profileStillSavedAfterReload": true,
-  "fixtureApi": true,
-  "openQuestion": "Valor da ficha sincroniza com a oportunidade no CRM ou é campo independente?"
+  "fixtureApi": true
 }

@@ -109,17 +109,28 @@ A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, po
 
 - Reprodução: enviar `PUT /api/operations/sessions/:sessionId/contacts/:conversationId` com `phoneNumber` diferente para um contato fictício.
 - Esperado conforme decisão B do usuário: atualizar o telefone do contato associado e preservar IDs da conversa, contato e conexão.
-- Resultado observado: resposta HTTP 200, mas `contact.phoneNumber` permanece inalterado. `ContactWorkspace.tsx` não renderiza campo de telefone; schema `profile` em `operations.routes.ts` não aceita `phoneNumber` e remove o campo enviado.
-- Teste: novo acceptance test em `apps/server/test/operations.test.ts`; falhou em SQLite temporário: esperado `5511777770189`, recebido `5511777770188`. O banco foi criado e removido pelo harness.
-- Estado: aberto. Sem correção de produto nesta rodada, conforme instrução para não implementar funções novas.
+- Resultado inicial: resposta HTTP 200, mas `contact.phoneNumber` permanecia inalterado; ficha sem campo e schema removia `phoneNumber`.
+- Correção: campo Telefone editável na ficha; schema valida 8–15 dígitos; serviço atualiza o contato mantendo IDs de conversa/contato/conexão e recusa telefone duplicado com 409.
+- Reteste: aceitação em banco temporário passou, incluindo duplicidade; Playwright passou 3/3 viewports com gravação interceptada e reload.
+- Estado: corrigido localmente em 31/10/2026; sem migration.
 
 ## BUG-034 — REQ-457 mantém valor de atendimento separado da oportunidade CRM
 
 - Reprodução: salvar `dealValue: "1250,50"` pela ficha do contato fictício e consultar a oportunidade CRM da mesma conversa.
 - Esperado conforme decisão A: um valor único sincronizado entre ficha do Atendimento e oportunidade CRM (125050 centavos).
-- Resultado observado: a ficha salva o valor em `Contact.metadata.dealValue`; `CrmOpportunity.valueInCents` não é criado nem atualizado. A busca no código encontrou esses campos em caminhos separados.
-- Teste: novo acceptance test em `apps/server/test/operations.test.ts`; falhou em SQLite temporário porque a oportunidade correspondente veio `null`. O banco foi criado e removido pelo harness.
-- Estado: aberto. Sem correção de produto nesta rodada, conforme instrução para não implementar funções novas.
+- Resultado inicial: a ficha salvava `Contact.metadata.dealValue`, mas não criava/atualizava `CrmOpportunity.valueInCents`.
+- Correção: salvar pela ficha atualiza a oportunidade; editar pela tela CRM atualiza o valor da ficha. Ambos ocorrem na transação correspondente.
+- Reteste: aceitação em banco temporário confirmou 1250,50 ↔ 125050 centavos e sincronização reversa para 199,99; Playwright passou 3/3 com fixture/reload.
+- Estado: corrigido localmente em 31/10/2026; sem migration.
+
+## BUG-035 — REQ-466 oferece ações de macro que movem etapas do CRM
+
+- Reprodução: Atendimento → Biblioteca/Ferramentas → Criar → Macros → Aba do CRM.
+- Esperado conforme decisão A do usuário: ação rápida deve atuar somente sobre etiqueta, sem mudar etapa ou negócio.
+- Resultado observado: editor oferece “Adicionar etapa ou etiqueta” e “Remover etapa ou etiqueta”. No CRM, as colunas são derivadas de `ContactLabel`; aplicar/remover label pode mover o cartão.
+- Teste: `REQ-466 ação rápida de CRM deve limitar-se a etiquetas, sem ações de etapa` falha em Chromium 1366×768 com as duas ações presentes; macro não salva, nenhum dado alterado. Evidência em `REVISAO/evidencias/REQ-466/desktop-1366.{png,json}`.
+- Limite: `Label` atualmente é entidade compartilhada entre etiquetas e colunas do CRM; não há classificação que permita distinguir tag comum de etapa. Correção depende de decisão sobre separar essas entidades ou aceitar o efeito no cartão.
+- Estado: aberto.
 
 ## BUG-017 — Barra de mensagens fixadas não tinha atalho flutuante para reabrir
 

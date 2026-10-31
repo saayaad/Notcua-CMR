@@ -2,7 +2,9 @@ import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-const evidenceRoot = resolve(process.cwd(), 'REVISAO', 'evidencias');
+const evidenceRoot = process.env.AUDIT_EVIDENCE_ROOT
+  ? resolve(process.cwd(), process.env.AUDIT_EVIDENCE_ROOT)
+  : resolve(process.cwd(), 'REVISAO', 'evidencias');
 
 async function saveEvidence(page: Page, ids: string[], info: TestInfo, details: Record<string, unknown>, statusByReq: Record<string, string> = {}) {
   const suffix = info.project.name.replaceAll(/[^a-z0-9-]/gi, '-').toLowerCase();

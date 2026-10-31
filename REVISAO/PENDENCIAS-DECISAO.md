@@ -1,6 +1,6 @@
 # Pendências e decisões aplicadas
 
-Fonte: LEDGER.csv e decisões do usuário registradas em 31/10/2026. Nesta atualização não rodei testes nem alterei código. Os estados abaixo distinguem decisão registrada de execução/verificação ainda pendente.
+Fonte: LEDGER.csv, decisões do usuário e execução local de 31/10/2026. Esta lista foi atualizada após retestes; resultados fechados estão no ledger e no ponto de retomada do PROTOCOLO.md.
 
 ## Decisões restantes ou dependentes de artefato — 5 requisitos
 
@@ -10,31 +10,17 @@ Fonte: LEDGER.csv e decisões do usuário registradas em 31/10/2026. Nesta atual
 - REQ-567 — adiada; política de pausa e horários de envio não definidos.
 - REQ-573 — Parte 8 não fornecida; depende do envio futuro do texto.
 
-## Decisões registradas; execução/verificação pendente — 23 requisitos
+## Decisões registradas; execução/verificação pendente — 9 requisitos
 
 - REQ-126 — Tipo B. Bloqueada: a fonte `6.txt` não existe nesta cópia; falta o artefato para identificar e testar as funções previstas. Evidência de bloqueio em `REVISAO/evidencias/REQ-126/blocked-missing-source.json`. Ação do usuário: enviar/anexar a fonte.
-- REQ-194 — Telas Atendimento, CRM, Campanhas e Configurações; viewports 1366×768, 1920×1080 e 390×844; tolerância de 2 px.
-- REQ-195 — A: usar o visual atual do app como referência.
-- REQ-196 — A, escolha do usuário; execução/verificação pendente, sem acrescentar parâmetros que não constam nesta decisão.
 - REQ-197 — DECISÃO pendente de escopo: a decisão A está registrada; prova parcial cobriu botões visíveis nas quatro telas REQ-194, mas não todas as 504 ações. Pergunta: aprovar homologação por módulo/amostragem segura ou fornecer inventário versionado com resultado esperado de ação/sucesso/erro para cada botão?
 - REQ-223 — DECISÃO: inventário revalidado em 504 botões/70 arquivos, mas vínculo sintático não prova efeito. Pergunta: aprova homologação segura por módulo/amostragem ou fornecerá inventário versionado das 504 ações com resultado esperado de sucesso/erro e permissões?
 - REQ-401 — A, escolha do usuário; execução/verificação pendente, sem ampliar o escopo nesta atualização.
-- REQ-448 — A, escolha do usuário; execução/verificação pendente, sem ampliar o escopo nesta atualização.
-- REQ-453 — A: manter busca, enviar e anexar visíveis.
-- REQ-455 — B: telefone editável na ficha; escolha do usuário com risco registrado. Execução pendente.
-- REQ-457 — A: valor único para ficha/oportunidade. Execução pendente.
-- REQ-461 — B: convite nativo para grupo; escolha do usuário com ressalva de suporte do conector. Execução pendente.
-- REQ-462 — B: vCard; escolha do usuário com ressalva de suporte do conector. Execução pendente.
-- REQ-463 — A: link na legenda. Execução pendente.
-- REQ-465 — B: lista interativa; escolha do usuário com ressalva de suporte do conector. Execução pendente.
-- REQ-466 — A: ação rápida atua somente sobre etiqueta. Execução pendente.
-- REQ-483 — A: uma posição por vez. Execução/verificação pendente.
-- REQ-487 — A: uma posição por vez. Execução/verificação pendente.
-- REQ-419 — B: remover o controle de economia de campaigns/A-B. Controle ainda não removido.
-- REQ-420 — B: remover o controle de training. Controle ainda não removido.
-- REQ-421 — B: remover o controle de receipts. Controle ainda não removido.
-- REQ-422 — B: remover o controle de dailyDigest. Controle ainda não removido.
-- REQ-430 — A: manter busca por palavras; sem adicionar índice vetorial. Verificação do código: REQ-425 não atende por si só à REQ-430. REQ-425 consulta cache semântico de respostas aprovadas por embeddings locais; `ai.service.ts` também ranqueia `AI_KNOWLEDGE` e trechos de `settings.knowledge` por palavras. O histórico é limitado às mensagens recentes/resumo, sem índice vetorial de histórico. O resultado fica pendente de validação específica da busca lexical; nenhuma função foi implementada nesta atualização.
+- REQ-448 — A escolhida, mas a inspeção visual em 3 viewports não identifica quais botões ou qual mudança visual são o aceite. Pergunta: quais botões devem mudar e qual resultado visual define “melhorar”?
+- REQ-461 — B: convite nativo se suportado. UI visual 3/3 confirmou ausência da ação no editor; falta conector descartável para provar suporte, sem envio real.
+- REQ-462 — B: vCard se suportado. UI visual 3/3 confirmou ausência da ação no editor; falta conector descartável para provar suporte, sem envio real.
+- REQ-465 — B: lista interativa se suportada. UI visual 3/3 confirmou ausência da ação no editor; falta conector descartável para provar suporte, sem envio real.
+- REQ-466 — A: somente etiqueta. Teste falhou pois o editor oferece ações de etapa; BUG-035 registrado. Pergunta: separar tags de etapas (hoje ambas usam `Label`) ou aceitar que etiqueta que representa coluna mova o cartão?
 
 ## Retirados do escopo — 2 requisitos
 
@@ -43,11 +29,11 @@ Fonte: LEDGER.csv e decisões do usuário registradas em 31/10/2026. Nesta atual
 
 ## Contagens atuais após atualização documental
 
-- DECISÃO/artefato pendente: 5.
-- A VERIFICAR: 23.
-- AUSENTE: 0 (REQ-430 reclassificada para verificação da busca por palavras; REQ-408/409 canceladas).
-- DESCONECTADO: 0 (REQ-419–422 têm decisão de remoção, ainda não executada).
+- DECISÃO no LEDGER: 10 (inclui os 5 itens de infraestrutura/documentação acima).
+- A VERIFICAR no LEDGER: 4 (REQ-126, 461, 462 e 465).
+- AUSENTE no LEDGER: 0.
+- DESCONECTADO no LEDGER: 0.
 - SUBSTITUÍDO OU CANCELADO: 2.
 
-Nenhuma função nova foi implementada, nenhum teste foi executado e nenhuma evidência de REQ fechada foi alterada.
+Fechados neste lote local: REQ-453, 455, 457, 463, 483 e 487. REQ-419–422 foram retestadas em 3 viewports com as capturas direcionadas a `.audit/req419-retest-evidence/`; as pastas fechadas em `REVISAO/evidencias/` não foram regravadas.
 

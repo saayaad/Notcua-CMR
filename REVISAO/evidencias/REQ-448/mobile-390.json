@@ -6,8 +6,5 @@
   "consoleErrors": [],
   "currentToolsPanelVisible": true,
   "buttonsHaveAccessibleLabels": true,
-  "questions": {
-    "REQ-448": "Quais botões devem mudar de aparência ou rótulo, e qual exemplo visual define “melhorar”?",
-    "REQ-453": "Quais mudanças de layout quer e quais funções do painel lateral devem permanecer visíveis?"
-  }
+  "question": "Quais botões devem mudar de aparência ou rótulo, e qual exemplo visual define “melhorar”?"
 }

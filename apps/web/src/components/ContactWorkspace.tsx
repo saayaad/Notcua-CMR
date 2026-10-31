@@ -96,10 +96,16 @@ export function ContactWorkspace({
           }}
         >
           {tab === 'profile' && (
-            <label>
-              Nome
-              <input name="name" required maxLength={100} defaultValue={chat.contact.name} />
-            </label>
+            <>
+              <label>
+                Nome
+                <input name="name" required maxLength={100} defaultValue={chat.contact.name} />
+              </label>
+              <label>
+                Telefone
+                <input name="phoneNumber" type="tel" inputMode="tel" required pattern="[0-9]{8,15}" maxLength={15} defaultValue={chat.contact.phoneNumber} />
+              </label>
+            </>
           )}
           <div className="form-grid">
             {fields.map(([key, name]) => (

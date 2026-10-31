@@ -557,6 +557,32 @@ test('REQ-464 macro persiste e envia recurso WebP como figurinha', async () => {
   assert.equal(sent.mimetype, 'image/webp');
   assert.deepEqual(Buffer.from(sent.sticker as Uint8Array), webp);
 });
+
+test('REQ-463 macro envia a legenda da imagem com link pelo conector fictício', async () => {
+  const chat = await makeContact('5511777770463', 'Contato REQ-463 Fictício');
+  const captionUrl = 'https://example.invalid/auditoria-req-463';
+  const bytes = Buffer.from('png-fixture');
+  const file = await db.storedFile.create({
+    data: {
+      id: 'req-463-caption-file', sha256: '463'.padEnd(64, '0'), filename: 'imagem-link.png',
+      mimeType: 'image/png', byteLength: bytes.byteLength, data: bytes,
+    },
+  });
+  const asset = await db.asset.create({
+    data: { id: 'req-463-caption-asset', name: 'Imagem com link fictício', kind: 'MEDIA', caption: captionUrl, fileId: file.id },
+  });
+  const created = await request(app)
+    .post('/api/operations/macros')
+    .send({ name: 'Macro REQ-463 fictícia', actions: [{ type: 'ASSET', assetId: asset.id, delayMs: 0, composingMs: 0 }] })
+    .expect(201);
+  const before = socket.sends.length;
+  await sequences.enqueue(sessionId, chat.id, 'MACRO', created.body.id, 'req-463-caption-link');
+  await sequences.flush();
+  assert.equal(socket.sends.length, before + 1);
+  const sent = socket.sends.at(-1)!;
+  assert.ok('image' in sent);
+  assert.equal(sent.caption, captionUrl);
+});
 test('REQ-114/115/455/457/458: perfil completo e observações persistem; histórico exporta ZIP', async () => {
   const chat = await makeContact('5511777770008');
   const profile = {
@@ -594,6 +620,7 @@ test('REQ-114/115/455/457/458: perfil completo e observações persistem; histó
 test('REQ-455 telefone editável preserva a conversa e atualiza o contato associado', async () => {
   const chat = await makeContact('5511777770188');
   const nextPhone = '5511777770189';
+  const other = await makeContact('5511777770199');
   await request(app)
     .put(`/api/operations/sessions/${sessionId}/contacts/${chat.id}`)
     .send({ phoneNumber: nextPhone })
@@ -606,6 +633,12 @@ test('REQ-455 telefone editável preserva a conversa e atualiza o contato associ
   assert.equal(conversation.id, chat.id);
   assert.equal(conversation.contactId, chat.contactId);
   assert.equal(conversation.sessionId, sessionId);
+  await request(app)
+    .put(`/api/operations/sessions/${sessionId}/contacts/${chat.id}`)
+    .send({ phoneNumber: '5511777770199' })
+    .expect(409);
+  assert.equal((await db.contact.findUniqueOrThrow({ where: { id: chat.contactId } })).phoneNumber, nextPhone);
+  assert.equal((await db.contact.findUniqueOrThrow({ where: { id: other.contactId } })).phoneNumber, '5511777770199');
 });
 test('REQ-457 valor da ficha de atendimento sincroniza com oportunidade CRM', async () => {
   const chat = await makeContact('5511777770190');
@@ -620,6 +653,12 @@ test('REQ-457 valor da ficha de atendimento sincroniza com oportunidade CRM', as
   assert.equal((contact.metadata as { dealValue?: string }).dealValue, '1250,50');
   assert.ok(opportunity, 'salvar o valor da ficha deve atualizar a oportunidade correspondente');
   assert.equal(opportunity.valueInCents, 125050);
+  await request(app)
+    .put(`/api/crm/sessions/${sessionId}/opportunities/${chat.id}`)
+    .send({ title: 'Negócio REQ-457', valueInCents: 19999, status: 'OPEN', version: opportunity.version })
+    .expect(200);
+  const updatedContact = await db.contact.findUniqueOrThrow({ where: { id: chat.contactId } });
+  assert.equal((updatedContact.metadata as { dealValue?: string }).dealValue, '199,99');
 });
 test('encerramento automático não fecha conversa quando a última mensagem é do cliente', async () => {
   const a = await makeContact('5511777770009');

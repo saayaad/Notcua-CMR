@@ -508,3 +508,23 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Inventário estático revalidado; 504 controles em 70 arquivos, sem arquivo ausente ou registro sem ligação sintática. A prova não demonstra resultado real, persistência, permissão ou sucesso/erro.
 - REQ-223 classificada DECISÃO com pergunta exata em LEDGER/PENDENCIAS-DECISAO.md. Nenhuma função ou preferência foi alterada.
 - Próximo item aberto em ordem do LEDGER: REQ-448 (Atendimento); REQ-126 segue bloqueada por falta de `6.txt` e continua fora da sequência de teste.
+
+## Atendimento — reteste visual e correções locais — 31/10/2026
+
+- Reconfirmei front `127.0.0.1:5180` e API `127.0.0.1:3340` em HTTP 200. Branch inicial `auditoria-reqs`, limpa de commits à frente; arquivos protegidos já estavam modificados e permaneceram fora do staging.
+- REQ-419–422: reteste visual Playwright passou 3/3 viewports; controles removidos ausentes e consumidores mantidos. Para não gravar nas REQs fechadas, atualizei `e2e/economy.spec.ts` para aceitar `AUDIT_EVIDENCE_ROOT` e direcionei as novas capturas a `.audit/req419-retest-evidence/`. Evidências finais em `REVISAO/evidencias/REQ-419–422/` não foram regravadas.
+- REQ-453 passou 3/3: busca na Biblioteca lateral e ações Anexar/Enviar visíveis no compositor. REQ-463 passou 3/3 visualmente; teste isolado de servidor confirmou legenda URL enviada pelo FakeSocket. Sem mensagem externa.
+- BUG-033/REQ-455 corrigido: ficha edita telefone, associa ao mesmo contato/conversa, valida conflito 409; teste de servidor e Playwright com fixture passaram. BUG-034/REQ-457 corrigido: ficha sincroniza `dealValue` com `CrmOpportunity` e edição CRM atualiza a ficha; teste isolado e Playwright com fixture passaram. Não houve alteração de schema nem migration.
+- REQ-483/487 passaram 6/6 em três viewports: seletor exclusivo top/bottom e releitura após reload pela fixture de preferências; nenhuma preferência real foi gravada.
+- REQ-461/462/465: UI 3/3 confirma ausência das ações nativas; suporte condicional permanece não verificável sem conector descartável. Macro não foi salva nem enviada. REQ-448 permanece DECISÃO pela falta de alvo/resultado visual específico, embora botões tenham nomes acessíveis.
+- REQ-466: teste de aceitação falhou conforme A (somente etiquetas); macro ainda oferece “Adicionar etapa ou etiqueta”/“Remover etapa ou etiqueta”. BUG-035 registrado. `Label` é compartilhada com colunas CRM; aguarda decisão se separar tags/etapas ou aceitar movimento de cartão.
+- `typecheck` dos dois workspaces passou. Testes focais de servidor REQ-455/457/463 passaram 3/3 em SQLite temporário efêmero. Playwright REQ-455/457 passou 3/3; REQ-463 e REQ-483/487 passou 6/6; REQ-461/462/463/465/466 passou 3/3; o teste esperado da REQ-466 reproduziu o defeito em 1366×768.
+- Um comando `npm run test` executou a suíte integral apesar do filtro recebido: 250 passaram e 3 falharam naquele estado anterior às correções (BUG-033, BUG-034 e `reactions-audit.test.ts` sem `AUDIT_DB_PATH`, abortado antes de executar). Os dois testes de produto passaram na rodada focal posterior. Não repetir suíte integral sem configurar o runner e a variável exigida.
+- Efeito colateral do runner integral: criou/atualizou `REVISAO/evidencias/REQ-686/process-next-run.json`; `process.json` continua com alteração preexistente/sem reconstrução segura. Ambos ficam intocados, fora do staging; não restaurar nem commitar. `scripts/iniciar-noctua-online.ps1` também permanece fora do staging.
+- Próximo ponto por ordem: decisão visual REQ-448; obter conector descartável para a condição das REQ-461/462/465; decidir separação de etiqueta/etapa em REQ-466. REQ-126 permanece bloqueada pela fonte `6.txt`. Não há outro item A VERIFICAR independente dessas dependências.
+
+### Correção de integridade da captura REQ-463 — 31/10/2026
+
+- A captura REQ-463 foi substituída pela prova descritiva do conjunto de macros antes do fechamento definitivo; reabri o item, repeti o teste específico em 3 viewports e confirmei que as novas capturas mostram seleção da imagem fictícia com URL na legenda. REQ-463 foi então fechada novamente.
+- Durante a correção, `REVISAO/evidencias/REQ-463/server-caption-test.json` foi criado enquanto o item ainda constava fechado. É um artefato adicional não necessário ao fechamento; fica fora do commit e não será removido nem regravado nesta rodada.
+- Fora os efeitos colaterais já registrados do runner integral em REQ-686, os retestes direcionados não gravaram em pastas fechadas. O reteste REQ-419–422 permaneceu em `.audit/`.
