@@ -12,7 +12,7 @@ Fonte: LEDGER.csv e decisões do usuário registradas em 31/10/2026. Nesta atual
 
 ## Decisões registradas; execução/verificação pendente — 23 requisitos
 
-- REQ-126 — B, escolha do usuário. A fonte `6.txt` continua ausente; a opção foi registrada sem presumir conteúdo não disponível.
+- REQ-126 — Tipo B. Bloqueada: a fonte `6.txt` não existe nesta cópia; falta o artefato para identificar e testar as funções previstas. Evidência de bloqueio em `REVISAO/evidencias/REQ-126/blocked-missing-source.json`. Ação do usuário: enviar/anexar a fonte.
 - REQ-194 — Telas Atendimento, CRM, Campanhas e Configurações; viewports 1366×768, 1920×1080 e 390×844; tolerância de 2 px.
 - REQ-195 — A: usar o visual atual do app como referência.
 - REQ-196 — A, escolha do usuário; execução/verificação pendente, sem acrescentar parâmetros que não constam nesta decisão.

@@ -1,0 +1,11 @@
+{
+  "req": "REQ-126",
+  "result": "BLOQUEADO",
+  "criterion": "Integrar ao site as funcionalidades descritas na fonte 6.txt, excluindo a extensão futura",
+  "check": "Inventário local de arquivos por nome: 6.txt, *6*.txt, *fonte*6*",
+  "outcome": "A fonte de referência não existe nesta cópia. Sem o conteúdo, não é possível identificar quais funcionalidades da área Acesso e operação devem ser integradas ou definir um teste B com resultado esperado.",
+  "browserTest": "não executado: aceite indeterminado pela ausência do artefato",
+  "closedEvidenceWritten": false,
+  "userAction": "Enviar ou anexar a fonte 6.txt",
+  "checkedAt": "2026-10-31"
+}

@@ -451,3 +451,10 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - O Banco Central especifica a EVP como UUID gerado pelo DICT; a prova desta auditoria usa somente UUIDs fictícios. Não se cadastrou chave real nem se enviou pagamento.
 - Usadas provas já existentes, sem executar testes novos: `apps/server/test/attendance.test.ts` cobre cadastro, consulta e payload/QR; `e2e/messages-audit.spec.ts` cobre cadastro na Biblioteca, recarga e prévia. Evidências existentes em `REVISAO/evidencias/REQ-036/`.
 - REQ-036 atualizada para `COMPLETO` no LEDGER e em REQUISITOS; removida da lista de decisões. Nenhum código, banco, evidência, `scripts/iniciar-noctua-online.ps1` ou `REVISAO/evidencias/REQ-686/process.json` foi alterado.
+
+## Ponto de retomada — REQ-126 bloqueada por fonte ausente — 31/10/2026
+
+- Retomada na branch `auditoria-reqs`, commit base `59d3176`; `git status -sb` confirmou apenas alterações preexistentes em `REVISAO/evidencias/REQ-686/process.json` e `scripts/iniciar-noctua-online.ps1`, mantidas fora do staging.
+- Primeiro item A VERIFICAR: REQ-126 (Acesso e operação). Busca local por `6.txt` e nomes relacionados não encontrou a fonte; não existe critério verificável para um teste de navegador sem presumir escopo.
+- Nenhum teste de produto foi executado. Registro do inventário/bloqueio em `REVISAO/evidencias/REQ-126/blocked-missing-source.json`; estado permanece A VERIFICAR. Nenhuma evidência de REQ fechada foi gravada.
+- Próxima ação: usuário deve enviar/anexar a fonte 6.txt. Depois retomar REQ-126, fechar o módulo quando verificável e seguir a ordem por módulo do LEDGER.
