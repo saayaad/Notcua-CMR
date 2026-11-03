@@ -632,3 +632,10 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - A primeira tentativa não contou como prova: a interface local ficou indisponível em dois casos e o primeiro acesso não concluiu. A jornada foi ajustada para precondicionar o perfil pela mesma API local isolada e repetida; os três casos passaram. Não foi identificado defeito de produto, nenhuma expectativa funcional foi alterada.
 - Evidências novas, sem sobrescrever as anteriores: REVISAO/evidencias/local-journey-2026-11-03 (screenshots, recibos JSON e saída integral). Harness e API geram banco somente sob .audit/journey-*; sockets externos lançam erro e tráfego externo do navegador é bloqueado. O teste exige a interface local já ativa em 127.0.0.1:5180 e define CLIENT_ORIGIN apenas para o processo de teste.
 - Arquivos protegidos continuam fora de alterações e staging; artefatos não rastreados preexistentes não foram incluídos. Próximo passo: verificar revisão exata do lote, registrar commit e enviar apenas para auditoria-reqs; depois continuar inspeção/homologação local sem tocar produção ou serviços reais.
+
+## Homologação integrada local — rascunho de campanha — 03/11/2026
+
+- Jornada real pela interface contra API e SQLite temporários: criar campanha de texto com público fictício, conferir audiência, salvar e reabrir a página. O registro permaneceu `DRAFT`, as tarefas ficaram `QUEUED`, houve zero ChatMessage e zero falhas HTTP; nenhuma ativação ou envio ocorreu.
+- Resultado: 1/1 desktop. Evidências em REVISAO/evidencias/local-campaign-2026-11-03. E2E reaproveita o ambiente isolado da jornada CRM; sockets externos proibidos por factory que falha, tráfego externo bloqueado, nenhum banco demo alterado.
+- REQ-315/317 recebem somente evidência integrada suplementar; os estados já aceitos não foram alterados nem ampliados para além da cobertura anterior. Nenhum defeito funcional apareceu neste fluxo.
+- Harness e recibos enviados em `b9e36ac` na branch `auditoria-reqs`; referências documentais e ledger serão sincronizados no commit seguinte.
