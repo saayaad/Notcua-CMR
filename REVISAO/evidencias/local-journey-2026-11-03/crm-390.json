@@ -1,0 +1,32 @@
+{
+  "requirements": [
+    "REQ-455",
+    "REQ-457",
+    "REQ-466"
+  ],
+  "result": "APROVADO",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "realApiAndSqlite": true,
+  "isolatedDatabase": ".audit/journey-*/journey.db (temporary)",
+  "mutatedDemoDatabase": false,
+  "messageCount": 0,
+  "preservedContactId": "cmw0lzz2h0008wnbk989dh0to",
+  "opportunity": {
+    "conversationId": "cmw0lzz2w000awnbka3d1ce5s",
+    "title": "",
+    "valueInCents": 12550,
+    "status": "OPEN",
+    "wonAt": null,
+    "lostAt": null,
+    "placements": {
+      "stage:local:e6e2fbf4-72b7-4bb9-b160-c232fa9ff809": 1,
+      "local:e6e2fbf4-72b7-4bb9-b160-c232fa9ff809": 0
+    },
+    "version": 2,
+    "createdAt": "2026-11-03T11:33:22.238Z",
+    "updatedAt": "2026-11-03T11:33:23.180Z"
+  }
+}

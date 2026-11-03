@@ -1,0 +1,11 @@
+✔ JORNADA / REQ-455/457/466: contato → negócio → etapa → etiqueta → recarregar (1366) (9619.2712ms)
+✔ JORNADA / REQ-455/457/466: contato → negócio → etapa → etiqueta → recarregar (1920) (9774.5587ms)
+✔ JORNADA / REQ-455/457/466: contato → negócio → etapa → etiqueta → recarregar (390) (8917.7858ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 36901.3186
