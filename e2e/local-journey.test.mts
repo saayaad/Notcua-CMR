@@ -236,3 +236,130 @@ for (const [index, viewport] of [
     },
   );
 }
+
+test(
+  'JORNADA / campanha fictícia salva como rascunho e persiste após reload',
+  { timeout: 90000 },
+  async () => {
+    const contact = await db.contact.create({
+      data: {
+        name: 'Destinatário Fictício Campanha',
+        phoneNumber: '5511999990101',
+        whatsappJid: '5511999990101@s.whatsapp.net',
+      },
+    });
+    const conversation = await db.conversation.create({
+      data: { sessionId, contactId: contact.id, lastMessageAt: new Date() },
+    });
+    const context = await browser.newContext({ viewport: { width: 1366, height: 768 } });
+    const page = await context.newPage();
+    const failures: string[] = [];
+    await page.route('**/*', async (route) => {
+      const url = new URL(route.request().url());
+      if (url.pathname.startsWith('/api/')) {
+        const response = await route.fetch({
+          url: `${apiOrigin}${url.pathname}${url.search}`,
+          maxRedirects: 0,
+        });
+        if (!response.ok() && !url.pathname.endsWith('/read'))
+          failures.push(`${route.request().method()} ${url.pathname} ${response.status()}`);
+        return route.fulfill({ response });
+      }
+      if (url.hostname === '127.0.0.1' && url.port === '5180') return route.continue();
+      return route.abort();
+    });
+    try {
+      const onboarding = await context.request.put(`${apiOrigin}/api/operations/me`, {
+        headers: { origin: 'http://127.0.0.1:5180' },
+        data: {
+          name: 'Operadora Fictícia Campanha',
+          company: 'Empresa Fictícia Campanha',
+          segment: 'Teste local',
+          employees: 'Somente eu',
+          objective: '',
+          social: '',
+          phone: '',
+          completed: true,
+        },
+      });
+      assert.equal(onboarding.status(), 200, await onboarding.text());
+      await page.goto('http://127.0.0.1:5180/atendimento');
+      await expect(page.locator('.app-shell')).toBeVisible();
+      await page.getByRole('button', { name: 'Campanhas', exact: true }).click();
+      await page.getByRole('button', { name: 'Nova campanha', exact: true }).click();
+      const dialog = page.getByRole('dialog');
+      const campaignName = 'Rascunho de Teste Local';
+      await dialog.getByLabel('Nome', { exact: true }).fill(campaignName);
+      await dialog
+        .getByLabel('Mensagem', { exact: true })
+        .fill('Mensagem fictícia de validação; não enviar.');
+      await dialog.getByRole('button', { name: 'Conferir público', exact: true }).click();
+      const expectedAudience = await db.conversation.count({ where: { sessionId } });
+      await expect(dialog.locator('.audience-preview')).toContainText(
+        `${expectedAudience} contatos correspondem ao filtro`,
+      );
+      await dialog.getByRole('button', { name: 'Salvar rascunho', exact: true }).click();
+      await expect(dialog).toBeHidden();
+      await expect(page.getByRole('heading', { name: campaignName, exact: true })).toBeVisible();
+      await expect(page.getByText('Rascunho', { exact: true })).toBeVisible();
+      const batchRow = await db.operationRecord.findFirst({
+        where: { kind: 'BATCH', data: { path: '$.name', equals: campaignName } },
+      });
+      assert.ok(batchRow);
+      const batch = batchRow.data as { status: string; mode: string; count: number };
+      assert.equal(batch.status, 'DRAFT');
+      assert.equal(batch.mode, 'CAMPAIGN');
+      assert.equal(batch.count, expectedAudience);
+      assert.equal(
+        await db.deliveryTask.count({ where: { batchId: batchRow.id, status: 'QUEUED' } }),
+        expectedAudience,
+      );
+      assert.equal(await db.chatMessage.count(), 0, 'Nenhuma mensagem criada ou enviada');
+      await page.reload();
+      await page.getByRole('button', { name: 'Campanhas', exact: true }).click();
+      await expect(page.getByRole('heading', { name: campaignName, exact: true })).toBeVisible();
+      await expect(page.getByText('Rascunho', { exact: true })).toBeVisible();
+      const reopened = createSqliteClient(databaseUrl);
+      try {
+        const persisted = await reopened.operationRecord.findUniqueOrThrow({ where: { id: batchRow.id } });
+        assert.equal((persisted.data as { status: string }).status, 'DRAFT');
+        assert.equal(
+          await reopened.deliveryTask.count({ where: { batchId: batchRow.id, status: 'QUEUED' } }),
+          expectedAudience,
+        );
+      } finally {
+        await reopened.$disconnect();
+      }
+      assert.ok(await db.conversation.findUniqueOrThrow({ where: { id: conversation.id } }));
+      assert.deepEqual(failures, [], 'Nenhuma falha HTTP inesperada na jornada');
+      await page.screenshot({ path: join(evidenceDirectory, 'campaign-draft-1366.png'), fullPage: true });
+      await writeFile(
+        join(evidenceDirectory, 'campaign-draft.json'),
+        JSON.stringify(
+          {
+            result: 'APROVADO',
+            viewport: { width: 1366, height: 768 },
+            realApiAndSqlite: true,
+            isolatedDatabase: '.audit/journey-*/journey.db (temporary)',
+            statusAfterReload: 'DRAFT',
+            mode: 'CAMPAIGN',
+            audienceAndQueuedTasks: expectedAudience,
+            messageCount: 0,
+            externalNetworkBlocked: true,
+          },
+          null,
+          2,
+        ),
+      );
+    } catch (error) {
+      await page.screenshot({ path: join(evidenceDirectory, 'campaign-draft-failure.png'), fullPage: true });
+      await writeFile(
+        join(evidenceDirectory, 'campaign-draft-failure.txt'),
+        `${String(error)}\n${await page.locator('body').innerText()}`,
+      );
+      throw error;
+    } finally {
+      await context.close();
+    }
+  },
+);

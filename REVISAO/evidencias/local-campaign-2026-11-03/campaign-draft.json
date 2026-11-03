@@ -1,0 +1,14 @@
+{
+  "result": "APROVADO",
+  "viewport": {
+    "width": 1366,
+    "height": 768
+  },
+  "realApiAndSqlite": true,
+  "isolatedDatabase": ".audit/journey-*/journey.db (temporary)",
+  "statusAfterReload": "DRAFT",
+  "mode": "CAMPAIGN",
+  "audienceAndQueuedTasks": 4,
+  "messageCount": 0,
+  "externalNetworkBlocked": true
+}

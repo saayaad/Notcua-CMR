@@ -1,0 +1,12 @@
+✔ JORNADA / REQ-455/457/466: contato → negócio → etapa → etiqueta → recarregar (1366) (10399.9132ms)
+✔ JORNADA / REQ-455/457/466: contato → negócio → etapa → etiqueta → recarregar (1920) (10327.6325ms)
+✔ JORNADA / REQ-455/457/466: contato → negócio → etapa → etiqueta → recarregar (390) (9310.7603ms)
+✔ JORNADA / campanha fictícia salva como rascunho e persiste após reload (9083.1701ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 48073.5969
