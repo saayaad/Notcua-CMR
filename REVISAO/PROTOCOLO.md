@@ -640,3 +640,10 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - REQ-315/317 recebem somente evidência integrada suplementar; os estados já aceitos não foram alterados nem ampliados para além da cobertura anterior. Nenhum defeito funcional apareceu neste fluxo.
 - Harness e recibos enviados em `b9e36ac`; referências documentais e ledger enviados em `fe49d25`, ambos na branch `auditoria-reqs`.
 - Ponto de retomada: a jornada de campanha é suplementar e nenhum requisito foi reaberto. As decisões funcionais autorizadas estão aplicadas, e o ledger continua sem itens A VERIFICAR. Prosseguir somente com integração local que exercite o app; preservar `DRAFT`, zero mensagens e todas as restrições permanentes.
+
+## Resumo final da auditoria — 03/11/2026
+
+- REQ-461, REQ-462 e REQ-465 foram reclassificados no LEDGER como `NÃO VERIFICÁVEL NESTE AMBIENTE`. Observação comum: “depende de conector de teste com convite, vCard e lista interativa; conector não criado”. O simulador fictício local já existente não equivale ao conector exigido e não comprova esses requisitos.
+- PENDENCIAS-DECISAO.md e LEDGER.csv agora registram 3 não verificáveis, 0 A VERIFICAR; total de 703: 478 COMPLETO, 163 COMPLETO-LOCAL, 55 SUBSTITUÍDO OU CANCELADO e 4 DECISÃO.
+- A auditoria local anterior permanece como evidência suplementar: CRM 3/3 viewports e campanha 1/1 desktop, ambas com API/SQLite temporários e sem mensagens. Nenhuma nova execução de teste nem gravação em evidências nesta atualização.
+- Esta atualização limita-se a REVISAO/LEDGER.csv, REVISAO/PENDENCIAS-DECISAO.md e REVISAO/PROTOCOLO.md. Manter branch `auditoria-reqs`; não incluir `REVISAO/evidencias/REQ-686/process.json`, `scripts/iniciar-noctua-online.ps1` ou outros artefatos preexistentes.
