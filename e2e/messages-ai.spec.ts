@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -68,7 +69,7 @@ test('REQ-252 revisa rascunho com Copiloto e só substitui após confirmação',
   await page.getByRole('button', { name: 'Copiloto IA' }).click();
   await page.getByRole('button', { name: 'Melhorar e corrigir meu rascunho' }).click();
   await page.getByRole('checkbox', { name: /Enviar o histórico recente/ }).check();
-  await page.getByRole('button', { name: 'Melhorar e corrigir', exact: true }).click();
+  await clickNavigation(page, 'Melhorar e corrigir');
   const suggestion = page.locator('.copilot-modal textarea');
   await expect(suggestion).toBeVisible();
   await expect(suggestion).toHaveValue('Rascunho corrigido com clareza.');
@@ -83,7 +84,7 @@ test('REQ-253 sugere três respostas e aplica a opção escolhida ao rascunho', 
   await page.getByRole('button', { name: 'Copiloto IA' }).click();
   await page.getByRole('button', { name: 'Sugerir quebra de objeção' }).click();
   await page.getByRole('checkbox', { name: /Enviar o histórico recente/ }).check();
-  await page.getByRole('button', { name: 'Sugerir respostas', exact: true }).click();
+  await clickNavigation(page, 'Sugerir respostas');
   for (const option of options) await expect(page.getByRole('button', { name: option, exact: true })).toBeVisible();
   await page.getByRole('button', { name: options[1], exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Mensagem', exact: true })).toHaveValue(options[1]);

@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -14,7 +15,7 @@ async function openConversation(page: Page) {
 
 async function openEditor(page: Page) {
   await page.locator('.chat-more-actions summary').click();
-  await page.getByRole('button', { name: 'Personalizar Atendimento', exact: true }).click();
+  await clickNavigation(page, 'Personalizar Atendimento');
   const dialog = page.locator('dialog[open]').last();
   await expect(dialog).toBeVisible();
   return dialog;
@@ -187,7 +188,7 @@ test('REQ-496/500/501 blocos podem ser organizados e densidade global tem três 
   await page.locator('button.chat-item:not(.chat-item-more)').first().click();
   const compactPadding = await page.locator('button.chat-item:not(.chat-item-more)').first().evaluate((node) => getComputedStyle(node).paddingBlockStart);
   expect(parseFloat(compactPadding)).toBeLessThan(12);
-  await page.getByRole('button', { name: 'CRM e negócios', exact: true }).click();
+  await clickNavigation(page, 'CRM e negócios');
   await expect(page.locator('html')).toHaveAttribute('data-density', 'compact');
   await saveEvidence(page, ['REQ-496', 'REQ-500', 'REQ-501'], info, { freePositionForConversation: true, positionPersistedAfterReload: positionAfterMove, densityStatesPreviewed: states, compactChatRowPadding: compactPadding, densityAppliedAcrossCrmAfterReload: true });
 });
@@ -388,9 +389,9 @@ test('REQ-513/514/519 ampliação e prévia completa ficam acessíveis em todas 
 test('REQ-516/517/518 menu de Atendimento não abre Biblioteca inteira e atalhos abrem Biblioteca lateral filtrada', async ({ page }, info) => {
   await page.goto('/atendimento');
   await expect(page.locator('.app-shell')).toBeVisible();
-  await page.getByRole('button', { name: 'Biblioteca', exact: true }).click();
+  await clickNavigation(page, 'Biblioteca');
   await expect(page.getByRole('heading', { name: 'Biblioteca' })).toBeVisible();
-  await page.getByRole('button', { name: 'Atendimento', exact: true }).click();
+  await clickNavigation(page, 'Atendimento');
   await expect(page.getByRole('region', { name: 'Lista de conversas' })).toBeVisible();
   await page.locator('button.chat-item:not(.chat-item-more)').first().click();
   const tools = page.getByLabel('Ferramentas de atendimento');

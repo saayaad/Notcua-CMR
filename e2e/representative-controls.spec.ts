@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -112,8 +113,8 @@ test('REQ-197: CRM salva etapa e Campanhas atualiza dados e filtra resultados ve
     });
   });
   await open(page);
-  await page.getByRole('button', { name: 'CRM e negócios', exact: true }).click();
-  await page.getByRole('button', { name: 'Nova etapa', exact: true }).click();
+  await clickNavigation(page, 'CRM e negócios');
+  await clickNavigation(page, 'Nova etapa');
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Nome da etapa').fill('Etapa fictícia aprovada');
   await dialog.getByRole('button', { name: 'Salvar etapa' }).click();
@@ -127,7 +128,7 @@ test('REQ-197: CRM salva etapa e Campanhas atualiza dados e filtra resultados ve
     'background-color',
     'rgb(255, 0, 0)',
   );
-  await page.getByRole('button', { name: 'Campanhas', exact: true }).click();
+  await clickNavigation(page, 'Campanhas');
   await expect(page.getByRole('heading', { name: 'Campanha inicial fictícia' })).toBeVisible();
   const initialReads = reads;
   refreshed = true;
@@ -152,7 +153,7 @@ test('REQ-223: Personalização confirma densidade, mostra sucesso e mantém ap�
   page,
 }, info) => {
   await open(page);
-  await page.getByRole('button', { name: 'Personalização', exact: true }).click();
+  await clickNavigation(page, 'Personalização');
   await page.getByRole('main').getByRole('button', { name: 'Personalizar Atendimento com prévia' }).click();
   await page.getByRole('combobox', { name: 'Tamanho dos controles' }).click();
   await page.getByRole('option', { name: 'Expandido', exact: true }).click();

@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -30,7 +31,7 @@ async function saveEvidence(page: Page, ids: string[], info: TestInfo, result: R
 
 async function openCampaignEditor(page: Page) {
   await openApp(page);
-  await page.getByRole('button', { name: 'Campanhas', exact: true }).click();
+  await clickNavigation(page, 'Campanhas');
   await page.getByRole('button', { name: 'Nova campanha' }).click();
   await expect(page.getByRole('heading', { name: 'Nova campanha segmentada' })).toBeVisible();
 }
@@ -114,7 +115,7 @@ test('REQ-279/REQ-280/REQ-281/REQ-282/REQ-318 cria variações simuladas, altern
     route.fulfill({ json: { variants } }),
   );
   await openApp(page);
-  await page.getByRole('button', { name: 'Campanhas', exact: true }).click();
+  await clickNavigation(page, 'Campanhas');
   const existing = await page.request.get(`${api}/operations/sessions/audit-session/batches`, {
     headers: authorization ? { authorization } : {},
   });
@@ -159,7 +160,7 @@ test('REQ-279/REQ-280/REQ-281/REQ-282/REQ-318 cria variações simuladas, altern
   const created = await saveResponse.json() as { id: string };
   expect(created.id).toBeTruthy();
   await page.reload();
-  await page.getByRole('button', { name: 'Campanhas', exact: true }).click();
+  await clickNavigation(page, 'Campanhas');
   await expect(page.getByText(campaignName, { exact: true })).toBeVisible();
   const listResponse = await page.request.get(`${api}/operations/sessions/audit-session/batches`, {
     headers: authorization ? { authorization } : {},
@@ -222,7 +223,7 @@ test('REQ-283/REQ-284/REQ-285/REQ-286/REQ-287/REQ-288 acompanha progresso e cont
     await route.fulfill({ json: { items: status === 'CANCELLED' ? [] : [{ ...batch, status }] } });
   });
   await openApp(page);
-  await page.getByRole('button', { name: 'Campanhas', exact: true }).click();
+  await clickNavigation(page, 'Campanhas');
   const monitor = page.getByLabel('Monitor de campanhas');
   await expect(monitor).toContainText('Enviados: 1 de 5');
   await expect(monitor.locator('progress')).toHaveAttribute('value', '1');
@@ -256,7 +257,7 @@ test('REQ-289/REQ-290/REQ-291/REQ-292/REQ-320 agenda filtra contatos e salva ras
     if (/\/conversations\/[^/]+\/send(?:-|$)/.test(request.url())) sends.push(request.url());
   });
   await openApp(page);
-  await page.getByRole('button', { name: 'Agenda', exact: true }).click();
+  await clickNavigation(page, 'Agenda');
   await page.getByRole('button', { name: 'Novo agendamento' }).click();
   const contact = page.getByRole('combobox', { name: 'Contato para agendamento' });
   await contact.fill('Ana Exemplo');
@@ -293,7 +294,7 @@ test('REQ-289/REQ-290/REQ-291/REQ-292/REQ-320 agenda filtra contatos e salva ras
   expect(savedSchedule.status()).toBe(201);
   const schedule = await savedSchedule.json() as { id: string };
   await page.reload();
-  await page.getByRole('button', { name: 'Agenda', exact: true }).click();
+  await clickNavigation(page, 'Agenda');
   await expect(page.getByText(scheduleName, { exact: true })).toBeVisible();
   const persistedResponse = await page.request.get(`${api}/operations/sessions/audit-session/batches`);
   expect(persistedResponse.status()).toBe(200);
@@ -361,7 +362,7 @@ test('REQ-317 configura texto, áudio, imagem e vídeo em sequência de campanha
   const created = await response.json() as { id: string };
   try {
   await page.reload();
-  await page.getByRole('button', { name: 'Campanhas', exact: true }).click();
+  await clickNavigation(page, 'Campanhas');
   await expect(page.getByText(campaignName, { exact: true })).toBeVisible();
   const batchesResponse = await page.request.get(`${api}/operations/sessions/audit-session/batches`);
   const batches = (await batchesResponse.json() as { items: Array<Record<string, unknown>> }).items;
@@ -398,7 +399,7 @@ test('REQ-293/REQ-294/REQ-295/REQ-296/REQ-297/REQ-323 biblioteca edita, reproduz
     expect(removed.ok()).toBeTruthy();
   }
   await openApp(page);
-  await page.getByRole('button', { name: 'Biblioteca', exact: true }).click();
+  await clickNavigation(page, 'Biblioteca');
   await page.getByRole('button', { name: `Editar ${source.name}`, exact: true }).click();
   await page.getByLabel('Nome', { exact: true }).fill(editedName);
   await page.getByLabel('Mensagem').fill(`Texto fictício atualizado ${info.project.name}`);
@@ -406,14 +407,14 @@ test('REQ-293/REQ-294/REQ-295/REQ-296/REQ-297/REQ-323 biblioteca edita, reproduz
   await page.getByRole('button', { name: 'Salvar resposta' }).click();
   await saved;
   await page.reload();
-  await page.getByRole('button', { name: 'Biblioteca', exact: true }).click();
+  await clickNavigation(page, 'Biblioteca');
   await page.getByRole('button', { name: /Textos/ }).click();
   await expect(page.getByRole('button', { name: editedName, exact: true })).toBeVisible();
   await page.getByRole('button', { name: editedName, exact: true }).click();
   const textPreview = page.getByRole('dialog').last();
   await expect(textPreview).toContainText(`Texto fictício atualizado ${info.project.name}`);
   await textPreview.getByRole('button', { name: 'Fechar', exact: true }).click();
-  await page.getByRole('button', { name: 'Mídias', exact: true }).click();
+  await clickNavigation(page, 'Mídias');
   await page.getByRole('button', { name: 'Editar Imagem fictícia' }).click();
   await page.getByLabel('Legenda').fill(`Legenda de auditoria ${info.project.name}`);
   await page.locator('input[type=file]').setInputFiles({ name: 'imagem-auditoria-substituida.png', mimeType: 'image/png', buffer: png });
@@ -421,28 +422,28 @@ test('REQ-293/REQ-294/REQ-295/REQ-296/REQ-297/REQ-323 biblioteca edita, reproduz
   await page.getByRole('button', { name: 'Salvar resposta' }).click();
   await mediaSaved;
   await page.reload();
-  await page.getByRole('button', { name: 'Biblioteca', exact: true }).click();
-  await page.getByRole('button', { name: 'Mídias', exact: true }).click();
+  await clickNavigation(page, 'Biblioteca');
+  await clickNavigation(page, 'Mídias');
   await page.getByRole('button', { name: 'Editar Imagem fictícia' }).click();
   await expect(page.getByLabel('Legenda')).toHaveValue(`Legenda de auditoria ${info.project.name}`);
-  await page.getByRole('button', { name: 'Cancelar', exact: true }).click();
-  await page.getByRole('button', { name: 'Áudios', exact: true }).click();
-  await page.getByRole('button', { name: 'Áudio fictício', exact: true }).click();
+  await clickNavigation(page, 'Cancelar');
+  await clickNavigation(page, 'Áudios');
+  await clickNavigation(page, 'Áudio fictício');
   const audio = page.locator('dialog audio');
   await expect(audio).toBeVisible();
   await audio.evaluate((element: HTMLAudioElement) => element.play());
   await expect.poll(() => audio.evaluate((element: HTMLAudioElement) => element.currentTime)).toBeGreaterThan(0);
   await audio.evaluate((element: HTMLAudioElement) => element.pause());
   await page.getByRole('dialog').last().getByRole('button', { name: 'Fechar', exact: true }).click();
-  await page.getByRole('button', { name: 'Mídias', exact: true }).click();
-  await page.getByRole('button', { name: 'Imagem fictícia', exact: true }).click();
+  await clickNavigation(page, 'Mídias');
+  await clickNavigation(page, 'Imagem fictícia');
   await expect(page.locator('dialog img')).toBeVisible();
   await page.getByRole('dialog').last().getByRole('button', { name: 'Fechar', exact: true }).click();
-  await page.getByRole('button', { name: 'Vídeo fictício', exact: true }).click();
+  await clickNavigation(page, 'Vídeo fictício');
   await expect(page.locator('dialog video')).toBeVisible();
   await page.getByRole('dialog').last().getByRole('button', { name: 'Fechar', exact: true }).click();
-  await page.getByRole('button', { name: 'Documentos', exact: true }).click();
-  await page.getByRole('button', { name: 'Documento fictício', exact: true }).click();
+  await clickNavigation(page, 'Documentos');
+  await clickNavigation(page, 'Documento fictício');
   const documentPreview = page.getByRole('dialog').last();
   await expect(documentPreview).toContainText('Documento disponível para baixar.');
   await expect(documentPreview.getByRole('link', { name: 'Baixar arquivo' })).toBeVisible();
@@ -465,7 +466,7 @@ test('REQ-293/REQ-294/REQ-295/REQ-296/REQ-297/REQ-323 biblioteca edita, reproduz
   await expect(page.getByText('Resposta excluída.', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: `Excluir ${editedName}`, exact: true })).toBeVisible();
   await page.reload();
-  await page.getByRole('button', { name: 'Biblioteca', exact: true }).click();
+  await clickNavigation(page, 'Biblioteca');
   await page.getByRole('button', { name: /Textos/ }).click();
   await expect(page.getByRole('button', { name: `Excluir ${actualCopyName}`, exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: `Excluir ${editedName}`, exact: true })).toBeVisible();
@@ -482,15 +483,15 @@ test('REQ-293/REQ-294/REQ-295/REQ-296/REQ-297/REQ-323 biblioteca edita, reproduz
 
 test('REQ-271 cadastra atendente fictício com nome, avatar, setor e estado offline', async ({ page }, info) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
-  await page.getByRole('button', { name: 'Departamentos', exact: true }).click();
+  await clickNavigation(page, 'Configurações');
+  await clickNavigation(page, 'Departamentos');
   const suffix = `${info.project.name.replaceAll(/[^a-z0-9]/gi, '').toLowerCase()}${Date.now()}`;
   const department = `Campanha ${suffix}`;
   await page.getByLabel('Novo departamento').fill(department);
   const departmentSaved = page.waitForResponse((response) => response.url().endsWith('/api/operations/settings/departments') && response.request().method() === 'PUT' && response.ok());
-  await page.getByRole('button', { name: 'Adicionar', exact: true }).click();
+  await clickNavigation(page, 'Adicionar');
   await departmentSaved;
-  await page.getByRole('button', { name: 'Equipe', exact: true }).click();
+  await clickNavigation(page, 'Equipe');
   const name = `Atendente ${info.project.name}`;
   const email = `req271-${suffix}@example.com`;
   await page.getByLabel('Nome', { exact: true }).fill(name);
@@ -503,8 +504,8 @@ test('REQ-271 cadastra atendente fictício com nome, avatar, setor e estado offl
   await page.getByRole('button', { name: 'Salvar atendente' }).click();
   await saved;
   await page.reload();
-  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
-  await page.getByRole('button', { name: 'Equipe', exact: true }).click();
+  await clickNavigation(page, 'Configurações');
+  await clickNavigation(page, 'Equipe');
   const member = page.locator('.team-member-list article').filter({ hasText: email });
   await expect(member).toContainText(name);
   await expect(member).toContainText(department);

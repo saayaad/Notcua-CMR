@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -54,8 +55,8 @@ test('REQ-126 importação CSV permite mapear colunas e revisar antes de gravar'
 
   await page.goto('/atendimento');
   await expect(page.locator('.app-shell')).toBeVisible();
-  await page.getByRole('button', { name: 'Contatos', exact: true }).click();
-  await page.getByRole('button', { name: 'Importar Excel / CSV', exact: true }).click();
+  await clickNavigation(page, 'Contatos');
+  await clickNavigation(page, 'Importar Excel / CSV');
   const dialog = page.getByRole('dialog', { name: 'Importar contatos de uma planilha' });
   await dialog.locator('input[type="file"]').setInputFiles({
     name: 'req126-colunas-invertidas.csv', mimeType: 'text/csv',

@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -17,7 +18,7 @@ async function openApp(page: Page) {
 
 async function openPersonalization(page: Page) {
   await openApp(page);
-  await page.getByRole('button', { name: 'Personalização', exact: true }).click();
+  await clickNavigation(page, 'Personalização');
   await expect(page.getByRole('heading', { name: 'Configurações' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Identidade e cores' })).toBeVisible();
 }
@@ -182,7 +183,7 @@ test('REQ-208/REQ-209 aplica cor e ícone personalizados da etiqueta no CRM', as
   await waitPreference(page, () => page.getByLabel('Cor visual de Novo lead').fill(color));
   await waitPreference(page, () => page.getByLabel('Ícone de Novo lead').fill(icon));
   await page.reload();
-  await page.getByRole('button', { name: 'CRM e negócios', exact: true }).click();
+  await clickNavigation(page, 'CRM e negócios');
   const column = page.getByLabel('Etapa Novo lead');
   await expect(column).toBeVisible();
   await expect(column.locator('.kanban-column-icon')).toHaveText(icon);
@@ -304,7 +305,7 @@ test('REQ-229 abre uma configuração de Personalização pelo resultado da busc
 
 test('REQ-230/REQ-231/REQ-232/REQ-233 move card, persiste valor e mostra retorno por etiqueta e campanha', async ({ page }, info) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'CRM e negócios', exact: true }).click();
+  await clickNavigation(page, 'CRM e negócios');
   const editAna = page.getByRole('button', { name: /Editar negociação de Ana Exemplo em/ });
   await expect(editAna).toBeVisible();
   const currentName = await editAna.getAttribute('aria-label');
@@ -326,13 +327,13 @@ test('REQ-230/REQ-231/REQ-232/REQ-233 move card, persiste valor e mostra retorno
   await expect(page.getByRole('button', { name: new RegExp(`Editar negociação de Ana Exemplo em ${target}`) })).toBeVisible();
   await saveEvidence(page, ['REQ-230', 'REQ-231'], info, { contact: 'Ana Exemplo', target, value });
 
-  await page.getByRole('button', { name: 'Visão geral', exact: true }).click();
+  await clickNavigation(page, 'Visão geral');
   const labelFinance = page.locator('.label-finance').getByText(/Cliente.*1 vendas.*Receita.*100,00.*Investimento.*20,00/s);
   await expect(labelFinance).toBeVisible();
   await expect(page.locator('.label-finance')).toContainText('Retorno estimado: 400%');
   await saveEvidence(page, 'REQ-232', info, { label: 'Cliente', revenue: 100, investment: 20, roi: 400 });
 
-  await page.getByRole('button', { name: 'Campanhas', exact: true }).click();
+  await clickNavigation(page, 'Campanhas');
   const campaign = page.locator('article.surface').filter({ has: page.getByRole('heading', { name: 'Campanha Auditoria' }) });
   await expect(campaign).toContainText('Receita atribuída: R$ 100,00');
   await expect(campaign).toContainText('Investimento: R$ 20,00');

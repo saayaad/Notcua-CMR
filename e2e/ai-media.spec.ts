@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -26,7 +27,7 @@ async function openClientStudio(page: Page) {
   if (await action.isVisible()) await action.click();
   else {
     await page.locator('details.chat-more-actions summary').click();
-    await page.getByRole('button', { name: 'Estúdio de IA deste cliente', exact: true }).click();
+    await clickNavigation(page, 'Estúdio de IA deste cliente');
   }
   await expect(page.getByRole('dialog')).toContainText('Estúdio de IA');
 }
@@ -104,8 +105,8 @@ test('REQ-360/REQ-361/REQ-362 configura roteamento Gemini e modelo visual com pr
     return route.fallback();
   });
   await page.goto('/atendimento');
-  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
-  await page.getByRole('button', { name: 'Integração de IA', exact: true }).click();
+  await clickNavigation(page, 'Configurações');
+  await clickNavigation(page, 'Integração de IA');
   const enabledSwitch = page.locator('.ai-feature-switch button');
   if (await enabledSwitch.count()) {
     if ((await enabledSwitch.getAttribute('aria-checked')) !== 'true') await enabledSwitch.click();
@@ -122,8 +123,8 @@ test('REQ-360/REQ-361/REQ-362 configura roteamento Gemini e modelo visual com pr
   await expect.poll(() => config.reasoningModel).toBe('gemini-audit-pro');
   await expect.poll(() => config.imageModel).toBe('gemini-audit-image');
   await page.reload();
-  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
-  await page.getByRole('button', { name: 'Integração de IA', exact: true }).click();
+  await clickNavigation(page, 'Configurações');
+  await clickNavigation(page, 'Integração de IA');
   await expect(page.getByLabel('Modelo rápido · tarefas simples')).toHaveValue('gemini-audit-flash');
   await expect(page.getByLabel('Modelo de raciocínio · tarefas complexas')).toHaveValue('gemini-audit-pro');
   await expect(page.getByLabel('Modelo de geração de imagens')).toHaveValue('gemini-audit-image');
@@ -189,7 +190,7 @@ test('REQ-363/REQ-364/REQ-365/REQ-370/REQ-371/REQ-372 separa histórico por clie
   await expect.poll(() => threads.size).toBe(1);
   const firstKey = [...threads.keys()][0]!;
   expect(firstContact.trim()).toBeTruthy();
-  await page.getByRole('button', { name: 'Fechar janela', exact: true }).click();
+  await clickNavigation(page, 'Fechar janela');
   const chats = page.locator('button.chat-item:not(.chat-item-more)');
   const count = await chats.count();
   expect(count).toBeGreaterThanOrEqual(5);
@@ -204,7 +205,7 @@ test('REQ-363/REQ-364/REQ-365/REQ-370/REQ-371/REQ-372 separa histórico por clie
     await page.locator('.client-ai-composer button').click();
     await expect(page.locator('.client-ai-log')).toContainText('Simulado para');
     otherKeys.add(activeContact);
-    await page.getByRole('button', { name: 'Fechar janela', exact: true }).click();
+    await clickNavigation(page, 'Fechar janela');
   }
   expect(otherKeys.size).toBeGreaterThanOrEqual(5);
   const back = page.getByRole('button', { name: 'Voltar à lista', exact: true });
@@ -212,22 +213,22 @@ test('REQ-363/REQ-364/REQ-365/REQ-370/REQ-371/REQ-372 separa histórico por clie
   await chats.first().click();
   await openClientStudio(page);
   await expect(page.locator('.client-ai-log')).toContainText('Crie roteiro de apresentação');
-  await page.getByRole('button', { name: 'Gerar imagem', exact: true }).click();
+  await clickNavigation(page, 'Gerar imagem');
   await page.getByLabel('Descreva a imagem').fill('Imagem de apresentação fictícia para o cliente');
   await page.getByLabel('Modelo de criação').click(); await page.getByRole('option', { name: 'Objeto comercial', exact: true }).click();
   await page.getByLabel('Proporção').click(); await page.getByRole('option', { name: 'Vertical · 9:16', exact: true }).click();
-  await page.getByRole('button', { name: 'Gerar e salvar no histórico', exact: true }).click();
+  await clickNavigation(page, 'Gerar e salvar no histórico');
   await expect(page.locator('.client-ai-image-form')).toContainText('Imagem de referência');
   await expect.poll(() => threads.get(firstKey)?.some((entry) => entry.text.includes('Imagem simulada'))).toBe(true);
-  await page.getByRole('button', { name: 'Conversar', exact: true }).click();
+  await clickNavigation(page, 'Conversar');
   await page.getByRole('textbox', { name: 'Converse com a IA sobre este cliente…' }).fill('Edite a imagem anterior mantendo as cores e o contexto do cliente.');
   await page.locator('.client-ai-composer button').click();
   await expect(page.locator('.client-ai-log')).toContainText('Edite a imagem anterior');
   await expect(page.getByRole('img', { name: 'Imagem gerada para este cliente' })).toBeVisible();
-  await page.getByRole('button', { name: 'Preparar envio ao cliente', exact: true }).click();
+  await clickNavigation(page, 'Preparar envio ao cliente');
   await expect(page.getByRole('heading', { name: 'Enviar arquivo' })).toBeVisible();
   await expect(page.getByLabel('Aplicar marca d’água de aprovação')).toBeChecked();
-  await page.getByRole('button', { name: 'Enviar arquivo', exact: true }).click();
+  await clickNavigation(page, 'Enviar arquivo');
   await expect.poll(() => generatedUploads.length).toBe(1);
   await expect.poll(() => preparedImageSend).toBe(1);
   await saveEvidence(page, ['REQ-363', 'REQ-364', 'REQ-365', 'REQ-370', 'REQ-371', 'REQ-372', 'REQ-375'], info, { contactsWithIndependentThreads: otherKeys.size, persistedEntries: threads.get(firstKey)?.length, generatedImage: 'simulada', scriptUsesConversationScope: true, imagePreparationShowsApprovalWatermark: true, generatedImageUploadBytes: generatedUploads[0]!.bytes, uploadMime: generatedUploads[0]!.mimeType, localSendRouteIntercepted: true });
@@ -249,7 +250,7 @@ test('REQ-366/REQ-367/REQ-368/REQ-369 oferece presets, proporção e referência
   });
   await openConversation(page);
   await openClientStudio(page);
-  await page.getByRole('button', { name: 'Gerar imagem', exact: true }).click();
+  await clickNavigation(page, 'Gerar imagem');
   const template = page.getByLabel('Modelo de criação');
   const templateValues: string[] = [];
   for (const value of ['mascot-3d', 'mascot-realistic', 'product']) {
@@ -280,7 +281,7 @@ test('REQ-366/REQ-367/REQ-368/REQ-369 oferece presets, proporção e referência
   await page.getByRole('button', { name: /Usar imagem de/ }).last().click();
   await expect(page.getByRole('img', { name: 'Imagem de referência' })).toBeVisible();
   await page.getByLabel('Descreva a imagem').fill('Foto de referência fictícia');
-  await page.getByRole('button', { name: 'Gerar e salvar no histórico', exact: true }).click();
+  await clickNavigation(page, 'Gerar e salvar no histórico');
   await expect.poll(() => generated.length).toBe(1);
   expect(generated[0]).toMatchObject({ template: 'product', aspectRatio: '9:16' });
   expect(generated[0]?.reference).toBeTruthy();
@@ -295,12 +296,12 @@ test('REQ-376/REQ-377/REQ-378/REQ-379 cadastra marcas, texto e PNG com prévia, 
     return route.fulfill({ json: settings });
   });
   await page.goto('/atendimento');
-  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
+  await clickNavigation(page, 'Configurações');
   await page.getByRole('main').getByRole('button', { name: 'Personalização', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Marca d’água de aprovação' })).toBeVisible();
   const name = page.getByLabel('Nome do modelo');
   await name.first().fill('Selo de auditoria local');
-  await page.getByRole('button', { name: 'Adicionar modelo', exact: true }).click();
+  await clickNavigation(page, 'Adicionar modelo');
   await expect(name).toHaveCount(2);
   await name.nth(1).fill('Selo alternativo local');
   const text = page.getByLabel('Texto da marca d’água');
@@ -316,10 +317,10 @@ test('REQ-376/REQ-377/REQ-378/REQ-379 cadastra marcas, texto e PNG com prévia, 
   await expect(page.getByRole('img', { name: 'Prévia da marca d’água Selo alternativo local' })).toBeVisible();
   await page.locator('input[type=file][accept="image/png"]').last().setInputFiles({ name: 'selo-transparente.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/2ioAAAAASUVORK5CYII=', 'base64') });
   await expect(page.getByRole('img', { name: 'Selo de marca d’água' })).toBeVisible();
-  await page.getByRole('button', { name: 'Salvar modelos', exact: true }).click();
+  await clickNavigation(page, 'Salvar modelos');
   await expect.poll(() => settings.marks.length).toBe(2);
   await page.reload();
-  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
+  await clickNavigation(page, 'Configurações');
   await page.getByRole('main').getByRole('button', { name: 'Personalização', exact: true }).click();
   await expect(page.getByLabel('Nome do modelo').nth(1)).toHaveValue('Selo alternativo local');
   await expect(page.getByLabel(/Opacidade/).nth(1)).toHaveValue('67');
@@ -373,7 +374,7 @@ test('REQ-373/REQ-374/REQ-380/REQ-381/REQ-382 marca e otimiza anexos fictícios 
   await expect(page.getByLabel('Aplicar marca d’água de aprovação')).toBeChecked();
   await expect(page.locator('.attachment-preview img')).toBeVisible();
   const originalSize = imageBuffer.length;
-  await page.getByRole('button', { name: 'Enviar arquivo', exact: true }).click();
+  await clickNavigation(page, 'Enviar arquivo');
   await expect.poll(() => uploadedFiles.length).toBe(1);
   await expect.poll(() => sendCalls).toBe(1);
   expect(uploadedFiles[0]!.bytes).toBeLessThan(originalSize);
@@ -389,16 +390,16 @@ test('REQ-373/REQ-374/REQ-380/REQ-381/REQ-382 marca e otimiza anexos fictícios 
   await page.locator('input[type=file].sr-only').setInputFiles({ name: 'video-audit.webm', mimeType: 'video/webm', buffer: video });
   await expect(page.getByRole('heading', { name: 'Enviar arquivo' })).toBeVisible();
   await expect(page.getByLabel('Aplicar marca d’água de aprovação')).toBeChecked();
-  await page.getByRole('button', { name: 'Enviar arquivo', exact: true }).click();
+  await clickNavigation(page, 'Enviar arquivo');
   await expect.poll(() => uploadedFiles.length).toBe(2);
   await expect.poll(() => sendCalls).toBe(2);
   expect(uploadedFiles[1]!.watermark).toMatch(/^data:image\/png;base64,/);
   expect(uploadedFiles[1]!.bytes).toBe(videoOriginalSize);
   expect(uploadedFiles[1]!.storedBytes).toBeLessThan(videoOriginalSize);
 
-  await page.getByRole('button', { name: 'Biblioteca', exact: true }).click();
-  await page.getByRole('button', { name: 'Mídias', exact: true }).click();
-  await page.getByRole('button', { name: 'Nova resposta', exact: true }).click();
+  await clickNavigation(page, 'Biblioteca');
+  await clickNavigation(page, 'Mídias');
+  await clickNavigation(page, 'Nova resposta');
   const editor = page.getByRole('dialog', { name: 'Nova resposta rápida' });
   await editor.getByLabel('Nome', { exact: true }).fill('Vídeo comprimido de auditoria');
   await editor.locator('input[type="file"]').setInputFiles({ name: 'video-biblioteca.webm', mimeType: 'video/webm', buffer: video });

@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -191,7 +192,7 @@ async function openApp(page: Page) {
 }
 
 async function openBackupSettings(page: Page) {
-  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
+  await clickNavigation(page, 'Configurações');
   await expect(page.getByRole('heading', { name: 'Configurações' })).toBeVisible();
   await page.getByRole('main').getByRole('button', { name: 'Backups e acesso', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Importar backup' })).toBeVisible();
@@ -267,7 +268,7 @@ test('REQ-085: exporta JSON compatível e cria/baixa backup integral fictício',
   await openApp(page);
   await openBackupSettings(page);
   const jsonDownload = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Exportar JSON', exact: true }).click();
+  await clickNavigation(page, 'Exportar JSON');
   const exported = await jsonDownload;
   expect(exported.suggestedFilename()).toMatch(/^noctua-biblioteca-\d{4}-\d{2}-\d{2}\.json$/);
   const exportDir = resolve(evidenceRoot, 'REQ-085');
@@ -279,7 +280,7 @@ test('REQ-085: exporta JSON compatível e cria/baixa backup integral fictício',
   expect(payload.format).toBe('ZV_backup');
   expect(payload.messages).toHaveLength(1);
 
-  await page.getByRole('button', { name: 'Criar cópia agora', exact: true }).click();
+  await clickNavigation(page, 'Criar cópia agora');
   await expect(page.getByRole('button', { name: 'Baixar ZIP', exact: true })).toHaveCount(2);
   const zipDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Baixar ZIP', exact: true }).first().click();
@@ -328,11 +329,11 @@ test('REQ-088: reconhece ZV_backup sem solicitar senha', async ({ page }) => {
 
 test('REQ-094: mostra QR fictício válido após solicitar conexão e preserva o estado coerente', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Conexões', exact: true }).click();
+  await clickNavigation(page, 'Conexões');
   await expect(page.getByRole('heading', { name: 'Conexões' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Conectar', exact: true })).toBeEnabled();
   const connecting = page.waitForResponse((response) => response.url().endsWith('/api/whatsapp/sessions/audit-req094-connection/connect'));
-  await page.getByRole('button', { name: 'Conectar', exact: true }).click();
+  await clickNavigation(page, 'Conectar');
   expect((await connecting).status()).toBe(200);
   await expect(page.getByRole('img', { name: 'QR Code para conectar o WhatsApp' })).toBeVisible();
   await expect(page.getByText('Aguardando leitura', { exact: true })).toBeVisible();

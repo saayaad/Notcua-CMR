@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -45,7 +46,7 @@ async function isolateNetwork(page: Page): Promise<IsolationLog> {
 async function openSandbox(page: Page) {
   await page.goto('/atendimento');
   await expect(page.locator('.app-shell')).toBeVisible();
-  await page.getByRole('button', { name: 'Espaço de Teste', exact: true }).click();
+  await clickNavigation(page, 'Espaço de Teste');
   await expect(page.getByRole('heading', { name: 'Espaço de Teste' })).toBeVisible();
 }
 
@@ -180,7 +181,7 @@ test('REQ-352 limpeza remove apenas dados fictícios e preserva outras chaves', 
   await loadExamples(page);
   const sandboxKey = await page.evaluate(() => Object.keys(localStorage).find(key => key.startsWith('noctua:sandbox:v1:')) || '');
   expect(sandboxKey).not.toBe('');
-  await page.getByRole('button', { name: 'Limpar dados de exemplo', exact: true }).click();
+  await clickNavigation(page, 'Limpar dados de exemplo');
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('heading', { name: 'Limpar apenas o Espaço de Teste?' })).toBeVisible();
   await expect(dialog).toContainText('Os dados reais do sistema permanecem preservados.');

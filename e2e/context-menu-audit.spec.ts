@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -67,7 +68,7 @@ async function saveEvidence(page: Page, id: string, info: TestInfo, details: Rec
 
 test('REQ-668 menu global e menu específico da Biblioteca usam o mesmo componente', async ({ page }, info) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Biblioteca', exact: true }).click();
+  await clickNavigation(page, 'Biblioteca');
   const resource = page.locator('.resource-card').first();
   await expect(resource).toBeVisible();
   const resourceName = (await resource.locator('h2').innerText()).trim();

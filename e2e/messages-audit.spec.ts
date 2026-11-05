@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -233,7 +234,7 @@ async function ensureToolsOpen(page: Page) {
   if (await globalToggle.isVisible()) await globalToggle.click();
   else {
     await page.locator('.chat-more-actions summary').click();
-    await page.getByRole('button', { name: 'Mostrar mensagens fixadas', exact: true }).click();
+    await clickNavigation(page, 'Mostrar mensagens fixadas');
   }
   await expect(tools).toBeVisible();
   return tools;
@@ -363,8 +364,8 @@ test('REQ-035/REQ-036/REQ-037/REQ-038 cadastra chave aleatória fictícia e prep
   const existingKey = { id: 'audit-pix-existing', name: 'Chave fictícia de teste', value: keyValue, type: 'RANDOM', merchantName: 'Recebedor teste', merchantCity: 'São Paulo' };
   state.library.pixKeys.push(existingKey);
   await openLibrary(page);
-  await page.getByRole('button', { name: 'PIX', exact: true }).click();
-  await page.getByRole('button', { name: 'Cadastrar chave', exact: true }).click();
+  await clickNavigation(page, 'PIX');
+  await clickNavigation(page, 'Cadastrar chave');
   const editor = page.getByRole('dialog', { name: 'Cadastrar chave PIX' });
   await expect(editor).toContainText('A chave aleatória também deve ter sido gerada pelo banco');
   await editor.getByLabel('Nome de identificação').fill('Chave aleatória de auditoria');
@@ -376,7 +377,7 @@ test('REQ-035/REQ-036/REQ-037/REQ-038 cadastra chave aleatória fictícia e prep
   expect(createdKey?.type).toBe('RANDOM');
   await page.reload();
   await page.locator('.navigation button[aria-label="Biblioteca"]').click();
-  await page.getByRole('button', { name: 'PIX', exact: true }).click();
+  await clickNavigation(page, 'PIX');
   await expect(page.locator('article.resource-card').filter({ hasText: 'Chave aleatória de auditoria' })).toContainText('Chave aleatória');
 
   await openConversation(page);
@@ -425,7 +426,7 @@ test('REQ-040/REQ-041/REQ-042 cria, lista, edita, recarrega e exclui áudio, mí
   for (const resource of resources) {
     await openLibrary(page);
     await page.getByRole('button', { name: resource.tab, exact: true }).click();
-    await page.getByRole('button', { name: 'Nova resposta', exact: true }).click();
+    await clickNavigation(page, 'Nova resposta');
     const editor = page.getByRole('dialog', { name: 'Nova resposta rápida' });
     await editor.getByLabel('Nome', { exact: true }).fill(resource.name);
     await editor.locator('input[type="file"]').setInputFiles(resource.file);
@@ -512,7 +513,7 @@ test('REQ-044/REQ-045/REQ-046/REQ-047/REQ-048/REQ-052 cria macro encadeada, conf
 
   await page.reload();
   await page.locator('.navigation button[aria-label="Biblioteca"]').click();
-  await page.getByRole('button', { name: 'Macros', exact: true }).click();
+  await clickNavigation(page, 'Macros');
   await expect(page.locator('article.resource-card').filter({ hasText: macroName })).toBeVisible();
   state.notes = { macroName, actionTypes: actions.map((action) => action.type), waitMs: actions[1].delayMs, presence: actions[1].presence, audioAssetId: audio.id, persistedAfterReload: true, launchedByUserAction: true, launchIntercepted: true, serverProof: 'operations.test.ts e attendance.test.ts usam conector fictício e SQLite temporário para execução da sequência e presença.' };
   await capture(page, ['REQ-044', 'REQ-045', 'REQ-046', 'REQ-047', 'REQ-048', 'REQ-052'], info, state.notes);
@@ -559,7 +560,7 @@ test('REQ-049/REQ-050/REQ-051/REQ-052/REQ-053 cria funil multimídia ordenado co
 
   await page.reload();
   await page.locator('.navigation button[aria-label="Biblioteca"]').click();
-  await page.getByRole('button', { name: 'Funis', exact: true }).click();
+  await clickNavigation(page, 'Funis');
   await expect(page.locator('article.resource-card').filter({ hasText: funnelName })).toContainText('3 etapas');
   state.notes = { orderedAssetIds: sequence.map((step) => step.itemId), delaysMs: sequence.map((step) => step.delayBeforeSend), persistedAfterReload: true, launchedBySingleConfirmation: true, launchIntercepted: true, presenceDuringDelayServerProof: 'attendance.test.ts funil multimídia: conector fictício recebeu recording durante a espera da etapa de áudio.' };
   await capture(page, ['REQ-049', 'REQ-050', 'REQ-051', 'REQ-052', 'REQ-053'], info, state.notes);

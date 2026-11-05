@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -66,7 +67,7 @@ function workbookBytes(rows: unknown[][], bookType: 'xlsx' | 'xls') {
 
 async function openImport(page: Page) {
   await openApp(page);
-  await page.getByRole('button', { name: 'Contatos', exact: true }).click();
+  await clickNavigation(page, 'Contatos');
   await page.getByRole('button', { name: 'Importar Excel / CSV' }).click();
   const dialog = page.getByRole('dialog', { name: 'Importar contatos de uma planilha' });
   await expect(dialog).toBeVisible();
@@ -204,7 +205,7 @@ test('REQ-309/REQ-312 importa XLSX com colunas invertidas e persiste após revis
   await dialog.getByRole('button', { name: 'Importar 1 contatos' }).click();
   await expect(page.getByText('1 contatos importados. Nenhuma mensagem enviada.')).toBeVisible();
   await page.reload();
-  await page.getByRole('button', { name: 'Contatos', exact: true }).click();
+  await clickNavigation(page, 'Contatos');
   await page.getByLabel('Buscar contatos').fill(name);
   const contactRow = page.locator('.contacts-table button').filter({ hasText: name });
   await expect(contactRow).toContainText(`+${phone}`);
@@ -231,7 +232,7 @@ test('REQ-310/REQ-313 importa XLS legado e normaliza número local com DDI/DDD i
   await dialog.getByRole('button', { name: 'Importar 1 contatos' }).click();
   await expect(page.getByText('1 contatos importados. Nenhuma mensagem enviada.')).toBeVisible();
   await page.reload();
-  await page.getByRole('button', { name: 'Contatos', exact: true }).click();
+  await clickNavigation(page, 'Contatos');
   await page.getByLabel('Buscar contatos').fill(name);
   const contactRow = page.locator('.contacts-table button').filter({ hasText: name });
   await expect(contactRow).toContainText(`+${normalizedPhone}`);
@@ -248,7 +249,7 @@ test('REQ-321 agenda lembrete interno fictício e persiste sem enviar ao cliente
     if (/\/conversations\/[^/]+\/send(?:-|$)/.test(request.url())) sends += 1;
   });
   await openApp(page);
-  await page.getByRole('button', { name: 'Agenda', exact: true }).click();
+  await clickNavigation(page, 'Agenda');
   await page.getByRole('button', { name: 'Novo agendamento' }).click();
   const dialog = page.getByRole('dialog', { name: 'Agendar mensagem ou lembrete' });
   await dialog.getByLabel('Nome', { exact: true }).fill(name);
@@ -276,7 +277,7 @@ test('REQ-321 agenda lembrete interno fictício e persiste sem enviar ao cliente
   const created = await response.json() as { id: string };
   try {
   await page.reload();
-  await page.getByRole('button', { name: 'Agenda', exact: true }).click();
+  await clickNavigation(page, 'Agenda');
   await expect(page.getByText(name, { exact: true })).toBeVisible();
   const listResponse = await page.request.get(`${api}/operations/sessions/audit-session/batches`);
   const items = (await listResponse.json() as { items: Array<Record<string, unknown>> }).items;
@@ -299,8 +300,8 @@ test('REQ-322 envia imagem fictícia à Biblioteca, categoriza e persiste após 
   const originalResponse = await page.request.get(`${api}/operations/toolbox/organization`);
   const original = await originalResponse.json() as { categories: string[]; assignments: Record<string, string> };
   await openApp(page);
-  await page.getByRole('button', { name: 'Biblioteca', exact: true }).click();
-  await page.getByRole('button', { name: 'Mídias', exact: true }).click();
+  await clickNavigation(page, 'Biblioteca');
+  await clickNavigation(page, 'Mídias');
   await page.getByRole('button', { name: 'Nova resposta' }).click();
   const editor = page.getByRole('dialog', { name: 'Nova resposta rápida' });
   await editor.getByLabel('Nome', { exact: true }).fill(resourceName);
@@ -329,8 +330,8 @@ test('REQ-322 envia imagem fictícia à Biblioteca, categoriza e persiste após 
   await categories.getByRole('button', { name: 'Salvar organização' }).click();
   await categorySaved;
   await page.reload();
-  await page.getByRole('button', { name: 'Biblioteca', exact: true }).click();
-  await page.getByRole('button', { name: 'Mídias', exact: true }).click();
+  await clickNavigation(page, 'Biblioteca');
+  await clickNavigation(page, 'Mídias');
   await page.getByLabel('Categoria da biblioteca').click();
   await page.getByRole('option', { name: category, exact: true }).click();
   const card = page.locator('.resource-card').filter({ has: page.getByRole('button', { name: resourceName, exact: true }) });
@@ -355,7 +356,7 @@ test('REQ-327/REQ-562 mostra necessidade de conectar com QR fictício sem tocar 
       : item) } });
   });
   await openApp(page);
-  await page.getByRole('button', { name: 'Conexões', exact: true }).click();
+  await clickNavigation(page, 'Conexões');
   const qr = page.getByAltText('QR Code para conectar o WhatsApp');
   await expect(qr).toBeVisible();
   const bounds = await qr.evaluate((element) => {
@@ -406,7 +407,7 @@ test('REQ-326 filtra mensagens fixadas por categoria após salvar preferências'
     await selectFirstConversation(page);
     const show = page.getByRole('button', { name: 'Mostrar biblioteca lateral', exact: true });
     if (await show.isVisible()) await show.click();
-    await page.getByRole('button', { name: 'Fixados', exact: true }).click();
+    await clickNavigation(page, 'Fixados');
     const categoryFilter = page.getByRole('combobox', { name: 'Categoria dos fixados' });
     await categoryFilter.click();
     await page.getByRole('option', { name: firstCategory, exact: true }).click();

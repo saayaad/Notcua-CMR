@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Page } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -131,14 +132,14 @@ test.afterEach(async ({ page }, info) => {
 async function openCrm(page: Page) {
   await page.goto('/atendimento', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.app-shell')).toBeVisible({ timeout: 20_000 });
-  await page.getByRole('button', { name: 'CRM e negócios', exact: true }).click();
+  await clickNavigation(page, 'CRM e negócios');
   await expect(page.getByRole('heading', { name: 'CRM e negócios' })).toBeVisible();
 }
 
 test('REQ-021: cria etiqueta com ID, nome, cor, descrição e contato vinculado após recarregar', async ({ page }) => {
   const state = stateOf(page);
   await openCrm(page);
-  await page.getByRole('button', { name: 'Etapas', exact: true }).click();
+  await clickNavigation(page, 'Etapas');
   const manager = page.getByRole('dialog', { name: 'Etapas e etiquetas' });
   await expect(manager).toBeVisible();
   await manager.getByRole('button', { name: 'Nova etapa', exact: true }).click();
@@ -176,7 +177,7 @@ test('REQ-021: cria etiqueta com ID, nome, cor, descrição e contato vinculado 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await openCrm(page);
   await expect(page.locator('.kanban-column[aria-label="Etapa Qualificação fictícia"] .kanban-card')).toContainText('Ana Exemplo');
-  await page.getByRole('button', { name: 'Etapas', exact: true }).click();
+  await clickNavigation(page, 'Etapas');
   const reopenedManager = page.getByRole('dialog', { name: 'Etapas e etiquetas' });
   const reopenedStage = reopenedManager.locator('.stage-list > div').filter({ hasText: 'Qualificação fictícia' });
   await expect(reopenedStage).toContainText('Validar oportunidade de auditoria.');

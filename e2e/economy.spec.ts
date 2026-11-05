@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -58,8 +59,8 @@ test('REQ-414–REQ-429 Economia abre, persiste ajustes e permite revisar e remo
   await page.route('**/api/operations/ai', (route) => route.fulfill({ json: { enabled: false, configured: false, model: '', instructions: 'Regra base.', style: 'Tom cordial.', usage: {} } }));
   await page.goto('/atendimento');
   await expect(page.locator('.app-shell')).toBeVisible();
-  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
-  await page.getByRole('button', { name: 'Economia de Tokens', exact: true }).click();
+  await clickNavigation(page, 'Configurações');
+  await clickNavigation(page, 'Economia de Tokens');
   await expect(page.getByRole('heading', { name: 'Economia de tokens' })).toBeVisible();
   await expect(page.getByText('120 tokens estimados poupados hoje')).toBeVisible();
   await expect(page.getByText('420 tokens estimados poupados este mês')).toBeVisible();
@@ -78,8 +79,8 @@ test('REQ-414–REQ-429 Economia abre, persiste ajustes e permite revisar e remo
   expect(settings.systems.copilot).toBe(false);
   expect(settings.systems.summaries).toBe(false);
   await page.reload();
-  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
-  await page.getByRole('button', { name: 'Economia de Tokens', exact: true }).click();
+  await clickNavigation(page, 'Configurações');
+  await clickNavigation(page, 'Economia de Tokens');
   await expect(page.getByLabel('Validade do cache (dias)')).toHaveValue('21');
   await expect(page.getByLabel('Atualizar resumo a cada mensagens')).toHaveValue('15');
   await expect(page.getByRole('checkbox', { name: 'Autoatendimento e chatbot' })).not.toBeChecked();
@@ -97,8 +98,8 @@ test('REQ-414–REQ-429 Economia abre, persiste ajustes e permite revisar e remo
   await expect(page.locator('.economy-cache article')).toHaveCount(0);
   items = [{ id: 'cache-audit-2', question: 'Fixture para limpeza do cache?', answer: 'Fictício.', hits: 0, createdAt: new Date().toISOString(), approvedAt: undefined, sourceConversationId: 'conversation-fixture' }];
   await page.reload();
-  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
-  await page.getByRole('button', { name: 'Economia de Tokens', exact: true }).click();
+  await clickNavigation(page, 'Configurações');
+  await clickNavigation(page, 'Economia de Tokens');
   await page.getByRole('button', { name: 'Limpar cache' }).click();
   expect(items).toHaveLength(0);
   await expect(page.locator('.economy-cache article')).toHaveCount(0);
@@ -111,8 +112,8 @@ test('REQ-419–REQ-422 controles sem consumidores foram removidos da interface'
   await page.route('**/api/operations/economy', (route) => route.fulfill({ json: { settings, saved: { today: { tokens: 0, requests: 0 }, month: { tokens: 0, requests: 0 } } } }));
   await page.route('**/api/operations/ai', (route) => route.fulfill({ json: { enabled: false, configured: false, usage: {} } }));
   await page.goto('/atendimento');
-  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
-  await page.getByRole('button', { name: 'Economia de Tokens', exact: true }).click();
+  await clickNavigation(page, 'Configurações');
+  await clickNavigation(page, 'Economia de Tokens');
   const removed = ['Campanhas e testes A/B', 'Treinamento do vendedor', 'Comprovantes e auditoria', 'Resumo diário de leads'];
   for (const label of removed) await expect(page.getByText(label, { exact: true })).toHaveCount(0);
   for (const label of ['Autoatendimento e chatbot', 'Copiloto do vendedor', 'Resumos e passagem de turno']) await expect(page.getByText(label, { exact: true })).toBeVisible();
@@ -130,8 +131,8 @@ test('REQ-430 controle de embeddings ausente; REQ-439/REQ-440 revisão de otimiz
   });
   await page.route('**/api/operations/economy/optimize-prompts', (route) => route.fulfill({ json: { instructions: '- Preserve preço e exceção.', style: '- Use tom breve.' } }));
   await page.goto('/atendimento');
-  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
-  await page.getByRole('button', { name: 'Economia de Tokens', exact: true }).click();
+  await clickNavigation(page, 'Configurações');
+  await clickNavigation(page, 'Economia de Tokens');
   await expect(page.getByText('Indexar histórico e regras por embeddings')).toHaveCount(0);
   await page.getByRole('button', { name: 'Otimizar regras e estilo com IA' }).click();
   await expect(page.getByRole('heading', { name: 'Prévia das regras otimizadas' })).toBeVisible();

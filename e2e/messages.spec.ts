@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -54,7 +55,7 @@ test('REQ-241/REQ-242 alterna lista arquivada, arquiva e reabre conversa com per
   await page.getByRole('button', { name: 'Arquivar conversa' }).click();
   await expect(page.locator('button.chat-item').filter({ hasText: name })).toHaveCount(0);
   await page.reload();
-  await page.getByRole('button', { name: 'Arquivadas', exact: true }).click();
+  await clickNavigation(page, 'Arquivadas');
   await expect(page.locator('button.chat-item').filter({ hasText: name })).toBeVisible();
   await page.locator('button.chat-item').filter({ hasText: name }).click();
   if (!(await page.getByRole('button', { name: 'Reabrir conversa' }).isVisible())) {
@@ -70,7 +71,7 @@ test('REQ-241/REQ-242 alterna lista arquivada, arquiva e reabre conversa com per
 test('REQ-247/REQ-248/REQ-249 salva nota privada dourada sem chamar a rota de envio', async ({ page }, info) => {
   await openFirstConversation(page);
   const contact = await page.locator('.client-name-button strong').innerText();
-  await page.getByRole('button', { name: 'Nota interna', exact: true }).click();
+  await clickNavigation(page, 'Nota interna');
   const text = `Nota privada auditoria ${info.project.name} ${Date.now()}`;
   const response = page.waitForResponse((res) => res.url().includes('/internal-notes') && res.request().method() === 'POST' && res.ok());
   await page.getByRole('textbox', { name: 'Mensagem', exact: true }).fill(text);

@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -133,7 +134,7 @@ test('REQ-196 páginas e modal animam normalmente e respeitam movimento reduzido
     return animation;
   });
   expect(loadingAnimation).toBe('rotate');
-  await page.getByRole('button', { name: 'Campanhas', exact: true }).click();
+  await clickNavigation(page, 'Campanhas');
   await expect(page.getByRole('heading', { name: 'Campanhas', exact: true })).toBeVisible();
   const pageAnimation = await page.locator('.operations-page').evaluate((el) => getComputedStyle(el).animationName);
   await page.getByRole('button', { name: 'Nova campanha' }).click();
@@ -167,7 +168,7 @@ test('REQ-197 navegação e ações verificáveis têm nomes acessíveis nos qua
     reports.push({ screen: screen.name, visibleButtons: await page.locator('button:visible').count(), unnamed });
     expect(unnamed, `${screen.name}: botões visíveis precisam de nome acessível`).toEqual([]);
     if (screen.name === 'CRM') {
-      await page.getByRole('button', { name: 'Nova etapa', exact: true }).click();
+      await clickNavigation(page, 'Nova etapa');
       await expect(page.getByRole('dialog')).toBeVisible();
       await page.getByRole('button', { name: /Fechar|Cancelar/ }).first().click();
     }

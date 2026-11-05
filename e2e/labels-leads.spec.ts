@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -147,12 +148,12 @@ async function openApp(page: Page) {
 }
 async function openCrm(page: Page) {
   await openApp(page);
-  await page.getByRole('button', { name: 'CRM e negócios', exact: true }).click();
+  await clickNavigation(page, 'CRM e negócios');
   await expect(page.getByRole('heading', { name: 'CRM e negócios' })).toBeVisible();
 }
 async function openFinance(page: Page) {
   await openCrm(page);
-  await page.getByRole('button', { name: 'Etiquetas e ações', exact: true }).click();
+  await clickNavigation(page, 'Etiquetas e ações');
   const dialog = page.getByRole('dialog', { name: 'Etiquetas e ações' });
   await expect(dialog.locator('.label-finance')).toBeVisible();
 }

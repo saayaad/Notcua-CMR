@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -183,7 +184,7 @@ test('REQ-448/REQ-453 registra superfície atual e limite do pedido visual', asy
 test('REQ-449 atalhos podem ser reordenados e continuam ordenados após reload', async ({ page }, info) => {
   await openConversation(page);
   await page.locator('.chat-more-actions summary').click();
-  await page.getByRole('button', { name: 'Personalizar Atendimento', exact: true }).click();
+  await clickNavigation(page, 'Personalizar Atendimento');
   const dialog = page.locator('dialog[open]').last();
   await dialog.getByRole('tab', { name: 'Atalhos', exact: true }).click();
   const list = dialog.getByRole('list', { name: 'Ordem dos atalhos' });
@@ -196,7 +197,7 @@ test('REQ-449 atalhos podem ser reordenados e continuam ordenados após reload',
   await page.reload();
   await openConversation(page);
   await page.locator('.chat-more-actions summary').click();
-  await page.getByRole('button', { name: 'Personalizar Atendimento', exact: true }).click();
+  await clickNavigation(page, 'Personalizar Atendimento');
   const reopened = page.locator('dialog[open]').last();
   await reopened.getByRole('tab', { name: 'Atalhos', exact: true }).click();
   await expect(reopened.getByRole('list', { name: 'Ordem dos atalhos' }).locator('li').first().locator('span')).toHaveText(firstAfter);

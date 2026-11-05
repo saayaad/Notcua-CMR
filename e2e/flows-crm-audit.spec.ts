@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -249,7 +250,7 @@ async function modulePage(page: Page, module: string, heading: string, first: bo
   await expect(page.locator('h1').filter({ hasText: heading }).first()).toBeVisible();
 }
 async function createFlow(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Novo fluxo', exact: true }).click();
+  await clickNavigation(page, 'Novo fluxo');
   const dialog = page.getByRole('dialog', { name: 'Novo fluxo' });
   await dialog.getByLabel('Nome do fluxo').fill(name);
   await dialog.getByRole('button', { name: 'Criar fluxo', exact: true }).click();
@@ -330,7 +331,7 @@ test('REQ-054/REQ-055/REQ-056 canvas altera x/y, rascunho fica separado e fluxo 
   await modulePage(page, 'Autoatendimento', 'Fluxos de conversa', true);
   const name = 'Fluxo auditável ' + info.project.name;
   await createFlow(page, name);
-  await page.getByRole('button', { name: 'Mensagem', exact: true }).click();
+  await clickNavigation(page, 'Mensagem');
   await page.getByLabel('Nome do bloco', { exact: true }).fill('Saudação do teste');
   const node = page.locator('.react-flow__node').filter({ hasText: 'Saudação do teste' });
   await expect(node).toBeVisible();
@@ -343,7 +344,7 @@ test('REQ-054/REQ-055/REQ-056 canvas altera x/y, rascunho fica separado e fluxo 
   await dragCanvasNode(page, bounds!);
   await expect(page.locator('.flow-editor-header')).toContainText('Alterações não salvas');
   expect(await node.getAttribute('style')).not.toBe(before);
-  await page.getByRole('button', { name: 'Salvar', exact: true }).click();
+  await clickNavigation(page, 'Salvar');
   const flow = state.flows.get('audit-flow-1')!;
   const moved = flow.graph.nodes.find((item: Row) => item.type === 'text');
   expect(moved.position.x).not.toBe(380);
@@ -358,12 +359,12 @@ test('REQ-054/REQ-055/REQ-056 canvas altera x/y, rascunho fica separado e fluxo 
   await expect(page.getByLabel('Nome do fluxo', { exact: true })).toHaveValue(name);
   await selectFlowBlock(page, page.locator('.react-flow__node').filter({ hasText: 'Saudação do teste' }));
   await page.getByLabel('Nome do bloco', { exact: true }).fill('Versão publicada');
-  await page.getByRole('button', { name: 'Publicar', exact: true }).click();
+  await clickNavigation(page, 'Publicar');
   const publishedVersion = state.flows.get('audit-flow-1')!.publishedVersion;
   expect(publishedVersion).not.toBeNull();
   const publishedTitle = state.flows.get('audit-flow-1')!.publishedGraph.nodes.find((item: Row) => item.type === 'text').data.title;
   await page.getByLabel('Nome do bloco', { exact: true }).fill('Novo rascunho posterior');
-  await page.getByRole('button', { name: 'Salvar', exact: true }).click();
+  await clickNavigation(page, 'Salvar');
   expect(state.flows.get('audit-flow-1')!.publishedVersion).toBe(publishedVersion);
   expect(state.flows.get('audit-flow-1')!.publishedGraph.nodes.find((item: Row) => item.type === 'text').data.title).toBe(publishedTitle);
   await page.getByRole('button', { name: 'Voltar aos fluxos' }).click();
@@ -387,7 +388,7 @@ test('REQ-057/REQ-058/REQ-059/REQ-060/REQ-061/REQ-062 configura gatilhos, contat
   await createFlow(page, name);
   await choose(page, 'Regra 1', 'É igual a');
   await page.getByLabel('Palavra-chave 1').fill('AJUDA');
-  await page.getByRole('button', { name: 'Adicionar regra', exact: true }).click();
+  await clickNavigation(page, 'Adicionar regra');
   await choose(page, 'Regra 2', 'Contém');
   await page.getByLabel('Palavra-chave 2').fill('preço');
   await page.getByLabel('Diferenciar maiúsculas e minúsculas').check();
@@ -398,7 +399,7 @@ test('REQ-057/REQ-058/REQ-059/REQ-060/REQ-061/REQ-062 configura gatilhos, contat
   await page.locator('.schedule-days').getByRole('button', { name: 'Sex', exact: true }).click();
   await page.getByLabel('Das', { exact: true }).fill('09:30');
   await page.getByLabel('Até', { exact: true }).fill('17:45');
-  await page.getByRole('button', { name: 'Salvar', exact: true }).click();
+  await clickNavigation(page, 'Salvar');
   const start = state.flows.get('audit-flow-1')!.graph.nodes.find((item: Row) => item.type === 'start');
   expect(start.data.keywordRules).toEqual([{ rule: 'equals', keyword: 'AJUDA' }, { rule: 'contains', keyword: 'preço' }]);
   expect(start.data.isCaseSensitive).toBe(true);
@@ -438,7 +439,7 @@ test('REQ-063/REQ-064/REQ-065 nós de texto, áudio e mídia guardam recurso e a
     await choose(page, 'Recurso da biblioteca', item.asset);
     await page.getByLabel('Simulação antes do envio (s)', { exact: true }).fill(item.seconds);
   }
-  await page.getByRole('button', { name: 'Salvar', exact: true }).click();
+  await clickNavigation(page, 'Salvar');
   const saved = state.flows.get('audit-flow-1')!.graph.nodes;
   const resources = items.map((item) => {
     const node = saved.find((entry: Row) => entry.type === item.type);
@@ -464,16 +465,16 @@ test('REQ-066/REQ-067 conecta espera e pausa a execução no aguardo de resposta
   await modulePage(page, 'Autoatendimento', 'Fluxos de conversa', true);
   const name = 'Espera e pausa ' + info.project.name;
   await createFlow(page, name);
-  await page.getByRole('button', { name: 'Aguardar resposta', exact: true }).click();
+  await clickNavigation(page, 'Aguardar resposta');
   await page.getByLabel('Nome do bloco', { exact: true }).fill('Aguardar cliente');
   const waitId = await page.locator('.react-flow__node').filter({ hasText: 'Aguardar cliente' }).getAttribute('data-id');
-  await page.getByRole('button', { name: 'Mensagem', exact: true }).click();
+  await clickNavigation(page, 'Mensagem');
   await page.getByLabel('Nome do bloco', { exact: true }).fill('Resposta aceita');
   await selectFlowBlock(page, page.locator('.flow-block.block-user-input'));
   await choose(page, 'Próximo bloco após resposta aceita', 'Resposta aceita');
   await selectFlowBlock(page, page.locator('.flow-block.block-start'));
   await choose(page, 'Próximo bloco', 'Aguardar cliente');
-  await page.getByRole('button', { name: 'Publicar', exact: true }).click();
+  await clickNavigation(page, 'Publicar');
   const flow = state.flows.get('audit-flow-1')!;
   expect(flow.publishedVersion).not.toBeNull();
   const waitNode = flow.graph.nodes.find((item: Row) => item.type === 'user-input');
@@ -484,13 +485,13 @@ test('REQ-066/REQ-067 conecta espera e pausa a execução no aguardo de resposta
   await card.getByRole('button', { name: 'Ativar ' + name, exact: true }).click();
   await page.getByRole('dialog', { name: 'Ativar automação' }).getByRole('button', { name: 'Ativar fluxo', exact: true }).click();
   await expect(card.locator('.flow-status')).toHaveText('Ativo');
-  await page.getByRole('button', { name: 'Execuções recentes', exact: true }).click();
+  await clickNavigation(page, 'Execuções recentes');
   await expect(page.locator('.flow-runs')).toContainText('Aguardando cliente');
-  await page.getByRole('button', { name: 'Meus fluxos', exact: true }).click();
+  await clickNavigation(page, 'Meus fluxos');
   card = page.locator('.flow-card').filter({ hasText: name });
   await card.getByRole('button', { name: 'Pausar ' + name, exact: true }).click();
   await expect(card.locator('.flow-status')).toHaveText('Pausado');
-  await page.getByRole('button', { name: 'Execuções recentes', exact: true }).click();
+  await clickNavigation(page, 'Execuções recentes');
   await expect(page.locator('.flow-runs')).toContainText('Cancelado');
   expect(state.runs[0].status).toBe('CANCELLED');
   expect(state.unhandledWrites).toEqual([]);
@@ -503,10 +504,10 @@ test('REQ-068/REQ-069/REQ-070/REQ-071 registra resposta, desvio e timeout em nó
   const name = 'Ramificações ' + info.project.name;
   await createFlow(page, name);
   for (const title of ['Resposta aceita', 'Resposta diferente', 'Tempo esgotado']) {
-    await page.getByRole('button', { name: 'Mensagem', exact: true }).click();
+    await clickNavigation(page, 'Mensagem');
     await page.getByLabel('Nome do bloco', { exact: true }).fill(title);
   }
-  await page.getByRole('button', { name: 'Aguardar resposta', exact: true }).click();
+  await clickNavigation(page, 'Aguardar resposta');
   await page.getByLabel('Nome do bloco', { exact: true }).fill('Escolher caminho');
   await choose(page, 'Aceitar resposta', 'Contém uma resposta esperada');
   await page.locator('.flow-inspector label').filter({ hasText: 'Respostas esperadas (uma por linha)' }).locator('textarea').fill('sim\nquero orçamento');
@@ -518,7 +519,7 @@ test('REQ-068/REQ-069/REQ-070/REQ-071 registra resposta, desvio e timeout em nó
   const waitId = await page.locator('.react-flow__node').filter({ hasText: 'Escolher caminho' }).getAttribute('data-id');
   await selectFlowBlock(page, page.locator('.flow-block.block-start'));
   await choose(page, 'Próximo bloco', 'Escolher caminho');
-  await page.getByRole('button', { name: 'Salvar', exact: true }).click();
+  await clickNavigation(page, 'Salvar');
   const graph = state.flows.get('audit-flow-1')!.graph;
   const input = graph.nodes.find((item: Row) => item.type === 'user-input');
   expect(input.id).toBe(waitId);
@@ -600,7 +601,7 @@ test('REQ-074/REQ-075 dashboard mostra métricas de atendimento, negócios e con
   await expect(metric('Contatos')).toContainText('2');
   await expect(metric('Em atendimento')).toContainText('1');
   await expect(metric('Negócios ganhos')).toContainText('250,00');
-  await page.getByRole('button', { name: 'Indicadores', exact: true }).click();
+  await clickNavigation(page, 'Indicadores');
   await expect(page.getByRole('heading', { name: 'Conversas que movimentam seu negócio', exact: true })).toBeVisible();
   await expect(metric('Conversão')).toContainText('66,7%');
   await expect(page.getByRole('heading', { name: 'Seu resultado no período', exact: true })).toBeVisible();

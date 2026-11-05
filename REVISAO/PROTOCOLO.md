@@ -10,9 +10,9 @@ AUDITORIA DO NOCTUA — PROTOCOLO
 ## Estado ao encerrar a Fase 5 — 05/11/2026
 
 - Pausa manual, entrega em curso, retomada após resolução de `VERIFY`, restart e retry idempotente validados localmente. A suíte relevante passou 89/89; typecheck dos dois workspaces e builds server/web passaram, usando `--configLoader runner` no Vite por restrição de leitura de diretório ascendente.
-- O commit não pôde ser criado neste ambiente: `git add` foi recusado ao criar `.git/index.lock` (`Permission denied`). As seis alterações da Fase 5 permanecem fora do staging; não incluir os artefatos preexistentes de `REVISAO/evidencias/` nem o arquivo não rastreado `git`.
-- Para registrar a Fase 5 no terminal do VS Code, executar: `git add -- PROGRESSO.md REVISAO/BUGS.md REVISAO/PROTOCOLO.md apps/server/src/modules/operations/delivery.worker.ts apps/server/src/modules/operations/operations.routes.ts apps/server/test/operations.test.ts` e `git commit -m "fix: make campaign pause and resume safe"`.
+- Commit da Fase 5 confirmado em `2e97192` (`fix: make campaign pause and resume safe`).
 - Sem produção, deploy, push ou envio real.
+- Na tentativa da Fase 6, 47 arquivos rastreados de evidência foram regravados pela E2E parcial; todos foram restaurados byte a byte de `HEAD`. Não guardar as saídas dessa tentativa incompleta.
 
 META
 

@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -169,7 +170,7 @@ test.afterEach(async ({ page }, info) => {
 async function openCrm(page: Page) {
   await page.goto('/atendimento', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.app-shell')).toBeVisible({ timeout: 20_000 });
-  await page.getByRole('button', { name: 'CRM e negócios', exact: true }).click();
+  await clickNavigation(page, 'CRM e negócios');
   await expect(page.getByRole('heading', { name: 'CRM e negócios' })).toBeVisible();
 }
 

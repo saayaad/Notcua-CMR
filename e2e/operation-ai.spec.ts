@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -79,16 +80,16 @@ test('REQ-136 menu alcança chat, Kanban, campanhas, contatos, IA e conexões', 
   await openApp(page);
   await page.getByRole('button', { name: 'Atendimento', exact: false }).first().click();
   await expect(page.getByText('Cada conversa, uma oportunidade.')).toBeVisible();
-  await page.getByRole('button', { name: 'CRM e negócios', exact: true }).click();
+  await clickNavigation(page, 'CRM e negócios');
   await expect(page.getByRole('heading', { name: /CRM/ }).first()).toBeVisible();
-  await page.getByRole('button', { name: 'Campanhas', exact: true }).click();
+  await clickNavigation(page, 'Campanhas');
   await expect(page.getByRole('heading', { name: /Campanhas/ }).first()).toBeVisible();
-  await page.getByRole('button', { name: 'Contatos', exact: true }).click();
+  await clickNavigation(page, 'Contatos');
   await expect(page.getByRole('heading', { name: 'Contatos', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Conexões', exact: true }).click();
+  await clickNavigation(page, 'Conexões');
   await expect(page.getByRole('heading', { name: 'Conexão fictícia da auditoria', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
-  await page.getByRole('button', { name: 'Integração de IA', exact: true }).click();
+  await clickNavigation(page, 'Configurações');
+  await clickNavigation(page, 'Integração de IA');
   await expect(page.getByText('Habilitar I.A.', { exact: true })).toBeVisible();
   await saveEvidence(page, 'REQ-136', info, { paths: ['chat', 'crm', 'campaigns', 'contacts', 'connections', 'ai'] });
 });
@@ -105,8 +106,8 @@ test('REQ-547/REQ-552/REQ-553/REQ-554 painel de chaves e orientação Gemini sem
     lastUsed: null,
   } }));
   await openApp(page);
-  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
-  await page.getByRole('button', { name: 'Integração de IA', exact: true }).click();
+  await clickNavigation(page, 'Configurações');
+  await clickNavigation(page, 'Integração de IA');
   await expect(page.getByText('Google AI Pro e a API são serviços separados.')).toBeVisible();
   await expect(page.getByText(/Ativar faturamento da API pode gerar cobrança adicional/)).toBeVisible();
   await expect(page.getByText('Modelos disponíveis na sua chave')).toBeVisible();
@@ -145,10 +146,10 @@ test('REQ-137 chat mostra mídia, etiqueta e controle de pausa da IA simulada', 
 test('REQ-138 visão mostra fila, conexão e consumo de IA da operação', async ({ page }, info) => {
   await enableSimulatedAi(page);
   await openApp(page);
-  await page.getByRole('button', { name: 'Visão geral', exact: true }).click();
+  await clickNavigation(page, 'Visão geral');
   await expect(page.getByText('Envios pendentes', { exact: true })).toBeVisible();
   await expect(page.getByText('Tokens de IA hoje · operação', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Conexões', exact: true }).click();
+  await clickNavigation(page, 'Conexões');
   await expect(page.getByRole('heading', { name: 'Conexão fictícia da auditoria', exact: true })).toBeVisible();
   await expect(page.locator('.connection-detail .status-pill')).toHaveText('Desconectado');
   await saveEvidence(page, 'REQ-138', info, { queue: true, aiUsage: true, connectionState: 'disconnected' });
@@ -157,8 +158,8 @@ test('REQ-138 visão mostra fila, conexão e consumo de IA da operação', async
 test('REQ-152/REQ-153/REQ-154 modelo, limites e regras persistem sem provedor real', async ({ page }, info) => {
   await enableSimulatedAi(page);
   await openApp(page);
-  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
-  await page.getByRole('button', { name: 'Integração de IA', exact: true }).click();
+  await clickNavigation(page, 'Configurações');
+  await clickNavigation(page, 'Integração de IA');
   const model = `modelo-${info.project.name}`;
   const rules = `Regra absoluta ${info.project.name}`;
   await page.getByLabel('Modelo de atendimento').fill(model);
@@ -171,8 +172,8 @@ test('REQ-152/REQ-153/REQ-154 modelo, limites e regras persistem sem provedor re
   await page.getByRole('button', { name: 'Salvar integração' }).click();
   await saved;
   await page.reload();
-  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
-  await page.getByRole('button', { name: 'Integração de IA', exact: true }).click();
+  await clickNavigation(page, 'Configurações');
+  await clickNavigation(page, 'Integração de IA');
   await expect(page.getByLabel('Modelo de atendimento'), 'REQ-152 persiste o modelo').toHaveValue(model);
   await expect(page.getByLabel('Tokens por dia · 0 sem limite'), 'REQ-153 persiste o limite').toHaveValue('4321');
   await expect(page.getByLabel('Orçamento mensal estimado em US$ · 0 sem limite'), 'REQ-153 persiste o orçamento').toHaveValue('3.25');
@@ -197,7 +198,7 @@ test('REQ-156 pausa e retoma a IA por conversa com persistência após recarrega
 
 test('REQ-132/REQ-157/REQ-158 exporta seleção por responsável com mídias e formatos', async ({ page }, info) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Contatos', exact: true }).click();
+  await clickNavigation(page, 'Contatos');
   await page.getByRole('button', { name: 'Exportar históricos' }).click();
   await page.getByLabel('Responsável atual · e-mail ou identificador').fill('admin@example.com');
   await expect(page.getByLabel('Ana Exemplo')).toBeVisible();

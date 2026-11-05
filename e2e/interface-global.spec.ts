@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -17,7 +18,7 @@ async function openApp(page: Page) {
 }
 
 async function openSettings(page: Page, tab: string) {
-  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
+  await clickNavigation(page, 'Configurações');
   await expect(page.getByRole('heading', { name: 'Configurações' })).toBeVisible();
   await page.getByRole('main').getByRole('button', { name: tab, exact: true }).click();
 }
@@ -138,7 +139,7 @@ test('REQ-167 filtra, arquiva e reabre uma conversa pela interface', async ({ pa
   await archived;
   const back = page.getByRole('button', { name: 'Voltar à lista' });
   if (await back.isVisible()) await back.click();
-  await page.getByRole('button', { name: 'Arquivadas', exact: true }).click();
+  await clickNavigation(page, 'Arquivadas');
   const archivedAna = page.locator('.chat-item').filter({ hasText: 'Ana Exemplo' });
   await expect(archivedAna).toBeVisible();
   await archivedAna.click();
@@ -160,7 +161,7 @@ test('REQ-168/REQ-169 cadastra setor e atendente e pesquisa transferência com f
   const departmentSaved = page.waitForResponse((response) => response.url().endsWith('/api/operations/settings/departments') && response.request().method() === 'PUT' && response.ok());
   await page.getByRole('button', { name: 'Adicionar' }).click();
   await departmentSaved;
-  await page.getByRole('button', { name: 'Equipe', exact: true }).click();
+  await clickNavigation(page, 'Equipe');
   const member = `interface-${suffix}@example.com`;
   await page.getByLabel('Nome', { exact: true }).fill(`Interface ${info.project.name}`);
   await page.getByLabel('E-mail do login').fill(member);
@@ -172,7 +173,7 @@ test('REQ-168/REQ-169 cadastra setor e atendente e pesquisa transferência com f
   await mergePreferences(page, { hudHiddenTools: [] });
   await page.reload();
   await selectFirstConversation(page);
-  await page.getByRole('button', { name: 'Caixa', exact: true }).click();
+  await clickNavigation(page, 'Caixa');
   await page.getByRole('button', { name: 'Transferir conversa atual' }).click();
   const selector = page.getByRole('combobox', { name: 'Escolha um atendente' });
   await selector.click();
@@ -185,7 +186,7 @@ test('REQ-168/REQ-169 cadastra setor e atendente e pesquisa transferência com f
 
 test('REQ-171/REQ-172/REQ-173/REQ-174/REQ-175 campanha usa seletores customizados, múltiplos filtros e seleção manual', async ({ page }, info) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Campanhas', exact: true }).click();
+  await clickNavigation(page, 'Campanhas');
   await page.getByRole('button', { name: 'Nova campanha' }).click();
   const lists = page.getByRole('combobox', { name: 'Listas importadas' });
   const labels = page.getByRole('combobox', { name: 'Etiquetas' });
@@ -210,7 +211,7 @@ test('REQ-171/REQ-172/REQ-173/REQ-174/REQ-175 campanha usa seletores customizado
 
 test('REQ-176/REQ-177/REQ-178/REQ-179 agenda limpa identificadores, formata/busca telefone e cria número novo', async ({ page }, info) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Agenda', exact: true }).click();
+  await clickNavigation(page, 'Agenda');
   await page.getByRole('button', { name: 'Novo agendamento' }).click();
   const contact = page.getByRole('combobox', { name: 'Contato para agendamento' });
   await contact.fill('99999-9901');
@@ -233,7 +234,7 @@ test('REQ-180/REQ-181/REQ-182 edita arquivo e legenda, reproduz mídia e duplica
   const libraryResponse = await page.request.get(`${api}/attendance/library`);
   const library = await libraryResponse.json();
   const welcome = library.assets.find((item: { id: string }) => item.id === 'audit-asset-welcome');
-  await page.getByRole('button', { name: 'Biblioteca', exact: true }).click();
+  await clickNavigation(page, 'Biblioteca');
   await page.getByRole('button', { name: `Editar ${welcome.name}`, exact: true }).click();
   const name = `Resposta editada ${info.project.name}`;
   await page.getByLabel('Nome', { exact: true }).fill(name);
@@ -241,19 +242,19 @@ test('REQ-180/REQ-181/REQ-182 edita arquivo e legenda, reproduz mídia e duplica
   const textSaved = page.waitForResponse((response) => response.url().endsWith('/api/attendance/assets/audit-asset-welcome') && response.request().method() === 'PUT' && response.ok());
   await page.getByRole('button', { name: 'Salvar resposta' }).click();
   await textSaved;
-  await page.getByRole('button', { name: 'Mídias', exact: true }).click();
+  await clickNavigation(page, 'Mídias');
   await page.getByRole('button', { name: 'Editar Imagem fictícia' }).click();
   await page.getByLabel('Legenda').fill(`Legenda substituída ${info.project.name}`);
   await page.locator('input[type=file]').setInputFiles({ name: 'imagem-substituida.png', mimeType: 'image/png', buffer: png });
   const mediaSaved = page.waitForResponse((response) => response.url().endsWith('/api/attendance/assets/audit-asset-image') && response.request().method() === 'PUT' && response.ok());
   await page.getByRole('button', { name: 'Salvar resposta' }).click();
   await mediaSaved;
-  await page.getByRole('button', { name: 'Áudios', exact: true }).click();
-  await page.getByRole('button', { name: 'Áudio fictício', exact: true }).click();
+  await clickNavigation(page, 'Áudios');
+  await clickNavigation(page, 'Áudio fictício');
   await expect(page.locator('dialog audio')).toBeVisible();
   await closeModal(page);
-  await page.getByRole('button', { name: 'Mídias', exact: true }).click();
-  await page.getByRole('button', { name: 'Vídeo fictício', exact: true }).click();
+  await clickNavigation(page, 'Mídias');
+  await clickNavigation(page, 'Vídeo fictício');
   await expect(page.locator('dialog video')).toBeVisible();
   await closeModal(page);
   await page.getByRole('button', { name: /Textos/ }).click();
@@ -277,8 +278,8 @@ test('REQ-184/REQ-185 simula fluxo e IA e reinicia o histórico sem enviar Whats
   const integration = await page.request.put(`${api}/operations/ai`, { data: { apiKey: 'fake-interface-key', provider: 'openai', model: 'modelo-simulado', instructions: '', knowledge: '', style: '', enabled: false } });
   expect(integration.ok()).toBeTruthy();
   await openApp(page);
-  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
-  await page.getByRole('button', { name: 'Integração de IA', exact: true }).click();
+  await clickNavigation(page, 'Configurações');
+  await clickNavigation(page, 'Integração de IA');
   await page.getByRole('button', { name: /Testar \/ Simular atendimento/ }).click();
   await expect(page.getByText('Contato fictício · sem envio ao WhatsApp')).toBeVisible();
   await page.getByLabel('Mensagem do cliente fictício').fill('Pergunta fictícia');
@@ -287,9 +288,9 @@ test('REQ-184/REQ-185 simula fluxo e IA e reinicia o histórico sem enviar Whats
   await page.getByRole('button', { name: 'Limpar / Reiniciar teste' }).click();
   await expect(page.getByText('Envie uma mensagem como cliente para começar.')).toBeVisible();
   await closeModal(page);
-  await page.getByRole('button', { name: 'Autoatendimento', exact: true }).click();
-  await page.getByRole('button', { name: 'Editar', exact: true }).click();
-  await page.getByRole('button', { name: 'Simular', exact: true }).click();
+  await clickNavigation(page, 'Autoatendimento');
+  await clickNavigation(page, 'Editar');
+  await clickNavigation(page, 'Simular');
   await expect(page.getByText('Contato fictício · sem envio ao WhatsApp')).toBeVisible();
   await page.getByLabel('Mensagem do cliente fictício').fill('oi');
   await page.getByRole('button', { name: 'Enviar teste' }).click();
@@ -300,7 +301,7 @@ test('REQ-184/REQ-185 simula fluxo e IA e reinicia o histórico sem enviar Whats
 
 test('REQ-187 carrega exemplos com conversa multimídia, etiquetas, agenda e fluxo', async ({ page }, info) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Espaço de Teste', exact: true }).click();
+  await clickNavigation(page, 'Espaço de Teste');
   await page.getByRole('button', { name: 'Carregar dados de exemplo', exact: true }).first().click();
   const sections = page.getByLabel('Seções do espaço de teste');
   await expect(page.locator('.sandbox-contacts button')).toHaveCount(6);
@@ -320,7 +321,7 @@ test('REQ-187 carrega exemplos com conversa multimídia, etiquetas, agenda e flu
 
 test('REQ-188/REQ-189/REQ-190/REQ-191 ajuda organiza quatro tutoriais ilustrados', async ({ page }, info) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Ajuda e configurações', exact: true }).click();
+  await clickNavigation(page, 'Ajuda e configurações');
   const titles = [/1\. Conexões/, /2\. Autoatendimento/, /3\. Campanhas, remarketing e Excel/, /4\. Atendimento, equipe e atalhos/];
   for (const title of titles) {
     const card = page.locator('.help-guide').filter({ has: page.getByRole('heading', { name: title }) });

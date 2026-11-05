@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -13,7 +14,7 @@ async function openApp(page: Page) {
 }
 
 async function openSettings(page: Page, tab: string) {
-  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
+  await clickNavigation(page, 'Configurações');
   await expect(page.getByRole('heading', { name: 'Configurações' })).toBeVisible();
   await page.getByRole('button', { name: tab, exact: true }).click();
 }
@@ -286,7 +287,7 @@ test('REQ-115 anotação datada do contato permanece após recarregar', async ({
   await openApp(page);
   await selectFirstConversation(page);
   await openContactInfo(page);
-  await page.getByRole('button', { name: 'Anotações', exact: true }).click();
+  await clickNavigation(page, 'Anotações');
   const note = `Anotação fictícia ${info.project.name}`;
   await page.getByLabel('Nova anotação').fill(note);
   const saved = page.waitForResponse(
@@ -297,7 +298,7 @@ test('REQ-115 anotação datada do contato permanece após recarregar', async ({
   await page.reload();
   await selectFirstConversation(page);
   await openContactInfo(page);
-  await page.getByRole('button', { name: 'Anotações', exact: true }).click();
+  await clickNavigation(page, 'Anotações');
   await expect(page.getByText(note, { exact: true })).toBeVisible();
   const noteRow = page.getByText(note, { exact: true }).locator('..');
   await expect(noteRow.locator('small')).toContainText(/\d{2}\/\d{2}\/\d{4}/);
@@ -308,7 +309,7 @@ test('REQ-118 link do Google Agenda contém nome e descrição codificados', asy
   await openApp(page);
   await selectFirstConversation(page);
   await openContactInfo(page);
-  await page.getByRole('button', { name: 'Histórico', exact: true }).click();
+  await clickNavigation(page, 'Histórico');
   const link = page.getByRole('link', { name: 'Preparar evento no Google Agenda' });
   const href = await link.getAttribute('href');
   expect(href).toContain('https://calendar.google.com/calendar/render?action=TEMPLATE');
@@ -330,7 +331,7 @@ test('REQ-127 filtro por tipo e categoria salva o recurso escolhido no fluxo', a
   });
   expect(organization.ok()).toBeTruthy();
   await openApp(page);
-  await page.getByRole('button', { name: 'Autoatendimento', exact: true }).click();
+  await clickNavigation(page, 'Autoatendimento');
   await expect(page.getByRole('heading', { name: 'Fluxos de conversa' })).toBeVisible();
   await page.getByRole('button', { name: 'Novo fluxo' }).click();
   const flowName = `Filtro ${info.project.name}`;
@@ -340,7 +341,7 @@ test('REQ-127 filtro por tipo e categoria salva o recurso escolhido no fluxo', a
   );
   await page.getByRole('button', { name: 'Criar fluxo' }).click();
   const created = await (await createdResponse).json();
-  await page.getByRole('button', { name: 'Mensagem', exact: true }).click();
+  await clickNavigation(page, 'Mensagem');
   await expect(page.getByRole('heading', { name: 'Mensagem', exact: true })).toBeVisible();
   await chooseOption(page, 'Categoria da biblioteca', 'Auditoria');
   const resources = page.getByRole('combobox', { name: 'Recurso da biblioteca', exact: true });
@@ -351,7 +352,7 @@ test('REQ-127 filtro por tipo e categoria salva o recurso escolhido no fluxo', a
   const saved = page.waitForResponse(
     (response) => response.url().endsWith(`/api/automation/sessions/audit-session/flows/${created.id}/draft`) && response.request().method() === 'PUT' && response.ok(),
   );
-  await page.getByRole('button', { name: 'Salvar', exact: true }).click();
+  await clickNavigation(page, 'Salvar');
   await saved;
   await page.reload();
   const persisted = await page.request.get(`${api}/automation/sessions/audit-session/flows/${created.id}`);

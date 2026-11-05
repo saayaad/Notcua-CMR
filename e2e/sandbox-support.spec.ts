@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -46,9 +47,9 @@ test('REQ-328/329/330/331/332/333/334/335/336 simulador de fluxo e IA usa apenas
   await page.route('**/api/operations/simulator/transcribe', route => route.fulfill({ json: { text: 'Transcrição fictícia: preciso confirmar o prazo.' } }));
   await openApp(page);
 
-  await page.getByRole('button', { name: 'Autoatendimento', exact: true }).click();
-  await page.getByRole('button', { name: 'Editar', exact: true }).click();
-  await page.getByRole('button', { name: 'Simular', exact: true }).click();
+  await clickNavigation(page, 'Autoatendimento');
+  await clickNavigation(page, 'Editar');
+  await clickNavigation(page, 'Simular');
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByText('Contato fictício · sem envio ao WhatsApp')).toBeVisible();
   await dialog.getByLabel('Modo de teste').click();
@@ -80,8 +81,8 @@ test('REQ-328/329/330/331/332/333/334/335/336 simulador de fluxo e IA usa apenas
   await dialog.getByRole('button', { name: 'Limpar / Reiniciar teste' }).click();
   await expect(dialog.getByText('Envie uma mensagem como cliente para começar.')).toBeVisible();
   await dialog.getByRole('button', { name: 'Fechar janela' }).click();
-  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
-  await page.getByRole('button', { name: 'Integração de IA', exact: true }).click();
+  await clickNavigation(page, 'Configurações');
+  await clickNavigation(page, 'Integração de IA');
   await page.getByRole('button', { name: /Testar \/ Simular atendimento/ }).click();
   await expect(page.getByRole('dialog').getByText('Contato fictício · sem envio ao WhatsApp')).toBeVisible();
   expect(realSends).toBe(0);
@@ -99,7 +100,7 @@ test('REQ-340/341/342/344/347/348/349/350 Sandbox edita amostras e mantém açõ
     if (/\/api\/conversations\/[^/]+\/send(?:-|$)/.test(request.url())) realSends++;
   });
   await openApp(page);
-  await page.getByRole('button', { name: 'Espaço de Teste', exact: true }).click();
+  await clickNavigation(page, 'Espaço de Teste');
   await page.getByRole('button', { name: 'Carregar dados de exemplo', exact: true }).first().click();
   await expect(page.getByRole('heading', { name: 'Espaço de Teste' })).toBeVisible();
 
@@ -190,7 +191,7 @@ test('REQ-340/341/342/344/347/348/349/350 Sandbox edita amostras e mantém açõ
 
 test('REQ-353/354/355/356 guias da central cobrem conexões, IA, campanhas, equipe e atalhos', async ({ page }, info) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Ajuda e configurações', exact: true }).click();
+  await clickNavigation(page, 'Ajuda e configurações');
   const guides = page.locator('.help-guide');
   await expect(guides).toHaveCount(4);
   const connections = guides.filter({ has: page.getByRole('heading', { name: /1\. Conexões/ }) });

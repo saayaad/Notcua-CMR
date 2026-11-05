@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -102,7 +103,7 @@ test('REQ-261/REQ-262 oferece transcrição e expande o texto sob áudio recebid
     await route.fulfill({ json: { text: 'Transcrição simulada: preciso confirmar o horário.' } });
   });
   await openConversation(page);
-  await page.getByRole('button', { name: 'Ler transcrição', exact: true }).click();
+  await clickNavigation(page, 'Ler transcrição');
   await expect(page.locator('.transcription-text')).toContainText('Transcrição simulada: preciso confirmar o horário.');
   expect(requestedMessage).toBe('audit-inbound-audio');
   await saveEvidence(page, ['REQ-261', 'REQ-262'], info, { messageId: requestedMessage, provider: 'simulado', transcriptionExpanded: true });

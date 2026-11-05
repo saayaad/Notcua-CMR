@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -392,7 +393,7 @@ test('REQ-594 cancelar alterações restaura o layout salvo', async ({ page }) =
   const before = await groupMap(page);
   await enterEditing(page); await selectPanel(page, 'chat'); await positionPanel(page, 'within');
   await expect.poll(() => sameGroup(page, 'chat', 'list')).toBe(true);
-  await page.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  await clickNavigation(page, 'Cancelar');
   await expect(page.locator('.noctua-dock-editor')).toHaveCount(0);
   await expect.poll(() => sameGroup(page, 'chat', 'list')).toBe(false);
   stateOf(page).notes = { groupsBefore: before, groupsAfterCancel: await groupMap(page) };

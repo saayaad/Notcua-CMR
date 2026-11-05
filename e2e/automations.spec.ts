@@ -1,3 +1,4 @@
+import { clickNavigation } from './helpers/navigation.js';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -52,7 +53,7 @@ test('REQ-392/REQ-393/REQ-394 configura sequência de follow-up e confirma cance
   await second.getByLabel('Enviar após (minutos)').fill('60');
   await second.getByLabel('Mensagem').fill('Segundo retorno de teste.');
   const response = page.waitForResponse((item) => item.request().method() === 'POST' && item.url().includes('/follow-ups'));
-  await page.getByRole('button', { name: 'Ativar follow-up', exact: true }).click();
+  await clickNavigation(page, 'Ativar follow-up');
   expect((await response).status()).toBe(201);
   await expect.poll(() => (submitted?.steps as unknown[])?.length).toBe(2);
   await expect(page.getByText(/Follow-up ativado com 2 etapas/)).toBeVisible();
@@ -120,17 +121,17 @@ test('REQ-406/REQ-407 exibe conta, ausência e inconclusivo sem importar ou envi
   await page.route('**/api/operations/sessions/*/contacts/import', (route) => { importCalls++; return route.fulfill({ json: { imported: 2 } }); });
   page.on('request', (request) => { if (/\/conversations\/[^/]+\/send(?:-|$)/.test(request.url())) sendCalls++; });
   await openApp(page);
-  await page.getByRole('button', { name: 'Contatos', exact: true }).click();
-  await page.getByRole('button', { name: 'Importar Excel / CSV', exact: true }).click();
+  await clickNavigation(page, 'Contatos');
+  await clickNavigation(page, 'Importar Excel / CSV');
   await page.locator('input[type="file"]').setInputFiles({
     name: 'contatos-ficticios.csv', mimeType: 'text/csv', buffer: Buffer.from('Nome;Telefone\nRegistrado Fictício;5511999990001\nSem Conta Fictício;5511999990002\nInconclusivo Fictício;5511999990003'),
   });
-  await page.getByRole('button', { name: 'Ler planilha', exact: true }).click();
+  await clickNavigation(page, 'Ler planilha');
   await expect(page.getByRole('button', { name: 'Verificar números no WhatsApp', exact: true })).toBeEnabled();
-  await page.getByRole('button', { name: 'Verificar números no WhatsApp', exact: true }).click();
+  await clickNavigation(page, 'Verificar números no WhatsApp');
   await expect(page.getByRole('status')).toContainText('1 com conta · 1 sem conta · 1 inconclusivos');
   await expect(page.getByRole('alert')).toContainText('Contatos inconclusivos foram preservados.');
-  await page.getByRole('button', { name: 'Remover 1 sem conta da prévia', exact: true }).click();
+  await clickNavigation(page, 'Remover 1 sem conta da prévia');
   await expect(page.locator('.import-preview')).not.toContainText('Sem Conta Fictício');
   await expect(page.locator('.import-preview')).toContainText('Inconclusivo Fictício');
   await expect(page.locator('.import-preview')).toContainText('Registrado Fictício');
@@ -144,8 +145,8 @@ test('REQ-406/REQ-407 exibe conta, ausência e inconclusivo sem importar ou envi
 
 test('REQ-408/REQ-409 confirma ausência de seletor de conexões e de failover na campanha', async ({ page }, info) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Campanhas', exact: true }).click();
-  await page.getByRole('button', { name: 'Nova campanha', exact: true }).click();
+  await clickNavigation(page, 'Campanhas');
+  await clickNavigation(page, 'Nova campanha');
   const dialog = page.locator('dialog.batch-editor-modal');
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText(/distribuir.*conexões|dividir fila entre números/i)).toHaveCount(0);
@@ -166,20 +167,20 @@ test('REQ-411 mantém termos de opt-out configurados após salvar e recarregar',
     return route.fulfill({ json: { saved: true, terms } });
   });
   await openApp(page);
-  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
+  await clickNavigation(page, 'Configurações');
   const initialSettings = page.waitForResponse((response) => response.url().includes('/operations/settings/optout') && response.request().method() === 'GET');
-  await page.getByRole('button', { name: 'Opt-out e envios', exact: true }).click();
+  await clickNavigation(page, 'Opt-out e envios');
   await initialSettings;
   await expect.poll(() => settingsReads).toBe(1);
   const field = page.getByLabel('Palavras ou frases, separadas por vírgula ou linha');
   await expect(field).toHaveValue('parar, sair, cancelar');
   await field.fill('parar, sair, cancelar, não quero mais');
-  await page.getByRole('button', { name: 'Salvar regras de opt-out', exact: true }).click();
+  await clickNavigation(page, 'Salvar regras de opt-out');
   await expect.poll(() => terms).toContain('não quero mais');
   await page.reload();
-  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
+  await clickNavigation(page, 'Configurações');
   const reloadedSettings = page.waitForResponse((response) => response.url().includes('/operations/settings/optout') && response.request().method() === 'GET');
-  await page.getByRole('button', { name: 'Opt-out e envios', exact: true }).click();
+  await clickNavigation(page, 'Opt-out e envios');
   await reloadedSettings;
   await expect.poll(() => settingsReads).toBe(2);
   await expect(page.getByLabel('Palavras ou frases, separadas por vírgula ou linha')).toHaveValue('parar, sair, cancelar, não quero mais');
