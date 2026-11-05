@@ -108,3 +108,10 @@ Decisão: cada alternativa é um conteúdo completo; sequência é uma única al
 - [x] Prisma schema validado; `npm run typecheck` concluiu com exit code 0.
 - [ ] Prisma `migrate deploy` em banco isolado falhou com `Schema engine error` sem detalhe. `prisma generate` falhou ao substituir `query_engine-windows.dll.node` (`EPERM`), provavelmente porque o servidor local o mantém carregado; `--no-engine` gerou um cliente sem engine e não serve para testes/runtime.
 - Bloqueio antes de avançar: aplicar e testar a migração via Prisma com o engine funcional; não parei o servidor em execução para evitar interromper possíveis campanhas. Feature flag permanece desligada; sem deploy.
+
+### Verificação prévia autorizada do banco real — 05/11/2026 12:22 BRT
+
+- Backup SQLite consistente feito antes de consultar estados: `.audit/backups/noctua-before-alternatives-20261105-122228.db` (324.792.320 bytes); `PRAGMA integrity_check` no backup retornou `ok`.
+- Banco consultado sem expor dados pessoais: nenhuma campanha em status `ACTIVE`, `RUNNING`, `SCHEDULED` ou `PAUSED_CONNECTION`; existem 9 tarefas `QUEUED` ligadas a campanhas em `DRAFT` e 1 tarefa `VERIFY` ligada a campanha `COMPLETED`.
+- Pela regra de segurança do usuário, tarefas pendentes/VERIFY contam como bloqueio para parar o servidor. Servidor e worker não foram parados; nenhuma migração foi aplicada ao banco real. Aguardar orientação após resolver/revisar essas tarefas.
+- `CAMPAIGN_ALTERNATIVES_ENABLED=false`; sem deploy.
