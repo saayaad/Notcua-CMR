@@ -1,4 +1,4 @@
-# Progresso — Leva 1 (campanhas)
+# Progresso — campanhas (Levas 1 e 2)
 
 Branch: `auditoria-reqs`. Diretório oficial. Nenhuma chamada de envio real, produção, `.env.local` ou publicação foi usada. Os testes usaram SQLite temporário e socket/conector fictício.
 
@@ -32,3 +32,31 @@ Branch: `auditoria-reqs`. Diretório oficial. Nenhuma chamada de envio real, pro
 - Leva 1 concluída localmente; Leva 2 não iniciada.
 - Os arquivos protegidos e artefatos não rastreados preexistentes ficaram fora das alterações e do staging deste trabalho.
 - Próximo passo: conferir a tela em `Operações > Campanhas`, criar campanha fictícia, conferir variações/preview e acompanhar o monitor; para verificar lote, use tamanho 50 e público de pelo menos 100 contatos de teste.
+
+## Leva 2 — CTAs, opt-out e teste pessoal — 05/11/2026
+
+### Implementado
+- CTAs aceitam várias palavras/frases separadas por vírgula, ponto e vírgula, barra ou nova linha; comparação normaliza maiúsculas, acentos e pontuação. Respostas podem combinar texto, recurso da biblioteca e etiqueta. Ação que só aplica etiqueta não envia mensagem vazia; respostas com texto e mídia viram uma sequência na fila do servidor.
+- Resposta padrão opcional é enfileirada uma única vez por contato e campanha. Respostas vinculadas à campanha geram notificação interna, são reconhecidas no status do lead e cancelam follow-ups pendentes. Respostas estruturadas de botão/lista são extraídas para suportar opções numéricas.
+- Opt-out reconhece termos configurados e sinônimos comuns no começo da mensagem, cria a etiqueta “Não perturbe”, marca o contato, cancela envios futuros/follow-ups e o exclui dos novos públicos. Configurações expõem a lista para remoção manual; remoção limpa a marca e as etiquetas de bloqueio correlatas.
+- Campanha pode anexar linha de saída editável à mensagem principal/variações e à prévia. Endpoint de teste resolve variáveis com dados fictícios e envia apenas ao número da própria sessão; não cria DeliveryTask nem altera contadores da campanha. Há botões separados para a mensagem principal e cada variação.
+- Novos CTAs, resposta padrão e linha de saída são compatíveis com os campos JSON existentes; não foi necessária migração SQL. A rota de continuação também preserva aliases, mídia/etiquetas de CTA, resposta padrão e linha de saída.
+
+### Validação
+- Leva 2 critérios 1–4: **4/4 passaram** em `apps/server/test/operations.test.ts`, SQLite temporário e FakeSocket. Inclui duplicidade, resposta padrão/follow-up, opt-out/público/lista/remoção e envio pessoal sem tarefa/campanha alterada.
+- Regressão WhatsApp: **21/21 passou**, incluindo o teste existente de opt-out.
+- Typecheck dos dois workspaces: **passou**. Build completo: **passou**; mantém aviso de chunk frontend acima de 500 kB.
+- Regressão completa do módulo Operations: **71/74 passaram** na execução única. Os três testes antigos que falharam (REQ-142, REQ-402/403 e rodízio) passaram quando executados individualmente; falhas agregadas indicam interferência de dados/timing entre testes preexistentes, sem falha reproduzível nas alterações da Leva 2.
+- Revisão visual pelo servidor local não foi possível: a API em `127.0.0.1:3333/atendimento` apresenta a tela “Acesso em configuração” (Firebase público ausente) e as portas de frontend 5180/5173 não estavam escutando. Nenhum servidor foi reiniciado e nenhuma configuração Firebase foi alterada.
+
+### Arquivos desta leva
+- `apps/server/src/modules/operations/campaign-response.ts`, `delivery.worker.ts`, `operations.routes.ts`: regras e persistência JSON de CTA/fallback/teste/continuação.
+- `apps/server/src/modules/whatsapp/sync.service.ts`: extração de resposta livre/estruturada e opt-out.
+- `apps/server/test/operations.test.ts`: quatro critérios de aceite com banco e socket fictícios.
+- `apps/web/src/pages/OperationsPages.tsx`: editor de CTA/saída e envio de teste por variação.
+- `apps/web/src/pages/WorkspaceSettings.tsx`, `operations.css`: lista “Não perturbe” e remoção adaptável a telas estreitas.
+- `PROGRESSO.md`: este resumo de retomada.
+
+### Retomada
+- Leva 2 concluída localmente; não foi enviada nenhuma mensagem real, nem houve conexão externa, publicação ou alteração de infraestrutura.
+- O frontend local deve ser iniciado pelo usuário para revisar os controles na tela; o ambiente aberto atualmente não tem as variáveis públicas Firebase para autenticação.

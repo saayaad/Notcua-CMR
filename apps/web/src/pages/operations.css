@@ -262,6 +262,29 @@
 .settings-content textarea {
   margin-top: 8px;
 }
+.do-not-disturb-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+}
+.do-not-disturb-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.do-not-disturb-list li span,
+.do-not-disturb-list li small {
+  display: block;
+  min-width: 0;
+}
+.do-not-disturb-list li small {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+  margin-top: 4px;
+}
 .compact-contact-fields label {
   margin-bottom: 16px;
 }
@@ -365,6 +388,9 @@
   }
   .settings-nav button {
     white-space: nowrap;
+  }
+  .do-not-disturb-list li {
+    align-items: flex-start;
   }
   .batch-list > article {
     align-items: flex-start;

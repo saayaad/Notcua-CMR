@@ -62,6 +62,7 @@ export function WorkspaceSettings({
   const [notices, setNotices] = useState<
     { id: string; data: { title: string; text: string; createdAt: string; read: boolean } }[]
   >([]);
+  const [doNotDisturb, setDoNotDisturb] = useState<{ id: string; name: string; phoneNumber: string; optedOutAt?: string; optOutText?: string }[]>([]);
   const [me, setMe] = useState<{ email: string; role: string; profile: Record<string, string> } | null>(null);
   useEffect(() => {
     void request<typeof me>('/operations/me')
@@ -82,8 +83,12 @@ export function WorkspaceSettings({
       void request<{ items: typeof notices }>('/operations/notices')
         .then((result) => { if (active) setNotices(result.items); })
         .catch((error) => { if (active) notify(errorMessage(error), true); });
+    if (tab === 'optout')
+      void request<{ items: typeof doNotDisturb }>(`/operations/sessions/${sessionId}/do-not-disturb`)
+        .then((result) => { if (active) setDoNotDisturb(result.items); })
+        .catch((error) => { if (active) notify(errorMessage(error), true); });
     return () => { active = false; };
-  }, [tab, request, notify]);
+  }, [tab, sessionId, request, notify]);
   const save = async (path: string, body: unknown) => {
     setBusy(true);
     try {
@@ -651,6 +656,19 @@ export function WorkspaceSettings({
                 <small className="muted">A comparação ignora maiúsculas, acentos e pontuação inicial, e evita bloquear por uma palavra no meio de uma frase.</small>
                 <button className="button primary" disabled={busy}>Salvar regras de opt-out</button>
               </form>
+              <h3>Lista “Não perturbe”</h3>
+              <p>Estes contatos ficam fora das próximas campanhas até serem removidos manualmente desta lista.</p>
+              {doNotDisturb.length ? <ul className="do-not-disturb-list">
+                {doNotDisturb.map((contact) => <li key={contact.id}>
+                  <span><strong>{contact.name || contact.phoneNumber}</strong><small>{contact.phoneNumber}{contact.optOutText ? ` · “${contact.optOutText}”` : ''}</small></span>
+                  <button className="button small" type="button" disabled={busy} onClick={() => {
+                    setBusy(true);
+                    void request(`/operations/sessions/${sessionId}/do-not-disturb/${contact.id}`, 'DELETE')
+                      .then(() => { setDoNotDisturb((items) => items.filter((item) => item.id !== contact.id)); notify('Contato removido da lista Não perturbe.'); })
+                      .catch((error) => notify(errorMessage(error), true))
+                      .finally(() => setBusy(false));
+                  }}>Remover</button>
+                </li>)}</ul> : <p className="muted">Nenhum contato na lista.</p>}
             </div>
           )}
           {tab === 'team' && <TeamManager />}

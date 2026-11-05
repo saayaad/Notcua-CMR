@@ -8,6 +8,12 @@ import { json } from '../backups/validation.js';
 import { FlowEngine } from '../flows/flow.engine.js';
 import { queueLabelChange } from '../whatsapp/label-changes.js';
 import { nextSendWindowAt, type SendWindow } from './send-window.js';
+export interface CampaignCta {
+  keyword: string;
+  replyText?: string;
+  assetId?: string;
+  labelId?: string;
+}
 export interface Batch {
   name: string;
   sessionId: string;
@@ -35,8 +41,10 @@ export interface Batch {
   autoResume?: boolean;
   distribution?: 'RANDOM' | 'ROUND_ROBIN';
   variationNames?: string[];
-  ctaMessages?: { keyword: string; replyText: string }[];
+  ctaMessages?: CampaignCta[];
   followUpMessages?: { waitMinutes: number; text: string }[];
+  defaultReplyText?: string;
+  optOutLine?: string;
   batchNumber?: number;
   batchHistory?: {
     number: number;
@@ -62,8 +70,9 @@ export interface Delivery {
   sourceMessageAt?: string;
   followUps?: { waitMinutes: number; text: string }[];
   followUpIndex?: number;
-  cta?: { keyword: string; replyText: string };
-  ctas?: { keyword: string; replyText: string }[];
+  cta?: CampaignCta;
+  ctas?: CampaignCta[];
+  defaultReplyText?: string;
   sourceCampaignId?: string;
   labelTransition?: { fromLabelId?: string; toLabelId?: string };
 }

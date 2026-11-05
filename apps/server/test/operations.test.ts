@@ -1847,6 +1847,114 @@ async function inbound(chatId: string, text: string) {
   return message;
 }
 
+test('Leva 2 aceite 1: aliases CTA ignoram acentos e pontuação, aplicam etiqueta e respondem uma vez', async () => {
+  const chat = await makeContact('5511777778991', 'Contato CTA fictício');
+  const label = await db.label.create({ data: { id: 'leva2-cta-interessado', sessionId, name: 'Interessado' } });
+  const file = await db.storedFile.create({ data: {
+    sha256: randomBytes(32).toString('hex'), filename: 'portfolio-ficticio.mp4', mimeType: 'video/mp4',
+    byteLength: 10, data: Buffer.from('fake-video'),
+  } });
+  const asset = await db.asset.create({ data: { id: 'leva2-cta-video', kind: 'MEDIA', name: 'Portfólio fictício', fileId: file.id } });
+  const campaign = await draft([chat.id], {
+    kind: 'text', text: 'Olá {{nome}}',
+    ctas: [{ keyword: 'EU QUERO, QUERO, SIM', replyText: 'Aqui está o catálogo', assetId: asset.id, labelId: label.id }],
+  });
+  const task = await db.deliveryTask.findFirstOrThrow({ where: { batchId: campaign.id, conversationId: chat.id } });
+  const contact = await db.contact.findUniqueOrThrow({ where: { id: chat.contactId } });
+  const sentAt = new Date();
+  await db.chatMessage.create({ data: {
+    id: `out:delivery:${task.id}`, conversationId: chat.id, whatsappMessageId: `leva2-out-${task.id}`,
+    direction: 'OUTBOUND', status: 'SENT', type: 'conversation', text: 'Olá Contato CTA fictício', sentAt,
+  } });
+  await db.deliveryTask.update({ where: { id: task.id }, data: { status: 'COMPLETED' } });
+  await putRecord(db, campaign.id, 'BATCH', { ...campaign, status: 'BATCH_COMPLETE' });
+  const sync = new SyncService(db, silentPublisher);
+  const receive = async (id: string, text: string) => sync.messagesUpsert(sessionId, [{
+    key: { remoteJid: `${contact.phoneNumber}@s.whatsapp.net`, id, fromMe: false },
+    message: { conversation: text }, messageTimestamp: Math.floor(Date.now() / 1000),
+  } as unknown as WAMessage], true);
+  await receive('leva2-cta-1', 'quero!!!');
+  await receive('leva2-cta-2', 'SIM');
+  const responses = await db.deliveryTask.findMany({ where: { batchId: `cta:${campaign.id}:${chat.id}:0` } });
+  assert.equal(responses.length, 1);
+  const responsePayload = responses[0]!.payload as { kind: string; steps?: { snapshot: { kind: string } }[] };
+  assert.equal(responsePayload.kind, 'sequence');
+  assert.deepEqual(responsePayload.steps?.map((step) => step.snapshot.kind), ['text', 'video']);
+  assert.ok((await db.contact.findUniqueOrThrow({ where: { id: chat.contactId }, include: { labels: true } })).labels.some((item) => item.labelId === label.id));
+  const before = socket.sends.length;
+  await worker.flush();
+  assert.equal(socket.sends.length, before + 1);
+  assert.equal((socket.sends.at(-1) as { text: string }).text, 'Aqui está o catálogo');
+});
+
+test('Leva 2 aceite 2: resposta livre cria fallback único, registra aviso e cancela follow-ups', async () => {
+  const chat = await makeContact('5511777778992', 'Contato resposta livre');
+  const campaign = await draft([chat.id], {
+    kind: 'text', text: 'Escolha uma opção', defaultReplyText: 'Digite VÍDEO para ver o exemplo',
+    followUps: [{ waitMinutes: 60, text: 'Ainda tem interesse?' }],
+  });
+  const task = await db.deliveryTask.findFirstOrThrow({ where: { batchId: campaign.id, conversationId: chat.id } });
+  const contact = await db.contact.findUniqueOrThrow({ where: { id: chat.contactId } });
+  const sentAt = new Date();
+  await db.chatMessage.create({ data: {
+    id: `out:delivery:${task.id}`, conversationId: chat.id, whatsappMessageId: `leva2-out-${task.id}`,
+    direction: 'OUTBOUND', status: 'SENT', type: 'conversation', text: 'Escolha uma opção', sentAt,
+  } });
+  await db.deliveryTask.update({ where: { id: task.id }, data: { status: 'COMPLETED' } });
+  await db.deliveryTask.create({ data: {
+    batchId: campaign.id, sessionId, conversationId: chat.id, status: 'QUEUED',
+    payload: { kind: 'text', followUp: true, followUps: [{ waitMinutes: 60, text: 'Ainda tem interesse?' }], sourceMessageAt: sentAt.toISOString() },
+    runAt: new Date(Date.now() + 60_000),
+  } });
+  const sync = new SyncService(db, silentPublisher);
+  const receive = async (id: string) => sync.messagesUpsert(sessionId, [{
+    key: { remoteJid: `${contact.phoneNumber}@s.whatsapp.net`, id, fromMe: false },
+    message: { conversation: 'Pode me explicar melhor?' }, messageTimestamp: Math.floor(Date.now() / 1000),
+  } as unknown as WAMessage], true);
+  await receive('leva2-livre-1');
+  await receive('leva2-livre-2');
+  const fallbackId = `campaign-default:${campaign.id}:${chat.id}`;
+  assert.equal(await db.deliveryTask.count({ where: { batchId: fallbackId } }), 1);
+  assert.equal(await db.deliveryTask.count({ where: { batchId: campaign.id, status: 'CANCELLED' } }), 1);
+  assert.equal(await db.operationRecord.count({ where: { id: `notice:campaign-response:${campaign.id}:${chat.id}` } }), 1);
+  assert.ok(await db.flowInboxEvent.count({ where: { conversationId: chat.id, outcome: 'campaign-cta' } }) >= 1);
+  await worker.flush();
+  assert.equal((socket.sends.at(-1) as { text: string }).text, 'Digite VÍDEO para ver o exemplo');
+});
+
+test('Leva 2 aceite 3: PARAR cria etiqueta não perturbe e exclui contato de novo público', async () => {
+  const sync = new SyncService(db, silentPublisher);
+  const jid = '5511777778993@s.whatsapp.net';
+  await sync.messagesUpsert(sessionId, [{
+    key: { remoteJid: jid, id: 'leva2-optout', fromMe: false },
+    message: { conversation: 'PARAR!!!' }, messageTimestamp: Math.floor(Date.now() / 1000),
+  } as unknown as WAMessage], true);
+  const contact = await db.contact.findUniqueOrThrow({ where: { phoneNumber: '5511777778993' }, include: { labels: { include: { label: true } } } });
+  assert.equal((contact.metadata as { optOut?: boolean }).optOut, true);
+  assert.ok(contact.labels.some((item) => item.label.name.toLowerCase() === 'não perturbe'));
+  const chat = await db.conversation.findFirstOrThrow({ where: { sessionId, contactId: contact.id } });
+  const audience = await request(app).post(`/api/operations/sessions/${sessionId}/audience`).send({ conversationIds: [chat.id] }).expect(200);
+  assert.equal(audience.body.count, 0);
+  const list = await request(app).get(`/api/operations/sessions/${sessionId}/do-not-disturb`).expect(200);
+  assert.ok(list.body.items.some((item: { id: string }) => item.id === contact.id));
+  await request(app).delete(`/api/operations/sessions/${sessionId}/do-not-disturb/${contact.id}`).expect(200);
+  const afterRemoval = await request(app).post(`/api/operations/sessions/${sessionId}/audience`).send({ conversationIds: [chat.id] }).expect(200);
+  assert.equal(afterRemoval.body.count, 1);
+});
+
+test('Leva 2 aceite 4: teste pessoal interpola variáveis sem criar tarefa ou contar na campanha', async () => {
+  const tasksBefore = await db.deliveryTask.count();
+  const sendsBefore = socket.sends.length;
+  const result = await request(app).post(`/api/operations/sessions/${sessionId}/campaign-test`).send({
+    text: '{{saudacao}}, {{nome}}!', optOutLine: 'Se não fizer sentido, é só avisar',
+  }).expect(201);
+  assert.equal(result.body.campaignCountsChanged, false);
+  assert.equal(await db.deliveryTask.count(), tasksBefore);
+  assert.equal(socket.sends.length, sendsBefore + 1);
+  const sent = (socket.sends.at(-1) as { text: string }).text;
+  assert.match(sent, /^(Bom dia|Boa tarde|Boa noite), Cliente de teste!\nSe não fizer sentido, é só avisar$/);
+});
+
 test('REQ-143/REQ-307: assumir durante geração impede envio da IA e mantém pausa após mensagem manual', async () =>
   aiTest(async () => {
     const chat = await makeContact('5511777770032');

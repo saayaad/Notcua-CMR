@@ -1111,6 +1111,11 @@ export function BatchEditor({
   const [variantNames, setVariantNames] = useState<string[]>([]);
   const [generating, setGenerating] = useState(false);
   const [variantIndex, setVariantIndex] = useState(0);
+  const [ctas, setCtas] = useState<{ keyword: string; replyText: string; assetId: string; labelId: string }[]>([]);
+  const [defaultReplyText, setDefaultReplyText] = useState('');
+  const [optOutLineEnabled, setOptOutLineEnabled] = useState(false);
+  const [optOutLine, setOptOutLine] = useState('Se não fizer sentido, é só avisar');
+  const [testBusy, setTestBusy] = useState(false);
   const [selectedAssets, setSelectedAssets] = useState<string[]>([]);
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [showLeads, setShowLeads] = useState(false);
@@ -1225,6 +1230,19 @@ export function BatchEditor({
           : kind === 'flow'
             ? 'Fluxo de atendimento: usa a versão publicada.'
             : '';
+  const previewText = kind === 'text' && optOutLineEnabled && optOutLine.trim()
+    ? `${displayText.trimEnd()}\n${optOutLine.trim()}`
+    : displayText;
+  const sendCampaignTest = (text: string) => {
+    setTestBusy(true);
+    void request<{ phoneNumber: string }>(`/operations/sessions/${sessionId}/campaign-test`, 'POST', {
+      text,
+      optOutLine: optOutLineEnabled ? optOutLine : undefined,
+    })
+      .then((result) => notify(`Teste enviado para ${result.phoneNumber}. Os números da campanha não foram alterados.`))
+      .catch((error) => notify(errorMessage(error), true))
+      .finally(() => setTestBusy(false));
+  };
   return (
     <Modal
       title={schedule ? 'Agendar mensagem ou lembrete' : 'Nova campanha segmentada'}
@@ -1265,6 +1283,15 @@ export function BatchEditor({
                         }))
                       : undefined,
                 text: data.get('text') || undefined,
+                ctas: kind === 'text' ? ctas.filter((cta) => cta.keyword.trim()) .map((cta) => ({
+                  keyword: cta.keyword,
+                  replyText: cta.replyText || undefined,
+                  assetId: cta.assetId || undefined,
+                  labelId: cta.labelId || undefined,
+                })) : undefined,
+                defaultReplyText: defaultReplyText.trim() || undefined,
+                optOutLineEnabled,
+                optOutLine,
                 assetId: data.get('assetId') || undefined,
                 funnelId: data.get('funnelId') || undefined,
                 flowId: data.get('flowId') || undefined,
@@ -1695,6 +1722,51 @@ export function BatchEditor({
                   )}
                 </>
               )}
+              {kind === 'text' && !schedule && (
+                <div className="surface">
+                  <h3>Respostas por palavra-chave</h3>
+                  <p className="muted">Separe sinônimos por vírgula. A comparação ignora acentos, maiúsculas e pontuação.</p>
+                  {ctas.map((cta, index) => (
+                    <section className="surface" key={index}>
+                      <label>Palavras-chave (ex.: QUERO, EU QUERO, SIM)
+                        <input maxLength={500} value={cta.keyword} placeholder="QUERO, EU QUERO, SIM" onChange={(event) => setCtas((items) => items.map((item, i) => i === index ? { ...item, keyword: event.target.value } : item))} />
+                      </label>
+                      <label>Resposta em texto (opcional)
+                        <textarea maxLength={10000} value={cta.replyText} onChange={(event) => setCtas((items) => items.map((item, i) => i === index ? { ...item, replyText: event.target.value } : item))} />
+                      </label>
+                      <div className="form-grid">
+                        <label>Mídia ou texto da biblioteca (opcional)
+                          <Select value={cta.assetId} onChange={(event) => setCtas((items) => items.map((item, i) => i === index ? { ...item, assetId: event.target.value } : item))}>
+                            <option value="">Não enviar recurso</option>
+                            {[...library.assets, ...extraAssets].map((asset) => <option key={asset.id} value={asset.id}>{asset.name}</option>)}
+                          </Select>
+                        </label>
+                        <label>Aplicar etiqueta (opcional)
+                          <Select value={cta.labelId} onChange={(event) => setCtas((items) => items.map((item, i) => i === index ? { ...item, labelId: event.target.value } : item))}>
+                            <option value="">Não aplicar etiqueta</option>
+                            {labels.map((label) => <option key={label.id} value={label.id}>{label.name}</option>)}
+                          </Select>
+                        </label>
+                      </div>
+                      <button className="text-button" type="button" onClick={() => setCtas((items) => items.filter((_item, i) => i !== index))}>Remover CTA</button>
+                    </section>
+                  ))}
+                  <button className="button" type="button" disabled={ctas.length >= 20} onClick={() => setCtas((items) => [...items, { keyword: '', replyText: '', assetId: '', labelId: '' }])}>Adicionar CTA</button>
+                  <label>Resposta padrão para texto fora das opções (opcional)
+                    <textarea maxLength={10000} value={defaultReplyText} onChange={(event) => setDefaultReplyText(event.target.value)} placeholder="Não entendi. Digite VÍDEO para receber o exemplo." />
+                  </label>
+                  <label><input type="checkbox" checked={optOutLineEnabled} onChange={(event) => setOptOutLineEnabled(event.target.checked)} /> Adicionar linha para parar mensagens ao final</label>
+                  {optOutLineEnabled && <label>Texto da linha de saída<input maxLength={200} value={optOutLine} onChange={(event) => setOptOutLine(event.target.value)} required /></label>}
+                  <div className="form-grid">
+                    <button type="button" className="button" disabled={testBusy || !message.trim()} onClick={() => sendCampaignTest(message)}>
+                      {testBusy ? <Spinner /> : null}Enviar teste · Mensagem principal
+                    </button>
+                    {variants.map((text, index) => <button key={index} type="button" className="button" disabled={testBusy || !text.trim()} onClick={() => sendCampaignTest(text)}>
+                      Enviar teste · {variantNames[index] || `Variação ${index + 2}`}
+                    </button>)}
+                  </div>
+                </div>
+              )}
             </div>
           ) : kind === 'asset' ? (
             <label>
@@ -1935,7 +2007,7 @@ export function BatchEditor({
           </div>
         </form>
         <CampaignPhonePreview
-          text={displayText}
+          text={previewText}
           assets={
             kind === 'asset'
               ? previewAssets

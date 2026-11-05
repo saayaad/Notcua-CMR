@@ -82,6 +82,44 @@ function normalizeOptOut(value: string) {
   return value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
 }
 
+function messageText(content: unknown): string | null {
+  if (!content || typeof content !== 'object') return null;
+  const row = content as Record<string, unknown>;
+  const nested = (key: string) => row[key] && typeof row[key] === 'object' ? row[key] as Record<string, unknown> : {};
+  const list = nested('listResponseMessage');
+  const listReply = list.singleSelectReply && typeof list.singleSelectReply === 'object'
+    ? list.singleSelectReply as Record<string, unknown>
+    : {};
+  const button = nested('buttonsResponseMessage');
+  const template = nested('templateButtonReplyMessage');
+  const interactive = nested('interactiveResponseMessage');
+  const nativeFlow = interactive.nativeFlowResponseMessage && typeof interactive.nativeFlowResponseMessage === 'object'
+    ? interactive.nativeFlowResponseMessage as Record<string, unknown>
+    : {};
+  let nativeParams: Record<string, unknown> = {};
+  if (typeof nativeFlow.paramsJson === 'string') {
+    try {
+      const parsed: unknown = JSON.parse(nativeFlow.paramsJson);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) nativeParams = parsed as Record<string, unknown>;
+    } catch { /* A resposta livre continua sendo processada pelo restante do conteúdo. */ }
+  }
+  const candidates = [
+    row.conversation,
+    nested('extendedTextMessage').text,
+    button.selectedDisplayText,
+    button.selectedButtonId,
+    list.title,
+    listReply.selectedRowId,
+    template.selectedDisplayText,
+    template.selectedId,
+    nativeParams.id,
+    nativeParams.row_id,
+    nativeParams.title,
+    nativeFlow.paramsJson,
+  ];
+  return candidates.find((value): value is string => typeof value === 'string' && Boolean(value.trim())) ?? null;
+}
+
 function findAdReferral(input: unknown, depth = 0): Record<string, unknown> | null {
   if (!input || typeof input !== 'object' || depth > 6) return null;
   const row = input as Record<string, unknown>;
@@ -248,7 +286,7 @@ export class SyncService {
           if (existing) return;
           const inbound = !entry.key.fromMe;
           const sentAt = timestamp(entry.messageTimestamp) ?? new Date();
-          const text = content?.conversation ?? content?.extendedTextMessage?.text ?? null;
+          const text = messageText(content);
           if (inbound && live) {
             const referral = findAdReferral(entry.message);
             if (referral) {
@@ -268,18 +306,39 @@ export class SyncService {
           if (inbound && live && text?.trim()) {
             const settingsRow = await tx.operationRecord.findUnique({ where: { id: 'settings:opt-out' }, select: { data: true } });
             const configured = (settingsRow?.data as { terms?: string[] } | null)?.terms;
-            const terms = configured?.length ? configured : ['parar', 'sair', 'cancelar', 'remover', 'não quero mais', 'não me envie', 'pare'];
+            const terms = [...new Set([
+              ...(configured ?? []), 'parar', 'pare', 'pare de enviar', 'sair', 'cancelar', 'cancele',
+              'remover', 'remova', 'não quero', 'não quero mais', 'não me envie', 'pare de me enviar',
+              'stop', 'unsubscribe',
+            ])];
             const incoming = normalizeOptOut(text);
             const optedOut = terms.some((term) => {
               const normalized = normalizeOptOut(term);
-              return Boolean(normalized && (incoming === normalized || (normalized.includes(' ') ? incoming.includes(normalized) : incoming.startsWith(`${normalized} `))));
+              return Boolean(normalized && (incoming === normalized || incoming.startsWith(`${normalized} `)));
             });
-            if (optedOut && !(contact.metadata as { optOut?: boolean }).optOut) {
-              await tx.contact.update({ where: { id: contact.id }, data: { metadata: messageJson({ ...(contact.metadata as object), optOut: true, optOutAt: new Date().toISOString(), optOutText: text.slice(0, 300) }) } });
+            if (optedOut) {
+              if (!(contact.metadata as { optOut?: boolean }).optOut)
+                await tx.contact.update({ where: { id: contact.id }, data: { metadata: messageJson({ ...(contact.metadata as object), optOut: true, optOutAt: new Date().toISOString(), optOutText: text.slice(0, 300) }) } });
               const labels = await tx.label.findMany({ where: { isDeleted: false, OR: [{ sessionId }, { sessionId: null }] }, orderBy: { position: 'asc' } });
+              let doNotDisturb = labels.find((label) => normalizeOptOut(label.name) === 'nao perturbe');
+              if (!doNotDisturb) doNotDisturb = await tx.label.upsert({
+                where: { id: `do-not-disturb:${sessionId}` },
+                create: { id: `do-not-disturb:${sessionId}`, sessionId, name: 'Não perturbe', color: '#667085' },
+                update: { isDeleted: false, name: 'Não perturbe' },
+              });
+              await tx.contactLabel.upsert({
+                where: { contactId_labelId: { contactId: contact.id, labelId: doNotDisturb.id } },
+                create: { contactId: contact.id, labelId: doNotDisturb.id },
+                update: {},
+              });
               const blocked = labels.find((label) => /bloqueado|opt.?out/.test(normalizeOptOut(label.name)));
               if (blocked) await tx.contactLabel.upsert({ where: { contactId_labelId: { contactId: contact.id, labelId: blocked.id } }, create: { contactId: contact.id, labelId: blocked.id }, update: {} });
               await setAiControl(tx, chat.id, true, 'O cliente solicitou parar mensagens; contato marcado como opt-out.');
+              await tx.operationRecord.upsert({
+                where: { id: `notice:opt-out:${sessionId}:${contact.id}` },
+                create: { id: `notice:opt-out:${sessionId}:${contact.id}`, kind: 'NOTICE', data: messageJson({ title: 'Pedido para parar mensagens', text: `${contact.name} pediu para não receber novas campanhas.`, conversationId: chat.id, createdAt: new Date().toISOString(), read: false }) },
+                update: {},
+              });
               const queued = await tx.deliveryTask.findMany({ where: { conversationId: chat.id, status: 'QUEUED' }, select: { id: true, batchId: true, payload: true } });
               const batches = new Set<string>();
               for (const task of queued) {

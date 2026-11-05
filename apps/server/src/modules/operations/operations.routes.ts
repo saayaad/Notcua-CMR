@@ -1,6 +1,6 @@
 import { localTelemetryRoutes } from './local-telemetry.js';
 import { simulatedConnectorRoutes } from './simulated-connector.js';
-import { chooseCampaignText } from './campaign-text.js';
+import { chooseCampaignText, expandSpintax } from './campaign-text.js';
 import { normalizeCampaignKeyword } from './campaign-response.js';
 import { validTimezone } from './send-window.js';
 import { labelActionRoutes } from './label-actions.js';
@@ -20,6 +20,7 @@ import { ZipArchive } from 'archiver';
 import { AppError } from '../../shared/errors.js';
 import type { WhatsappService } from '../whatsapp/whatsapp.service.js';
 import type { MessagingService } from '../attendance/messaging.service.js';
+import { resolveContact } from '../whatsapp/contact.repository.js';
 import { CredentialCipher } from '../whatsapp/credential-cipher.js';
 import { env } from '../../config/env.js';
 import { databasePaths } from '../../database/paths.js';
@@ -45,6 +46,12 @@ import { standardReplyRoutes } from './standard-replies.js';
 import { nextActionRoutes } from './next-actions.js';
 
 const id = z.string().min(1).max(200);
+const campaignCtaSchema = z.object({
+  keyword: z.string().trim().min(1).max(500),
+  replyText: z.string().trim().max(10000).optional(),
+  assetId: id.optional(),
+  labelId: id.optional(),
+}).refine((cta) => Boolean(cta.replyText || cta.assetId || cta.labelId), 'CTA precisa ter uma resposta, mídia ou etiqueta.');
 function moneyToCents(value?: string) {
   if (!value) return 0;
   const normalized = value
@@ -313,6 +320,39 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       throw new AppError(409, 'O administrador principal é definido no servidor.');
     await synchronizeTeamAccess(res.locals.identity.workspaceId, data);
     await putRecord(db, `team:${data.email}`, 'TEAM', data);
+    res.json({ saved: true });
+  });
+  router.get('/sessions/:sessionId/do-not-disturb', async (req, res) => {
+    admin(res.locals.identity.role);
+    const sessionId = id.parse(req.params.sessionId);
+    const contacts = await db.contact.findMany({
+      where: { conversations: { some: { sessionId } } },
+      include: { conversations: { where: { sessionId }, select: { id: true } } },
+      orderBy: { updatedAt: 'desc' },
+      take: 5000,
+    });
+    res.json({ items: contacts.filter((contact) => (contact.metadata as { optOut?: boolean }).optOut).map((contact) => ({
+      id: contact.id, name: contact.name, phoneNumber: contact.phoneNumber,
+      optedOutAt: (contact.metadata as { optOutAt?: string }).optOutAt,
+      optOutText: (contact.metadata as { optOutText?: string }).optOutText,
+      conversationId: contact.conversations[0]?.id,
+    })) });
+  });
+  router.delete('/sessions/:sessionId/do-not-disturb/:contactId', async (req, res) => {
+    admin(res.locals.identity.role);
+    const sessionId = id.parse(req.params.sessionId);
+    const contactId = id.parse(req.params.contactId);
+    const contact = await db.contact.findFirst({ where: { id: contactId, conversations: { some: { sessionId } } } });
+    if (!contact) throw new AppError(404, 'Contato não encontrado nesta conexão.');
+    await db.$transaction(async (tx) => {
+      await tx.contact.update({ where: { id: contactId }, data: { metadata: json({ ...(contact.metadata as object), optOut: false, optOutRemovedAt: new Date().toISOString() }) } });
+      const links = await tx.contactLabel.findMany({ where: { contactId }, include: { label: { select: { id: true, name: true } } } });
+      const removable = links.filter((link) => {
+        const name = normalizeCampaignKeyword(link.label.name);
+        return ['nao perturbe', 'bloqueado opt out', 'opt out'].includes(name);
+      }).map((link) => link.labelId);
+      if (removable.length) await tx.contactLabel.deleteMany({ where: { contactId, labelId: { in: removable } } });
+    });
     res.json({ saved: true });
   });
   router.get('/notices', async (_req, res) => {
@@ -638,6 +678,37 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       );
     res.json({ variants, generatedBy: 'ai', sent: false });
   });
+  router.post('/sessions/:sessionId/campaign-test', async (req, res) => {
+    admin(res.locals.identity.role);
+    const sessionId = id.parse(req.params.sessionId);
+    const input = z.object({ text: z.string().trim().min(1).max(10000), optOutLine: z.string().max(200).optional() }).parse(req.body);
+    const session = await whatsapp.snapshot(sessionId);
+    if (session.status !== 'CONNECTED' || !session.phoneNumber) throw new AppError(409, 'Conecte o WhatsApp desta sessão para enviar o teste para o próprio número.');
+    const socket = whatsapp.connectedSocket(sessionId);
+    const selfJid = socket.user?.id ?? `${session.phoneNumber}@s.whatsapp.net`;
+    const jidPhone = selfJid.split('@')[0]!.split(':')[0]!;
+    if (jidPhone !== session.phoneNumber) throw new AppError(409, 'O número associado à conexão mudou. Atualize a sessão antes de enviar o teste.');
+    const conversationId = await db.$transaction(async (tx) => {
+      const contact = await resolveContact(tx, { jid: selfJid, alternateJid: `${session.phoneNumber}@s.whatsapp.net` });
+      if (!contact) throw new AppError(422, 'Não foi possível preparar a conversa do seu número de teste.');
+      const conversation = await tx.conversation.upsert({
+        where: { sessionId_contactId: { sessionId, contactId: contact.id } },
+        create: { sessionId, contactId: contact.id },
+        update: {},
+        select: { id: true },
+      });
+      return conversation.id;
+    });
+    const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hourCycle: 'h23' }).format(new Date()));
+    const greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
+    let text = expandSpintax(input.text, `campaign-preview:${randomUUID()}`)
+      .replace(/\{\{\s*nome\s*\}\}/g, 'Cliente de teste')
+      .replaceAll('#nome', 'Cliente de teste')
+      .replace(/\{\{\s*saudacao\s*\}\}/g, greeting);
+    if (input.optOutLine?.trim()) text = `${text.trimEnd()}\n${input.optOutLine.trim()}`;
+    const sent = await messaging.send(sessionId, conversationId, { requestId: `campaign-test:${randomUUID()}`, kind: 'text', text, composingMs: 0 });
+    res.status(201).json({ sent: true, phoneNumber: session.phoneNumber, sentAt: sent.sentAt.toISOString(), campaignCountsChanged: false });
+  });
   router.post('/sessions/:sessionId/batches', async (req, res) => {
     admin(res.locals.identity.role);
     const sessionId = id.parse(req.params.sessionId);
@@ -663,6 +734,9 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
           text: z.string().max(10000).optional(),
           textVariations: z.array(z.string().trim().min(1).max(10000)).max(9).default([]),
           variationNames: z.array(z.string().trim().min(1).max(60)).max(9).default([]),
+          defaultReplyText: z.string().trim().max(10000).optional(),
+          optOutLineEnabled: z.boolean().default(false),
+          optOutLine: z.string().trim().max(200).default(''),
           followUps: z
             .array(
               z.object({
@@ -672,21 +746,8 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
             )
             .max(100)
             .default([]),
-          cta: z
-            .object({
-              keyword: z.string().trim().min(1).max(100),
-              replyText: z.string().trim().min(1).max(10000),
-            })
-            .optional(),
-          ctas: z
-            .array(
-              z.object({
-                keyword: z.string().trim().min(1).max(100),
-                replyText: z.string().trim().min(1).max(10000),
-              }),
-            )
-            .max(20)
-            .default([]),
+          cta: campaignCtaSchema.optional(),
+          ctas: z.array(campaignCtaSchema).max(20).default([]),
           assetId: id.optional(),
           funnelId: id.optional(),
           flowId: id.optional(),
@@ -726,6 +787,8 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       .parse(req.body);
     if (input.maxSeconds < input.minSeconds)
       throw new AppError(422, 'O intervalo máximo deve ser maior ou igual ao mínimo.');
+    if (input.delivery.optOutLineEnabled && !input.delivery.optOutLine)
+      throw new AppError(422, 'Escreva a linha de saída antes de ativá-la.');
     if (
       input.delivery.variationNames.length &&
       input.delivery.variationNames.length !== input.delivery.textVariations.length
@@ -734,7 +797,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     if ((input.mode === 'REMINDER') !== (input.delivery.kind === 'reminder'))
       throw new AppError(422, 'Use um lembrete somente no modo de lembrete.');
     const ctas = [...input.delivery.ctas, ...(input.delivery.cta ? [input.delivery.cta] : [])];
-    const keywords = ctas.map((cta) => normalizeCampaignKeyword(cta.keyword));
+    const keywords = ctas.flatMap((cta) => cta.keyword.split(/[,;|\n]/).map(normalizeCampaignKeyword));
     if (
       ctas.length > 20 ||
       keywords.some((keyword) => !keyword) ||
@@ -757,6 +820,11 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       throw new AppError(422, 'Selecione uma conversa para o agendamento individual.');
     const { steps, ...initialDelivery } = input.delivery;
     const delivery: Delivery = { ...initialDelivery, ctas };
+    const optOutLine = input.delivery.optOutLineEnabled ? input.delivery.optOutLine : '';
+    const appendOptOutLine = (text: string) => optOutLine ? `${text.trimEnd()}\n${optOutLine}` : text;
+    const campaignVariations = input.delivery.textVariations.map(appendOptOutLine);
+    if (delivery.text) delivery.text = appendOptOutLine(delivery.text);
+    delivery.defaultReplyText = input.delivery.defaultReplyText;
     if (delivery.kind === 'sequence') {
       if (!steps?.length) throw new AppError(422, 'Adicione mensagens à sequência.');
       delivery.steps = [];
@@ -837,6 +905,15 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       )
         throw new AppError(422, 'Selecione etiquetas válidas para a troca automática.');
     }
+    const ctaLabelIds = ctas.map((cta) => cta.labelId).filter((labelId): labelId is string => Boolean(labelId));
+    if (ctaLabelIds.length) {
+      const validLabels = await db.label.findMany({ where: { id: { in: ctaLabelIds }, isDeleted: false, OR: [{ sessionId }, { sessionId: null }] }, select: { id: true } });
+      if (validLabels.length !== new Set(ctaLabelIds).size) throw new AppError(422, 'Selecione etiquetas válidas para as CTAs.');
+    }
+    for (const cta of ctas) if (cta.assetId) {
+      const asset = await db.asset.findUnique({ where: { id: cta.assetId }, include: { file: true } });
+      if (!asset || (asset.kind === 'MESSAGE' ? !asset.text?.trim() : !asset.file)) throw new AppError(422, 'Selecione uma mídia válida para a CTA.');
+    }
     const batchId = `batch:${randomUUID()}`;
     const variationOrder = people.map((_person, index) => index % (input.delivery.textVariations.length + 1));
     if (input.distribution === 'RANDOM') {
@@ -868,7 +945,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
           startedAt: new Date().toISOString(),
           leadIds: people.slice(0, input.batchSize).map((person) => person.id),
           variationByLead: {},
-          textVersion: [delivery.text ?? '', ...input.delivery.textVariations],
+          textVersion: [delivery.text ?? '', ...campaignVariations],
         },
       ],
       sentCount: 0,
@@ -878,10 +955,12 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       ...(input.delivery.followUps.length ? { followUpCount: input.delivery.followUps.length } : {}),
       ...(ctas.length ? { ctaKeywords: ctas.map((cta) => cta.keyword) } : {}),
       ...(ctas.length ? { ctaMessages: ctas } : {}),
+      ...(input.delivery.defaultReplyText ? { defaultReplyText: input.delivery.defaultReplyText } : {}),
+      ...(optOutLine ? { optOutLine } : {}),
       ...(input.delivery.followUps.length ? { followUpMessages: input.delivery.followUps } : {}),
       ...(input.sendWindow ? { sendWindow: input.sendWindow } : {}),
       ...(delivery.kind === 'text' && input.mode === 'CAMPAIGN'
-        ? { approaches: [delivery.text!, ...input.delivery.textVariations] }
+        ? { approaches: [delivery.text!, ...campaignVariations] }
         : {}),
       createdAt: new Date().toISOString(),
     };
@@ -900,12 +979,12 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
                     approachIndex: input.mode === 'CAMPAIGN' ? variationOrder[index] : undefined,
                     batchNumber: 1,
                     batchOrder: index,
-                    textVersion: [delivery.text!, ...input.delivery.textVariations],
+                    textVersion: [delivery.text!, ...campaignVariations],
                     snapshot: {
                       kind: 'text',
                       text: chooseCampaignText(
                         delivery.text ?? '',
-                        input.delivery.textVariations,
+                        campaignVariations,
                         index,
                         chat.id,
                       ),
@@ -1088,19 +1167,13 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
         batchSize: z.number().int().min(1).max(5000).optional(),
         approaches: z.array(z.string().trim().min(1).max(10000)).max(10).optional(),
         variationNames: z.array(z.string().trim().min(1).max(60)).max(10).optional(),
+        defaultReplyText: z.string().trim().max(10000).optional(),
+        optOutLine: z.string().trim().max(200).optional(),
         minSeconds: z.number().int().min(1).max(86400).optional(),
         maxSeconds: z.number().int().min(1).max(86400).optional(),
         pauseEvery: z.number().int().min(0).max(5000).optional(),
         pauseSeconds: z.number().int().min(0).max(86400).optional(),
-        ctas: z
-          .array(
-            z.object({
-              keyword: z.string().trim().min(1).max(100),
-              replyText: z.string().trim().min(1).max(10000),
-            }),
-          )
-          .max(20)
-          .optional(),
+        ctas: z.array(campaignCtaSchema).max(20).optional(),
         followUps: z
           .array(
             z.object({
@@ -1140,11 +1213,26 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     if (maxSeconds < minSeconds)
       throw new AppError(422, 'O intervalo máximo deve ser maior ou igual ao mínimo.');
     if (input.ctas) {
-      const keywords = input.ctas.map((cta) => normalizeCampaignKeyword(cta.keyword));
+      const keywords = input.ctas.flatMap((cta) => cta.keyword.split(/[,;|\n]/).map(normalizeCampaignKeyword));
       if (keywords.some((keyword) => !keyword) || new Set(keywords).size !== keywords.length)
         throw new AppError(422, 'As palavras-chave das CTAs devem ser distintas e conter letras ou números.');
+      const labelIds = input.ctas.map((cta) => cta.labelId).filter((labelId): labelId is string => Boolean(labelId));
+      if (labelIds.length) {
+        const labels = await db.label.findMany({ where: { id: { in: labelIds }, isDeleted: false, OR: [{ sessionId }, { sessionId: null }] }, select: { id: true } });
+        if (labels.length !== new Set(labelIds).size) throw new AppError(422, 'Selecione etiquetas válidas para as CTAs.');
+      }
+      for (const cta of input.ctas) if (cta.assetId) {
+        const asset = await db.asset.findUnique({ where: { id: cta.assetId }, include: { file: true } });
+        if (!asset || (asset.kind === 'MESSAGE' ? !asset.text?.trim() : !asset.file)) throw new AppError(422, 'Selecione uma mídia válida para a CTA.');
+      }
     }
-    const approaches = input.approaches ?? batch.approaches;
+    const optOutLine = input.optOutLine === undefined ? (batch.optOutLine ?? '') : input.optOutLine;
+    const appendOptOutLine = (text: string) => optOutLine && !text.trimEnd().endsWith(optOutLine)
+      ? `${text.trimEnd()}\n${optOutLine}`
+      : text;
+    const approaches = input.approaches
+      ? input.approaches.map(appendOptOutLine)
+      : batch.approaches;
     const variantAssignment = tasks.map((_task, index) => index % (approaches?.length ?? 1));
     if (batch.distribution === 'RANDOM')
       for (let index = variantAssignment.length - 1; index > 0; index--) {
@@ -1179,7 +1267,9 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
               batchNumber: (batch.batchNumber ?? 1) + 1,
               textVersion: approaches ?? [],
               ...(input.ctas ? { ctas: input.ctas, cta: undefined } : {}),
+              ...(input.defaultReplyText === undefined ? {} : { defaultReplyText: input.defaultReplyText }),
               ...(input.followUps ? { followUps: input.followUps } : {}),
+              ...(optOutLine ? { optOutLine } : {}),
               snapshot: { ...(payload.snapshot ?? {}), kind: 'text', text },
             }),
           },
@@ -1201,6 +1291,8 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
             sentTotal: batch.sentTotal ?? batch.sentCount ?? 0,
             ...(approaches ? { approaches } : {}),
             ...(input.variationNames ? { variationNames: input.variationNames } : {}),
+            ...(input.defaultReplyText === undefined ? {} : { defaultReplyText: input.defaultReplyText }),
+            optOutLine,
             ...(input.ctas
               ? { ctaMessages: input.ctas, ctaKeywords: input.ctas.map((cta) => cta.keyword) }
               : {}),
