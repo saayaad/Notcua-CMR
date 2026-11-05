@@ -33,6 +33,9 @@ try {
     { id: 'audit-contact-ana', name: 'Ana Exemplo', phoneNumber: '5511999999901', labelId: 'audit-label-new' },
     { id: 'audit-contact-bruno', name: 'Bruno Exemplo', phoneNumber: '5511999999902', labelId: 'audit-label-budget' },
     { id: 'audit-contact-carla', name: 'Carla Exemplo', phoneNumber: '5511999999903', labelId: 'audit-label-client' },
+    { id: 'audit-contact-diego', name: 'Diego Exemplo', phoneNumber: '5511999999904', labelId: 'audit-label-new' },
+    { id: 'audit-contact-elisa', name: 'Elisa Exemplo', phoneNumber: '5511999999905', labelId: 'audit-label-budget' },
+    { id: 'audit-contact-felipe', name: 'Felipe Exemplo', phoneNumber: '5511999999906', labelId: 'audit-label-client' },
   ];
   for (const [index, contact] of contacts.entries()) {
     await db.contact.create({
@@ -190,7 +193,7 @@ try {
   const [contactCount, conversationCount, assetCount] = await Promise.all([
     db.contact.count(), db.conversation.count(), db.asset.count(),
   ]);
-  console.log(`Auditoria recriada: ${contactCount} contatos, ${conversationCount} conversas, ${assetCount} recursos.`);
+  console.log(`Auditoria recriada: ${contactCount} contatos, ${conversationCount} conversas (5 ativas e 1 arquivada), ${assetCount} recursos.`);
 } finally {
   await db.$disconnect();
 }
