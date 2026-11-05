@@ -99,12 +99,12 @@ Branch: `auditoria-reqs`. Diretório oficial. Nenhuma chamada de envio real, pro
 
 Decisão: cada alternativa é um conteúdo completo; sequência é uma única alternativa e mantém sua ordem e esperas. Campanhas legadas continuam usando os campos atuais até serem editadas.
 
-### Fase 1 — modelo aditivo e flag desativada — em andamento concluída localmente
+### Fase 1 — modelo aditivo e flag desativada — implementação local, aplicação Prisma bloqueada
 
 - [x] Estrutura CampaignAlternative / CampaignAlternativeStep e snapshots por tarefa adicionados ao schema.
 - [x] Migração aditiva cria tabelas/colunas sem atualizar nem apagar os JSONs antigos. Cada BATCH legado recebe uma alternativa compatível; tarefas sequenciais preservam cada etapa, ordem e espera.
 - [x] `CAMPAIGN_ALTERNATIVES_ENABLED` existe e assume `false` por padrão. Nenhuma rota/worker usa o novo modelo enquanto desligada.
 - [x] Prova SQLite isolada: migrações antigas + campanha e tarefa sequencial fictícias + migração nova; JSON legado idêntico antes/depois e etapas de texto/mídia com posições/esperas preservadas.
-- [x] Prisma schema validado; typecheck iniciou sem erros (aguardando resultado final).
-- [ ] Prisma `migrate deploy` isolado falhou com erro genérico do schema engine; investigar antes de deploy. `prisma generate` não substituiu o query engine por `EPERM` enquanto o servidor local mantém o DLL aberto.
-- Próximo: corrigir a execução Prisma isolada, então avançar para atribuição congelada no servidor. Feature flag permanece desligada.
+- [x] Prisma schema validado; `npm run typecheck` concluiu com exit code 0.
+- [ ] Prisma `migrate deploy` em banco isolado falhou com `Schema engine error` sem detalhe. `prisma generate` falhou ao substituir `query_engine-windows.dll.node` (`EPERM`), provavelmente porque o servidor local o mantém carregado; `--no-engine` gerou um cliente sem engine e não serve para testes/runtime.
+- Bloqueio antes de avançar: aplicar e testar a migração via Prisma com o engine funcional; não parei o servidor em execução para evitar interromper possíveis campanhas. Feature flag permanece desligada; sem deploy.
