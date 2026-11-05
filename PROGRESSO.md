@@ -60,3 +60,28 @@ Branch: `auditoria-reqs`. Diretório oficial. Nenhuma chamada de envio real, pro
 ### Retomada
 - Leva 2 concluída localmente; não foi enviada nenhuma mensagem real, nem houve conexão externa, publicação ou alteração de infraestrutura.
 - O frontend local deve ser iniciado pelo usuário para revisar os controles na tela; o ambiente aberto atualmente não tem as variáveis públicas Firebase para autenticação.
+
+## Correção — ordem das sequências por contato — 05/11/2026
+
+- A fila agora mantém uma sequência ativa por campanha: envia todas as etapas de um contato, respeita a espera configurada entre elas e só então avança para o próximo contato.
+- Campanhas de sequência já existentes são reconhecidas a partir das tarefas pendentes; se uma etapa já estava em andamento, a retomada prioriza essa etapa para não reiniciar a sequência.
+- Contadores e pausas longas passam a contar leads concluídos, não mensagens individuais da sequência. Campanhas novas e respostas de CTA com sequência usam o mesmo controle.
+- Validação com SQLite temporário e FakeSocket: **PASSOU** — dois contatos receberam a sequência completa, em ordem por contato; a segunda etapa respeitou espera; a campanha concluiu com dois leads contados e pausa longa aplicada após o segundo.
+- `npm run typecheck` no servidor: **PASSOU**. Nenhum envio real foi realizado.
+
+## Ritmo de campanha e previsão de término — 05/11/2026
+
+- O editor oferece velocidades 1×, 1,5× e 2×. O valor reduz os intervalos entre contatos, pausas configuradas e esperas entre etapas; os tempos de follow-up continuam respeitando os minutos definidos.
+- O monitor mostra uma previsão de duração e mensagens/contatos restantes. A estimativa usa a fila quando a API oferece esses dados e usa o público restante e intervalos como alternativa.
+- Validação: typecheck de servidor e web **PASSOU**; teste de sequência com fila fictícia **PASSOU**; build completo **PASSOU**. O aviso existente de chunk web acima de 500 kB permanece.
+- Deploy de produção Vercel concluído: https://notcua.vercel.app (deployment `dpl_C1gA2McvNgYCZD6kKTe2wbLFGcty`). A resposta HTML de produção foi conferida com `vercel curl`.
+- Nomes dos contatos: a mensagem continua usando o nome do cadastro do Noctua. O título do chat no WhatsApp depende do catálogo de contatos sincronizado no telefone/WhatsApp e não pode ser gravado pela conexão Baileys do Noctua; não houve alteração nos contatos do aparelho.
+- Nenhuma mensagem real foi enviada. O deploy da Vercel atualiza o painel web; o servidor persistente da API permanece hospedado separadamente.
+
+## Publicação do painel a partir do diretório oficial — 05/11/2026
+
+- Código de campanhas, sequência, ritmo e interface salvo em `81ab203` na branch `auditoria-reqs`; arquivos protegidos e artefatos não rastreados ficaram fora do commit.
+- `npm run typecheck` e `npm run build -w @noctua/web` passaram. Testes focais: quatro aceites da Leva 1 e quatro da Leva 2 passaram com SQLite e socket fictícios. O teste de sequência falhou na execução conjunta por interferência de dados de outro teste e passou isoladamente (1/1).
+- Painel publicado diretamente do diretório oficial na Vercel: `dpl_3bYZ9npQE2XFYGuMmpgrsnWzAMAc`, produção `https://notcua.vercel.app`, estado `READY`; `vercel curl` confirmou a resposta HTML.
+- A API/worker continuam no computador local e dependem do processo, túnel e conexão estarem ativos. Nenhum disparo real foi feito nesta etapa. A entrega a 25–50 leads, reconexão real e proteção contra duplicidade no WhatsApp real ainda não foram validadas.
+- Push do Git permanece pendente: a branch local contém commits anteriores que alteram `REVISAO/evidencias/REQ-686/process.json` e `scripts/iniciar-noctua-online.ps1`, protegidos contra inclusão no envio. Não enviar a branch inteira sem resolver esse histórico de forma explícita.
