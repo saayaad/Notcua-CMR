@@ -47,7 +47,13 @@ export function OverviewPage({
     waiting: number;
     ai: { todayTokens: number };
     batches: { status: string; _count: number }[];
-    campaignFinance?: { revenueInCents: number; investmentInCents: number; sales: number; campaigns: number; roiPercent: number | null };
+    campaignFinance?: {
+      revenueInCents: number;
+      investmentInCents: number;
+      sales: number;
+      campaigns: number;
+      roiPercent: number | null;
+    };
   } | null>(null);
   const [crmMoney, setCrmMoney] = useState<{ openValueInCents: number; wonValueInCents: number } | null>(
     null,
@@ -106,24 +112,47 @@ export function OverviewPage({
             value: metrics?.batches.find((row) => row.status === 'QUEUED')?._count ?? 0,
             icon: Clock3,
           },
-        ].filter(item => aiEnabled || !item.title.includes('Tokens de IA')).map(({ title, value, icon: Icon, currency }) => (
-          <article className="surface" key={title}>
-            <Icon size={21} />
-            <strong>
-              {currency ? value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : value}
-            </strong>
-            <span>{title}</span>
-          </article>
-        ))}
+        ]
+          .filter((item) => aiEnabled || !item.title.includes('Tokens de IA'))
+          .map(({ title, value, icon: Icon, currency }) => (
+            <article className="surface" key={title}>
+              <Icon size={21} />
+              <strong>
+                {currency ? value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : value}
+              </strong>
+              <span>{title}</span>
+            </article>
+          ))}
       </div>
-      {metrics?.campaignFinance && <section className="surface">
-        <h2>Campanhas com vendas vinculadas · histórico completo</h2>
-        <p>{metrics.campaignFinance.sales} vendas ganhas em {metrics.campaignFinance.campaigns} campanhas · Receita: {(metrics.campaignFinance.revenueInCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} · Investimento informado: {(metrics.campaignFinance.investmentInCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-        <strong>{metrics.campaignFinance.roiPercent === null ? 'Informe investimento no financeiro para calcular o retorno.' : `Retorno estimado: ${metrics.campaignFinance.roiPercent.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`}</strong>
-        <small className="muted">Somente campanhas usando receita do CRM. Não representa lucro líquido e não inclui custos de produção, impostos ou outras despesas.</small>
-      </section>}
+      {metrics?.campaignFinance && (
+        <section className="surface">
+          <h2>Campanhas com vendas vinculadas · histórico completo</h2>
+          <p>
+            {metrics.campaignFinance.sales} vendas ganhas em {metrics.campaignFinance.campaigns} campanhas ·
+            Receita:{' '}
+            {(metrics.campaignFinance.revenueInCents / 100).toLocaleString('pt-BR', {
+              style: 'currency',
+              currency: 'BRL',
+            })}{' '}
+            · Investimento informado:{' '}
+            {(metrics.campaignFinance.investmentInCents / 100).toLocaleString('pt-BR', {
+              style: 'currency',
+              currency: 'BRL',
+            })}
+          </p>
+          <strong>
+            {metrics.campaignFinance.roiPercent === null
+              ? 'Informe investimento no financeiro para calcular o retorno.'
+              : `Retorno estimado: ${metrics.campaignFinance.roiPercent.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`}
+          </strong>
+          <small className="muted">
+            Somente campanhas usando receita do CRM. Não representa lucro líquido e não inclui custos de
+            produção, impostos ou outras despesas.
+          </small>
+        </section>
+      )}
       <div className="operation-launchers">
-        {sessionId && <LabelFinance sessionId={sessionId}/>}
+        {sessionId && <LabelFinance sessionId={sessionId} />}
         {[
           {
             title: 'Continuar um atendimento',
@@ -391,7 +420,9 @@ function LeadImport({
             const chosen = event.target.files?.[0];
             if (chosen && chosen.size <= 10 * 1024 * 1024) {
               setFile(chosen);
-              setListName((current) => current || chosen.name.replace(/\.(xls|xlsx|csv)$/i, '').slice(0, 100));
+              setListName(
+                (current) => current || chosen.name.replace(/\.(xls|xlsx|csv)$/i, '').slice(0, 100),
+              );
               setPreview(null);
             } else notify('Escolha um arquivo de até 10 MiB.', true);
           }}
@@ -500,11 +531,23 @@ function LeadImport({
               placeholder="Ex.: Leads outubro"
             />
           </label>
-          <NumberValidation sessionId={sessionId} phoneNumbers={preview.items.map(item => item.phoneNumber)} disabled={busy} onBusyChange={setBusy} onRemove={numbers => {
-            const excluded = new Set(numbers);
-            setPreview(current => current ? { ...current, items: current.items.filter(item => !excluded.has(item.phoneNumber)) } : null);
-            notify(`${numbers.length} número(s) sem conta removido(s) da prévia. Nenhum contato existente foi apagado.`);
-          }}/>
+          <NumberValidation
+            sessionId={sessionId}
+            phoneNumbers={preview.items.map((item) => item.phoneNumber)}
+            disabled={busy}
+            onBusyChange={setBusy}
+            onRemove={(numbers) => {
+              const excluded = new Set(numbers);
+              setPreview((current) =>
+                current
+                  ? { ...current, items: current.items.filter((item) => !excluded.has(item.phoneNumber)) }
+                  : null,
+              );
+              notify(
+                `${numbers.length} número(s) sem conta removido(s) da prévia. Nenhum contato existente foi apagado.`,
+              );
+            }}
+          />
         </>
       )}
       <div className="modal-actions">
@@ -543,6 +586,8 @@ interface BatchRow {
   count: number;
   createdAt: string;
   counts: { status: string; _count: number }[];
+  approaches?: string[];
+  variationNames?: string[];
   investmentInCents?: number;
   attributedRevenueInCents?: number;
   manualRevenueInCents?: number;
@@ -553,6 +598,8 @@ const batchStatus: Record<string, string> = {
   DRAFT: 'Rascunho',
   ACTIVE: 'Ativo / agendado',
   PAUSED: 'Pausado',
+  PAUSED_CONNECTION: 'Pausada por falha de conexão',
+  BATCH_COMPLETE: 'Lote concluído, aguardando próximo',
   CANCELLED: 'Cancelado',
   COMPLETED: 'Concluído',
 };
@@ -576,11 +623,29 @@ export function CampaignsPage({
   const [tick, setTick] = useState(0);
   const [create, setCreate] = useState(Boolean(initialConversation));
   const [activate, setActivate] = useState<BatchRow | null>(null);
-  const [tasks, setTasks] = useState<{ status: string; error?: string; runAt: string; contact?: { name: string; phoneNumber: string } | null }[] | null>(null);
+  const [tasks, setTasks] = useState<
+    | {
+        id: string;
+        status: string;
+        rawStatus?: string;
+        error?: string;
+        runAt: string;
+        contact?: { name: string; phoneNumber: string } | null;
+      }[]
+    | null
+  >(null);
+  const [tasksBatchId, setTasksBatchId] = useState('');
+  const [approachReport, setApproachReport] = useState<
+    { name: string; sent: number; replied: number; responseRate: number }[] | null
+  >(null);
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState(initialSearch);
   const [financeBatch, setFinanceBatch] = useState('');
-  const [finance, setFinance] = useState({ investment: '0.00', revenue: '0.00', revenueSource: 'MANUAL' as 'MANUAL' | 'CRM' });
+  const [finance, setFinance] = useState({
+    investment: '0.00',
+    revenue: '0.00',
+    revenueSource: 'MANUAL' as 'MANUAL' | 'CRM',
+  });
   const [revenueBatch, setRevenueBatch] = useState('');
   useEffect(() => setSearch(initialSearch), [initialSearch]);
   useEffect(() => {
@@ -681,7 +746,11 @@ export function CampaignsPage({
                   <small>{new Date(item.createdAt).toLocaleString('pt-BR')}</small>
                   {!schedule && (
                     <div className="campaign-financial-summary">
-                      <small>{item.revenueSource === 'CRM' ? `${item.crmSales ?? 0} vendas ganhas vinculadas · CRM` : 'Receita informada manualmente'}</small>
+                      <small>
+                        {item.revenueSource === 'CRM'
+                          ? `${item.crmSales ?? 0} vendas ganhas vinculadas · CRM`
+                          : 'Receita informada manualmente'}
+                      </small>
                       <strong>
                         Receita atribuída:{' '}
                         {(Number(item.attributedRevenueInCents ?? 0) / 100).toLocaleString('pt-BR', {
@@ -712,7 +781,9 @@ export function CampaignsPage({
                         setFinanceBatch(financeBatch === item.id ? '' : item.id);
                         setFinance({
                           investment: ((item.investmentInCents ?? 0) / 100).toFixed(2),
-                          revenue: ((item.manualRevenueInCents ?? item.attributedRevenueInCents ?? 0) / 100).toFixed(2),
+                          revenue: (
+                            (item.manualRevenueInCents ?? item.attributedRevenueInCents ?? 0) / 100
+                          ).toFixed(2),
                           revenueSource: item.revenueSource ?? 'MANUAL',
                         });
                       }}
@@ -720,19 +791,40 @@ export function CampaignsPage({
                       Financeiro
                     </button>
                   )}
-                  {!schedule && <button className="button" onClick={() => setRevenueBatch(item.id)}>Vincular vendas do CRM</button>}
+                  {!schedule && (
+                    <button className="button" onClick={() => setRevenueBatch(item.id)}>
+                      Vincular vendas do CRM
+                    </button>
+                  )}
                   <button
                     className="button"
                     onClick={() =>
                       void request<{ items: NonNullable<typeof tasks> }>(
                         `/operations/sessions/${sessionId}/batches/${item.id}/tasks`,
                       )
-                        .then((data) => setTasks(data.items))
+                        .then((data) => {
+                          setTasks(data.items);
+                          setTasksBatchId(item.id);
+                        })
                         .catch((error) => notify(errorMessage(error), true))
                     }
                   >
                     Ver envios
                   </button>
+                  {item.approaches?.length ? (
+                    <button
+                      className="button"
+                      onClick={() =>
+                        void request<{ items: NonNullable<typeof approachReport> }>(
+                          `/operations/sessions/${sessionId}/batches/${item.id}/approaches`,
+                        )
+                          .then((data) => setApproachReport(data.items))
+                          .catch((error) => notify(errorMessage(error), true))
+                      }
+                    >
+                      Resultados das variações
+                    </button>
+                  ) : null}
                   {['DRAFT', 'PAUSED'].includes(item.status) && (
                     <button className="button primary" disabled={busy} onClick={() => setActivate(item)}>
                       <Play size={14} />
@@ -782,7 +874,7 @@ export function CampaignsPage({
                           ),
                         );
                         setFinanceBatch('');
-                        setTick(value => value + 1);
+                        setTick((value) => value + 1);
                         notify('Valores da campanha salvos.');
                       })
                       .catch((error) => notify(errorMessage(error), true))
@@ -803,8 +895,17 @@ export function CampaignsPage({
                   </label>
                   <label>
                     Origem da receita
-                    <Select value={finance.revenueSource} onChange={event => setFinance(current => ({ ...current, revenueSource: event.target.value as 'MANUAL' | 'CRM' }))}>
-                      <option value="MANUAL">Valor informado manualmente</option><option value="CRM">Vendas ganhas vinculadas no CRM</option>
+                    <Select
+                      value={finance.revenueSource}
+                      onChange={(event) =>
+                        setFinance((current) => ({
+                          ...current,
+                          revenueSource: event.target.value as 'MANUAL' | 'CRM',
+                        }))
+                      }
+                    >
+                      <option value="MANUAL">Valor informado manualmente</option>
+                      <option value="CRM">Vendas ganhas vinculadas no CRM</option>
                     </Select>
                   </label>
                   <label>
@@ -821,7 +922,8 @@ export function CampaignsPage({
                     />
                   </label>
                   <small className="muted">
-                    O retorno compara receita atribuída e investimento informado. Não representa lucro líquido: custos de produção, impostos e outras despesas não estão incluídos.
+                    O retorno compara receita atribuída e investimento informado. Não representa lucro
+                    líquido: custos de produção, impostos e outras despesas não estão incluídos.
                   </small>
                   <button className="button primary" disabled={busy}>
                     Salvar valores
@@ -836,7 +938,17 @@ export function CampaignsPage({
             item.name.toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')),
           ) && <p className="muted">Nenhuma campanha corresponde a “{search}”.</p>}
       </div>
-      {revenueBatch && <CampaignRevenue sessionId={sessionId} campaignId={revenueBatch} onClose={() => setRevenueBatch('')} onSaved={() => { setRevenueBatch(''); setTick(value => value + 1); }}/>}
+      {revenueBatch && (
+        <CampaignRevenue
+          sessionId={sessionId}
+          campaignId={revenueBatch}
+          onClose={() => setRevenueBatch('')}
+          onSaved={() => {
+            setRevenueBatch('');
+            setTick((value) => value + 1);
+          }}
+        />
+      )}
       {!items.length && (
         <div className="operation-empty">
           <Send size={36} />
@@ -884,20 +996,91 @@ export function CampaignsPage({
           <div className="task-list">
             {tasks.map((task, index) => (
               <div key={index}>
-                {task.contact && <p><b>{task.contact.name}</b> · +{task.contact.phoneNumber}</p>}
+                {task.contact && (
+                  <p>
+                    <b>{task.contact.name}</b> · +{task.contact.phoneNumber}
+                  </p>
+                )}
                 <strong>
-                  {task.status === 'COMPLETED'
-                    ? 'Encaminhado'
-                    : task.status === 'QUEUED'
-                      ? 'Aguardando'
-                      : task.status === 'FAILED'
-                        ? 'Falha'
-                        : task.status === 'CANCELLED'
-                          ? 'Cancelado'
-                          : 'Executando'}
+                  {task.status === 'SENT'
+                    ? 'Enviado'
+                    : task.status === 'REPLIED'
+                      ? 'Respondeu'
+                      : task.status === 'PENDING' || task.status === 'QUEUED'
+                        ? 'Aguardando'
+                        : task.status === 'VERIFY'
+                          ? 'Verificar entrega'
+                          : task.status === 'FAILED'
+                            ? 'Falha'
+                            : task.status === 'CANCELLED'
+                              ? 'Cancelado'
+                              : 'Executando'}
                 </strong>
                 <small>{new Date(task.runAt).toLocaleString('pt-BR')}</small>
                 {task.error && <p className="field-error">{task.error}</p>}
+                {task.status === 'VERIFY' && (
+                  <div className="campaign-monitor-actions">
+                    <button
+                      className="button small"
+                      disabled={busy}
+                      onClick={() => {
+                        setBusy(true);
+                        void request(
+                          `/operations/sessions/${sessionId}/batches/${tasksBatchId}/tasks/${task.id}/resolve`,
+                          'POST',
+                          { action: 'retry' },
+                        )
+                          .then(() =>
+                            request<{ items: NonNullable<typeof tasks> }>(
+                              `/operations/sessions/${sessionId}/batches/${tasksBatchId}/tasks`,
+                            ).then((data) => setTasks(data.items)),
+                          )
+                          .then(() => notify('Nova tentativa autorizada.'))
+                          .catch((error) => notify(errorMessage(error), true))
+                          .finally(() => setBusy(false));
+                      }}
+                    >
+                      Tentar novamente
+                    </button>
+                    <button
+                      className="button small"
+                      disabled={busy}
+                      onClick={() => {
+                        setBusy(true);
+                        void request(
+                          `/operations/sessions/${sessionId}/batches/${tasksBatchId}/tasks/${task.id}/resolve`,
+                          'POST',
+                          { action: 'mark-sent' },
+                        )
+                          .then(() =>
+                            request<{ items: NonNullable<typeof tasks> }>(
+                              `/operations/sessions/${sessionId}/batches/${tasksBatchId}/tasks`,
+                            ).then((data) => setTasks(data.items)),
+                          )
+                          .then(() => notify('Envio marcado como concluído.'))
+                          .catch((error) => notify(errorMessage(error), true))
+                          .finally(() => setBusy(false));
+                      }}
+                    >
+                      Marcar como enviado
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Modal>
+      )}
+      {approachReport && (
+        <Modal title="Resultados por variação" onClose={() => setApproachReport(null)}>
+          <div className="task-list">
+            {approachReport.map((item, index) => (
+              <div key={index}>
+                <strong>{item.name}</strong>
+                <p>
+                  {item.sent} enviados · {item.replied} respostas · {Math.round(item.responseRate * 100)}% de
+                  resposta
+                </p>
               </div>
             ))}
           </div>
@@ -925,6 +1108,7 @@ export function BatchEditor({
   const { preferences } = usePreferences();
   const [message, setMessage] = useState('');
   const [variants, setVariants] = useState<string[]>([]);
+  const [variantNames, setVariantNames] = useState<string[]>([]);
   const [generating, setGenerating] = useState(false);
   const [variantIndex, setVariantIndex] = useState(0);
   const [selectedAssets, setSelectedAssets] = useState<string[]>([]);
@@ -1068,6 +1252,7 @@ export function BatchEditor({
               delivery: {
                 kind: kind === 'asset' && selectedAssets.length > 1 ? 'sequence' : kind,
                 textVariations: kind === 'text' ? variants : undefined,
+                variationNames: kind === 'text' ? variantNames : undefined,
                 steps:
                   kind === 'asset' && selectedAssets.length > 1
                     ? selectedAssets.map((assetId) => ({ kind: 'asset', assetId, waitSeconds: 1 }))
@@ -1083,14 +1268,22 @@ export function BatchEditor({
                 assetId: data.get('assetId') || undefined,
                 funnelId: data.get('funnelId') || undefined,
                 flowId: data.get('flowId') || undefined,
-                labelTransition: data.get('fromLabelId') || data.get('toLabelId')
-                  ? { fromLabelId: data.get('fromLabelId') || undefined, toLabelId: data.get('toLabelId') || undefined }
-                  : undefined,
+                labelTransition:
+                  data.get('fromLabelId') || data.get('toLabelId')
+                    ? {
+                        fromLabelId: data.get('fromLabelId') || undefined,
+                        toLabelId: data.get('toLabelId') || undefined,
+                      }
+                    : undefined,
               },
               minSeconds: Number(data.get('minSeconds') || 15),
               maxSeconds: Number(data.get('maxSeconds') || 45),
               pauseEvery: Number(data.get('pauseEvery') || 0),
               pauseSeconds: Number(data.get('pauseSeconds') || 0),
+              batchSize: Number(data.get('batchSize') || 50),
+              pauseAfterBatch: data.get('pauseAfterBatch') === 'on',
+              autoResume: data.get('autoResume') === 'on',
+              distribution: data.get('distribution') || 'RANDOM',
               runAt: data.get('runAt') ? new Date(String(data.get('runAt'))).toISOString() : undefined,
             })
               .then(onSaved)
@@ -1369,6 +1562,7 @@ export function BatchEditor({
                   onChange={(event) => {
                     setMessage(event.target.value);
                     setVariants([]);
+                    setVariantNames([]);
                     setVariantIndex(0);
                   }}
                   rows={4}
@@ -1376,31 +1570,37 @@ export function BatchEditor({
                   maxLength={10000}
                   placeholder="Use {{nome}} e {{saudacao}} para personalizar"
                 />
+                {kind === 'text' && <small className="muted">{message.length} / 10.000 caracteres</small>}
               </label>
               {kind === 'text' && (
                 <>
-                  <AiOnly><button
-                    type="button"
-                    className="button"
-                    disabled={generating || message.trim().length < 3}
-                    onClick={() => {
-                      setGenerating(true);
-                      void request<{ variants: string[] }>(
-                        `/operations/sessions/${sessionId}/campaign-variations`,
-                        'POST',
-                        { text: message, count: 4 },
-                      )
-                        .then((data) => {
-                          setVariants(data.variants);
-                          setVariantIndex(0);
-                          notify('Variações geradas. Revise antes de ativar a campanha.');
-                        })
-                        .catch((error) => notify(errorMessage(error), true))
-                        .finally(() => setGenerating(false));
-                    }}
-                  >
-                    {generating ? <Spinner /> : '✨'}Gerar variações com IA
-                  </button></AiOnly>
+                  <AiOnly>
+                    <button
+                      type="button"
+                      className="button"
+                      disabled={generating || message.trim().length < 3}
+                      onClick={() => {
+                        setGenerating(true);
+                        void request<{ variants: string[] }>(
+                          `/operations/sessions/${sessionId}/campaign-variations`,
+                          'POST',
+                          { text: message, count: 4 },
+                        )
+                          .then((data) => {
+                            setVariants(data.variants.slice(0, 9));
+                            setVariantNames(
+                              data.variants.slice(0, 9).map((_item, index) => `Variação ${index + 2}`),
+                            );
+                            setVariantIndex(0);
+                            notify('Variações geradas. Revise antes de ativar a campanha.');
+                          })
+                          .catch((error) => notify(errorMessage(error), true))
+                          .finally(() => setGenerating(false));
+                      }}
+                    >
+                      {generating ? <Spinner /> : '✨'}Gerar variações com IA
+                    </button>
+                  </AiOnly>
                   <p className="muted">
                     As variações alternam entre contatos. Também aceita spintax, por exemplo {'{Olá|Oi}'}.
                     Variações e intervalos não garantem proteção contra bloqueios.
@@ -1408,15 +1608,29 @@ export function BatchEditor({
                   <button
                     type="button"
                     className="text-button"
-                    disabled={variants.length >= 5}
-                    onClick={() => setVariants((current) => [...current, message])}
+                    disabled={variants.length >= 9}
+                    onClick={() => {
+                      setVariants((current) => [...current, message]);
+                      setVariantNames((current) => [...current, `Variação ${current.length + 2}`]);
+                    }}
                   >
-                    Adicionar variação manual
+                    Adicionar variação
                   </button>
                   {variants.map((text, index) => (
                     <div className="variation-editor" key={index}>
                       <label>
-                        Variação {index + 1}
+                        Nome da variação {index + 2}
+                        <input
+                          aria-label={`Nome da variação ${index + 1}`}
+                          maxLength={60}
+                          required
+                          value={variantNames[index] ?? `Variação ${index + 2}`}
+                          onChange={(event) =>
+                            setVariantNames((current) =>
+                              current.map((name, i) => (i === index ? event.target.value : name)),
+                            )
+                          }
+                        />
                         <textarea
                           maxLength={10000}
                           required
@@ -1427,24 +1641,57 @@ export function BatchEditor({
                             )
                           }
                         />
+                        <small className="muted">{text.length} / 10.000 caracteres</small>
                       </label>
                       <button
                         type="button"
                         className="text-button"
-                        onClick={() => setVariants((current) => current.filter((_, i) => i !== index))}
+                        disabled={variants.length >= 9}
+                        onClick={() => {
+                          setVariants((current) => [
+                            ...current.slice(0, index + 1),
+                            text,
+                            ...current.slice(index + 1),
+                          ]);
+                          setVariantNames((current) => [
+                            ...current.slice(0, index + 1),
+                            `${current[index] || `Variação ${index + 2}`} (cópia)`,
+                            ...current.slice(index + 1),
+                          ]);
+                        }}
                       >
-                        Remover variação
+                        Duplicar
+                      </button>
+                      <button
+                        type="button"
+                        className="text-button"
+                        disabled={variants.length === 0}
+                        onClick={() => {
+                          if (window.confirm(`Remover ${variantNames[index] || `Variação ${index + 2}`}?`)) {
+                            setVariants((current) => current.filter((_, i) => i !== index));
+                            setVariantNames((current) => current.filter((_, i) => i !== index));
+                          }
+                        }}
+                      >
+                        Remover
                       </button>
                     </div>
                   ))}
                   {variants.length > 0 && (
-                    <button
-                      type="button"
-                      className="button small"
-                      onClick={() => setVariantIndex((index) => (index + 1) % variants.length)}
-                    >
-                      Ver próxima variação na prévia
-                    </button>
+                    <label>
+                      Prévia da mensagem
+                      <select
+                        value={variantIndex}
+                        onChange={(event) => setVariantIndex(Number(event.target.value))}
+                      >
+                        <option value={-1}>Mensagem principal</option>
+                        {variants.map((_text, index) => (
+                          <option key={index} value={index}>
+                            {variantNames[index] || `Variação ${index + 2}`}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                   )}
                 </>
               )}
@@ -1509,6 +1756,26 @@ export function BatchEditor({
               <p className="muted">Intervalos variáveis não garantem proteção contra bloqueios.</p>
               <div className="form-grid">
                 <label>
+                  Tamanho do lote
+                  <input name="batchSize" type="number" min={1} max={5000} defaultValue={50} required />
+                </label>
+                <label>
+                  Distribuição
+                  <select name="distribution" defaultValue="RANDOM">
+                    <option value="RANDOM">Aleatória equilibrada</option>
+                    <option value="ROUND_ROBIN">Rodízio</option>
+                  </select>
+                </label>
+              </div>
+              <label>
+                <input name="pauseAfterBatch" type="checkbox" defaultChecked /> Pausar ao fim de cada lote
+              </label>
+              <label>
+                <input name="autoResume" type="checkbox" defaultChecked /> Retomar automaticamente quando a
+                conexão voltar
+              </label>
+              <div className="form-grid">
+                <label>
                   Pausa longa a cada quantas mensagens?{' '}
                   <input name="pauseEvery" type="number" min={0} max={5000} defaultValue={0} />
                   <small>0 desativa a pausa por lote.</small>
@@ -1524,10 +1791,32 @@ export function BatchEditor({
             <fieldset className="surface">
               <legend>Organização automática após o envio</legend>
               <div className="form-grid">
-                <label>Remover etiqueta (opcional)<Select name="fromLabelId" defaultValue=""><option value="">Manter etiquetas atuais</option>{labels.map((label) => <option key={label.id} value={label.id}>{label.name}</option>)}</Select></label>
-                <label>Adicionar etiqueta ao concluir<Select name="toLabelId" defaultValue=""><option value="">Não alterar etiqueta</option>{labels.map((label) => <option key={label.id} value={label.id}>{label.name}</option>)}</Select></label>
+                <label>
+                  Remover etiqueta (opcional)
+                  <Select name="fromLabelId" defaultValue="">
+                    <option value="">Manter etiquetas atuais</option>
+                    {labels.map((label) => (
+                      <option key={label.id} value={label.id}>
+                        {label.name}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+                <label>
+                  Adicionar etiqueta ao concluir
+                  <Select name="toLabelId" defaultValue="">
+                    <option value="">Não alterar etiqueta</option>
+                    {labels.map((label) => (
+                      <option key={label.id} value={label.id}>
+                        {label.name}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
               </div>
-              <small className="muted">A mudança acontece somente depois que a última mensagem da sequência for enviada.</small>
+              <small className="muted">
+                A mudança acontece somente depois que a última mensagem da sequência for enviada.
+              </small>
             </fieldset>
           )}
           <button
@@ -1610,12 +1899,24 @@ export function BatchEditor({
               </>
             )}
           </div>
-          {!schedule && preview && <NumberValidation sessionId={sessionId} phoneNumbers={preview.items.filter(item => selectedLeads.includes(item.id)).map(item => item.phoneNumber)} disabled={busy} onBusyChange={setBusy} onRemove={numbers => {
-            const absent = new Set(numbers);
-            const excluded = new Set(preview.items.filter(item => absent.has(item.phoneNumber)).map(item => item.id));
-            setSelectedLeads(current => current.filter(id => !excluded.has(id)));
-            notify('Números sem conta foram desmarcados. Confira o público antes de salvar.');
-          }}/>}
+          {!schedule && preview && (
+            <NumberValidation
+              sessionId={sessionId}
+              phoneNumbers={preview.items
+                .filter((item) => selectedLeads.includes(item.id))
+                .map((item) => item.phoneNumber)}
+              disabled={busy}
+              onBusyChange={setBusy}
+              onRemove={(numbers) => {
+                const absent = new Set(numbers);
+                const excluded = new Set(
+                  preview.items.filter((item) => absent.has(item.phoneNumber)).map((item) => item.id),
+                );
+                setSelectedLeads((current) => current.filter((id) => !excluded.has(id)));
+                notify('Números sem conta foram desmarcados. Confira o público antes de salvar.');
+              }}
+            />
+          )}
           <div className="modal-actions">
             <button type="button" className="button" onClick={onClose}>
               Cancelar
