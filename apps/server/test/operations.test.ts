@@ -123,7 +123,11 @@ after(async () => {
 async function makeContact(phoneNumber: string, name = 'Contato Fictício') {
   await contacts.import(sessionId, { items: [{ name, phoneNumber, tags: ['Teste'] }] });
   socket.registeredPhones.add(phoneNumber);
-  return db.conversation.findFirstOrThrow({ where: { sessionId, contact: { phoneNumber } } });
+  const chat = await db.conversation.findFirstOrThrow({ where: { sessionId, contact: { phoneNumber } } });
+  // Imports deduplicate phones used by earlier cases; each fixture still owns
+  // the display name it explicitly requests.
+  await db.contact.update({ where: { id: chat.contactId }, data: { name } });
+  return chat;
 }
 async function draft(
   conversationIds: string[],
@@ -779,6 +783,11 @@ test('ACEITE 4: mudar etiquetas/filtros entre lotes não reintroduz leads conclu
   assert.equal(new Set(after.map((task) => task.conversationId)).size, 4);
 });
 test('REQ-142: fila ativa no servidor executa sem requisição do painel', async () => {
+  for (const row of await db.operationRecord.findMany({ where: { kind: 'BATCH' } })) {
+    const batch = row.data as unknown as Batch;
+    if (['ACTIVE', 'PAUSED_CONNECTION'].includes(batch.status))
+      await putRecord(db, row.id, 'BATCH', { ...batch, status: 'PAUSED' });
+  }
   const chat = await makeContact('5511777770098');
   const item = await draft([chat.id], { kind: 'text', text: 'Fila automática' });
   await request(app)
@@ -1526,6 +1535,9 @@ test('REQ-157: atribuição persiste e o filtro por responsável respeita o oper
 });
 
 test('distribuição por rodízio usa operadores ativos e online e respeita departamento', async () => {
+  // Earlier audience tests leave over 100 unassigned chats. They must not fill
+  // BusinessWorker's page before the two conversations under test.
+  await db.conversation.updateMany({ where: { assignedTo: '' }, data: { assignedTo: 'prior-fixture@example.com' } });
   await putRecord(db, 'team:ana@example.com', 'TEAM', {
     email: 'ana@example.com',
     active: true,
@@ -1549,6 +1561,7 @@ test('distribuição por rodízio usa operadores ativos e online e respeita depa
   }
   const a = await makeContact('5511777770013');
   const b = await makeContact('5511777770014');
+  await db.conversation.updateMany({ where: { id: { in: [a.id, b.id] } }, data: { assignedTo: '', status: 'OPEN' } });
   await db.contact.updateMany({
     where: { id: { in: [a.contactId, b.contactId] } },
     data: { metadata: { department: 'Especial' } },
@@ -1752,6 +1765,12 @@ test('REQ-134/REQ-149/REQ-172/REQ-173: público combina listas, etiquetas e inat
 });
 
 test('REQ-150/REQ-151: sequência conclui cada contato antes do próximo, preserva ordem e conta pausas por lead', async () => {
+  // This worker flushes every active campaign. Keep prior test campaigns from
+  // injecting unrelated messages into this sequence's ordering assertions.
+  const priorBatches = (await db.operationRecord.findMany({ where: { kind: 'BATCH' } }))
+    .filter((row) => ['ACTIVE', 'PAUSED_CONNECTION'].includes((row.data as unknown as Batch).status));
+  for (const row of priorBatches)
+    await putRecord(db, row.id, 'BATCH', { ...(row.data as unknown as Batch), status: 'PAUSED' });
   const chats = await Promise.all([
     makeContact('5511777770031', 'Pessoa Sequência 1'),
     makeContact('5511777770032', 'Pessoa Sequência 2'),

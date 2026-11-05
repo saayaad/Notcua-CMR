@@ -292,3 +292,23 @@ A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, po
 - Salvar macro já bloqueava o botão durante o pedido, porém não informava explicitamente carregamento nem sucesso. Acrescentados rótulo Salvando macro, aria-busy e toast Macro salva após atualização da biblioteca.
 - Teste de erro 503 fictício preserva nome/texto; retry transmite o mesmo conteúdo e confirma sucesso em três viewports. Não classificado como novo defeito de regra de negócio.
 - Complemento BUG-035: seletor Tipo de ação agora diz somente Adicionar/Remover etiqueta, e estilos de etiquetas não substituem cor de etapa. Inicialização dos vínculos antigos acontece antes de workers/requisições; novo teste garante que uma etiqueta aplicada antes da primeira visita ao CRM não move o cartão.
+
+## Regressão de fixtures de Operations — Fase 2 — 05/11/2026
+
+- Falhas agregadas reproduzidas: REQ-142 contou 14 envios em vez de 13; sequência recebeu “Teste Filtro lote 0” em vez de “Terceiro”; resumo não encontrou “Lead aguardando fictício”; distribuição não atribuiu os dois contatos esperados.
+- Causas: campanhas ativas deixadas por outros testes; importação idempotente reutilizando telefone sem trocar o nome da fixture; mais de 100 conversas antigas preenchendo a página do BusinessWorker antes dos contatos do teste.
+- Correções apenas de teste: pausar campanhas anteriores antes de verificar a fila/sequência, aplicar explicitamente o nome solicitado pela fixture e retirar conversas antigas da seleção de não atribuídas antes do caso de distribuição.
+- Reteste: suíte completa Operations 74/74, testes dedicados da Fase 2 9/9. Nenhum defeito novo de produção identificado e nenhuma regra do app alterada para resolver essas falhas.
+
+## Fase 2 — rodízio com espera inicial e resolução por etapa — corrigidos localmente em 05/11/2026
+
+- Defeito 1: criar duas alternativas, a primeira como sequência com espera inicial de 60 segundos e a segunda como texto imediato; ativar campanha. A ordenação por runAt enviava a segunda antes da primeira, quebrando o rodízio. Teste novo falhou com 2 envios registrados em vez de manter 1 já existente (nenhum envio novo esperado). Correção: selecionar a fila de alternativas por batchOrder persistido e priorizar a sequência em andamento; runAt continua bloqueando a etapa até vencer a espera.
+- Defeito 2: resolver com mark-sent a primeira etapa VERIFY de uma sequência de duas etapas. A rota encerrava a tarefa inteira (COMPLETED em vez de QUEUED) e contava o lead, descartando a segunda etapa. Correção: avanço transacional do cursor, manutenção do snapshot/etapas, espera da próxima etapa, sem contar lead antes do fim; campanha permanece pausada para retomada manual.
+- Provas: casos dedicados “rodízio não ultrapassa alternativa que aguarda sua primeira etapa” e “confirmar etapa incerta preserva as etapas seguintes e conta o lead apenas no fim” em apps/server/test/delivery-alternatives.test.ts, SQLite temporário e FakeSocket. Nenhum envio real.
+
+## Fase 3 — validação do editor — 05/11/2026
+
+- A execução inicial pelo Vite dev falhou antes dos testes por acesso negado do esbuild a diretórios ascendentes. O harness foi corrigido para uma build isolada com Rollup e envFile=false, servida apenas em loopback; nenhuma dependência ou configuração real foi alterada.
+- O contador dentro do label era incluído no nome acessível do textarea. Acrescentado aria-label estável “Texto da etapa N”; teste continua exigindo o texto e os contadores corretos. Asserção da prévia foi delimitada ao balão, que também contém o número da etapa.
+- Conferência visual detectou legenda pouco legível no fundo escuro interno do AssetPreview. A prévia de campanha agora herda as cores do balão para mídia/legenda; corrigido também o alinhamento da opção de alternativas. Atualização assíncrona da mídia usa o estado atual, evitando substituir edições feitas durante upload.
+- Resultado final: Playwright 9/9 em três tamanhos e servidor 86/86. Não houve falha em envio real; todas as requisições de interface foram simuladas.

@@ -1,3 +1,5 @@
+import { CampaignAlternativesEditor } from '../components/CampaignAlternativesEditor';
+import { newAlternative, alternativesError, alternativesPayload, type AlternativeDraft } from '../components/campaign-alternatives';
 import { CampaignPhonePreview } from '../components/CampaignPhonePreview';
 import { AiOnly, useAiFeatures } from '../context/AiFeatures';
 import { LabelFinance } from '../components/LabelActions';
@@ -1219,6 +1221,11 @@ export function BatchEditor({
 }) {
   const { request, notify } = useApi();
   const { preferences } = usePreferences();
+  const [alternativesAvailable, setAlternativesAvailable] = useState(false);
+  const [alternativeMode, setAlternativeMode] = useState(false);
+  const [alternatives, setAlternatives] = useState<AlternativeDraft[]>(() => [newAlternative(1)]);
+  const [selectedAlternativeId, setSelectedAlternativeId] = useState('');
+  const activeAlternative = alternatives.find((item) => item.id === selectedAlternativeId) ?? alternatives[0]!;
   const [message, setMessage] = useState('');
   const [variants, setVariants] = useState<string[]>([]);
   const [variantNames, setVariantNames] = useState<string[]>([]);
@@ -1259,6 +1266,13 @@ export function BatchEditor({
     items: { id: string; name: string; phoneNumber: string }[];
   } | null>(null);
   const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    if (!schedule) void request<{ campaignAlternativesEnabled?: boolean }>('/operations/features')
+      .then((data) => { if (alive) setAlternativesAvailable(data.campaignAlternativesEnabled === true); })
+      .catch((error) => notify(errorMessage(error), true));
+    return () => { alive = false; };
+  }, [request, notify, schedule]);
   useEffect(() => {
     void request<{ items: typeof lists }>(`/operations/sessions/${sessionId}/lead-lists`)
       .then((result) => setLists(result.items))
@@ -1371,6 +1385,10 @@ export function BatchEditor({
             const data = new FormData(event.currentTarget);
             const speedMultiplier = Number(data.get('speedMultiplier') || 1);
             const scaleDelay = (seconds: number, minimum = 0) => Math.max(minimum, Math.floor(seconds / speedMultiplier));
+            if (alternativeMode) {
+              const error = alternativesError(alternatives, new Set([...library.assets, ...extraAssets].map((asset) => asset.id)));
+              if (error) { notify(error, true); return; }
+            }
             setBusy(true);
             void request(`/operations/sessions/${sessionId}/batches`, 'POST', {
               name: data.get('name'),
@@ -1418,6 +1436,10 @@ export function BatchEditor({
                       }
                     : undefined,
               },
+              ...(alternativeMode ? {
+                delivery: alternativesPayload(alternatives, speedMultiplier)[0]!.delivery,
+                alternatives: alternativesPayload(alternatives, speedMultiplier),
+              } : {}),
               minSeconds: scaleDelay(Number(data.get('minSeconds') || 15), 1),
               maxSeconds: scaleDelay(Number(data.get('maxSeconds') || 45), 1),
               speedMultiplier: speedMultiplier as 1 | 1.5 | 2,
@@ -1426,7 +1448,7 @@ export function BatchEditor({
               batchSize: Number(data.get('batchSize') || 50),
               pauseAfterBatch: data.get('pauseAfterBatch') === 'on',
               autoResume: data.get('autoResume') === 'on',
-              distribution: data.get('distribution') || 'RANDOM',
+              distribution: alternativeMode ? 'ROUND_ROBIN' : data.get('distribution') || 'RANDOM',
               runAt: data.get('runAt') ? new Date(String(data.get('runAt'))).toISOString() : undefined,
             })
               .then(onSaved)
@@ -1537,6 +1559,16 @@ export function BatchEditor({
               </label>
             </div>
           )}
+          {!schedule && alternativesAvailable && <label className="alternatives-mode">
+            <input type="checkbox" checked={alternativeMode} onChange={(event) => setAlternativeMode(event.target.checked)} />
+            Usar alternativas completas por contato
+          </label>}
+          {alternativeMode ? <CampaignAlternativesEditor
+            value={alternatives} onChange={setAlternatives}
+            selectedId={activeAlternative.id} onSelect={setSelectedAlternativeId}
+            assets={[...library.assets, ...extraAssets]}
+            onAssetCreated={(asset) => setExtraAssets((current) => [...current, asset])}
+          /> : <>
           <label>
             Conteúdo
             <Select value={kind} onChange={(event) => setKind(event.target.value)}>
@@ -1922,6 +1954,7 @@ export function BatchEditor({
               </Select>
             </label>
           )}
+          </>}
           <label>
             {schedule ? 'Data e hora' : 'Agendar início (opcional)'}
             <input name="runAt" type="datetime-local" required={schedule} />
@@ -1958,7 +1991,7 @@ export function BatchEditor({
                 </label>
                 <label>
                   Distribuição
-                  <select name="distribution" defaultValue="RANDOM">
+                  <select name="distribution" key={String(alternativeMode)} defaultValue={alternativeMode ? 'ROUND_ROBIN' : 'RANDOM'} disabled={alternativeMode}>
                     <option value="RANDOM">Aleatória equilibrada</option>
                     <option value="ROUND_ROBIN">Rodízio</option>
                   </select>
@@ -1984,7 +2017,7 @@ export function BatchEditor({
               </div>
             </>
           )}
-          {kind !== 'reminder' && labels.length > 0 && (
+          {!alternativeMode && kind !== 'reminder' && labels.length > 0 && (
             <fieldset className="surface">
               <legend>Organização automática após o envio</legend>
               <div className="form-grid">
@@ -2124,14 +2157,24 @@ export function BatchEditor({
                 busy ||
                 audienceLoading ||
                 !selectedLeads.length ||
-                (kind === 'asset' && !selectedAssets.length)
+                (!alternativeMode && kind === 'asset' && !selectedAssets.length)
               }
             >
               {busy ? <Spinner /> : <Plus size={15} />}Salvar rascunho
             </button>
           </div>
         </form>
-        <CampaignPhonePreview
+        {alternativeMode ? <CampaignPhonePreview
+          text="" title={activeAlternative.name || 'Prévia da alternativa'}
+          controls={<label>Alternativa na prévia<Select value={activeAlternative.id} onChange={(event) => setSelectedAlternativeId(event.target.value)}>
+            {alternatives.map((item, index) => <option key={item.id} value={item.id}>{index + 1}. {item.name || 'Sem nome'}</option>)}
+          </Select></label>}
+          steps={activeAlternative.steps.map((step) => ({ id: step.id, waitSeconds: step.waitSeconds,
+            text: step.kind === 'text' ? step.text : 'Selecione um recurso para esta etapa.',
+            asset: step.kind === 'asset' ? [...library.assets, ...extraAssets].find((asset) => asset.id === step.assetId) : undefined,
+          }))}
+          name={preview?.items.find((item) => selectedLeads.includes(item.id))?.name || 'Ana'}
+        /> : <CampaignPhonePreview
           text={previewText}
           assets={
             kind === 'asset'
@@ -2148,7 +2191,7 @@ export function BatchEditor({
                 : []
           }
           name={preview?.items.find((item) => selectedLeads.includes(item.id))?.name || 'Ana'}
-        />
+        />}
       </div>
     </Modal>
   );

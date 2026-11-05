@@ -545,3 +545,22 @@
 .chat-item-bottom {
   flex-wrap: wrap;
 }
+
+.campaign-alternatives { display: grid; gap: 12px; min-width: 0; }
+.alternatives-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.alternatives-heading h3, .campaign-alternatives p { margin: 0; }
+.alternatives-heading span { font-variant-numeric: tabular-nums; }
+.alternatives-actions { flex-wrap: wrap; }
+.alternative-step { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px; display: grid; gap: 12px; }
+.alternative-step legend { padding: 0 6px; font-weight: 600; }
+.alternative-step textarea { min-height: 110px; }
+.campaign-alternatives label, .campaign-phone-panel > label { display: grid; gap: 6px; min-width: 0; }
+.campaign-phone-panel > label { width: 100%; }
+@media (max-width: 760px) {
+  .alternatives-actions > button { flex: 1 1 160px; }
+  .alternative-step { padding: 12px; }
+}
+.campaign-phone-chat .asset-preview { background: transparent; color: inherit; border: 0; box-shadow: none; padding: 0; }
+.campaign-phone-chat .asset-preview p { color: inherit; }
+.batch-editor-layout label.alternatives-mode { display: flex; align-items: center; gap: 8px; }
+.alternatives-mode input[type="checkbox"] { width: auto; margin: 0; }

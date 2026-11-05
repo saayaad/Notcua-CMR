@@ -647,3 +647,27 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - PENDENCIAS-DECISAO.md e LEDGER.csv agora registram 3 não verificáveis, 0 A VERIFICAR; total de 703: 478 COMPLETO, 163 COMPLETO-LOCAL, 55 SUBSTITUÍDO OU CANCELADO e 4 DECISÃO.
 - A auditoria local anterior permanece como evidência suplementar: CRM 3/3 viewports e campanha 1/1 desktop, ambas com API/SQLite temporários e sem mensagens. Nenhuma nova execução de teste nem gravação em evidências nesta atualização.
 - Esta atualização limita-se a REVISAO/LEDGER.csv, REVISAO/PENDENCIAS-DECISAO.md e REVISAO/PROTOCOLO.md. Manter branch `auditoria-reqs`; não incluir `REVISAO/evidencias/REQ-686/process.json`, `scripts/iniciar-noctua-online.ps1` ou outros artefatos preexistentes.
+
+## Retomada — Fase 2 de alternativas — 05/11/2026
+
+- Escopo solicitado concluído localmente: criação transacional de alternativas/tarefas em rodízio estável por lead, snapshots, cursor por etapa, exclusividade de sequência por contato e idempotência de texto/mídia usando requestId persistente.
+- Testes dedicados 9/9; Operations completo 74/74 após corrigir isolamento das fixtures; typecheck servidor/web e build servidor aprovados. Detalhes e limites em PROGRESSO.md; flag permanece desligada, sem produção/push/deploy.
+- Commit pendente por restrição do ambiente: `git add -- PROGRESSO.md REVISAO/BUGS.md apps/server/src/modules/operations/delivery.worker.ts apps/server/src/modules/operations/operations.routes.ts apps/server/test/operations.test.ts apps/server/test/delivery-alternatives.test.ts` falhou com `fatal: Unable to create .../.git/index.lock: Permission denied`. O perfil atual concede somente leitura à pasta .git; não é um lock antigo a apagar.
+- Somente o usuário/ambiente pode liberar escrita em .git ou executar o commit. Incluir também este PROTOCOLO.md no commit. Não incluir .gitignore modificado anteriormente, evidências preexistentes nem arquivos protegidos. LEDGER não foi reclassificado: esta implementação de Fase 2 não constitui novo lote de auditoria de REQs.
+- Não iniciar outras fases. Nenhuma ação de produção foi executada.
+
+## Fechamento complementar da Fase 2 — 05/11/2026
+
+- Revisão solicitada antes da Fase 3 identificou e corrigiu duas lacunas reais: ultrapassagem da alternativa com espera inicial e descarte das próximas etapas ao marcar uma etapa VERIFY como enviada. Ambas reproduzidas antes da correção; testes adicionados em delivery-alternatives.test.ts, correções em delivery.worker.ts e operations.routes.ts, registro em BUGS.md e PROGRESSO.md.
+- Validação final: 85/85 testes (11 dedicados + 74 Operations), typecheck servidor/web e build servidor/web passaram. Build web usou --configLoader runner para evitar a falha de acesso do carregador padrão a diretórios ascendentes. Flag permanece desligada; nenhuma produção ou deploy.
+- Fase 3 não iniciada: conforme condição do usuário, este trabalho concluiu somente a Fase 2 que apresentou lacunas na verificação.
+- Commit novamente bloqueado por `Unable to create .../.git/index.lock: Permission denied`. Ambiente ainda concede somente leitura em .git; não tentar remover locks ou contornar permissões. Commit local pendente dos sete arquivos listados na retomada anterior, com este protocolo atualizado; preservar .gitignore e artefatos preexistentes fora do staging. LEDGER inalterado, sem novo lote de REQs.
+
+## Retomada — Fase 3 do editor — 05/11/2026
+
+- Somente Fase 3 implementada: editor de 1–10 alternativas, adicionar/duplicar/remover com confirmação, etapas de texto/mídia/espera e reordenação, preview com seletor sincronizado e contadores, validação completa e serialização para a API já existente.
+- Novo modo protegido pela flag existente, consultada no GET /operations/features; a flag continua desligada. Editor legado preservado. Sem migração, alteração de worker, produção, envio real, push ou deploy nesta fase.
+- Validação: Playwright 9/9 (1366×768, 1920×1080, 390×844), servidor 86/86, typecheck servidor/web e builds servidor/web aprovados. Detector sem apontamentos; inspeção visual desktop/mobile concluída em duas passagens. Evidências .audit/phase3-confirmation.txt, .audit/phase3-screenshots/ e apps/server/.audit/phase3-server-tests.txt. O servidor de fixture iniciado por esta sessão na porta 5188 foi encerrado; serviços do usuário não foram reiniciados.
+- Commit solicitado mas impedido: git add com caminhos explícitos falhou ao criar .git/index.lock (Permission denied). .git tem somente leitura neste ambiente. Não remover locks, não contornar a restrição; somente usuário/ambiente pode habilitar escrita ou criar o commit.
+- Arquivos da Fase 3: apps/web/src/components/CampaignAlternativesEditor.tsx, campaign-alternatives.ts, CampaignPhonePreview.tsx; apps/web/src/pages/OperationsPages.tsx e operations.css; capacidade em apps/server/src/modules/operations/operations.routes.ts e teste em apps/server/test/delivery-alternatives.test.ts; e2e/campaign-alternatives.spec.ts, phase3.config.ts, fixtures/campaign-editor.tsx, fixtures/phase3-editor.html, scripts/phase3-editor-server.mjs; PROGRESSO.md, BUGS.md e este protocolo.
+- Mudanças não commitadas anteriores da Fase 2 ainda estão presentes nos arquivos compartilhados. Preservar .gitignore modificado pelo usuário, evidências e arquivos protegidos fora do staging. LEDGER não foi reclassificado, pois não é novo lote de auditoria de REQs. Não iniciar outras fases.

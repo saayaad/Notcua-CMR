@@ -52,6 +52,48 @@ const campaignCtaSchema = z.object({
   assetId: id.optional(),
   labelId: id.optional(),
 }).refine((cta) => Boolean(cta.replyText || cta.assetId || cta.labelId), 'CTA precisa ter uma resposta, mídia ou etiqueta.');
+const campaignDeliverySchema = z.object({
+  kind: z.enum(['text', 'asset', 'funnel', 'flow', 'reminder', 'sequence']),
+  steps: z
+    .array(
+      z.object({
+        kind: z.enum(['text', 'asset']),
+        text: z.string().max(10000).optional(),
+        assetId: id.optional(),
+        waitSeconds: z.number().int().min(0).max(86400).default(1),
+      }),
+    )
+    .min(1)
+    .max(30)
+    .optional(),
+  text: z.string().max(10000).optional(),
+  textVariations: z.array(z.string().trim().min(1).max(10000)).max(9).default([]),
+  variationNames: z.array(z.string().trim().min(1).max(60)).max(9).default([]),
+  defaultReplyText: z.string().trim().max(10000).optional(),
+  optOutLineEnabled: z.boolean().default(false),
+  optOutLine: z.string().trim().max(200).default(''),
+  followUps: z
+    .array(
+      z.object({
+        waitMinutes: z.number().int().min(1).max(43200),
+        text: z.string().trim().min(1).max(10000),
+      }),
+    )
+    .max(100)
+    .default([]),
+  cta: campaignCtaSchema.optional(),
+  ctas: z.array(campaignCtaSchema).max(20).default([]),
+  assetId: id.optional(),
+  funnelId: id.optional(),
+  flowId: id.optional(),
+  labelTransition: z
+    .object({ fromLabelId: id.optional(), toLabelId: id.optional() })
+    .refine(
+      (value) => Boolean(value.fromLabelId || value.toLabelId),
+      'Escolha uma etiqueta para adicionar ou remover.',
+    )
+    .optional(),
+});
 function moneyToCents(value?: string) {
   if (!value) return 0;
   const normalized = value
@@ -110,7 +152,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     if (role !== 'ADMIN') throw new AppError(403, 'Esta ação exige acesso de administrador.');
   };
   router.get('/features', async (_req, res) => {
-    res.json({ aiEnabled: await aiFeatureEnabled(db), canManage: res.locals.identity.role === 'ADMIN' });
+    res.json({ aiEnabled: await aiFeatureEnabled(db), canManage: res.locals.identity.role === 'ADMIN', campaignAlternativesEnabled: env.CAMPAIGN_ALTERNATIVES_ENABLED });
   });
   router.put('/features', async (req, res) => {
     admin(res.locals.identity.role);
@@ -770,48 +812,8 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
         name: z.string().trim().min(1).max(100),
         mode: z.enum(['CAMPAIGN', 'SCHEDULE', 'REMINDER']),
         audience: z.unknown(),
-        delivery: z.object({
-          kind: z.enum(['text', 'asset', 'funnel', 'flow', 'reminder', 'sequence']),
-          steps: z
-            .array(
-              z.object({
-                kind: z.enum(['text', 'asset']),
-                text: z.string().max(10000).optional(),
-                assetId: id.optional(),
-                waitSeconds: z.number().int().min(0).max(86400).default(1),
-              }),
-            )
-            .min(1)
-            .max(30)
-            .optional(),
-          text: z.string().max(10000).optional(),
-          textVariations: z.array(z.string().trim().min(1).max(10000)).max(9).default([]),
-          variationNames: z.array(z.string().trim().min(1).max(60)).max(9).default([]),
-          defaultReplyText: z.string().trim().max(10000).optional(),
-          optOutLineEnabled: z.boolean().default(false),
-          optOutLine: z.string().trim().max(200).default(''),
-          followUps: z
-            .array(
-              z.object({
-                waitMinutes: z.number().int().min(1).max(43200),
-                text: z.string().trim().min(1).max(10000),
-              }),
-            )
-            .max(100)
-            .default([]),
-          cta: campaignCtaSchema.optional(),
-          ctas: z.array(campaignCtaSchema).max(20).default([]),
-          assetId: id.optional(),
-          funnelId: id.optional(),
-          flowId: id.optional(),
-          labelTransition: z
-            .object({ fromLabelId: id.optional(), toLabelId: id.optional() })
-            .refine(
-              (value) => Boolean(value.fromLabelId || value.toLabelId),
-              'Escolha uma etiqueta para adicionar ou remover.',
-            )
-            .optional(),
-        }),
+        delivery: campaignDeliverySchema,
+        alternatives: z.array(z.object({ name: z.string().trim().min(1).max(60), delivery: campaignDeliverySchema })).min(1).max(10).optional(),
         minSeconds: z.number().int().min(1).max(86400).default(15),
         maxSeconds: z.number().int().min(1).max(86400).default(45),
         speedMultiplier: z.union([z.literal(1), z.literal(1.5), z.literal(2)]).default(1),
@@ -969,6 +971,37 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       if (!asset || (asset.kind === 'MESSAGE' ? !asset.text?.trim() : !asset.file)) throw new AppError(422, 'Selecione uma mídia válida para a CTA.');
     }
     const batchId = `batch:${randomUUID()}`;
+    if (input.alternatives && (!env.CAMPAIGN_ALTERNATIVES_ENABLED || input.mode !== 'CAMPAIGN'))
+      throw new AppError(422, 'Alternativas de campanha não estão habilitadas.');
+    const alternatives: { id: string; name: string; delivery: Delivery }[] = [];
+    if (input.alternatives) {
+      for (const [position, alternative] of input.alternatives.entries()) {
+        const source = alternative.delivery;
+        if (source.followUps.length || source.ctas.length || source.cta || source.textVariations.length || source.labelTransition)
+          throw new AppError(422, 'Configure a alternativa como conteúdo completo, sem variações, CTA, follow-up ou troca de etiqueta.');
+        const content: Delivery = { kind: source.kind, text: source.text };
+        const assetSnapshot = async (assetId?: string) => {
+          if (!assetId) throw new AppError(422, 'Selecione o recurso.');
+          const asset = await db.asset.findUnique({ where: { id: assetId }, include: { file: true } });
+          if (!asset || (asset.kind === 'MESSAGE' ? !asset.text?.trim() : !asset.file))
+            throw new AppError(422, 'Recurso indisponível.');
+          return { kind: asset.kind === 'MESSAGE' ? 'text' : asset.kind === 'AUDIO' ? 'audio' : asset.kind === 'DOCUMENT' ? 'document' : asset.file?.mimeType.startsWith('video/') ? 'video' : 'image', text: asset.text ?? undefined, caption: asset.caption ?? undefined, fileId: asset.fileId ?? undefined, isPtt: asset.isPtt, isPtv: asset.isPtv, asViewOnce: asset.asViewOnce };
+        };
+        if (source.kind === 'text') {
+          if (!source.text?.trim()) throw new AppError(422, 'Preencha o texto da alternativa.');
+          content.snapshot = { kind: 'text', text: source.text };
+        } else if (source.kind === 'asset') content.snapshot = await assetSnapshot(source.assetId);
+        else if (source.kind === 'sequence') {
+          if (!source.steps?.length) throw new AppError(422, 'Adicione as etapas da alternativa.');
+          content.steps = [];
+          for (const step of source.steps) {
+            if (step.kind === 'text' && !step.text?.trim()) throw new AppError(422, 'Preencha o texto da etapa.');
+            content.steps.push({ snapshot: step.kind === 'text' ? { kind: 'text', text: step.text } : await assetSnapshot(step.assetId), waitSeconds: step.waitSeconds });
+          }
+        } else throw new AppError(422, 'Nesta fase, alternativas aceitam texto, mídia ou sequência.');
+        alternatives.push({ id: `${batchId}:alternative:${position}`, name: alternative.name, delivery: content });
+      }
+    }
     const variationOrder = people.map((_person, index) => index % (input.delivery.textVariations.length + 1));
     if (input.distribution === 'RANDOM') {
       for (let index = variationOrder.length - 1; index > 0; index--) {
@@ -989,7 +1022,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       batchSize: input.mode === 'CAMPAIGN' ? input.batchSize : undefined,
       pauseAfterBatch: input.pauseAfterBatch,
       autoResume: input.autoResume,
-      distribution: input.distribution,
+      distribution: alternatives.length ? 'ROUND_ROBIN' : input.distribution,
       ...(delivery.kind === 'sequence' ? { sequenceMode: true } : {}),
       variationNames: ['Mensagem principal', ...input.delivery.variationNames],
       batchNumber: 1,
@@ -1023,13 +1056,31 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     await db.$transaction(
       async (tx) => {
         await tx.operationRecord.create({ data: { id: batchId, kind: 'BATCH', data: json(data) } });
+        for (const [position, alternative] of alternatives.entries()) {
+          const content = alternative.delivery;
+          await tx.campaignAlternative.create({ data: {
+            id: alternative.id, campaignId: batchId, position, name: alternative.name, content: json(content),
+            steps: { create: (content.steps ?? [{ snapshot: content.snapshot!, waitSeconds: 0 }]).map((step, index) => ({
+              id: `${alternative.id}:step:${index}`, position: index, kind: String(step.snapshot.kind), content: json(step.snapshot), waitSeconds: step.waitSeconds,
+            })) },
+          } });
+        }
         await tx.deliveryTask.createMany({
           data: people.map((chat, index) => ({
+            ...(alternatives.length ? {
+              id: `${batchId}:lead:${chat.id}`,
+              alternativeId: alternatives[index % alternatives.length]!.id,
+              alternativeIndex: index % alternatives.length,
+              frozenContent: json(alternatives[index % alternatives.length]!.delivery),
+              stepIndex: 0,
+            } : {}),
             batchId,
             sessionId,
             conversationId: chat.id,
             payload: json(
-              delivery.kind === 'text'
+              alternatives.length
+                ? { ...alternatives[index % alternatives.length]!.delivery, batchNumber: 1, batchOrder: index, approachIndex: index % alternatives.length }
+                : delivery.kind === 'text'
                 ? {
                     ...delivery,
                     approachIndex: input.mode === 'CAMPAIGN' ? variationOrder[index] : undefined,
@@ -1050,7 +1101,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
             ),
             runAt: new Date(
               (input.runAt ? new Date(input.runAt).getTime() : Date.now()) +
-                (delivery.steps?.[0]?.waitSeconds ?? 0) * 1000 +
+                ((alternatives.length ? alternatives[index % alternatives.length]!.delivery : delivery).steps?.[0]?.waitSeconds ?? 0) * 1000 +
                 index,
             ),
           })),
@@ -1392,6 +1443,32 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       throw new AppError(404, 'Envio não encontrado nesta campanha.');
     if (task.status !== 'VERIFY')
       throw new AppError(409, 'Somente envios em verificação podem ser resolvidos.');
+    const frozen = env.CAMPAIGN_ALTERNATIVES_ENABLED && task.frozenContent
+      ? task.frozenContent as unknown as Delivery : undefined;
+    const currentStep = task.stepIndex ?? 0;
+    if (action === 'mark-sent' && frozen?.kind === 'sequence' && currentStep + 1 < (frozen.steps?.length ?? 0)) {
+      const nextStep = currentStep + 1;
+      const runAt = new Date(Date.now() + frozen.steps![nextStep]!.waitSeconds * 1000);
+      await db.$transaction(async (tx) => {
+        const changed = await tx.deliveryTask.updateMany({
+          where: { id: taskId, status: 'VERIFY', stepIndex: task.stepIndex },
+          data: {
+            status: 'QUEUED', stepIndex: nextStep, runAt, error: null,
+            payload: json({ ...(task.payload as Record<string, unknown>), stepIndex: nextStep,
+              manualResolution: 'marked-sent', resolvedAt: new Date().toISOString() }),
+          },
+        });
+        if (!changed.count) throw new AppError(409, 'Este envio já foi resolvido.');
+        const current = await tx.operationRecord.findUniqueOrThrow({ where: { id: batchId } });
+        const latest = current.data as unknown as Batch;
+        await tx.operationRecord.update({ where: { id: batchId }, data: { data: json({
+          ...latest, sequenceMode: true, activeSequenceTaskId: taskId,
+          nextAllowedAt: runAt.toISOString(),
+        }) } });
+      });
+      res.json({ saved: true, status: 'PENDING' });
+      return;
+    }
     if (action === 'retry') {
       await db.deliveryTask.update({
         where: { id: taskId },

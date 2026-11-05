@@ -8,6 +8,7 @@ import { json } from '../backups/validation.js';
 import { FlowEngine } from '../flows/flow.engine.js';
 import { queueLabelChange } from '../whatsapp/label-changes.js';
 import { nextSendWindowAt, type SendWindow } from './send-window.js';
+import { env } from '../../config/env.js';
 export interface CampaignCta {
   keyword: string;
   replyText?: string;
@@ -65,6 +66,7 @@ export interface Delivery {
   stepIndex?: number;
   text?: string;
   approachIndex?: number;
+  batchNumber?: number;
   assetId?: string;
   funnelId?: string;
   flowId?: string;
@@ -78,6 +80,41 @@ export interface Delivery {
   defaultReplyText?: string;
   sourceCampaignId?: string;
   labelTransition?: { fromLabelId?: string; toLabelId?: string };
+}
+
+// Content comes exclusively from the task snapshot. Only execution state may
+// change after freezing; never look up the campaign's current alternative here.
+function taskDelivery(task: {
+  payload: unknown;
+  frozenContent: unknown;
+  stepIndex: number | null;
+  alternativeIndex: number | null;
+}): Delivery {
+  const payload = task.payload as Delivery;
+  if (!env.CAMPAIGN_ALTERNATIVES_ENABLED || task.frozenContent == null) return payload;
+  return {
+    ...(task.frozenContent as Delivery),
+    stepIndex: task.stepIndex ?? 0,
+    approachIndex: task.alternativeIndex ?? (task.frozenContent as Delivery).approachIndex,
+    batchNumber: (task.payload as Delivery).batchNumber,
+    followUp: payload.followUp,
+    followUpIndex: payload.followUpIndex,
+    sourceMessageAt: payload.sourceMessageAt,
+  };
+}
+
+function validateFrozenDelivery(data: Delivery) {
+  if (!['text', 'asset', 'sequence', 'funnel', 'flow', 'reminder'].includes(data.kind))
+    throw new Error('Conteúdo congelado inválido: tipo de entrega ausente.');
+  if (data.kind === 'sequence' && (
+    !data.steps?.length || !Number.isInteger(data.stepIndex) ||
+    data.stepIndex! < 0 || data.stepIndex! >= data.steps.length ||
+    data.steps.some((step) => !step.snapshot || !Number.isFinite(step.waitSeconds) || step.waitSeconds < 0)
+  )) throw new Error('Conteúdo congelado inválido: etapas ou posição da sequência.');
+  if (['text', 'asset'].includes(data.kind) && !data.snapshot && !data.text?.trim())
+    throw new Error('Conteúdo congelado inválido: mensagem ausente.');
+  if ((data.kind === 'funnel' && !data.funnelId) || (data.kind === 'flow' && !data.flowId))
+    throw new Error('Conteúdo congelado inválido: automação ausente.');
 }
 export class DeliveryWorker {
   private stopped = false;
@@ -180,17 +217,33 @@ export class DeliveryWorker {
           }
         }
         if (!task) {
-          const firstQueued = await this.db.deliveryTask.findFirst({
+          let firstQueued = await this.db.deliveryTask.findFirst({
             where: { batchId, status: 'QUEUED' },
             orderBy: [{ runAt: 'asc' }, { id: 'asc' }],
           });
+          if (env.CAMPAIGN_ALTERNATIVES_ENABLED && firstQueued?.alternativeId) {
+            // Initial waits belong to the selected lead. A later alternative
+            // becoming due sooner must not overtake that lead in the rotation.
+            const queued = await this.db.deliveryTask.findMany({ where: { batchId, status: 'QUEUED' } });
+            queued.sort((left, right) => {
+              const leftData = taskDelivery(left);
+              const rightData = taskDelivery(right);
+              const leftStarted = leftData.kind === 'sequence' && (leftData.stepIndex ?? 0) > 0;
+              const rightStarted = rightData.kind === 'sequence' && (rightData.stepIndex ?? 0) > 0;
+              return Number(rightStarted) - Number(leftStarted) ||
+                Number((left.payload as { batchOrder?: number }).batchOrder ?? 0) -
+                  Number((right.payload as { batchOrder?: number }).batchOrder ?? 0) ||
+                left.createdAt.getTime() - right.createdAt.getTime() || left.id.localeCompare(right.id);
+            });
+            firstQueued = queued[0] ?? null;
+          }
           if (!firstQueued) continue;
-          const firstPayload = firstQueued.payload as unknown as Delivery;
+          const firstPayload = taskDelivery(firstQueued);
           if (firstPayload.kind === 'sequence' && (!batch.sequenceMode || inspectLegacySequence)) {
             const queued = await this.db.deliveryTask.findMany({ where: { batchId, status: 'QUEUED' } });
             const inProgress = queued
               .filter((candidate) => {
-                const payload = candidate.payload as unknown as Delivery;
+                const payload = taskDelivery(candidate);
                 return payload.kind === 'sequence' && (payload.stepIndex ?? 0) > 0;
               })
               .sort((left, right) => {
@@ -238,7 +291,8 @@ export class DeliveryWorker {
             continue;
           }
         }
-        const data = task.payload as unknown as Delivery;
+        const data = taskDelivery(task);
+        const frozen = env.CAMPAIGN_ALTERNATIVES_ENABLED && task.frozenContent != null;
         const chat = await this.db.conversation.findFirst({
           where: { id: task.conversationId, sessionId: task.sessionId },
           include: { contact: true },
@@ -348,6 +402,9 @@ export class DeliveryWorker {
         const countAsLead =
           !(data.kind === 'text' && data.followUp) && !(data.kind === 'sequence' && hasNextSequence);
         try {
+          if (env.CAMPAIGN_ALTERNATIVES_ENABLED && task.alternativeId && !frozen)
+            throw new Error('Alternativa sem conteúdo congelado; envio bloqueado para conferência.');
+          if (frozen) validateFrozenDelivery(data);
           let sentAt: Date | undefined;
           if (data.kind === 'reminder')
             await putRecord(this.db, `notice:${task.id}`, 'NOTICE', {
@@ -381,15 +438,16 @@ export class DeliveryWorker {
               data: hasNext
                 ? {
                     status: 'QUEUED',
+                    ...(frozen && hasNextSequence ? { stepIndex: index + 1 } : {}),
                     payload: json(
                       hasNextCampaignFollowUp
                         ? {
-                            ...data,
+                            ...(frozen ? task.payload as Record<string, unknown> : data),
                             followUp: true,
                             followUpIndex: data.followUp ? followUpIndex + 1 : 0,
                             sourceMessageAt: data.sourceMessageAt ?? sentAt?.toISOString(),
                           }
-                        : { ...data, stepIndex: index + 1 },
+                        : { ...(frozen ? task.payload as Record<string, unknown> : data), stepIndex: index + 1 },
                     ),
                     runAt: new Date(
                       Date.now() +
