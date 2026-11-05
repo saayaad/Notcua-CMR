@@ -22,6 +22,7 @@ import {
   Wifi,
   Check,
   X,
+  Undo2,
 } from 'lucide-react';
 import { useApi, errorMessage } from '../context/ApiContext';
 import { Avatar, Empty, Modal, Spinner, phone } from '../components/ui';
@@ -74,6 +75,12 @@ export function CrmPage({
   const [labels, setLabels] = useState(false);
   const [newLabel, setNewLabel] = useState(false);
   const [selected, setSelected] = useState<{ card: CrmCard; column: CrmColumn } | null>(null);
+  const [undoMove, setUndoMove] = useState<{
+    card: CrmCard;
+    source: CrmColumn;
+    target: CrmColumn;
+    sourcePositionBeforeId: string | null;
+  } | null>(null);
   const boardRequest = useRef(0);
   const base = `/crm/sessions/${sessionId}`;
   useEffect(() => {
@@ -81,6 +88,11 @@ export function CrmPage({
     return () => clearTimeout(timer);
   }, [search]);
   const refresh = useCallback(() => setReload((value) => value + 1), []);
+  useEffect(() => {
+    if (!undoMove) return;
+    const timer = window.setTimeout(() => setUndoMove(null), 8000);
+    return () => window.clearTimeout(timer);
+  }, [undoMove]);
   useEffect(() => {
     if (!sessionId || busy || dragging) return;
     const controller = new AbortController();
@@ -117,8 +129,8 @@ export function CrmPage({
     source: CrmColumn,
     target: CrmColumn,
     beforeConversationId: string | null,
-  ) => {
-    if (busy) return;
+  ): Promise<boolean> => {
+    if (busy) return false;
     setBusy(true);
     try {
       await request(`${base}/move`, 'POST', {
@@ -130,9 +142,11 @@ export function CrmPage({
       });
       setSelected(null);
       notify(source.id === target.id ? 'Ordem salva.' : 'Cartão movido.');
+      return true;
     } catch (error) {
       setBoard(board);
       notify(errorMessage(error), true);
+      return false;
     } finally {
       setBusy(false);
       refresh();
@@ -153,6 +167,7 @@ export function CrmPage({
     if (!from || !target || !card) return;
     const ordered = target.conversationIds.filter((id) => id !== card.conversationId);
     const beforeId = ordered[destination.index] ?? null;
+    const sourcePositionBeforeId = from.conversationIds[source.index + 1] ?? null;
     const nextColumns = board.columns.map((column) => {
       let ids = column.conversationIds.filter((id) =>
         column.id === from.id || column.id === target.id ? id !== card.conversationId : true,
@@ -164,7 +179,30 @@ export function CrmPage({
       return { ...column, conversationIds: ids };
     });
     setBoard({ ...board, columns: nextColumns });
-    void move(card, from, target, beforeId);
+    void move(card, from, target, beforeId).then((saved) => {
+      if (saved) setUndoMove({ card, source: from, target, sourcePositionBeforeId });
+    });
+  };
+  const undoLastMove = async () => {
+    if (!undoMove || busy) return;
+    setBusy(true);
+    try {
+      await request(`${base}/move`, 'POST', {
+        conversationId: undoMove.card.conversationId,
+        sourceLabelId: undoMove.target.labelId,
+        targetLabelId: undoMove.source.labelId,
+        beforeConversationId: undoMove.sourcePositionBeforeId,
+        version: undoMove.card.version + 1,
+      });
+      setUndoMove(null);
+      notify('Movimentação desfeita.');
+    } catch (error) {
+      setUndoMove(null);
+      notify(`Não foi possível desfazer: ${errorMessage(error)}`, true);
+    } finally {
+      setBusy(false);
+      refresh();
+    }
   };
   if (!sessionId)
     return (
@@ -179,36 +217,31 @@ export function CrmPage({
       <LabelRulesButton sessionId={sessionId} />
       <header className="crm-heading">
         <div>
-          <p className="eyebrow">RELACIONAMENTOS QUE EVOLUEM</p>
           <h1>
-            CRM e negócios
+            <span className="crm-title-label"><span className="crm-title-accent">CRM</span> e negócios</span>
             <span className="crm-live">
               <i />
               Atualização ao vivo
             </span>
           </h1>
-          <p>Do primeiro contato à próxima conquista.</p>
         </div>
         <div className="crm-heading-actions">
-          <label className="crm-period">
-            <Clock3 size={15} />
-            <Select
-              aria-label="Período dos indicadores"
-              value={days}
-              onChange={(event) => setDays(Number(event.target.value))}
-            >
-              <option value={7}>Últimos 7 dias</option>
-              <option value={30}>Últimos 30 dias</option>
-              <option value={90}>Últimos 90 dias</option>
-            </Select>
-          </label>
-          <button className="button primary" onClick={() => setNewLabel(true)}>
-            <Plus size={16} />
-            Nova etapa
-          </button>
+          {mode === 'dashboard' && (
+            <label className="crm-period">
+              <Clock3 size={15} />
+              <Select
+                aria-label="Período dos indicadores"
+                value={days}
+                onChange={(event) => setDays(Number(event.target.value))}
+              >
+                <option value={7}>Últimos 7 dias</option>
+                <option value={30}>Últimos 30 dias</option>
+                <option value={90}>Últimos 90 dias</option>
+              </Select>
+            </label>
+          )}
         </div>
       </header>
-      <MetricCards metrics={metrics} />
       <div className="crm-toolbar">
         <div className="crm-view-tabs">
           <button className={mode === 'board' ? 'selected' : ''} onClick={() => setMode('board')}>
@@ -259,9 +292,23 @@ export function CrmPage({
         </button>
       </div>
       {mode === 'dashboard' ? (
-        <CrmDashboard metrics={metrics} />
+        <>
+          <MetricCards metrics={metrics} />
+          <CrmDashboard metrics={metrics} />
+        </>
       ) : (
         <>
+          {undoMove && (
+            <div className="crm-undo-banner" role="status">
+              <span>Cartão movido para <strong>{undoMove.target.name}</strong>.</span>
+              <button className="button small" onClick={() => void undoLastMove()} disabled={busy}>
+                <Undo2 size={14} /> Desfazer
+              </button>
+              <button className="icon-button" onClick={() => setUndoMove(null)} aria-label="Dispensar opção de desfazer">
+                <X size={15} />
+              </button>
+            </div>
+          )}
           {(board.pendingSync > 0 || board.failedSync > 0) && (
             <div className={`crm-sync ${board.failedSync ? 'sync-error' : ''}`}>
               {board.failedSync ? <AlertCircle size={16} /> : <RefreshCw size={15} />}
@@ -469,7 +516,9 @@ export function CrmPage({
           busy={busy}
           onClose={() => setSelected(null)}
           onChat={() => onOpenChat(selected.card.conversationId)}
-          onMove={(target) => move(selected.card, selected.column, target, null)}
+          onMove={async (target) => {
+            await move(selected.card, selected.column, target, null);
+          }}
           onSave={async (input) => {
             setBusy(true);
             try {

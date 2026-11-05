@@ -23,9 +23,13 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  font-size: 26px;
-  letter-spacing: -0.8px;
+  font-size: 34px;
+  font-weight: 750;
+  line-height: 1.08;
+  letter-spacing: -1.2px;
 }
+.crm-title-label { white-space: nowrap; }
+.crm-title-accent { color: var(--accent); }
 .crm-heading > div > p:last-child {
   font-size: 12px;
   color: var(--muted);
@@ -142,6 +146,21 @@
   flex-shrink: 0;
   min-width: 0;
 }
+.crm-undo-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+}
+.crm-undo-banner > span { margin-right: auto; }
+.crm-undo-banner .button { display: inline-flex; align-items: center; gap: 6px; }
+.crm-undo-banner .icon-button { width: 28px; height: 28px; }
 .crm-view-tabs {
   display: flex;
   gap: 4px;
@@ -824,7 +843,7 @@
     font-size: 9px;
   }
   .crm-heading h1 {
-    font-size: 24px;
+    font-size: 30px;
   }
   .crm-live {
     display: none;
@@ -856,7 +875,7 @@
     gap: 8px;
   }
   .crm-heading h1 {
-    font-size: 23px;
+    font-size: 29px;
   }
   .crm-metrics {
     gap: 10px;
@@ -899,7 +918,7 @@
     gap: 17px;
   }
   .crm-heading h1 {
-    font-size: 24px;
+    font-size: 27px;
   }
   .crm-heading-actions {
     width: 100%;

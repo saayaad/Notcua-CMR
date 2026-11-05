@@ -155,7 +155,6 @@ export function ConversationList(p: Props) {
                       <span
                         className="tag"
                         style={{
-                          color: label.color,
                           borderColor: `${label.color}55`,
                           background: `${label.color}14`,
                         }}

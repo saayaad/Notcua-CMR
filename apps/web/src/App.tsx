@@ -1,9 +1,8 @@
-import { AttendanceSettingsMenu } from './components/AttendanceSettingsMenu';
 import { CampaignMonitor } from './components/CampaignMonitor';
 import { AttendanceLayout } from './components/AttendanceLayout';
 import { Select } from './components/Select';
 import { toolTarget } from './context/attendance';
-import { Fragment, lazy, Suspense, useEffect, useState, type CSSProperties } from 'react';
+import { lazy, Suspense, useEffect, useState, type CSSProperties } from 'react';
 import { HudEditor } from './components/HudEditor';
 import { hudGrid, panelOrder } from './context/hud';
 import type { ToolIntent } from './context/attendance';
@@ -32,6 +31,8 @@ import {
   Palette,
   SlidersHorizontal,
   FlaskConical,
+  MoreHorizontal,
+  Move,
 } from 'lucide-react';
 import { useWorkspace } from './hooks/useWorkspace';
 import { useApi, errorMessage } from './context/ApiContext';
@@ -111,6 +112,7 @@ export default function App() {
   const [hudOpen, setHudOpen] = useState(false);
   const [dockEditRequest, setDockEditRequest] = useState(0);
   const [hudTab, setHudTab] = useState('panels');
+  const [moreToolsOpen, setMoreToolsOpen] = useState(false);
   useEffect(() => {
     const open = (event: Event) => {
       setHudTab((event as CustomEvent<string>).detail || 'panels');
@@ -345,6 +347,27 @@ export default function App() {
       !(viewportWidth > 760 && preferences.hudBlockPositions[id]?.mode === 'floating'),
   );
   const hudStyle = hudGrid(hudOrder, preferences) as CSSProperties;
+  const primaryViewIds = new Set<View>(['overview', 'inbox', 'contacts', 'crm']);
+  const orderedGroups = orderItems(
+    menuGroups.map((group) => ({
+      ...group,
+      name: preferences.menuLabels['group:' + group.id] || group.name,
+    })),
+    preferences.menuGroupOrder,
+    (group) => group.id,
+  );
+  const visibleNavigation = orderedGroups.flatMap((group) =>
+    orderItems(
+      navigation.filter((item) => group.items.some(([id]) => id === item.id)),
+      preferences.menuOrder,
+      (item) => item.id,
+    ).filter(
+      (item) =>
+        ['inbox', 'connections', 'settings'].includes(item.id) ||
+        !preferences.hiddenViews.includes(item.id),
+    ),
+  );
+  const primaryNavigation = visibleNavigation.filter((item) => primaryViewIds.has(item.id));
   return (
     <div className="app-shell">
       <aside
@@ -384,48 +407,83 @@ export default function App() {
             <small>Atendimento & relacionamento</small>
           </div>
         </div>
-        <p className="nav-group-label">WORKSPACE</p>
+        <p className="nav-group-label">PRINCIPAL</p>
         <nav>
-          {orderItems(
-            menuGroups.map((group) => ({
-              ...group,
-              name: preferences.menuLabels['group:' + group.id] || group.name,
-            })),
-            preferences.menuGroupOrder,
-            (group) => group.id,
-          ).map((group) => (
-            <Fragment key={group.id}>
-              <small className="nav-section-label">{group.name.toLocaleUpperCase('pt-BR')}</small>
-              {orderItems(
-                navigation.filter((item) => group.items.some(([id]) => id === item.id)),
-                preferences.menuOrder,
-                (item) => item.id,
-              )
-                .filter(
-                  (item) =>
-                    ['inbox', 'connections', 'settings'].includes(item.id) ||
-                    !preferences.hiddenViews.includes(item.id),
-                )
-                .map(({ id, name, icon: Icon }) => (
-                  <Fragment key={id}>
-                    <button
-                      title={name}
-                      aria-label={name}
-                      className={view === id ? 'selected' : ''}
-                      onClick={() => {
-                        setView(id);
-                        setToolIntent(undefined);
-                        setMobileNavOpen(false);
-                      }}
-                    >
-                      <Icon size={19} />
-                      <span>{name}</span>
-                      {id === 'inbox' && total > 0 && <b>{total}</b>}
-                    </button>
-                  </Fragment>
-                ))}
-            </Fragment>
+          {primaryNavigation.map(({ id, name, icon: Icon }) => (
+            <button
+              key={id}
+              title={name}
+              aria-label={name}
+              aria-current={view === id ? 'page' : undefined}
+              className={view === id ? 'selected' : ''}
+              onClick={() => {
+                setView(id);
+                setMoreToolsOpen(false);
+                setToolIntent(undefined);
+                setMobileNavOpen(false);
+              }}
+            >
+              <Icon size={19} />
+              <span>{name}</span>
+              {id === 'inbox' && total > 0 && <b>{total}</b>}
+            </button>
           ))}
+          <details
+            className="nav-more"
+            open={moreToolsOpen}
+            onToggle={(event) => setMoreToolsOpen(event.currentTarget.open)}
+          >
+            <summary title="Mais ferramentas" aria-label="Mais ferramentas">
+              <MoreHorizontal size={19} />
+              <span>Mais ferramentas</span>
+              <ChevronDown size={14} className="nav-more-chevron" />
+            </summary>
+            <div className="nav-more-content">
+              {orderedGroups.map((group) => {
+                const items = visibleNavigation.filter(
+                  (item) => !primaryViewIds.has(item.id) && group.items.some(([id]) => id === item.id),
+                );
+                if (!items.length) return null;
+                return (
+                  <section key={group.id} aria-label={group.name}>
+                    <small className="nav-section-label">{group.name.toLocaleUpperCase('pt-BR')}</small>
+                    {items.map(({ id, name, icon: Icon }) => (
+                      <button
+                        key={id}
+                        title={name}
+                        aria-label={name}
+                        aria-current={view === id ? 'page' : undefined}
+                        className={view === id ? 'selected' : ''}
+                        onClick={() => {
+                          setView(id);
+                          setMoreToolsOpen(false);
+                          setToolIntent(undefined);
+                          setMobileNavOpen(false);
+                        }}
+                      >
+                        <Icon size={19} />
+                        <span>{name}</span>
+                      </button>
+                    ))}
+                  </section>
+                );
+              })}
+              <section className="nav-more-tools-actions" aria-label="Personalização avançada">
+                <small className="nav-section-label">PERSONALIZAÇÃO</small>
+                <button title="Personalizar atendimento" onClick={() => { setMoreToolsOpen(false); setHudTab('panels'); setHudOpen(true); setMobileNavOpen(false); }}>
+                  <SlidersHorizontal size={19} /><span>Personalizar atendimento</span>
+                </button>
+                <button title="Organizar painéis" onClick={() => {
+                  if (viewportWidth <= 480) setHudOpen(true);
+                  else { updatePreferences({ dockingEnabled: true }); setDockEditRequest((value) => value + 1); }
+                  setMoreToolsOpen(false);
+                  setMobileNavOpen(false);
+                }}>
+                  <Move size={19} /><span>Organizar painéis</span>
+                </button>
+              </section>
+            </div>
+          </details>
         </nav>
         <div className="nav-tip">
           <span>
@@ -446,12 +504,12 @@ export default function App() {
             <span>Tema {theme === 'dark' ? 'claro' : 'escuro'}</span>
           </button>
           <button
-            aria-label="Ajuda e configurações"
-            title="Ajuda e configurações"
+            aria-label="Central de ajuda"
+            title="Central de ajuda"
             onClick={() => { setView('help'); setMobileNavOpen(false); }}
           >
             <CircleHelp size={18} />
-            <span>Ajuda e configurações</span>
+            <span>Central de ajuda</span>
           </button>
           <div className="local-account">
             <span className="user-avatar">EU</span>
@@ -478,12 +536,6 @@ export default function App() {
             <strong>{navigation.find((item) => item.id === view)?.name}</strong>
           </div>
           <div className="topbar-right">
-            {view === 'inbox' && <AttendanceSettingsMenu
-              enabled={preferences.dockingEnabled}
-              onArrange={() => {if(viewportWidth<=480){setHudOpen(true);return;} updatePreferences({dockingEnabled:true}); setDockEditRequest(value => value + 1);}}
-              onHud={() => setHudOpen(true)}
-              onClassic={() => updatePreferences({dockingEnabled:false})}
-            />}
             <button
               className="global-search-trigger"
               onClick={() => setCommandOpen(true)}

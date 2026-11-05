@@ -198,12 +198,13 @@ label + .muted {
   border-color: #a68bfa66;
 }
 .button.primary {
-  background: #9471e8;
-  border-color: #a28ae8;
+  background: #6744bd;
+  border-color: #6744bd;
   color: #fff;
 }
 .button.primary:hover:not(:disabled) {
-  background: #a283ed;
+  background: #5636a5;
+  border-color: #5636a5;
 }
 .button.small {
   padding: 7px 10px;
@@ -812,6 +813,11 @@ html[data-theme='light'] nav button.selected {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.tag,
+.chat-item-bottom .tag,
+.contact-labels .tag {
+  color: var(--text) !important;
 }
 .tag i {
   width: 4px;

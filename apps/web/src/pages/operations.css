@@ -335,6 +335,7 @@
 .navigation .nav-group-label {
   display: none;
 }
+.navigation .nav-more-content .nav-section-label { display: block; }
 @media (max-width: 1280px) {
   .navigation .nav-section-label {
     display: none;
@@ -346,6 +347,7 @@
   .navigation nav button {
     padding: 12px;
   }
+  .navigation .nav-more-content .nav-section-label { display: none; }
   .navigation .nav-bottom > button {
     padding: 10px;
   }

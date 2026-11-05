@@ -16,7 +16,10 @@
   color: var(--accent, #a78bfa);
 }
 .flows-heading h1 {
-  font-size: 28px;
+  font-size: 32px;
+  font-weight: 750;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
   margin: 8px 0;
 }
 .flows-heading p,
@@ -442,7 +445,7 @@
     align-items: flex-start;
   }
   .flows-heading h1 {
-    font-size: 22px;
+    font-size: 27px;
   }
   .flow-editor-header {
     flex-wrap: wrap;
