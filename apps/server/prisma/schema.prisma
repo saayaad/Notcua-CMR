@@ -25,10 +25,38 @@ model DeliveryTask {
   payload Json
   runAt DateTime
   error String?
+  alternativeId String?
+  alternativeIndex Int?
+  frozenContent Json?
+  stepIndex Int?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@index([status, runAt])
   @@index([batchId])
+}
+
+model CampaignAlternative {
+  id String @id
+  campaignId String
+  position Int
+  name String
+  content Json
+  createdAt DateTime @default(now())
+  steps CampaignAlternativeStep[]
+  @@unique([campaignId, position])
+  @@index([campaignId])
+}
+
+model CampaignAlternativeStep {
+  id String @id
+  alternativeId String
+  position Int
+  kind String
+  content Json
+  waitSeconds Int @default(0)
+  alternative CampaignAlternative @relation(fields: [alternativeId], references: [id], onDelete: Cascade)
+  @@unique([alternativeId, position])
+  @@index([alternativeId])
 }
 
 enum ConnectionStatus {

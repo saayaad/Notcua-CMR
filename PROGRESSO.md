@@ -85,3 +85,26 @@ Branch: `auditoria-reqs`. Diretório oficial. Nenhuma chamada de envio real, pro
 - Painel publicado diretamente do diretório oficial na Vercel: `dpl_3bYZ9npQE2XFYGuMmpgrsnWzAMAc`, produção `https://notcua.vercel.app`, estado `READY`; `vercel curl` confirmou a resposta HTML.
 - A API/worker continuam no computador local e dependem do processo, túnel e conexão estarem ativos. Nenhum disparo real foi feito nesta etapa. A entrega a 25–50 leads, reconexão real e proteção contra duplicidade no WhatsApp real ainda não foram validadas.
 - Push do Git permanece pendente: a branch local contém commits anteriores que alteram `REVISAO/evidencias/REQ-686/process.json` e `scripts/iniciar-noctua-online.ps1`, protegidos contra inclusão no envio. Não enviar a branch inteira sem resolver esse histórico de forma explícita.
+## Retomada — alternativas completas de campanha — 05/11/2026
+
+- [ ] Rotação de alternativas completas por lead, incluindo texto, mídia, sequência, funil e fluxo.
+- [ ] Conteúdo e alternativa congelados por contato.
+- [ ] Até 10 alternativas; adicionar, duplicar e remover com confirmação e mínimo 1.
+- [ ] Lotes estáveis, continuação, exclusão de contatos já enviados e histórico por lote.
+- [ ] Pausa/retomada segura no servidor, estados por lead e proteção contra duplicidade.
+- [ ] Compatibilidade retroativa com campanhas já existentes.
+- [ ] Testes fictícios: queda, reinício, lotes 1/2, filtro alterado e rotação 1-2-3.
+- [ ] Build e suíte relevante aprovados.
+- [ ] Deploy só após aprovação completa, com rollback verificável.
+
+Decisão: cada alternativa é um conteúdo completo; sequência é uma única alternativa e mantém sua ordem e esperas. Campanhas legadas continuam usando os campos atuais até serem editadas.
+
+### Fase 1 — modelo aditivo e flag desativada — em andamento concluída localmente
+
+- [x] Estrutura CampaignAlternative / CampaignAlternativeStep e snapshots por tarefa adicionados ao schema.
+- [x] Migração aditiva cria tabelas/colunas sem atualizar nem apagar os JSONs antigos. Cada BATCH legado recebe uma alternativa compatível; tarefas sequenciais preservam cada etapa, ordem e espera.
+- [x] `CAMPAIGN_ALTERNATIVES_ENABLED` existe e assume `false` por padrão. Nenhuma rota/worker usa o novo modelo enquanto desligada.
+- [x] Prova SQLite isolada: migrações antigas + campanha e tarefa sequencial fictícias + migração nova; JSON legado idêntico antes/depois e etapas de texto/mídia com posições/esperas preservadas.
+- [x] Prisma schema validado; typecheck iniciou sem erros (aguardando resultado final).
+- [ ] Prisma `migrate deploy` isolado falhou com erro genérico do schema engine; investigar antes de deploy. `prisma generate` não substituiu o query engine por `EPERM` enquanto o servidor local mantém o DLL aberto.
+- Próximo: corrigir a execução Prisma isolada, então avançar para atribuição congelada no servidor. Feature flag permanece desligada.

@@ -22,6 +22,7 @@ const schema = z.object({
     .default('true')
     .transform((v) => v === 'true'),
   WHATSAPP_MAX_RETRIES: z.coerce.number().int().min(0).max(20).default(5),
+  CAMPAIGN_ALTERNATIVES_ENABLED: z.enum(['true', 'false']).default('false').transform((value) => value === 'true'),
 });
 
 export const env = schema.parse(process.env);
