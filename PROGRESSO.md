@@ -23,9 +23,12 @@ Branch: `auditoria-reqs`. Diretório oficial. Nenhuma chamada de envio real, pro
 - `6d2258d` — inicia este registro de retomada.
 - `80a19c7` — fila em lotes, pausa/retomada, rotas e testes do servidor.
 - `bd8511d` — editor e monitor de campanha.
-- Este registro será commitado separadamente após a revisão final.
+- `8a7b4a3` — resumo da implementação e das validações.
+
+## Sincronização
+- Não foi feito push. A diferença preexistente entre `auditoria-reqs` e `origin/auditoria-reqs` contém `REVISAO/evidencias/REQ-686/process.json` e `scripts/iniciar-noctua-online.ps1`, que são protegidos. Enviar a branch inteira incluiria esses arquivos; os commits anteriores não foram reescritos nem enviados.
 
 ## Retomada / pendências
 - Leva 1 concluída localmente; Leva 2 não iniciada.
-- Os arquivos protegidos e artefatos não rastreados preexistentes ficaram fora das alterações e do staging.
+- Os arquivos protegidos e artefatos não rastreados preexistentes ficaram fora das alterações e do staging deste trabalho.
 - Próximo passo: conferir a tela em `Operações > Campanhas`, criar campanha fictícia, conferir variações/preview e acompanhar o monitor; para verificar lote, use tamanho 50 e público de pelo menos 100 contatos de teste.
