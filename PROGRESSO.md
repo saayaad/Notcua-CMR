@@ -152,3 +152,16 @@ Decisão: cada alternativa é um conteúdo completo; sequência é uma única al
 - Evidências locais: .audit/phase3-confirmation.txt, .audit/phase3-screenshots/ e apps/server/.audit/phase3-server-tests.txt. O harness em e2e/fixtures e o servidor de teste em e2e/scripts/phase3-editor-server.mjs usam build isolada sem arquivos de ambiente, login real ou chamadas externas. Execução: iniciar esse servidor e usar PHASE3_USE_RUNNING_SERVER=1 com playwright -c e2e/phase3.config.ts. Detector de interface: nenhum apontamento nos arquivos verificados.
 - Sem deploy, push, envio real ou acesso ao banco real. Demais fases não iniciadas. Alterações preexistentes, arquivos protegidos e .gitignore preservados fora do staging solicitado.
 - Commit da Fase 3 tentado com caminhos explícitos; git add falhou novamente em .git/index.lock com Permission denied. Código, testes e documentação estão salvos; nenhum commit foi criado e nenhum push/deploy foi executado. Restrição de escrita em .git registrada no protocolo.
+
+### Confirmação posterior de commits das Fases 2 e 3 — 05/11/2026
+
+- Fases 2 e 3 estão commitadas localmente: `f521bbd` (`feat: add campaign alternatives editor`) e `f262490` (`Fase 3: correcoes de rotas, preview e testes de alternativas`). O segundo commit foi feito pelo usuário e também registrou correções de rotas e testes.
+- Os registros anteriores de falha de escrita em `.git` descrevem a tentativa inicial; foram superados pelo commit manual. Nenhum push ou deploy foi feito.
+
+### Fase 4 — envio em lotes de alternativas — concluída localmente em 05/11/2026
+
+- Continuação preserva, para cada lead pendente, o `alternativeId`, o `alternativeIndex` e o `frozenContent` já congelados. Alterações posteriores nos filtros/etiquetas não remontam o público nem reintroduzem leads concluídos; a continuação opera sobre as tarefas pendentes do público original.
+- A numeração e a ordem dos lotes seguintes são persistidas no payload em ordem estável. O cálculo usa o número do lote anterior e o tamanho selecionado, identificando corretamente lote 2, lote 3 e os seguintes mesmo quando há mais de um lote restante.
+- Teste novo em `apps/server/test/delivery-alternatives.test.ts` cobre 5 leads, tamanho 2, rotação 1–2–3, mudança de metadados durante a pausa, snapshots intactos, histórico de leads do lote e envio na ordem congelada. Testes existentes cobrem queda/retomada, `VERIFY` após reinício, idempotência e os aceites de lotes 1/2 e filtros alterados.
+- Suíte conjunta `delivery-alternatives.test.ts` + `operations.test.ts`: **87/87 passaram**, com SQLite temporário e FakeSocket. Typecheck do servidor passou; o build do servidor passou. `npm run build` executou `tsc` do web, mas o carregador padrão do Vite falhou por acesso negado ao diretório ascendente no Windows; `npm exec -w @noctua/web -- vite build --configLoader runner` passou. Permanece apenas o aviso conhecido de chunk acima de 500 kB.
+- Nenhum deploy, push, envio real ou acesso ao banco real foi feito. O código de continuação e o teste de Fase 4 constam no commit `f262490`, feito manualmente pelo usuário durante esta execução. A atualização deste registro não pôde ser commitada: o ambiente recusou criar `.git/index.lock` (`Permission denied`); somente `PROGRESSO.md` ficou modificado para commit.

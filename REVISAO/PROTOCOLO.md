@@ -2,6 +2,12 @@ AUDITORIA DO NOCTUA — PROTOCOLO
 
 (Salve este texto em REVISAO/PROTOCOLO.md e siga-o em todas as sessões.)
 
+## Estado ao encerrar a Fase 4 — 05/11/2026
+
+- A Fase 4 de envio em lotes foi validada localmente: 87/87 testes relevantes passaram; typecheck e build do servidor passaram; build web passou com `--configLoader runner` após o Vite padrão falhar por acesso negado ao diretório ascendente.
+- O commit manual `f262490` inclui código de continuação e teste de Fase 4. A atualização final de `PROGRESSO.md` permanece modificada e sem commit porque o ambiente recusou criar `.git/index.lock` (`Permission denied`).
+- Para concluir o registro local, o usuário precisa executar `git add -- PROGRESSO.md` e `git commit -m "docs: record phase 4 batch delivery"`. Nenhum deploy ou push foi feito.
+
 META
 
 Levar as 296 REQs "Parcial" e as 234 "A verificar" de REVISAO/REQUISITOS.md a um ESTADO FINAL, cada uma com prova individual. "Parcial" e "A verificar" deixam de ser estados finais.
