@@ -12,7 +12,7 @@ import { directoryRoutes, teamDirectory } from './team-directory.js';
 import { Router } from 'express';
 import { aiFeatureEnabled, setAiFeature } from './ai-feature.js';
 import { retryDatabaseOperation } from '../../database/retry.js';
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import { stat } from 'node:fs/promises';
 import { z } from 'zod';
 import type { PrismaClient, Prisma } from '@prisma/client';
@@ -47,13 +47,19 @@ import { nextActionRoutes } from './next-actions.js';
 const id = z.string().min(1).max(200);
 function moneyToCents(value?: string) {
   if (!value) return 0;
-  const normalized = value.replace(/[^\d,.-]/g, '').replace(/\.(?=\d{3}(?:\D|$))/g, '').replace(',', '.');
+  const normalized = value
+    .replace(/[^\d,.-]/g, '')
+    .replace(/\.(?=\d{3}(?:\D|$))/g, '')
+    .replace(',', '.');
   const amount = Number(normalized);
   return Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) : 0;
 }
 const profile = z.object({
   name: z.string().min(1).max(100).optional(),
-  phoneNumber: z.string().regex(/^\d{8,15}$/).optional(),
+  phoneNumber: z
+    .string()
+    .regex(/^\d{8,15}$/)
+    .optional(),
   email: z.string().max(200).optional(),
   gender: z.string().max(40).optional(),
   birthday: z.string().max(30).optional(),
@@ -212,7 +218,9 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     res.json(data);
   });
   router.get('/settings/:key', async (req, res) => {
-    const key = z.enum(['business', 'preferences', 'departments', 'shortcuts', 'watermarks', 'optout']).parse(req.params.key);
+    const key = z
+      .enum(['business', 'preferences', 'departments', 'shortcuts', 'watermarks', 'optout'])
+      .parse(req.params.key);
     res.json(
       await record(
         db,
@@ -222,25 +230,54 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     );
   });
   router.put('/settings/:key', async (req, res) => {
-    const key = z.enum(['business', 'preferences', 'departments', 'shortcuts', 'watermarks', 'optout']).parse(req.params.key);
+    const key = z
+      .enum(['business', 'preferences', 'departments', 'shortcuts', 'watermarks', 'optout'])
+      .parse(req.params.key);
     if (key !== 'preferences') admin(res.locals.identity.role);
     let data = z.record(z.string().max(100), z.json()).parse(req.body);
     if (key === 'business') businessHoursReplySchema.parse(data);
     if (key === 'watermarks') {
-      const mark = z.object({
-        id: z.string().min(1).max(100), name: z.string().trim().min(1).max(80),
-        text: z.string().trim().max(120), opacity: z.number().min(10).max(90),
-        size: z.number().min(50).max(200).default(100),
-        position: z.enum(['bottom-right', 'center', 'diagonal']),
-        imageData: z.string().max(1_400_000).refine(value => !value || /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(value), 'Use um selo PNG local.').optional(),
-      }).refine(value => Boolean(value.text || value.imageData), 'Informe o texto ou o selo da marca d’água.');
-      const settings = z.object({ enabledByDefault: z.boolean(), activeId: z.string().max(100), marks: z.array(mark).min(1).max(20) })
-        .refine(value => new Set(value.marks.map(item => item.id)).size === value.marks.length, 'Os modelos devem ter identificadores distintos.')
-        .refine(value => !value.activeId || value.marks.some(item => item.id === value.activeId), 'Selecione um modelo existente.').parse(data);
+      const mark = z
+        .object({
+          id: z.string().min(1).max(100),
+          name: z.string().trim().min(1).max(80),
+          text: z.string().trim().max(120),
+          opacity: z.number().min(10).max(90),
+          size: z.number().min(50).max(200).default(100),
+          position: z.enum(['bottom-right', 'center', 'diagonal']),
+          imageData: z
+            .string()
+            .max(1_400_000)
+            .refine(
+              (value) => !value || /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(value),
+              'Use um selo PNG local.',
+            )
+            .optional(),
+        })
+        .refine(
+          (value) => Boolean(value.text || value.imageData),
+          'Informe o texto ou o selo da marca d’água.',
+        );
+      const settings = z
+        .object({
+          enabledByDefault: z.boolean(),
+          activeId: z.string().max(100),
+          marks: z.array(mark).min(1).max(20),
+        })
+        .refine(
+          (value) => new Set(value.marks.map((item) => item.id)).size === value.marks.length,
+          'Os modelos devem ter identificadores distintos.',
+        )
+        .refine(
+          (value) => !value.activeId || value.marks.some((item) => item.id === value.activeId),
+          'Selecione um modelo existente.',
+        )
+        .parse(data);
       data = settings;
     }
     if (key === 'preferences') data.brandingName = 'noctua';
-    if (JSON.stringify(data).length > (key === 'watermarks' ? 2_000_000 : 30000)) throw new AppError(413, 'Configuração muito grande.');
+    if (JSON.stringify(data).length > (key === 'watermarks' ? 2_000_000 : 30000))
+      throw new AppError(413, 'Configuração muito grande.');
     await putRecord(
       db,
       key === 'preferences' ? `preferences:${res.locals.identity.uid}` : `settings:${key}`,
@@ -303,7 +340,14 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       db.deliveryTask.groupBy({ by: ['status'], where: { sessionId }, _count: true }),
       db.conversation.count({ where: { sessionId, status: 'OPEN', unreadCount: { gt: 0 } } }),
     ]);
-    res.json({ people, messages, batches, waiting, ai: await aiUsage(db), campaignFinance: (await campaignRevenue(db, sessionId)).summary });
+    res.json({
+      people,
+      messages,
+      batches,
+      waiting,
+      ai: await aiUsage(db),
+      campaignFinance: (await campaignRevenue(db, sessionId)).summary,
+    });
   });
   router.get('/sessions/:sessionId/contact-search', async (req, res) => {
     const sessionId = id.parse(req.params.sessionId);
@@ -479,7 +523,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       where,
       take: 5001,
       include: { contact: true },
-      orderBy: { id: 'asc' },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     });
     if (rows.length > 5000) throw new AppError(422, 'Refine o público para até 5.000 contatos.');
     return rows.filter(
@@ -542,8 +586,17 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       });
       const finance = financials.configurations.get(financeKey(row.id)) ?? defaultFinance(data);
       const sales = financials.totals.get(row.id) ?? { revenue: 0, sales: 0 };
-      items.push({ id: row.id, ...data, ...finance, attributedRevenueInCents: finance.revenueSource === 'CRM' ? sales.revenue : finance.manualRevenueInCents,
-        crmRevenueInCents: sales.revenue, crmSales: sales.sales, counts, nextTaskAt: next?.runAt?.toISOString() ?? null });
+      items.push({
+        id: row.id,
+        ...data,
+        ...finance,
+        attributedRevenueInCents:
+          finance.revenueSource === 'CRM' ? sales.revenue : finance.manualRevenueInCents,
+        crmRevenueInCents: sales.revenue,
+        crmSales: sales.sales,
+        counts,
+        nextTaskAt: next?.runAt?.toISOString() ?? null,
+      });
     }
     res.json({ items });
   });
@@ -608,24 +661,41 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
             .max(30)
             .optional(),
           text: z.string().max(10000).optional(),
-          textVariations: z.array(z.string().trim().min(1).max(10000)).max(4).default([]),
-          followUps: z.array(z.object({
-            waitMinutes: z.number().int().min(1).max(43200),
-            text: z.string().trim().min(1).max(10000),
-          })).max(100).default([]),
-          cta: z.object({
-            keyword: z.string().trim().min(1).max(100),
-            replyText: z.string().trim().min(1).max(10000),
-          }).optional(),
-          ctas: z.array(z.object({
-            keyword: z.string().trim().min(1).max(100),
-            replyText: z.string().trim().min(1).max(10000),
-          })).max(20).default([]),
+          textVariations: z.array(z.string().trim().min(1).max(10000)).max(9).default([]),
+          variationNames: z.array(z.string().trim().min(1).max(60)).max(9).default([]),
+          followUps: z
+            .array(
+              z.object({
+                waitMinutes: z.number().int().min(1).max(43200),
+                text: z.string().trim().min(1).max(10000),
+              }),
+            )
+            .max(100)
+            .default([]),
+          cta: z
+            .object({
+              keyword: z.string().trim().min(1).max(100),
+              replyText: z.string().trim().min(1).max(10000),
+            })
+            .optional(),
+          ctas: z
+            .array(
+              z.object({
+                keyword: z.string().trim().min(1).max(100),
+                replyText: z.string().trim().min(1).max(10000),
+              }),
+            )
+            .max(20)
+            .default([]),
           assetId: id.optional(),
           funnelId: id.optional(),
           flowId: id.optional(),
-          labelTransition: z.object({ fromLabelId: id.optional(), toLabelId: id.optional() })
-            .refine((value) => Boolean(value.fromLabelId || value.toLabelId), 'Escolha uma etiqueta para adicionar ou remover.')
+          labelTransition: z
+            .object({ fromLabelId: id.optional(), toLabelId: id.optional() })
+            .refine(
+              (value) => Boolean(value.fromLabelId || value.toLabelId),
+              'Escolha uma etiqueta para adicionar ou remover.',
+            )
             .optional(),
         }),
         minSeconds: z.number().int().min(1).max(86400).default(15),
@@ -634,27 +704,51 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
         attributedRevenueInCents: z.number().int().min(0).max(2_000_000_000).default(0),
         pauseEvery: z.number().int().min(0).max(5000).default(0),
         pauseSeconds: z.number().int().min(0).max(86400).default(0),
-        sendWindow: z.object({
-          timezone: z.string().refine(validTimezone, 'Escolha um fuso horário válido.'),
-          days: z.array(z.number().int().min(0).max(6)).min(1).max(7)
-            .refine((days) => new Set(days).size === days.length, 'Escolha cada dia apenas uma vez.'),
-          start: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
-          end: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
-        }).refine((window) => window.start < window.end, 'O fim do horário deve ser posterior ao início.').optional(),
+        batchSize: z.number().int().min(1).max(5000).default(50),
+        pauseAfterBatch: z.boolean().default(true),
+        autoResume: z.boolean().default(true),
+        distribution: z.enum(['RANDOM', 'ROUND_ROBIN']).default('RANDOM'),
+        sendWindow: z
+          .object({
+            timezone: z.string().refine(validTimezone, 'Escolha um fuso horário válido.'),
+            days: z
+              .array(z.number().int().min(0).max(6))
+              .min(1)
+              .max(7)
+              .refine((days) => new Set(days).size === days.length, 'Escolha cada dia apenas uma vez.'),
+            start: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+            end: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+          })
+          .refine((window) => window.start < window.end, 'O fim do horário deve ser posterior ao início.')
+          .optional(),
         runAt: z.iso.datetime().optional(),
       })
       .parse(req.body);
     if (input.maxSeconds < input.minSeconds)
       throw new AppError(422, 'O intervalo máximo deve ser maior ou igual ao mínimo.');
+    if (
+      input.delivery.variationNames.length &&
+      input.delivery.variationNames.length !== input.delivery.textVariations.length
+    )
+      throw new AppError(422, 'Cada variação precisa ter exatamente um nome.');
     if ((input.mode === 'REMINDER') !== (input.delivery.kind === 'reminder'))
       throw new AppError(422, 'Use um lembrete somente no modo de lembrete.');
     const ctas = [...input.delivery.ctas, ...(input.delivery.cta ? [input.delivery.cta] : [])];
     const keywords = ctas.map((cta) => normalizeCampaignKeyword(cta.keyword));
-    if (ctas.length > 20 || keywords.some((keyword) => !keyword) || new Set(keywords).size !== keywords.length)
+    if (
+      ctas.length > 20 ||
+      keywords.some((keyword) => !keyword) ||
+      new Set(keywords).size !== keywords.length
+    )
       throw new AppError(422, 'As palavras-chave das CTAs devem ser distintas e conter letras ou números.');
-    if ((input.delivery.followUps.length || ctas.length) &&
-      (input.mode !== 'CAMPAIGN' || input.delivery.kind !== 'text'))
-      throw new AppError(422, 'CTA e follow-ups automáticos estão disponíveis apenas para campanhas de texto.');
+    if (
+      (input.delivery.followUps.length || ctas.length) &&
+      (input.mode !== 'CAMPAIGN' || input.delivery.kind !== 'text')
+    )
+      throw new AppError(
+        422,
+        'CTA e follow-ups automáticos estão disponíveis apenas para campanhas de texto.',
+      );
     if (input.sendWindow && input.mode !== 'CAMPAIGN')
       throw new AppError(422, 'O horário permitido está disponível apenas para campanhas.');
     const people = await audience(sessionId, input.audience);
@@ -732,13 +826,25 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     )
       throw new AppError(422, 'Escolha um fluxo publicado e ativo nesta conexão.');
     if (delivery.labelTransition) {
-      const labels = await db.label.findMany({ where: { isDeleted: false, OR: [{ sessionId }, { sessionId: null }] } });
+      const labels = await db.label.findMany({
+        where: { isDeleted: false, OR: [{ sessionId }, { sessionId: null }] },
+      });
       if (
-        (delivery.labelTransition.toLabelId && !labels.some((label) => label.id === delivery.labelTransition!.toLabelId)) ||
-        (delivery.labelTransition.fromLabelId && !labels.some((label) => label.id === delivery.labelTransition!.fromLabelId))
-      ) throw new AppError(422, 'Selecione etiquetas válidas para a troca automática.');
+        (delivery.labelTransition.toLabelId &&
+          !labels.some((label) => label.id === delivery.labelTransition!.toLabelId)) ||
+        (delivery.labelTransition.fromLabelId &&
+          !labels.some((label) => label.id === delivery.labelTransition!.fromLabelId))
+      )
+        throw new AppError(422, 'Selecione etiquetas válidas para a troca automática.');
     }
     const batchId = `batch:${randomUUID()}`;
+    const variationOrder = people.map((_person, index) => index % (input.delivery.textVariations.length + 1));
+    if (input.distribution === 'RANDOM') {
+      for (let index = variationOrder.length - 1; index > 0; index--) {
+        const swap = randomInt(index + 1);
+        [variationOrder[index], variationOrder[swap]] = [variationOrder[swap]!, variationOrder[index]!];
+      }
+    }
     const data: Batch = {
       name: input.name,
       sessionId,
@@ -748,15 +854,35 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       maxSeconds: input.maxSeconds,
       pauseEvery: input.pauseEvery,
       pauseSeconds: input.pauseSeconds,
+      batchSize: input.mode === 'CAMPAIGN' ? input.batchSize : undefined,
+      pauseAfterBatch: input.pauseAfterBatch,
+      autoResume: input.autoResume,
+      distribution: input.distribution,
+      variationNames: ['Mensagem principal', ...input.delivery.variationNames],
+      batchNumber: 1,
+      sentTotal: 0,
+      batchSentCount: 0,
+      batchHistory: [
+        {
+          number: 1,
+          startedAt: new Date().toISOString(),
+          leadIds: people.slice(0, input.batchSize).map((person) => person.id),
+          variationByLead: {},
+          textVersion: [delivery.text ?? '', ...input.delivery.textVariations],
+        },
+      ],
       sentCount: 0,
       investmentInCents: input.mode === 'CAMPAIGN' ? input.investmentInCents : 0,
       attributedRevenueInCents: input.mode === 'CAMPAIGN' ? input.attributedRevenueInCents : 0,
       count: people.length,
       ...(input.delivery.followUps.length ? { followUpCount: input.delivery.followUps.length } : {}),
       ...(ctas.length ? { ctaKeywords: ctas.map((cta) => cta.keyword) } : {}),
+      ...(ctas.length ? { ctaMessages: ctas } : {}),
+      ...(input.delivery.followUps.length ? { followUpMessages: input.delivery.followUps } : {}),
       ...(input.sendWindow ? { sendWindow: input.sendWindow } : {}),
-      ...(delivery.kind === 'text' && input.mode === 'CAMPAIGN' && input.delivery.textVariations.length
-        ? { approaches: [delivery.text!, ...input.delivery.textVariations] } : {}),
+      ...(delivery.kind === 'text' && input.mode === 'CAMPAIGN'
+        ? { approaches: [delivery.text!, ...input.delivery.textVariations] }
+        : {}),
       createdAt: new Date().toISOString(),
     };
     await db.$transaction(
@@ -771,8 +897,10 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
               delivery.kind === 'text'
                 ? {
                     ...delivery,
-                    approachIndex: input.delivery.textVariations.length
-                      ? index % (input.delivery.textVariations.length + 1) : undefined,
+                    approachIndex: input.mode === 'CAMPAIGN' ? variationOrder[index] : undefined,
+                    batchNumber: 1,
+                    batchOrder: index,
+                    textVersion: [delivery.text!, ...input.delivery.textVariations],
                     snapshot: {
                       kind: 'text',
                       text: chooseCampaignText(
@@ -787,7 +915,8 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
             ),
             runAt: new Date(
               (input.runAt ? new Date(input.runAt).getTime() : Date.now()) +
-                (delivery.steps?.[0]?.waitSeconds ?? 0) * 1000,
+                (delivery.steps?.[0]?.waitSeconds ?? 0) * 1000 +
+                index,
             ),
           })),
         });
@@ -801,23 +930,52 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     const conversationId = id.parse(req.params.conversationId);
     await whatsapp.snapshot(sessionId);
     const chat = await messaging.chat(sessionId, conversationId);
-    if (chat.status !== 'OPEN' || chat.contact.isGroup || (chat.contact.metadata as { optOut?: boolean }).optOut)
-      throw new AppError(422, 'Follow-up indisponível: confira se a conversa está aberta e se o contato não pediu para sair.');
-    const input = z.object({
-      name: z.string().trim().min(1).max(100).default('Follow-up individual'),
-      steps: z.array(z.object({ waitMinutes: z.number().int().min(1).max(43200), text: z.string().trim().min(1).max(10000) })).min(1).max(5),
-    }).parse(req.body);
-    const lastOutbound = await db.chatMessage.findFirst({ where: { conversationId, direction: 'OUTBOUND', type: { not: 'internalNote' } }, orderBy: [{ sentAt: 'desc' }, { id: 'desc' }] });
+    if (
+      chat.status !== 'OPEN' ||
+      chat.contact.isGroup ||
+      (chat.contact.metadata as { optOut?: boolean }).optOut
+    )
+      throw new AppError(
+        422,
+        'Follow-up indisponível: confira se a conversa está aberta e se o contato não pediu para sair.',
+      );
+    const input = z
+      .object({
+        name: z.string().trim().min(1).max(100).default('Follow-up individual'),
+        steps: z
+          .array(
+            z.object({
+              waitMinutes: z.number().int().min(1).max(43200),
+              text: z.string().trim().min(1).max(10000),
+            }),
+          )
+          .min(1)
+          .max(5),
+      })
+      .parse(req.body);
+    const lastOutbound = await db.chatMessage.findFirst({
+      where: { conversationId, direction: 'OUTBOUND', type: { not: 'internalNote' } },
+      orderBy: [{ sentAt: 'desc' }, { id: 'desc' }],
+    });
     if (!lastOutbound) throw new AppError(422, 'Envie ou registre um orçamento antes de ativar o follow-up.');
-    const lastMessage = await db.chatMessage.findFirst({ where: { conversationId }, orderBy: [{ sentAt: 'desc' }, { id: 'desc' }] });
+    const lastMessage = await db.chatMessage.findFirst({
+      where: { conversationId },
+      orderBy: [{ sentAt: 'desc' }, { id: 'desc' }],
+    });
     if (lastMessage?.direction !== 'OUTBOUND' || lastMessage.type === 'internalNote')
-      throw new AppError(409, 'O cliente já respondeu depois da última mensagem. Envie uma mensagem antes de iniciar o follow-up.');
+      throw new AppError(
+        409,
+        'O cliente já respondeu depois da última mensagem. Envie uma mensagem antes de iniciar o follow-up.',
+      );
     const batchId = `follow-up:${randomUUID()}`;
     const payload: Delivery = {
       kind: 'sequence',
       followUp: true,
       sourceMessageAt: lastOutbound.sentAt.toISOString(),
-      steps: input.steps.map((step) => ({ snapshot: { kind: 'text', text: step.text }, waitSeconds: step.waitMinutes * 60 })),
+      steps: input.steps.map((step) => ({
+        snapshot: { kind: 'text', text: step.text },
+        waitSeconds: step.waitMinutes * 60,
+      })),
     };
     const now = new Date();
     const batch: Batch = {
@@ -843,7 +1001,11 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
         },
       });
     });
-    res.status(201).json({ id: batchId, scheduled: input.steps.length, firstRunAt: new Date(now.getTime() + input.steps[0]!.waitMinutes * 60_000).toISOString() });
+    res.status(201).json({
+      id: batchId,
+      scheduled: input.steps.length,
+      firstRunAt: new Date(now.getTime() + input.steps[0]!.waitMinutes * 60_000).toISOString(),
+    });
   });
   router.put('/sessions/:sessionId/batches/:batchId', async (req, res) => {
     admin(res.locals.identity.role);
@@ -861,19 +1023,47 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       .refine((value) => Object.values(value).some((item) => item !== undefined))
       .parse(req.body);
     const { status } = update;
-    if (status && (update.investmentInCents !== undefined || update.attributedRevenueInCents !== undefined || update.revenueSource !== undefined))
+    if (
+      status &&
+      (update.investmentInCents !== undefined ||
+        update.attributedRevenueInCents !== undefined ||
+        update.revenueSource !== undefined)
+    )
       throw new AppError(422, 'Atualize o estado e os valores financeiros em operações separadas.');
     if (status && (data.status === 'CANCELLED' || data.status === 'COMPLETED'))
       throw new AppError(409, 'Esta execução foi encerrada. Crie uma nova.');
     if (status) {
-      await putRecord(db, batchId, 'BATCH', { ...data, status });
+      if (status === 'ACTIVE' && data.status === 'BATCH_COMPLETE')
+        throw new AppError(409, 'Use Continuar próximo lote para avançar a fila de forma controlada.');
+      await putRecord(db, batchId, 'BATCH', {
+        ...data,
+        status,
+        ...(['PAUSED', 'PAUSED_CONNECTION'].includes(status)
+          ? {
+              pauseHistory: [
+                ...(data.pauseHistory ?? []),
+                { at: new Date().toISOString(), reason: 'Pausa manual.', action: 'paused' },
+              ],
+            }
+          : status === 'ACTIVE' && ['PAUSED', 'PAUSED_CONNECTION'].includes(data.status)
+            ? {
+                pauseHistory: [
+                  ...(data.pauseHistory ?? []),
+                  { at: new Date().toISOString(), reason: 'Retomada manual.', action: 'resumed' },
+                ],
+              }
+            : {}),
+      });
     } else {
       if (data.mode !== 'CAMPAIGN')
         throw new AppError(422, 'Valores financeiros pertencem apenas a campanhas.');
       const previous = await record(db, financeKey(batchId), defaultFinance(data));
-      await putRecord(db, financeKey(batchId), 'CAMPAIGN_FINANCE', { ...previous,
+      await putRecord(db, financeKey(batchId), 'CAMPAIGN_FINANCE', {
+        ...previous,
         ...(update.investmentInCents === undefined ? {} : { investmentInCents: update.investmentInCents }),
-        ...(update.attributedRevenueInCents === undefined ? {} : { manualRevenueInCents: update.attributedRevenueInCents }),
+        ...(update.attributedRevenueInCents === undefined
+          ? {}
+          : { manualRevenueInCents: update.attributedRevenueInCents }),
         ...(update.revenueSource ? { revenueSource: update.revenueSource } : {}),
       });
       res.json({ saved: true });
@@ -885,6 +1075,212 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
         data: { status: 'CANCELLED' },
       });
     res.json({ saved: true });
+  });
+  router.post('/sessions/:sessionId/batches/:batchId/continue', async (req, res) => {
+    admin(res.locals.identity.role);
+    const sessionId = id.parse(req.params.sessionId);
+    const batchId = id.parse(req.params.batchId);
+    const batch = await record<Batch | null>(db, batchId, null);
+    if (!batch || batch.sessionId !== sessionId || batch.status !== 'BATCH_COMPLETE')
+      throw new AppError(409, 'A campanha não está aguardando o próximo lote.');
+    const input = z
+      .object({
+        batchSize: z.number().int().min(1).max(5000).optional(),
+        approaches: z.array(z.string().trim().min(1).max(10000)).max(10).optional(),
+        variationNames: z.array(z.string().trim().min(1).max(60)).max(10).optional(),
+        minSeconds: z.number().int().min(1).max(86400).optional(),
+        maxSeconds: z.number().int().min(1).max(86400).optional(),
+        pauseEvery: z.number().int().min(0).max(5000).optional(),
+        pauseSeconds: z.number().int().min(0).max(86400).optional(),
+        ctas: z
+          .array(
+            z.object({
+              keyword: z.string().trim().min(1).max(100),
+              replyText: z.string().trim().min(1).max(10000),
+            }),
+          )
+          .max(20)
+          .optional(),
+        followUps: z
+          .array(
+            z.object({
+              waitMinutes: z.number().int().min(1).max(43200),
+              text: z.string().trim().min(1).max(10000),
+            }),
+          )
+          .max(100)
+          .optional(),
+        sendWindow: z
+          .object({
+            timezone: z.string().refine(validTimezone, 'Escolha um fuso horário válido.'),
+            days: z
+              .array(z.number().int().min(0).max(6))
+              .min(1)
+              .max(7)
+              .refine((days) => new Set(days).size === days.length),
+            start: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+            end: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+          })
+          .refine((window) => window.start < window.end, 'O fim do horário deve ser posterior ao início.')
+          .nullable()
+          .optional(),
+      })
+      .parse(req.body);
+    const tasks = (await db.deliveryTask.findMany({ where: { batchId, status: 'QUEUED' } }))
+      .filter((task) => !(task.payload as { followUp?: boolean }).followUp)
+      .sort(
+        (left, right) =>
+          Number((left.payload as { batchOrder?: number }).batchOrder ?? 0) -
+          Number((right.payload as { batchOrder?: number }).batchOrder ?? 0),
+      );
+    if (!tasks.length) throw new AppError(409, 'Não há contatos pendentes neste público congelado.');
+    const size = input.batchSize ?? batch.batchSize ?? 50;
+    const minSeconds = input.minSeconds ?? batch.minSeconds;
+    const maxSeconds = input.maxSeconds ?? batch.maxSeconds;
+    if (maxSeconds < minSeconds)
+      throw new AppError(422, 'O intervalo máximo deve ser maior ou igual ao mínimo.');
+    if (input.ctas) {
+      const keywords = input.ctas.map((cta) => normalizeCampaignKeyword(cta.keyword));
+      if (keywords.some((keyword) => !keyword) || new Set(keywords).size !== keywords.length)
+        throw new AppError(422, 'As palavras-chave das CTAs devem ser distintas e conter letras ou números.');
+    }
+    const approaches = input.approaches ?? batch.approaches;
+    const variantAssignment = tasks.map((_task, index) => index % (approaches?.length ?? 1));
+    if (batch.distribution === 'RANDOM')
+      for (let index = variantAssignment.length - 1; index > 0; index--) {
+        const swap = randomInt(index + 1);
+        [variantAssignment[index], variantAssignment[swap]] = [
+          variantAssignment[swap]!,
+          variantAssignment[index]!,
+        ];
+      }
+    if (approaches?.some((text) => !text.trim()))
+      throw new AppError(422, 'Todas as variações devem ter texto.');
+    await db.$transaction(async (tx) => {
+      for (let index = 0; index < tasks.length; index++) {
+        const task = tasks[index]!;
+        const payload = task.payload as unknown as Delivery & {
+          approachIndex?: number;
+          batchNumber?: number;
+          textVersion?: string[];
+        };
+        const variantIndex = approaches?.length ? variantAssignment[index]! : (payload.approachIndex ?? 0);
+        const text =
+          approaches?.[variantIndex] ??
+          (payload.snapshot as { text?: string } | undefined)?.text ??
+          payload.text ??
+          '';
+        await tx.deliveryTask.update({
+          where: { id: task.id },
+          data: {
+            payload: json({
+              ...payload,
+              approachIndex: variantIndex,
+              batchNumber: (batch.batchNumber ?? 1) + 1,
+              textVersion: approaches ?? [],
+              ...(input.ctas ? { ctas: input.ctas, cta: undefined } : {}),
+              ...(input.followUps ? { followUps: input.followUps } : {}),
+              snapshot: { ...(payload.snapshot ?? {}), kind: 'text', text },
+            }),
+          },
+        });
+      }
+      await tx.operationRecord.update({
+        where: { id: batchId },
+        data: {
+          data: json({
+            ...batch,
+            status: 'ACTIVE',
+            batchSize: size,
+            minSeconds,
+            maxSeconds,
+            ...(input.pauseEvery === undefined ? {} : { pauseEvery: input.pauseEvery }),
+            ...(input.pauseSeconds === undefined ? {} : { pauseSeconds: input.pauseSeconds }),
+            batchSentCount: 0,
+            batchNumber: (batch.batchNumber ?? 1) + 1,
+            sentTotal: batch.sentTotal ?? batch.sentCount ?? 0,
+            ...(approaches ? { approaches } : {}),
+            ...(input.variationNames ? { variationNames: input.variationNames } : {}),
+            ...(input.ctas
+              ? { ctaMessages: input.ctas, ctaKeywords: input.ctas.map((cta) => cta.keyword) }
+              : {}),
+            ...(input.followUps
+              ? { followUpMessages: input.followUps, followUpCount: input.followUps.length }
+              : {}),
+            ...(input.sendWindow === undefined ? {} : { sendWindow: input.sendWindow ?? undefined }),
+            batchHistory: [
+              ...(batch.batchHistory ?? []),
+              {
+                number: (batch.batchNumber ?? 1) + 1,
+                startedAt: new Date().toISOString(),
+                leadIds: tasks.slice(0, size).map((task) => task.conversationId),
+                variationByLead: {},
+                textVersion: approaches ?? batch.approaches ?? [],
+              },
+            ],
+            pauseHistory: [
+              ...(batch.pauseHistory ?? []),
+              { at: new Date().toISOString(), reason: 'Próximo lote iniciado.', action: 'resumed' },
+            ],
+          }),
+        },
+      });
+    });
+    res.json({ saved: true, batchNumber: (batch.batchNumber ?? 1) + 1, count: tasks.length });
+  });
+  router.post('/sessions/:sessionId/batches/:batchId/tasks/:taskId/resolve', async (req, res) => {
+    admin(res.locals.identity.role);
+    const sessionId = id.parse(req.params.sessionId);
+    const batchId = id.parse(req.params.batchId);
+    const taskId = id.parse(req.params.taskId);
+    const { action } = z.object({ action: z.enum(['retry', 'mark-sent']) }).parse(req.body);
+    const [batch, task] = await Promise.all([
+      record<Batch | null>(db, batchId, null),
+      db.deliveryTask.findFirst({ where: { id: taskId, batchId, sessionId } }),
+    ]);
+    if (!batch || batch.sessionId !== sessionId || !task)
+      throw new AppError(404, 'Envio não encontrado nesta campanha.');
+    if (task.status !== 'VERIFY')
+      throw new AppError(409, 'Somente envios em verificação podem ser resolvidos.');
+    if (action === 'retry') {
+      await db.deliveryTask.update({
+        where: { id: taskId },
+        data: { status: 'QUEUED', runAt: new Date(), error: null },
+      });
+      await putRecord(db, batchId, 'BATCH', {
+        ...batch,
+        status: 'ACTIVE',
+        pauseHistory: [
+          ...(batch.pauseHistory ?? []),
+          {
+            at: new Date().toISOString(),
+            reason: 'Envio em verificação autorizado para nova tentativa.',
+            action: 'resumed',
+          },
+        ],
+      });
+    } else {
+      const payload = task.payload as Record<string, unknown>;
+      await db.deliveryTask.update({
+        where: { id: taskId },
+        data: {
+          status: 'COMPLETED',
+          error: null,
+          payload: json({
+            ...payload,
+            manualResolution: 'marked-sent',
+            resolvedAt: new Date().toISOString(),
+          }),
+        },
+      });
+      await putRecord(db, batchId, 'BATCH', {
+        ...batch,
+        sentTotal: (batch.sentTotal ?? batch.sentCount ?? 0) + 1,
+        sentCount: (batch.sentTotal ?? batch.sentCount ?? 0) + 1,
+        batchSentCount: (batch.batchSentCount ?? 0) + 1,
+      });
+    }
+    res.json({ saved: true, status: action === 'retry' ? 'PENDING' : 'SENT' });
   });
   router.get('/sessions/:sessionId/batches/:batchId/tasks', async (req, res) => {
     const sessionId = id.parse(req.params.sessionId);
@@ -898,7 +1294,53 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       select: { id: true, contact: { select: { name: true, phoneNumber: true } } },
     });
     const contacts = new Map(chats.map((chat) => [chat.id, chat.contact]));
-    res.json({ items: items.map((item) => ({ ...item, contact: contacts.get(item.conversationId) ?? null })) });
+    const sentMessages = await db.chatMessage.findMany({
+      where: { id: { in: items.map((item) => `out:delivery:${item.id}`) } },
+      select: { id: true, sentAt: true },
+    });
+    const inbound = await db.chatMessage.findMany({
+      where: {
+        conversationId: { in: [...new Set(items.map((item) => item.conversationId))] },
+        direction: 'INBOUND',
+      },
+      select: { conversationId: true, sentAt: true },
+    });
+    const sentByTask = new Map(sentMessages.map((message) => [message.id, message]));
+    const latestReply = new Map<string, Date>();
+    for (const message of inbound)
+      if (
+        !latestReply.has(message.conversationId) ||
+        latestReply.get(message.conversationId)! < message.sentAt
+      )
+        latestReply.set(message.conversationId, message.sentAt);
+    res.json({
+      items: items.map((item) => {
+        const sent = sentByTask.get(`out:delivery:${item.id}`);
+        const replied = Boolean(
+          sent && (latestReply.get(item.conversationId)?.getTime() ?? 0) > sent.sentAt.getTime(),
+        );
+        const status =
+          item.status === 'QUEUED'
+            ? 'PENDING'
+            : item.status === 'RUNNING'
+              ? 'SENDING'
+              : item.status === 'VERIFY'
+                ? 'VERIFY'
+                : item.status === 'FAILED'
+                  ? 'FAILED'
+                  : replied
+                    ? 'REPLIED'
+                    : item.status === 'COMPLETED'
+                      ? 'SENT'
+                      : item.status;
+        return {
+          ...item,
+          rawStatus: item.status,
+          status,
+          contact: contacts.get(item.conversationId) ?? null,
+        };
+      }),
+    });
   });
   router.get('/sessions/:sessionId/batches/:batchId/approaches', async (req, res) => {
     const sessionId = id.parse(req.params.sessionId);
@@ -906,7 +1348,10 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     const batch = await record<Batch | null>(db, batchId, null);
     if (!batch || batch.sessionId !== sessionId || !batch.approaches?.length)
       throw new AppError(404, 'Teste de abordagens não encontrado nesta conexão.');
-    const tasks = await db.deliveryTask.findMany({ where: { sessionId, batchId }, select: { id: true, conversationId: true, status: true, payload: true } });
+    const tasks = await db.deliveryTask.findMany({
+      where: { sessionId, batchId },
+      select: { id: true, conversationId: true, status: true, payload: true },
+    });
     const outbound = await db.chatMessage.findMany({
       where: { id: { in: tasks.map((task) => `out:delivery:${task.id}`) } },
       select: { id: true, sentAt: true, status: true },
@@ -922,30 +1367,50 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       if (!latest || reply.sentAt > latest) latestReplyByConversation.set(reply.conversationId, reply.sentAt);
     }
     const attributed = await db.operationRecord.findMany({ where: { kind: 'CAMPAIGN_ATTRIBUTION' } });
-    const attributedIds = attributed.filter((row) => (row.data as { campaignId?: string }).campaignId === batchId)
-      .map((row) => (row.data as { conversationId?: string }).conversationId).filter((value): value is string => Boolean(value));
+    const attributedIds = attributed
+      .filter((row) => (row.data as { campaignId?: string }).campaignId === batchId)
+      .map((row) => (row.data as { conversationId?: string }).conversationId)
+      .filter((value): value is string => Boolean(value));
     const sales = await db.crmOpportunity.findMany({
       where: { conversationId: { in: attributedIds }, status: 'WON' },
       select: { conversationId: true, valueInCents: true },
     });
     const salesByConversation = new Map(sales.map((sale) => [sale.conversationId, sale.valueInCents]));
-    const items = batch.approaches.map((text, index) => ({ index, text, assigned: 0, sent: 0, delivered: 0, read: 0, replied: 0, sales: 0, revenueInCents: 0 }));
+    const items = batch.approaches.map((text, index) => ({
+      index,
+      name: batch.variationNames?.[index] ?? (index === 0 ? 'Mensagem principal' : `Variação ${index + 1}`),
+      text,
+      assigned: 0,
+      sent: 0,
+      delivered: 0,
+      read: 0,
+      replied: 0,
+      responseRate: 0,
+      sales: 0,
+      revenueInCents: 0,
+    }));
     for (const task of tasks) {
       const index = (task.payload as { approachIndex?: number }).approachIndex;
       if (index === undefined || !items[index]) continue;
       const row = items[index]!;
       row.assigned++;
       const message = messages.get(`out:delivery:${task.id}`);
-      if (message && ['SENT', 'DELIVERED', 'READ'].includes(message.status)) {
+      const manuallyMarkedSent =
+        (task.payload as { manualResolution?: string }).manualResolution === 'marked-sent';
+      if ((message && ['SENT', 'DELIVERED', 'READ'].includes(message.status)) || manuallyMarkedSent) {
         row.sent++;
-        if (['DELIVERED', 'READ'].includes(message.status)) row.delivered++;
-        if (message.status === 'READ') row.read++;
+        if (message && ['DELIVERED', 'READ'].includes(message.status)) row.delivered++;
+        if (message?.status === 'READ') row.read++;
         const latestReply = latestReplyByConversation.get(task.conversationId);
-        if (latestReply && latestReply > message.sentAt) row.replied++;
+        if (latestReply && (!message || latestReply > message.sentAt)) row.replied++;
         const sale = salesByConversation.get(task.conversationId);
-        if (sale !== undefined) { row.sales++; row.revenueInCents += sale; }
+        if (sale !== undefined) {
+          row.sales++;
+          row.revenueInCents += sale;
+        }
       }
     }
+    for (const item of items) item.responseRate = item.sent ? item.replied / item.sent : 0;
     res.json({ items });
   });
   router.get('/ai', async (_req, res) => {
@@ -958,87 +1423,204 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       enabled: false,
     });
     const { encryptedKey, fallbackKeys = [], ...safe } = settings;
-    res.json({ ...safe, configured: hasConfiguredKey(settings), primaryConfigured: Boolean(encryptedKey), fallbackKeyCount: fallbackKeys.length, usage: await aiUsage(db) });
+    res.json({
+      ...safe,
+      configured: hasConfiguredKey(settings),
+      primaryConfigured: Boolean(encryptedKey),
+      fallbackKeyCount: fallbackKeys.length,
+      usage: await aiUsage(db),
+    });
   });
   router.get('/ai/keys', async (_req, res) => {
     admin(res.locals.identity.role);
-    const settings = await record<AgentSettings>(db, 'integration:ai', { model: '', instructions: '', knowledge: '', style: '', enabled: false });
-    const last = await record<{ id: string; label: string; usedAt: string } | null>(db, 'ai-key-last-used', null);
-    const items = await Promise.all((settings.fallbackKeys ?? []).map(async ({ id, label, enabled }) => {
-      const quota = await record<{ until: number } | null>(db, `ai-key-quota:${id}`, null);
-      return { id, label, enabled, dailyQuotaExhausted: Boolean(quota && quota.until > Date.now()) };
-    }));
+    const settings = await record<AgentSettings>(db, 'integration:ai', {
+      model: '',
+      instructions: '',
+      knowledge: '',
+      style: '',
+      enabled: false,
+    });
+    const last = await record<{ id: string; label: string; usedAt: string } | null>(
+      db,
+      'ai-key-last-used',
+      null,
+    );
+    const items = await Promise.all(
+      (settings.fallbackKeys ?? []).map(async ({ id, label, enabled }) => {
+        const quota = await record<{ until: number } | null>(db, `ai-key-quota:${id}`, null);
+        return { id, label, enabled, dailyQuotaExhausted: Boolean(quota && quota.until > Date.now()) };
+      }),
+    );
     const primaryQuota = await record<{ until: number } | null>(db, 'ai-key-quota:primary', null);
-    res.json({ provider: settings.provider ?? 'openai', primary: { configured: Boolean(settings.encryptedKey), dailyQuotaExhausted: Boolean(primaryQuota && primaryQuota.until > Date.now()) }, items, lastUsed: last });
+    res.json({
+      provider: settings.provider ?? 'openai',
+      primary: {
+        configured: Boolean(settings.encryptedKey),
+        dailyQuotaExhausted: Boolean(primaryQuota && primaryQuota.until > Date.now()),
+      },
+      items,
+      lastUsed: last,
+    });
   });
   router.post('/ai/keys', async (req, res) => {
     admin(res.locals.identity.role);
-    const input = z.object({ label: z.string().trim().min(1).max(80), apiKey: z.string().trim().min(20).max(500) }).parse(req.body);
-    const settings = await record<AgentSettings>(db, 'integration:ai', { model: '', instructions: '', knowledge: '', style: '', enabled: false });
-    if ((settings.provider ?? 'openai') !== 'gemini') throw new AppError(422, 'Selecione Google · Gemini e salve a integração antes de adicionar chaves extras.');
+    const input = z
+      .object({ label: z.string().trim().min(1).max(80), apiKey: z.string().trim().min(20).max(500) })
+      .parse(req.body);
+    const settings = await record<AgentSettings>(db, 'integration:ai', {
+      model: '',
+      instructions: '',
+      knowledge: '',
+      style: '',
+      enabled: false,
+    });
+    if ((settings.provider ?? 'openai') !== 'gemini')
+      throw new AppError(
+        422,
+        'Selecione Google · Gemini e salve a integração antes de adicionar chaves extras.',
+      );
     const fallbacks = settings.fallbackKeys ?? [];
     if (fallbacks.length >= 20) throw new AppError(422, 'O limite é de 20 chaves adicionais.');
-    const item = { id: randomUUID(), label: input.label, encryptedKey: (await CredentialCipher.load(databasePaths(db).keyFile)).encrypt(input.apiKey).toString('base64'), enabled: true, addedAt: new Date().toISOString() };
+    const item = {
+      id: randomUUID(),
+      label: input.label,
+      encryptedKey: (await CredentialCipher.load(databasePaths(db).keyFile))
+        .encrypt(input.apiKey)
+        .toString('base64'),
+      enabled: true,
+      addedAt: new Date().toISOString(),
+    };
     await putRecord(db, 'integration:ai', 'INTEGRATION', { ...settings, fallbackKeys: [...fallbacks, item] });
     res.status(201).json({ id: item.id, label: item.label, enabled: item.enabled });
   });
   router.put('/ai/keys/primary', async (req, res) => {
     admin(res.locals.identity.role);
     const { apiKey } = z.object({ apiKey: z.string().trim().min(20).max(500) }).parse(req.body);
-    const settings = await record<AgentSettings>(db, 'integration:ai', { model: '', instructions: '', knowledge: '', style: '', enabled: false });
-    if ((settings.provider ?? 'openai') !== 'gemini') throw new AppError(422, 'Selecione Google · Gemini para editar a chave principal Gemini.');
-    const encryptedKey = (await CredentialCipher.load(databasePaths(db).keyFile)).encrypt(apiKey).toString('base64');
+    const settings = await record<AgentSettings>(db, 'integration:ai', {
+      model: '',
+      instructions: '',
+      knowledge: '',
+      style: '',
+      enabled: false,
+    });
+    if ((settings.provider ?? 'openai') !== 'gemini')
+      throw new AppError(422, 'Selecione Google · Gemini para editar a chave principal Gemini.');
+    const encryptedKey = (await CredentialCipher.load(databasePaths(db).keyFile))
+      .encrypt(apiKey)
+      .toString('base64');
     await putRecord(db, 'integration:ai', 'INTEGRATION', { ...settings, encryptedKey });
     await db.operationRecord.deleteMany({ where: { id: 'ai-key-quota:primary' } });
     res.json({ saved: true });
   });
   router.delete('/ai/keys/primary', async (_req, res) => {
     admin(res.locals.identity.role);
-    const settings = await record<AgentSettings>(db, 'integration:ai', { model: '', instructions: '', knowledge: '', style: '', enabled: false });
+    const settings = await record<AgentSettings>(db, 'integration:ai', {
+      model: '',
+      instructions: '',
+      knowledge: '',
+      style: '',
+      enabled: false,
+    });
     const fallbackKeys = settings.fallbackKeys ?? [];
-    const hasOtherActiveKey = (settings.provider ?? 'openai') === 'gemini' && fallbackKeys.some((key) => key.enabled);
-    await putRecord(db, 'integration:ai', 'INTEGRATION', { ...settings, encryptedKey: undefined, enabled: settings.enabled && hasOtherActiveKey, enabledAt: settings.enabled && hasOtherActiveKey ? settings.enabledAt : undefined });
+    const hasOtherActiveKey =
+      (settings.provider ?? 'openai') === 'gemini' && fallbackKeys.some((key) => key.enabled);
+    await putRecord(db, 'integration:ai', 'INTEGRATION', {
+      ...settings,
+      encryptedKey: undefined,
+      enabled: settings.enabled && hasOtherActiveKey,
+      enabledAt: settings.enabled && hasOtherActiveKey ? settings.enabledAt : undefined,
+    });
     await db.operationRecord.deleteMany({ where: { id: 'ai-key-quota:primary' } });
     res.json({ deleted: true, hasOtherActiveKey });
   });
   router.patch('/ai/keys/:keyId', async (req, res) => {
     admin(res.locals.identity.role);
     const { enabled } = z.object({ enabled: z.boolean() }).parse(req.body);
-    const settings = await record<AgentSettings>(db, 'integration:ai', { model: '', instructions: '', knowledge: '', style: '', enabled: false });
+    const settings = await record<AgentSettings>(db, 'integration:ai', {
+      model: '',
+      instructions: '',
+      knowledge: '',
+      style: '',
+      enabled: false,
+    });
     const keyId = id.parse(req.params.keyId);
     const items = settings.fallbackKeys ?? [];
     if (!items.some((item) => item.id === keyId)) throw new AppError(404, 'Chave adicional não encontrada.');
-    await putRecord(db, 'integration:ai', 'INTEGRATION', { ...settings, fallbackKeys: items.map((item) => item.id === keyId ? { ...item, enabled } : item) });
+    await putRecord(db, 'integration:ai', 'INTEGRATION', {
+      ...settings,
+      fallbackKeys: items.map((item) => (item.id === keyId ? { ...item, enabled } : item)),
+    });
     res.json({ saved: true });
   });
   router.put('/ai/keys/order', async (req, res) => {
     admin(res.locals.identity.role);
     const { ids } = z.object({ ids: z.array(id).max(20) }).parse(req.body);
-    const settings = await record<AgentSettings>(db, 'integration:ai', { model: '', instructions: '', knowledge: '', style: '', enabled: false });
+    const settings = await record<AgentSettings>(db, 'integration:ai', {
+      model: '',
+      instructions: '',
+      knowledge: '',
+      style: '',
+      enabled: false,
+    });
     const items = settings.fallbackKeys ?? [];
-    if (new Set(ids).size !== items.length || ids.length !== items.length || ids.some((keyId) => !items.some((item) => item.id === keyId))) throw new AppError(422, 'A ordem enviada não corresponde às chaves cadastradas.');
+    if (
+      new Set(ids).size !== items.length ||
+      ids.length !== items.length ||
+      ids.some((keyId) => !items.some((item) => item.id === keyId))
+    )
+      throw new AppError(422, 'A ordem enviada não corresponde às chaves cadastradas.');
     const ordered = ids.map((keyId) => items.find((item) => item.id === keyId)!);
     await putRecord(db, 'integration:ai', 'INTEGRATION', { ...settings, fallbackKeys: ordered });
     res.json({ saved: true });
   });
   router.put('/ai/keys/:keyId', async (req, res) => {
     admin(res.locals.identity.role);
-    const input = z.object({ label: z.string().trim().min(1).max(80), apiKey: z.string().trim().min(20).max(500).optional() }).parse(req.body);
-    const settings = await record<AgentSettings>(db, 'integration:ai', { model: '', instructions: '', knowledge: '', style: '', enabled: false });
+    const input = z
+      .object({
+        label: z.string().trim().min(1).max(80),
+        apiKey: z.string().trim().min(20).max(500).optional(),
+      })
+      .parse(req.body);
+    const settings = await record<AgentSettings>(db, 'integration:ai', {
+      model: '',
+      instructions: '',
+      knowledge: '',
+      style: '',
+      enabled: false,
+    });
     const keyId = id.parse(req.params.keyId);
     const items = settings.fallbackKeys ?? [];
     if (!items.some((item) => item.id === keyId)) throw new AppError(404, 'Chave adicional não encontrada.');
     const cipher = input.apiKey ? await CredentialCipher.load(databasePaths(db).keyFile) : null;
-    const updated = items.map((item) => item.id === keyId ? { ...item, label: input.label, ...(input.apiKey && cipher ? { encryptedKey: cipher.encrypt(input.apiKey).toString('base64') } : {}) } : item);
+    const updated = items.map((item) =>
+      item.id === keyId
+        ? {
+            ...item,
+            label: input.label,
+            ...(input.apiKey && cipher
+              ? { encryptedKey: cipher.encrypt(input.apiKey).toString('base64') }
+              : {}),
+          }
+        : item,
+    );
     await putRecord(db, 'integration:ai', 'INTEGRATION', { ...settings, fallbackKeys: updated });
     await db.operationRecord.deleteMany({ where: { id: `ai-key-quota:${keyId}` } });
     res.json({ saved: true });
   });
   router.delete('/ai/keys/:keyId', async (req, res) => {
     admin(res.locals.identity.role);
-    const settings = await record<AgentSettings>(db, 'integration:ai', { model: '', instructions: '', knowledge: '', style: '', enabled: false });
+    const settings = await record<AgentSettings>(db, 'integration:ai', {
+      model: '',
+      instructions: '',
+      knowledge: '',
+      style: '',
+      enabled: false,
+    });
     const keyId = id.parse(req.params.keyId);
-    await putRecord(db, 'integration:ai', 'INTEGRATION', { ...settings, fallbackKeys: (settings.fallbackKeys ?? []).filter((item) => item.id !== keyId) });
+    await putRecord(db, 'integration:ai', 'INTEGRATION', {
+      ...settings,
+      fallbackKeys: (settings.fallbackKeys ?? []).filter((item) => item.id !== keyId),
+    });
     await db.operationRecord.deleteMany({ where: { id: `ai-key-quota:${keyId}` } });
     res.json({ deleted: true });
   });
@@ -1050,59 +1632,117 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       rag: true,
       cacheDays: 14,
       summaryEvery: 10,
-      systems: { autoReply: true, copilot: true, summaries: true, campaigns: true, training: true, receipts: true, dailyDigest: true },
+      systems: {
+        autoReply: true,
+        copilot: true,
+        summaries: true,
+        campaigns: true,
+        training: true,
+        receipts: true,
+        dailyDigest: true,
+      },
     });
     const now = new Date();
     const dayStart = new Date(now);
     dayStart.setHours(0, 0, 0, 0);
     const monthStart = new Date(now);
-    monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
-    const events = await db.operationRecord.findMany({ where: { kind: 'AI_ECONOMY_SAVING', createdAt: { gte: monthStart } }, take: 10000 });
-    const aggregate = (rows: typeof events) => rows.reduce((total, row) => { const data = row.data as { tokens?: number; requests?: number }; return { tokens: total.tokens + (data.tokens ?? 0), requests: total.requests + (data.requests ?? 0) }; }, { tokens: 0, requests: 0 });
-    const saved = { today: aggregate(events.filter((row) => row.createdAt >= dayStart)), month: aggregate(events) };
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const events = await db.operationRecord.findMany({
+      where: { kind: 'AI_ECONOMY_SAVING', createdAt: { gte: monthStart } },
+      take: 10000,
+    });
+    const aggregate = (rows: typeof events) =>
+      rows.reduce(
+        (total, row) => {
+          const data = row.data as { tokens?: number; requests?: number };
+          return {
+            tokens: total.tokens + (data.tokens ?? 0),
+            requests: total.requests + (data.requests ?? 0),
+          };
+        },
+        { tokens: 0, requests: 0 },
+      );
+    const saved = {
+      today: aggregate(events.filter((row) => row.createdAt >= dayStart)),
+      month: aggregate(events),
+    };
     const cacheCount = await db.operationRecord.count({ where: { kind: 'AI_SEMANTIC_CACHE' } });
     res.json({ settings, saved, cacheCount, usage: await aiUsage(db) });
   });
   router.put('/economy', async (req, res) => {
     admin(res.locals.identity.role);
-    const input = z.object({
-      enabled: z.boolean(), semanticCache: z.boolean(), rag: z.boolean(),
-      cacheDays: z.number().int().min(1).max(365), summaryEvery: z.number().int().min(5).max(100),
-      systems: z.record(z.string().max(40), z.boolean()),
-    }).parse(req.body);
+    const input = z
+      .object({
+        enabled: z.boolean(),
+        semanticCache: z.boolean(),
+        rag: z.boolean(),
+        cacheDays: z.number().int().min(1).max(365),
+        summaryEvery: z.number().int().min(5).max(100),
+        systems: z.record(z.string().max(40), z.boolean()),
+      })
+      .parse(req.body);
     await putRecord(db, 'settings:ai-economy', 'AI_ECONOMY_SETTINGS', input);
     res.json({ saved: true });
   });
   router.get('/economy/cache', async (_req, res) => {
     admin(res.locals.identity.role);
-    const rows = await db.operationRecord.findMany({ where: { kind: 'AI_SEMANTIC_CACHE' }, orderBy: { updatedAt: 'desc' }, take: 1000 });
-    res.json({ items: rows.map((row) => {
-      const { embedding: _embedding, embeddingModel: _embeddingModel, embeddingRevision: _embeddingRevision, ...publicData } = row.data as Record<string, unknown>;
-      return { id: row.id, ...publicData };
-    }) });
+    const rows = await db.operationRecord.findMany({
+      where: { kind: 'AI_SEMANTIC_CACHE' },
+      orderBy: { updatedAt: 'desc' },
+      take: 1000,
+    });
+    res.json({
+      items: rows.map((row) => {
+        const {
+          embedding: _embedding,
+          embeddingModel: _embeddingModel,
+          embeddingRevision: _embeddingRevision,
+          ...publicData
+        } = row.data as Record<string, unknown>;
+        return { id: row.id, ...publicData };
+      }),
+    });
   });
   router.put('/economy/cache/:cacheId', async (req, res) => {
     admin(res.locals.identity.role);
     const cacheId = id.parse(req.params.cacheId);
     const current = await db.operationRecord.findFirst({ where: { id: cacheId, kind: 'AI_SEMANTIC_CACHE' } });
     if (!current) throw new AppError(404, 'Resposta do cache não encontrada.');
-    const input = z.object({ answer: z.string().trim().min(1).max(4000), approve: z.boolean().optional() }).parse(req.body);
+    const input = z
+      .object({ answer: z.string().trim().min(1).max(4000), approve: z.boolean().optional() })
+      .parse(req.body);
     const data = current.data as { sourceConversationId?: string };
     let approvedAt: string | undefined;
     if (input.approve) {
-      if (!data.sourceConversationId) throw new AppError(422, 'Entrada antiga sem origem verificável. Gere uma nova resposta para aprovar.');
-      const source = await db.conversation.findUnique({ where: { id: data.sourceConversationId }, include: { contact: true } });
-      if (!source) throw new AppError(422, 'Conversa de origem não encontrada. Gere uma nova resposta para aprovar.');
+      if (!data.sourceConversationId)
+        throw new AppError(
+          422,
+          'Entrada antiga sem origem verificável. Gere uma nova resposta para aprovar.',
+        );
+      const source = await db.conversation.findUnique({
+        where: { id: data.sourceConversationId },
+        include: { contact: true },
+      });
+      if (!source)
+        throw new AppError(422, 'Conversa de origem não encontrada. Gere uma nova resposta para aprovar.');
       if (!reusableCacheAnswer(input.answer, source.contact.name))
         throw new AppError(422, 'Remova nomes e dados pessoais da resposta antes de aprovar o cache.');
       approvedAt = new Date().toISOString();
     }
-    await putRecord(db, cacheId, 'AI_SEMANTIC_CACHE', { ...data, answer: input.answer, editedAt: new Date().toISOString(), approvedAt });
+    await putRecord(db, cacheId, 'AI_SEMANTIC_CACHE', {
+      ...data,
+      answer: input.answer,
+      editedAt: new Date().toISOString(),
+      approvedAt,
+    });
     res.json({ saved: true, approved: Boolean(approvedAt) });
   });
   router.delete('/economy/cache/:cacheId', async (req, res) => {
     admin(res.locals.identity.role);
-    await db.operationRecord.deleteMany({ where: { id: id.parse(req.params.cacheId), kind: 'AI_SEMANTIC_CACHE' } });
+    await db.operationRecord.deleteMany({
+      where: { id: id.parse(req.params.cacheId), kind: 'AI_SEMANTIC_CACHE' },
+    });
     res.json({ deleted: true });
   });
   router.delete('/economy/cache', async (_req, res) => {
@@ -1113,11 +1753,23 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
   router.post('/economy/optimize-prompts', async (req, res) => {
     admin(res.locals.identity.role);
     const config = await record<AgentSettings | null>(db, 'integration:ai', null);
-    if (!hasConfiguredKey(config) || !config?.model) throw new AppError(422, 'Configure a integração de IA antes de otimizar as regras.');
-    const input = z.object({ instructions: z.string().max(12000), style: z.string().max(6000) }).parse(req.body);
-    const result = await textCompletion(db, config, 'economy:prompt-optimization', 'Reescreva regras e estilo em português claro e conciso, preservando toda obrigação, proibição, preço, condição e exceção. Use tópicos Markdown. Não invente regras. Retorne JSON válido com as chaves instructions e style.', JSON.stringify(input));
-    try { res.json(JSON.parse(result.text.replace(/^```(?:json)?\s*|\s*```$/g, '').trim())); }
-    catch { throw new AppError(502, 'A IA retornou um formato inválido; nenhuma regra foi alterada.'); }
+    if (!hasConfiguredKey(config) || !config?.model)
+      throw new AppError(422, 'Configure a integração de IA antes de otimizar as regras.');
+    const input = z
+      .object({ instructions: z.string().max(12000), style: z.string().max(6000) })
+      .parse(req.body);
+    const result = await textCompletion(
+      db,
+      config,
+      'economy:prompt-optimization',
+      'Reescreva regras e estilo em português claro e conciso, preservando toda obrigação, proibição, preço, condição e exceção. Use tópicos Markdown. Não invente regras. Retorne JSON válido com as chaves instructions e style.',
+      JSON.stringify(input),
+    );
+    try {
+      res.json(JSON.parse(result.text.replace(/^```(?:json)?\s*|\s*```$/g, '').trim()));
+    } catch {
+      throw new AppError(502, 'A IA retornou um formato inválido; nenhuma regra foi alterada.');
+    }
   });
   router.get('/ai/models', async (_req, res) => {
     admin(res.locals.identity.role);
@@ -1157,7 +1809,10 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       for (const field of ['model', 'fastModel', 'reasoningModel', 'mediaModel', 'imageModel'] as const) {
         input[field] = input[field].trim().replace(/^models\//, '');
         if (input[field] && !/^[a-zA-Z][a-zA-Z0-9._-]*$/.test(input[field]))
-          throw new AppError(422, 'Use o identificador do modelo Gemini, não o número do projeto. Consulte os modelos disponíveis na integração de IA.');
+          throw new AppError(
+            422,
+            'Use o identificador do modelo Gemini, não o número do projeto. Consulte os modelos disponíveis na integração de IA.',
+          );
       }
       if (!input.model) throw new AppError(422, 'Escolha um modelo de atendimento Gemini.');
     }
@@ -1177,7 +1832,11 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       encryptedKey = (await CredentialCipher.load(databasePaths(db).keyFile))
         .encrypt(apiKey.trim())
         .toString('base64');
-    if (settings.enabled && !encryptedKey && !((settings.provider === 'gemini') && previous?.fallbackKeys?.some((key) => key.enabled)))
+    if (
+      settings.enabled &&
+      !encryptedKey &&
+      !(settings.provider === 'gemini' && previous?.fallbackKeys?.some((key) => key.enabled))
+    )
       throw new AppError(422, 'Salve uma chave válida antes de ativar a IA automática.');
     await putRecord(db, 'integration:ai', 'INTEGRATION', {
       ...settings,
@@ -1189,7 +1848,10 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
           : new Date().toISOString()
         : undefined,
     });
-    res.json({ saved: true, configured: hasConfiguredKey({ ...settings, encryptedKey, fallbackKeys: previous?.fallbackKeys ?? [] }) });
+    res.json({
+      saved: true,
+      configured: hasConfiguredKey({ ...settings, encryptedKey, fallbackKeys: previous?.fallbackKeys ?? [] }),
+    });
   });
   router.post('/sessions/:sessionId/contacts/:conversationId/ai', async (req, res) => {
     const { task } = z
@@ -1253,7 +1915,9 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     const conversationId = id.parse(req.params.conversationId);
     const { messageId } = z.object({ messageId: id }).parse(req.body);
     const chat = await messaging.chat(sessionId, conversationId);
-    const analysis = await record<{ receipt?: { detected?: boolean; amount?: string; date?: string; payer?: string } } | null>(db, `ai-media:${messageId}`, null);
+    const analysis = await record<{
+      receipt?: { detected?: boolean; amount?: string; date?: string; payer?: string };
+    } | null>(db, `ai-media:${messageId}`, null);
     if (!analysis?.receipt?.detected)
       throw new AppError(422, 'Não há um comprovante candidato analisado para confirmar.');
     const opportunity = await db.crmOpportunity.findUnique({ where: { conversationId } });

@@ -45,7 +45,9 @@ export class MessagingService {
   constructor(
     private readonly db: PrismaClient,
     private readonly whatsapp: WhatsappService,
-  ) { this.mediaService = new MediaService(db); }
+  ) {
+    this.mediaService = new MediaService(db);
+  }
 
   async chat(sessionId: string, conversationId: string) {
     const chat = await this.db.conversation.findFirst({
@@ -97,26 +99,46 @@ export class MessagingService {
       if (!socket.sendMessage) throw new AppError(503, 'O serviço de envio não está disponível.');
       // Imported/manual contacts have no inbound history. Verify their phone with WhatsApp
       // before treating a socket acknowledgement as a successful send.
-      if ((chat.contact.metadata as { importedFromSpreadsheet?: boolean }).importedFromSpreadsheet &&
-        !chat.firstInboundAt && !chat.jid.endsWith('@lid') && socket.onWhatsApp) {
+      if (
+        (chat.contact.metadata as { importedFromSpreadsheet?: boolean }).importedFromSpreadsheet &&
+        !chat.firstInboundAt &&
+        !chat.jid.endsWith('@lid') &&
+        socket.onWhatsApp
+      ) {
         const number = chat.jid.split('@')[0]!.split(':')[0]!;
         if (/^55\d{10,11}$/.test(number)) {
           let found: Awaited<ReturnType<NonNullable<typeof socket.onWhatsApp>>>;
-          try { found = await socket.onWhatsApp(number); }
-          catch { throw new AppError(503, 'Não foi possível verificar este número no WhatsApp. Tente novamente antes de enviar.'); }
+          try {
+            found = await socket.onWhatsApp(number);
+          } catch {
+            throw new AppError(
+              503,
+              'Não foi possível verificar este número no WhatsApp. Tente novamente antes de enviar.',
+            );
+          }
           const registered = found?.find((item) => item.exists);
           if (!registered) {
             const local = number.slice(4);
-            const alternate = local.length === 8 ? `${number.slice(0, 4)}9${local}`
-              : local.length === 9 && local.startsWith('9') ? `${number.slice(0, 4)}${local.slice(1)}` : '';
+            const alternate =
+              local.length === 8
+                ? `${number.slice(0, 4)}9${local}`
+                : local.length === 9 && local.startsWith('9')
+                  ? `${number.slice(0, 4)}${local.slice(1)}`
+                  : '';
             let alternateExists = false;
             if (alternate) {
-              try { alternateExists = Boolean((await socket.onWhatsApp(alternate))?.find((item) => item.exists)); }
-              catch { /* The original number remains unconfirmed. */ }
+              try {
+                alternateExists = Boolean((await socket.onWhatsApp(alternate))?.find((item) => item.exists));
+              } catch {
+                /* The original number remains unconfirmed. */
+              }
             }
-            throw new AppError(422, alternateExists
-              ? `Este número não está no WhatsApp. A variante com ${local.length === 8 ? 'o nono dígito' : 'oito dígitos'} está cadastrada: +${alternate}. Revise o contato antes de enviar.`
-              : 'Este número não está cadastrado no WhatsApp. Revise o DDD e o nono dígito antes de enviar.');
+            throw new AppError(
+              422,
+              alternateExists
+                ? `Este número não está no WhatsApp. A variante com ${local.length === 8 ? 'o nono dígito' : 'oito dígitos'} está cadastrada: +${alternate}. Revise o contato antes de enviar.`
+                : 'Este número não está cadastrado no WhatsApp. Revise o DDD e o nono dígito antes de enviar.',
+            );
           }
         }
       }
@@ -128,10 +150,11 @@ export class MessagingService {
         }).format(new Date()),
       );
       const greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
+      const contactName = chat.contact.name?.trim() || 'aí';
       const personalize = (text: string) =>
         text
-          .replaceAll('#nome', chat.contact.name)
-          .replace(/\{\{\s*nome\s*\}\}/g, () => chat.contact.name)
+          .replaceAll('#nome', contactName)
+          .replace(/\{\{\s*nome\s*\}\}/g, () => contactName)
           .replace(/\{\{\s*saudacao\s*\}\}/g, greeting);
       const file = input.fileId ? await this.db.storedFile.findUnique({ where: { id: input.fileId } }) : null;
       if (input.kind !== 'text' && !file) throw new AppError(404, 'Arquivo não encontrado.');
@@ -142,7 +165,11 @@ export class MessagingService {
       else {
         let data = Buffer.from(file!.data);
         let mime = file!.mimeType;
-        if (input.kind === 'audio' && isPtt && !(data.subarray(0, 4).equals(Buffer.from('OggS')) && data.includes(Buffer.from('OpusHead')))) {
+        if (
+          input.kind === 'audio' &&
+          isPtt &&
+          !(data.subarray(0, 4).equals(Buffer.from('OggS')) && data.includes(Buffer.from('OpusHead')))
+        ) {
           data = Buffer.from(await this.mediaService.transcodeVoice(data));
           mime = 'audio/ogg; codecs=opus';
         }
@@ -194,9 +221,13 @@ export class MessagingService {
       });
       this.whatsapp.notify(sessionId, 'messages');
       try {
-        const presenceMs = Object.hasOwn(raw as object, 'composingMs') ? input.composingMs : (input.kind === 'text'
-          ? Math.min(8000, Math.max(700, (text?.trim().length ?? 0) * 18))
-          : input.kind === 'audio' ? 1400 : 0);
+        const presenceMs = Object.hasOwn(raw as object, 'composingMs')
+          ? input.composingMs
+          : input.kind === 'text'
+            ? Math.min(8000, Math.max(700, (text?.trim().length ?? 0) * 18))
+            : input.kind === 'audio'
+              ? 1400
+              : 0;
         if (presenceMs) {
           await socket
             .sendPresenceUpdate?.(input.kind === 'audio' ? 'recording' : 'composing', chat.jid)

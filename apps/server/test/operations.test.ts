@@ -46,8 +46,9 @@ class FakeSocket implements WhatsappSocket {
   async onWhatsApp(...numbers: string[]) {
     this.lookupCalls++;
     if (this.lookupFails) throw new Error('Consulta indisponível');
-    return numbers.filter(phone => phone.endsWith('1') || this.registeredPhones.has(phone))
-      .map(phone => ({ jid: `${phone}@s.whatsapp.net`, exists: true }));
+    return numbers
+      .filter((phone) => phone.endsWith('1') || this.registeredPhones.has(phone))
+      .map((phone) => ({ jid: `${phone}@s.whatsapp.net`, exists: true }));
   }
   ev = makeEventBuffer(pino({ level: 'silent' }));
   user = { id: '5511000000000@s.whatsapp.net' };
@@ -60,7 +61,9 @@ class FakeSocket implements WhatsappSocket {
   }
   async resyncAppState() {}
   async addChatLabel() {}
-  async sendPresenceUpdate(type: string, jid?: string) { this.presenceUpdates.push({ type, jid }); }
+  async sendPresenceUpdate(type: string, jid?: string) {
+    this.presenceUpdates.push({ type, jid });
+  }
   async sendMessage(
     jid: string,
     content: AnyMessageContent,
@@ -122,7 +125,13 @@ async function makeContact(phoneNumber: string, name = 'Contato Fictício') {
   socket.registeredPhones.add(phoneNumber);
   return db.conversation.findFirstOrThrow({ where: { sessionId, contact: { phoneNumber } } });
 }
-async function draft(conversationIds: string[], delivery: object, mode = 'CAMPAIGN', runAt?: string) {
+async function draft(
+  conversationIds: string[],
+  delivery: object,
+  mode = 'CAMPAIGN',
+  runAt?: string,
+  options: Record<string, unknown> = {},
+) {
   const result = await request(app)
     .post(`/api/operations/sessions/${sessionId}/batches`)
     .send({
@@ -133,6 +142,7 @@ async function draft(conversationIds: string[], delivery: object, mode = 'CAMPAI
       minSeconds: 15,
       maxSeconds: 45,
       runAt,
+      ...options,
     })
     .expect(201);
   return result.body as Batch & { id: string };
@@ -153,35 +163,59 @@ test('REQ-406/REQ-407: validação consulta sem enviar, reutiliza cache, separa 
   const url = `/api/operations/sessions/${sessionId}/validate-numbers`;
   const sends = socket.sends.length;
   const before = socket.lookupCalls;
-  const result = await request(app).post(url).send({ phoneNumbers: ['5511999990001', '5511999990002'] }).expect(200);
-  assert.deepEqual(result.body.items.map((item: any) => item.status), ['REGISTERED', 'NOT_REGISTERED']);
+  const result = await request(app)
+    .post(url)
+    .send({ phoneNumbers: ['5511999990001', '5511999990002'] })
+    .expect(200);
+  assert.deepEqual(
+    result.body.items.map((item: any) => item.status),
+    ['REGISTERED', 'NOT_REGISTERED'],
+  );
   assert.equal(socket.lookupCalls, before + 3);
-  const cached = await request(app).post(url).send({ phoneNumbers: ['5511999990001'] }).expect(200);
+  const cached = await request(app)
+    .post(url)
+    .send({ phoneNumbers: ['5511999990001'] })
+    .expect(200);
   assert.equal(cached.body.items[0].cached, true);
   assert.equal(socket.lookupCalls, before + 3);
   socket.lookupFails = true;
   try {
-    const failed = await request(app).post(url).send({ phoneNumbers: ['5511999990003', '5511999990004'] }).expect(200);
+    const failed = await request(app)
+      .post(url)
+      .send({ phoneNumbers: ['5511999990003', '5511999990004'] })
+      .expect(200);
     assert.equal(failed.body.items.length, 1);
     assert.equal(failed.body.items[0].status, 'UNKNOWN');
     assert.equal(failed.body.inconclusive, true);
-  } finally { socket.lookupFails = false; }
-  await request(app).post(`/api/operations/sessions/${otherSession}/validate-numbers`).send({ phoneNumbers: ['5511999990001'] }).expect(409);
-  await request(app).post(url).send({ phoneNumbers: ['número inválido'] }).expect(422);
+  } finally {
+    socket.lookupFails = false;
+  }
+  await request(app)
+    .post(`/api/operations/sessions/${otherSession}/validate-numbers`)
+    .send({ phoneNumbers: ['5511999990001'] })
+    .expect(409);
+  await request(app)
+    .post(url)
+    .send({ phoneNumbers: ['número inválido'] })
+    .expect(422);
   assert.equal(socket.sends.length, sends);
 });
 
 test('REQ-392/REQ-393/REQ-394: follow-up individual agenda etapas e cancela todas após resposta', async () => {
   const chat = await makeContact('5511777770310', 'Follow-up fictício');
-  await request(app).post(`/api/attendance/sessions/${sessionId}/conversations/${chat.id}/send`)
-    .send({ requestId: 'audit-follow-up-source', kind: 'text', text: 'Orçamento fictício', composingMs: 0 }).expect(201);
+  await request(app)
+    .post(`/api/attendance/sessions/${sessionId}/conversations/${chat.id}/send`)
+    .send({ requestId: 'audit-follow-up-source', kind: 'text', text: 'Orçamento fictício', composingMs: 0 })
+    .expect(201);
   const sendsBeforeReply = socket.sends.length;
   const created = await request(app)
     .post(`/api/operations/sessions/${sessionId}/conversations/${chat.id}/follow-ups`)
-    .send({ steps: [
-      { waitMinutes: 1, text: 'Primeiro retorno fictício' },
-      { waitMinutes: 60, text: 'Segundo retorno fictício' },
-    ] })
+    .send({
+      steps: [
+        { waitMinutes: 1, text: 'Primeiro retorno fictício' },
+        { waitMinutes: 60, text: 'Segundo retorno fictício' },
+      ],
+    })
     .expect(201);
   assert.equal(created.body.scheduled, 2);
   const task = await db.deliveryTask.findFirstOrThrow({ where: { batchId: created.body.id } });
@@ -191,23 +225,40 @@ test('REQ-392/REQ-393/REQ-394: follow-up individual agenda etapas e cancela toda
   assert.equal(payload.followUp, true);
   assert.equal(payload.steps?.length, 2);
   const sync = new SyncService(db, silentPublisher);
-  await sync.messagesUpsert(sessionId, [{
-    key: { id: 'audit-follow-up-reply', remoteJid: '5511777770310@s.whatsapp.net', fromMe: false },
-    message: { conversation: 'Quero tirar uma dúvida' }, messageTimestamp: Math.floor(Date.now() / 1000),
-  }], true);
+  await sync.messagesUpsert(
+    sessionId,
+    [
+      {
+        key: { id: 'audit-follow-up-reply', remoteJid: '5511777770310@s.whatsapp.net', fromMe: false },
+        message: { conversation: 'Quero tirar uma dúvida' },
+        messageTimestamp: Math.floor(Date.now() / 1000),
+      },
+    ],
+    true,
+  );
   const tasks = await db.deliveryTask.findMany({ where: { batchId: created.body.id } });
   assert.equal(tasks.length, 1);
   assert.equal(tasks[0]?.status, 'CANCELLED');
-  assert.equal((await record<{ status: Batch['status'] }>(db, created.body.id, { status: 'DRAFT' })).status, 'CANCELLED');
+  assert.equal(
+    (await record<{ status: Batch['status'] }>(db, created.body.id, { status: 'DRAFT' })).status,
+    'CANCELLED',
+  );
   assert.equal(socket.sends.length, sendsBeforeReply);
 });
 
 test('XLS binário legado preserva nome acentuado, telefone numérico e linha de duplicata', async () => {
   const book = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet([
-    ['Exportação antiga'], [], ['Telefone', 'Nome'],
-    [5511999991234, 'João de teste'], ['+55 11 99999-1234', 'Duplicado'],
-  ]), 'Contatos');
+  XLSX.utils.book_append_sheet(
+    book,
+    XLSX.utils.aoa_to_sheet([
+      ['Exportação antiga'],
+      [],
+      ['Telefone', 'Nome'],
+      [5511999991234, 'João de teste'],
+      ['+55 11 99999-1234', 'Duplicado'],
+    ]),
+    'Contatos',
+  );
   const bytes = XLSX.write(book, { type: 'buffer', bookType: 'biff8' }) as Buffer;
   assert.equal(bytes.subarray(0, 4).toString('hex'), 'd0cf11e0');
   const preview = await contacts.preview({ filename: 'contatos.xls', base64: bytes.toString('base64') });
@@ -218,29 +269,42 @@ test('XLS binário legado preserva nome acentuado, telefone numérico e linha de
 });
 
 test('CSV reconhece separador após título, ignora vírgulas entre aspas e informa linha original', async () => {
-  const csv = 'Relatório de teste\nNome;Telefone;Observações\n"Cliente, teste";+55 11 99999-1234;Primeiro\nDuplicado;5511999991234;Segundo\n';
-  const preview = await contacts.preview({ filename: 'irregular.csv', base64: Buffer.from(csv).toString('base64') });
+  const csv =
+    'Relatório de teste\nNome;Telefone;Observações\n"Cliente, teste";+55 11 99999-1234;Primeiro\nDuplicado;5511999991234;Segundo\n';
+  const preview = await contacts.preview({
+    filename: 'irregular.csv',
+    base64: Buffer.from(csv).toString('base64'),
+  });
   assert.equal(preview.items.length, 1);
   assert.equal(preview.items[0]!.name, 'Cliente, teste');
   assert.equal(preview.rejected[0]!.row, 4);
   const book = new ExcelJS.Workbook();
   book.addWorksheet('Vazia');
   const bytes = await book.xlsx.writeBuffer();
-  await assert.rejects(() => contacts.preview({ filename: 'vazia.xlsx', base64: Buffer.from(bytes).toString('base64') }), /planilha está vazia/);
+  await assert.rejects(
+    () => contacts.preview({ filename: 'vazia.xlsx', base64: Buffer.from(bytes).toString('base64') }),
+    /planilha está vazia/,
+  );
 });
 
 test('REQ-335 calibração do simulador persiste exemplo aprovado sem chamar provedor', async () => {
-  const response = await request(app).post('/api/operations/simulator/calibrations').send({
-    question: 'Pergunta fictícia sobre prazo',
-    originalReply: 'Resposta original fictícia',
-    correctedReply: 'Resposta corrigida fictícia e acolhedora',
-  }).expect(201);
+  const response = await request(app)
+    .post('/api/operations/simulator/calibrations')
+    .send({
+      question: 'Pergunta fictícia sobre prazo',
+      originalReply: 'Resposta original fictícia',
+      correctedReply: 'Resposta corrigida fictícia e acolhedora',
+    })
+    .expect(201);
   try {
     assert.equal(response.body.saved, true);
     const stored = await db.operationRecord.findUniqueOrThrow({ where: { id: response.body.id } });
     assert.equal(stored.kind, 'AI_KNOWLEDGE');
     assert.equal((stored.data as { source: string }).source, 'simulator-calibration');
-    assert.equal((stored.data as { turns: { role: string; content: string }[] }).turns[1]?.content, 'Resposta corrigida fictícia e acolhedora');
+    assert.equal(
+      (stored.data as { turns: { role: string; content: string }[] }).turns[1]?.content,
+      'Resposta corrigida fictícia e acolhedora',
+    );
   } finally {
     await db.operationRecord.delete({ where: { id: response.body.id } });
   }
@@ -294,45 +358,76 @@ test('REQ-135: campanha congela conteúdo, respeita intervalo e não repete envi
 });
 test('pós-envio remove etiqueta sem destino, preserva os outros vínculos e sincroniza uma única alteração', async () => {
   const chat = await makeContact('5511777770198');
-  const source = await db.label.create({ data: {
-    id: 'label:transition-source', name: 'Remover ao concluir', sessionId, whatsappId: '777',
-  } });
+  const source = await db.label.create({
+    data: {
+      id: 'label:transition-source',
+      name: 'Remover ao concluir',
+      sessionId,
+      whatsappId: '777',
+    },
+  });
   await db.contactLabel.create({ data: { contactId: chat.contactId, labelId: source.id } });
   const beforeLabels = await db.contactLabel.count({ where: { contactId: chat.contactId } });
   const batch = await draft([chat.id], {
-    kind: 'text', text: 'Teste de remoção', labelTransition: { fromLabelId: source.id },
+    kind: 'text',
+    text: 'Teste de remoção',
+    labelTransition: { fromLabelId: source.id },
   });
-  const tasks = await request(app).get(`/api/operations/sessions/${sessionId}/batches/${batch.id}/tasks`).expect(200);
+  const tasks = await request(app)
+    .get(`/api/operations/sessions/${sessionId}/batches/${batch.id}/tasks`)
+    .expect(200);
   assert.equal(tasks.body.items[0].contact.phoneNumber, '5511777770198');
-  const otherTasks = await request(app).get(`/api/operations/sessions/${otherSession}/batches/${batch.id}/tasks`).expect(200);
+  const otherTasks = await request(app)
+    .get(`/api/operations/sessions/${otherSession}/batches/${batch.id}/tasks`)
+    .expect(200);
   assert.equal(otherTasks.body.items.length, 0);
-  assert.ok(await db.contactLabel.findUnique({ where: {
-    contactId_labelId: { contactId: chat.contactId, labelId: source.id },
-  } }));
-  await request(app).put(`/api/operations/sessions/${sessionId}/batches/${batch.id}`)
-    .send({ status: 'ACTIVE' }).expect(200);
+  assert.ok(
+    await db.contactLabel.findUnique({
+      where: {
+        contactId_labelId: { contactId: chat.contactId, labelId: source.id },
+      },
+    }),
+  );
+  await request(app)
+    .put(`/api/operations/sessions/${sessionId}/batches/${batch.id}`)
+    .send({ status: 'ACTIVE' })
+    .expect(200);
   const beforeSends = socket.sends.length;
   await worker.flush();
   await worker.flush();
   assert.equal(socket.sends.length, beforeSends + 1);
   assert.equal(await db.contactLabel.count({ where: { contactId: chat.contactId } }), beforeLabels - 1);
-  assert.equal(await db.contactLabel.findUnique({ where: {
-    contactId_labelId: { contactId: chat.contactId, labelId: source.id },
-  } }), null);
+  assert.equal(
+    await db.contactLabel.findUnique({
+      where: {
+        contactId_labelId: { contactId: chat.contactId, labelId: source.id },
+      },
+    }),
+    null,
+  );
   const jobs = await db.scheduledJob.findMany({ where: { type: 'WHATSAPP_SET_LABEL' } });
   const changes = jobs.filter((job) => {
     const data = job.payload as { contactId?: string; labelId?: string; active?: boolean };
     return data.contactId === chat.contactId && data.labelId === source.id && data.active === false;
   });
   assert.equal(changes.length, 1);
-  const wrongScope = await db.label.create({ data: {
-    id: 'label:transition-other-session', name: 'Outra conexão', sessionId: otherSession,
-  } });
+  const wrongScope = await db.label.create({
+    data: {
+      id: 'label:transition-other-session',
+      name: 'Outra conexão',
+      sessionId: otherSession,
+    },
+  });
   for (const labelTransition of [{ fromLabelId: wrongScope.id }, {}]) {
-    await request(app).post(`/api/operations/sessions/${sessionId}/batches`).send({
-      name: 'Inválido', mode: 'SCHEDULE', audience: { conversationIds: [chat.id] },
-      delivery: { kind: 'text', text: 'Não enviar', labelTransition },
-    }).expect(422);
+    await request(app)
+      .post(`/api/operations/sessions/${sessionId}/batches`)
+      .send({
+        name: 'Inválido',
+        mode: 'SCHEDULE',
+        audience: { conversationIds: [chat.id] },
+        delivery: { kind: 'text', text: 'Não enviar', labelTransition },
+      })
+      .expect(422);
   }
 });
 
@@ -345,17 +440,29 @@ test('REQ-395/REQ-396/REQ-397: campanha, remarketing e agendamento trocam etique
   const items: Array<{ chatId: string; sourceId: string; targetId: string; batchId: string }> = [];
   for (const [index, scenario] of scenarios.entries()) {
     const chat = await makeContact(scenario.phone, scenario.name);
-    const source = await db.label.create({ data: { id: `req397-source-${index}`, sessionId, name: `Origem ${index}` } });
-    const target = await db.label.create({ data: { id: `req397-target-${index}`, sessionId, name: `Destino ${index}` } });
+    const source = await db.label.create({
+      data: { id: `req397-source-${index}`, sessionId, name: `Origem ${index}` },
+    });
+    const target = await db.label.create({
+      data: { id: `req397-target-${index}`, sessionId, name: `Destino ${index}` },
+    });
     await db.contactLabel.create({ data: { contactId: chat.contactId, labelId: source.id } });
-    const batch = await draft([chat.id], {
-      kind: 'text', text: `Mensagem local: ${scenario.name}`,
-      labelTransition: { fromLabelId: source.id, toLabelId: target.id },
-    }, scenario.mode, scenario.mode === 'SCHEDULE' ? new Date(Date.now() - 1000).toISOString() : undefined);
+    const batch = await draft(
+      [chat.id],
+      {
+        kind: 'text',
+        text: `Mensagem local: ${scenario.name}`,
+        labelTransition: { fromLabelId: source.id, toLabelId: target.id },
+      },
+      scenario.mode,
+      scenario.mode === 'SCHEDULE' ? new Date(Date.now() - 1000).toISOString() : undefined,
+    );
     const current = await record<Batch>(db, batch.id, batch);
     await putRecord(db, batch.id, 'BATCH', { ...current, name: scenario.name });
-    await request(app).put(`/api/operations/sessions/${sessionId}/batches/${batch.id}`)
-      .send({ status: 'ACTIVE' }).expect(200);
+    await request(app)
+      .put(`/api/operations/sessions/${sessionId}/batches/${batch.id}`)
+      .send({ status: 'ACTIVE' })
+      .expect(200);
     items.push({ chatId: chat.id, sourceId: source.id, targetId: target.id, batchId: batch.id });
   }
   const beforeSends = socket.sends.length;
@@ -363,9 +470,21 @@ test('REQ-395/REQ-396/REQ-397: campanha, remarketing e agendamento trocam etique
   assert.equal(socket.sends.length, beforeSends + scenarios.length);
   for (const item of items) {
     const chat = await db.conversation.findUniqueOrThrow({ where: { id: item.chatId } });
-    assert.equal(await db.contactLabel.findUnique({ where: { contactId_labelId: { contactId: chat.contactId, labelId: item.sourceId } } }), null);
-    assert.ok(await db.contactLabel.findUnique({ where: { contactId_labelId: { contactId: chat.contactId, labelId: item.targetId } } }));
-    assert.equal((await record<{ status: Batch['status'] }>(db, item.batchId, { status: 'DRAFT' })).status, 'COMPLETED');
+    assert.equal(
+      await db.contactLabel.findUnique({
+        where: { contactId_labelId: { contactId: chat.contactId, labelId: item.sourceId } },
+      }),
+      null,
+    );
+    assert.ok(
+      await db.contactLabel.findUnique({
+        where: { contactId_labelId: { contactId: chat.contactId, labelId: item.targetId } },
+      }),
+    );
+    assert.equal(
+      (await record<{ status: Batch['status'] }>(db, item.batchId, { status: 'DRAFT' })).status,
+      'COMPLETED',
+    );
   }
 });
 
@@ -422,7 +541,7 @@ test('saída de campanha após seleção impede envio e finaliza o lote', async 
   assert.equal(socket.sends.length, before);
   assert.equal((await record<Batch>(db, item.id, item)).status, 'COMPLETED');
 });
-test('reinício marca envio incerto como falha e não o reenvia', async () => {
+test('ACEITE 2: reinício marca envio incerto para conferência e não o reenvia', async () => {
   const chat = await makeContact('5511777770006');
   const item = await draft([chat.id], { kind: 'text', text: 'Incerto' });
   await db.deliveryTask.updateMany({ where: { batchId: item.id }, data: { status: 'RUNNING' } });
@@ -432,10 +551,232 @@ test('reinício marca envio incerto como falha e não o reenvia', async () => {
     await restarted.start();
     await restarted.flush();
     assert.equal(socket.sends.length, before);
-    assert.equal((await db.deliveryTask.findFirstOrThrow({ where: { batchId: item.id } })).status, 'FAILED');
+    const uncertain = await db.deliveryTask.findFirstOrThrow({ where: { batchId: item.id } });
+    assert.equal(uncertain.status, 'VERIFY');
+    await request(app)
+      .post(`/api/operations/sessions/${sessionId}/batches/${item.id}/tasks/${uncertain.id}/resolve`)
+      .send({ action: 'mark-sent' })
+      .expect(200);
+    assert.equal(
+      (await db.deliveryTask.findUniqueOrThrow({ where: { id: uncertain.id } })).status,
+      'COMPLETED',
+    );
+    assert.equal(socket.sends.length, before, 'marcar como enviado não dispara uma nova mensagem');
   } finally {
     await restarted.stop();
   }
+});
+test('ACEITE 1: conexão interrompida pausa e retoma no próximo lead sem repetir o confirmado', async () => {
+  const first = await makeContact('5511777770211', 'Retomada 1');
+  const second = await makeContact('5511777770212', 'Retomada 2');
+  const item = await draft(
+    [first.id, second.id],
+    { kind: 'text', text: 'Teste seguro {{nome}}' },
+    'CAMPAIGN',
+    undefined,
+    { batchSize: 10, minSeconds: 1, maxSeconds: 1 },
+  );
+  await request(app)
+    .put(`/api/operations/sessions/${sessionId}/batches/${item.id}`)
+    .send({ status: 'ACTIVE' })
+    .expect(200);
+  const before = socket.sends.length;
+  await worker.flush();
+  let batch = await record<Batch>(db, item.id, item);
+  await putRecord(db, item.id, 'BATCH', { ...batch, nextAllowedAt: new Date(0).toISOString() });
+  await whatsapp.disconnect(sessionId);
+  await worker.flush();
+  batch = await record<Batch>(db, item.id, item);
+  assert.equal(batch.status, 'PAUSED_CONNECTION');
+  await whatsapp.connect(sessionId);
+  socket.ev.emit('connection.update', { connection: 'open' });
+  await whatsapp.idle(sessionId);
+  await putRecord(db, item.id, 'BATCH', { ...batch, nextAllowedAt: new Date(0).toISOString() });
+  await worker.flush();
+  assert.equal(socket.sends.length, before + 2);
+  const tasks = await db.deliveryTask.findMany({ where: { batchId: item.id } });
+  assert.ok(tasks.every((task) => task.status === 'COMPLETED'));
+  for (const task of tasks)
+    assert.equal(await db.chatMessage.count({ where: { id: `out:delivery:${task.id}` } }), 1);
+  assert.ok(
+    (await record<Batch>(db, item.id, item)).pauseHistory?.some((event) => event.action === 'resumed'),
+  );
+  const notices = await db.operationRecord.findMany({ where: { kind: 'NOTICE' }, select: { data: true } });
+  assert.ok(notices.some((notice) => (notice.data as { text?: string }).text?.includes('campanha retomou')));
+});
+test('ACEITE 3: lote de 50 edita variação e o próximo seleciona posições 51 a 100', async () => {
+  const records = Array.from({ length: 100 }, (_value, index) => ({
+    name: `Lote fixo ${String(index + 1).padStart(3, '0')}`,
+    phoneNumber: `551199${String(8800000 + index).padStart(7, '0')}`,
+  }));
+  await contacts.import(sessionId, { items: records });
+  records.forEach((item) => socket.registeredPhones.add(item.phoneNumber));
+  const chats = await db.conversation.findMany({
+    where: { sessionId, contact: { name: { startsWith: 'Lote fixo ' } } },
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+  });
+  const ids = chats.map((chat) => chat.id);
+  const item = await draft(
+    ids,
+    { kind: 'text', text: 'Original {{nome}}', textVariations: ['Opção antiga {{nome}}'] },
+    'CAMPAIGN',
+    undefined,
+    { batchSize: 50, distribution: 'ROUND_ROBIN', minSeconds: 1, maxSeconds: 1 },
+  );
+  await request(app)
+    .put(`/api/operations/sessions/${sessionId}/batches/${item.id}`)
+    .send({ status: 'ACTIVE' })
+    .expect(200);
+  const simulatedRequestIds: string[] = [];
+  const simulatedMessaging = {
+    send: async (_sessionId: string, _conversationId: string, input: { requestId?: string }) => {
+      if (input.requestId) simulatedRequestIds.push(input.requestId);
+      return { sentAt: new Date() };
+    },
+  } as unknown as MessagingService;
+  const simulatedWorker = new DeliveryWorker(db, whatsapp, simulatedMessaging, sequences);
+  const flushUntil = async (expected: number) => {
+    for (let attempts = 0; attempts < expected + 100; attempts++) {
+      await simulatedWorker.flush();
+      const latest = await record<Batch>(db, item.id, item);
+      if ((latest.batchSentCount ?? 0) >= expected || latest.status !== 'ACTIVE') break;
+      await putRecord(db, item.id, 'BATCH', { ...latest, nextAllowedAt: new Date(0).toISOString() });
+      await new Promise((resolve) => setTimeout(resolve, 2));
+    }
+  };
+  await flushUntil(50);
+  assert.equal((await record<Batch>(db, item.id, item)).status, 'BATCH_COMPLETE');
+  const completedBefore = await db.deliveryTask.findMany({
+    where: { batchId: item.id, status: 'COMPLETED' },
+    select: { conversationId: true },
+  });
+  assert.equal(completedBefore.length, 50);
+  const edited = ['Nova principal {{nome}}', 'Nova opção {{nome}}'];
+  await request(app)
+    .post(`/api/operations/sessions/${sessionId}/batches/${item.id}/continue`)
+    .send({
+      batchSize: 50,
+      approaches: edited,
+      variationNames: ['Principal v2', 'Variação 2 v2'],
+      minSeconds: 1,
+      maxSeconds: 2,
+      pauseEvery: 7,
+      ctas: [{ keyword: 'OK', replyText: 'Resposta CTA atualizada' }],
+    })
+    .expect(200);
+  const updatedBatch = await record<Batch>(db, item.id, item);
+  assert.equal(updatedBatch.minSeconds, 1);
+  assert.equal(updatedBatch.maxSeconds, 2);
+  assert.equal(updatedBatch.pauseEvery, 7);
+  assert.equal(updatedBatch.ctaMessages?.[0]?.replyText, 'Resposta CTA atualizada');
+  await flushUntil(50);
+  const completed = await db.deliveryTask.findMany({
+    where: { batchId: item.id, status: 'COMPLETED' },
+    select: { conversationId: true, payload: true },
+  });
+  assert.equal(
+    completed.length,
+    100,
+    JSON.stringify(
+      await db.deliveryTask.groupBy({ by: ['status'], where: { batchId: item.id }, _count: true }),
+    ),
+  );
+  assert.equal(new Set(completed.map((task) => task.conversationId)).size, 100);
+  const secondBatch = completed.filter((task) => ids.slice(50).includes(task.conversationId));
+  assert.equal(secondBatch.length, 50);
+  assert.ok(
+    secondBatch.every((task) =>
+      edited.includes((task.payload as { snapshot: { text: string } }).snapshot.text),
+    ),
+  );
+  assert.equal((await record<Batch>(db, item.id, item)).sentTotal, 100);
+  assert.equal(
+    new Set(simulatedRequestIds).size,
+    100,
+    'cada tarefa foi enviada uma única vez pelo conector simulado',
+  );
+});
+test('continuação direta registra os lotes sem pausar e termina a lista congelada', async () => {
+  const chats = await Promise.all(
+    [0, 1, 2].map((index) => makeContact(`55117777704${index}1`, `Contínuo ${index}`)),
+  );
+  const item = await draft(
+    chats.map((chat) => chat.id),
+    { kind: 'text', text: 'Contínuo {{nome}}' },
+    'CAMPAIGN',
+    undefined,
+    { batchSize: 2, pauseAfterBatch: false, distribution: 'ROUND_ROBIN', minSeconds: 1, maxSeconds: 1 },
+  );
+  await request(app)
+    .put(`/api/operations/sessions/${sessionId}/batches/${item.id}`)
+    .send({ status: 'ACTIVE' })
+    .expect(200);
+  const simulatedMessaging = { send: async () => ({ sentAt: new Date() }) } as unknown as MessagingService;
+  const simulatedWorker = new DeliveryWorker(db, whatsapp, simulatedMessaging, sequences);
+  for (let attempt = 0; attempt < 20; attempt++) {
+    await simulatedWorker.flush();
+    const current = await record<Batch>(db, item.id, item);
+    if (current.status === 'COMPLETED') break;
+    await putRecord(db, item.id, 'BATCH', { ...current, nextAllowedAt: new Date(0).toISOString() });
+  }
+  const completed = await record<Batch>(db, item.id, item);
+  assert.equal(completed.status, 'COMPLETED');
+  assert.equal(completed.sentTotal, 3);
+  assert.equal(completed.batchHistory?.length, 2);
+  assert.equal(completed.batchHistory?.[0]?.completedAt !== undefined, true);
+  assert.deepEqual(
+    new Set(completed.batchHistory?.flatMap((entry) => entry.leadIds)),
+    new Set(chats.map((chat) => chat.id)),
+  );
+});
+test('ACEITE 4: mudar etiquetas/filtros entre lotes não reintroduz leads concluídos nem remove o público congelado', async () => {
+  const chats = await Promise.all(
+    [0, 1, 2, 3].map((index) => makeContact(`55117777703${index}1`, `Filtro lote ${index}`)),
+  );
+  const item = await draft(
+    chats.map((chat) => chat.id),
+    { kind: 'text', text: 'Teste {{nome}}' },
+    'CAMPAIGN',
+    undefined,
+    { batchSize: 2, minSeconds: 1, maxSeconds: 1 },
+  );
+  await request(app)
+    .put(`/api/operations/sessions/${sessionId}/batches/${item.id}`)
+    .send({ status: 'ACTIVE' })
+    .expect(200);
+  for (let index = 0; index < 2; index++) {
+    await worker.flush();
+    const latest = await record<Batch>(db, item.id, item);
+    await putRecord(db, item.id, 'BATCH', { ...latest, nextAllowedAt: new Date(0).toISOString() });
+  }
+  assert.equal((await record<Batch>(db, item.id, item)).status, 'BATCH_COMPLETE');
+  const label = await db.label.create({
+    data: { id: 'acceptance-filter-label', sessionId, name: 'Filtro alterado depois do lote' },
+  });
+  await db.contactLabel.createMany({
+    data: chats.slice(2).map((chat) => ({ contactId: chat.contactId, labelId: label.id })),
+  });
+  const queuedBefore = await db.deliveryTask.findMany({
+    where: { batchId: item.id, status: 'QUEUED' },
+    select: { conversationId: true },
+  });
+  const firstLotIds = new Set(item.batchHistory?.[0]?.leadIds ?? []);
+  const expectedPending = chats.filter((chat) => !firstLotIds.has(chat.id)).map((chat) => chat.id);
+  assert.deepEqual(
+    new Set(queuedBefore.map((task) => task.conversationId)),
+    new Set(expectedPending),
+  );
+  await request(app)
+    .post(`/api/operations/sessions/${sessionId}/batches/${item.id}/continue`)
+    .send({ batchSize: 2 })
+    .expect(200);
+  await worker.flush();
+  const after = await db.deliveryTask.findMany({
+    where: { batchId: item.id },
+    select: { conversationId: true },
+  });
+  assert.equal(after.length, 4);
+  assert.equal(new Set(after.map((task) => task.conversationId)).size, 4);
 });
 test('REQ-142: fila ativa no servidor executa sem requisição do painel', async () => {
   const chat = await makeContact('5511777770098');
@@ -507,7 +848,10 @@ test('REQ-044/REQ-047/REQ-048/REQ-460/467/468/469/470 macro combina resposta, et
     'operador@example.com',
   );
   assert.equal(await db.contactLabel.count({ where: { contactId: chat.contactId } }), 0);
-  assert.equal(await db.contactLabel.count({ where: { contactId: chat.contactId, labelId: removedLabel.id } }), 0);
+  assert.equal(
+    await db.contactLabel.count({ where: { contactId: chat.contactId, labelId: removedLabel.id } }),
+    0,
+  );
   const finalChat = await db.conversation.findUniqueOrThrow({ where: { id: chat.id } });
   assert.equal(finalChat.status, 'OPEN');
   assert.equal(finalChat.pinned, false);
@@ -541,9 +885,18 @@ test('REQ-464 macro persiste e envia recurso WebP como figurinha', async () => {
   const loaded = await request(app).get(`/api/operations/macros/${created.body.id}`).expect(200);
   assert.equal(loaded.body.actions[0].asSticker, true);
   const png = await db.storedFile.create({
-    data: { id: 'req-464-png-file', sha256: '464-png'.padEnd(64, '0'), filename: 'imagem.png', mimeType: 'image/png', byteLength: 3, data: Buffer.from('png') },
+    data: {
+      id: 'req-464-png-file',
+      sha256: '464-png'.padEnd(64, '0'),
+      filename: 'imagem.png',
+      mimeType: 'image/png',
+      byteLength: 3,
+      data: Buffer.from('png'),
+    },
   });
-  const pngAsset = await db.asset.create({ data: { id: 'req-464-png-asset', name: 'PNG comum', kind: 'MEDIA', fileId: png.id } });
+  const pngAsset = await db.asset.create({
+    data: { id: 'req-464-png-asset', name: 'PNG comum', kind: 'MEDIA', fileId: png.id },
+  });
   await request(app)
     .post('/api/operations/macros')
     .send({ name: 'Macro inválida', actions: [{ type: 'ASSET', assetId: pngAsset.id, asSticker: true }] })
@@ -564,16 +917,29 @@ test('REQ-463 macro envia a legenda da imagem com link pelo conector fictício',
   const bytes = Buffer.from('png-fixture');
   const file = await db.storedFile.create({
     data: {
-      id: 'req-463-caption-file', sha256: '463'.padEnd(64, '0'), filename: 'imagem-link.png',
-      mimeType: 'image/png', byteLength: bytes.byteLength, data: bytes,
+      id: 'req-463-caption-file',
+      sha256: '463'.padEnd(64, '0'),
+      filename: 'imagem-link.png',
+      mimeType: 'image/png',
+      byteLength: bytes.byteLength,
+      data: bytes,
     },
   });
   const asset = await db.asset.create({
-    data: { id: 'req-463-caption-asset', name: 'Imagem com link fictício', kind: 'MEDIA', caption: captionUrl, fileId: file.id },
+    data: {
+      id: 'req-463-caption-asset',
+      name: 'Imagem com link fictício',
+      kind: 'MEDIA',
+      caption: captionUrl,
+      fileId: file.id,
+    },
   });
   const created = await request(app)
     .post('/api/operations/macros')
-    .send({ name: 'Macro REQ-463 fictícia', actions: [{ type: 'ASSET', assetId: asset.id, delayMs: 0, composingMs: 0 }] })
+    .send({
+      name: 'Macro REQ-463 fictícia',
+      actions: [{ type: 'ASSET', assetId: asset.id, delayMs: 0, composingMs: 0 }],
+    })
     .expect(201);
   const before = socket.sends.length;
   await sequences.enqueue(sessionId, chat.id, 'MACRO', created.body.id, 'req-463-caption-link');
@@ -586,10 +952,19 @@ test('REQ-463 macro envia a legenda da imagem com link pelo conector fictício',
 test('REQ-114/115/455/457/458: perfil completo e observações persistem; histórico exporta ZIP', async () => {
   const chat = await makeContact('5511777770008');
   const profile = {
-    name: 'Perfil Fictício Completo', email: 'perfil@example.com', gender: 'Feminino', birthday: '1990-05-10',
-    language: 'pt-BR', source: 'Indicação fictícia', enteredAt: '2026-10-01', exitedAt: '2026-10-28',
-    company: 'Empresa de Teste', jobTitle: 'Analista', interests: 'Produto A; Produto B',
-    dealValue: '1250,50', observation: 'Observação sintética.',
+    name: 'Perfil Fictício Completo',
+    email: 'perfil@example.com',
+    gender: 'Feminino',
+    birthday: '1990-05-10',
+    language: 'pt-BR',
+    source: 'Indicação fictícia',
+    enteredAt: '2026-10-01',
+    exitedAt: '2026-10-28',
+    company: 'Empresa de Teste',
+    jobTitle: 'Analista',
+    interests: 'Produto A; Produto B',
+    dealValue: '1250,50',
+    observation: 'Observação sintética.',
   };
   await request(app)
     .put(`/api/operations/sessions/${sessionId}/contacts/${chat.id}`)
@@ -602,7 +977,14 @@ test('REQ-114/115/455/457/458: perfil completo e observações persistem; histó
   const contact = await db.contact.findUniqueOrThrow({ where: { id: chat.contactId } });
   assert.equal(contact.name, profile.name);
   assert.equal(contact.phoneNumber, '5511777770008');
-  assert.deepEqual(Object.fromEntries(Object.keys(profile).filter((key) => key !== 'name').map((key) => [key, (contact.metadata as Record<string, unknown>)[key]])), Object.fromEntries(Object.entries(profile).filter(([key]) => key !== 'name')));
+  assert.deepEqual(
+    Object.fromEntries(
+      Object.keys(profile)
+        .filter((key) => key !== 'name')
+        .map((key) => [key, (contact.metadata as Record<string, unknown>)[key]]),
+    ),
+    Object.fromEntries(Object.entries(profile).filter(([key]) => key !== 'name')),
+  );
   assert.equal((contact.metadata as { notes: unknown[] }).notes.length, 1);
   const exported = await request(app)
     .get(`/api/operations/sessions/${sessionId}/contacts/${chat.id}/export`)
@@ -637,8 +1019,14 @@ test('REQ-455 telefone editável preserva a conversa e atualiza o contato associ
     .put(`/api/operations/sessions/${sessionId}/contacts/${chat.id}`)
     .send({ phoneNumber: '5511777770199' })
     .expect(409);
-  assert.equal((await db.contact.findUniqueOrThrow({ where: { id: chat.contactId } })).phoneNumber, nextPhone);
-  assert.equal((await db.contact.findUniqueOrThrow({ where: { id: other.contactId } })).phoneNumber, '5511777770199');
+  assert.equal(
+    (await db.contact.findUniqueOrThrow({ where: { id: chat.contactId } })).phoneNumber,
+    nextPhone,
+  );
+  assert.equal(
+    (await db.contact.findUniqueOrThrow({ where: { id: other.contactId } })).phoneNumber,
+    '5511777770199',
+  );
 });
 test('REQ-457 valor da ficha de atendimento sincroniza com oportunidade CRM', async () => {
   const chat = await makeContact('5511777770190');
@@ -685,9 +1073,25 @@ test('REQ-402/REQ-403: resumo às 08h prioriza conversa aguardando e intenção 
   const awaiting = await makeContact('5511777770331', 'Lead aguardando fictício');
   const closing = await makeContact('5511777770332', 'Lead fechamento fictício');
   const earlier = new Date(now.getTime() - 60_000);
-  await db.chatMessage.create({ data: { conversationId: awaiting.id, direction: 'INBOUND', status: 'SENT', text: 'Pode me ajudar?', sentAt: now } });
+  await db.chatMessage.create({
+    data: {
+      conversationId: awaiting.id,
+      direction: 'INBOUND',
+      status: 'SENT',
+      text: 'Pode me ajudar?',
+      sentAt: now,
+    },
+  });
   await db.conversation.update({ where: { id: awaiting.id }, data: { lastMessageAt: now } });
-  await db.chatMessage.create({ data: { conversationId: closing.id, direction: 'OUTBOUND', status: 'SENT', text: 'Enviei o preço e prazo fictícios.', sentAt: earlier } });
+  await db.chatMessage.create({
+    data: {
+      conversationId: closing.id,
+      direction: 'OUTBOUND',
+      status: 'SENT',
+      text: 'Enviei o preço e prazo fictícios.',
+      sentAt: earlier,
+    },
+  });
   await db.conversation.update({ where: { id: closing.id }, data: { lastMessageAt: earlier } });
   const business = new BusinessWorker(db, whatsapp, () => now);
   await business.flush();
@@ -696,7 +1100,10 @@ test('REQ-402/REQ-403: resumo às 08h prioriza conversa aguardando e intenção 
   assert.match(notice.title ?? '', /prioridade de hoje/);
   assert.match(notice.text ?? '', /Lead aguardando fictício/);
   assert.match(notice.text ?? '', /Lead fechamento fictício/);
-  assert.ok((notice.text ?? '').indexOf('Lead aguardando fictício') < (notice.text ?? '').indexOf('Lead fechamento fictício'));
+  assert.ok(
+    (notice.text ?? '').indexOf('Lead aguardando fictício') <
+      (notice.text ?? '').indexOf('Lead fechamento fictício'),
+  );
   await business.flush();
   assert.equal(await db.operationRecord.count({ where: { id: key } }), 1);
 });
@@ -718,21 +1125,51 @@ test('REQ-544/REQ-545/REQ-548/REQ-549/REQ-550/REQ-551 chaves fictícias cobrem c
   const replacement = 'test-gemini-replacement-not-real-0002';
   try {
     await putRecord(db, 'integration:ai', 'INTEGRATION', {
-      provider: 'gemini', model: 'mock-model', instructions: '', knowledge: '', style: '', enabled: false,
+      provider: 'gemini',
+      model: 'mock-model',
+      instructions: '',
+      knowledge: '',
+      style: '',
+      enabled: false,
     });
-    const primaryResult = await request(app).put('/api/operations/ai/keys/primary').send({ apiKey: primary }).expect(200);
+    const primaryResult = await request(app)
+      .put('/api/operations/ai/keys/primary')
+      .send({ apiKey: primary })
+      .expect(200);
     assert.equal(primaryResult.body.saved, true, 'REQ-544 cadastra a chave principal');
-    const first = await request(app).post('/api/operations/ai/keys').send({ label: 'Chave A', apiKey: primary }).expect(201);
-    const second = await request(app).post('/api/operations/ai/keys').send({ label: 'Chave B', apiKey: replacement }).expect(201);
+    const first = await request(app)
+      .post('/api/operations/ai/keys')
+      .send({ label: 'Chave A', apiKey: primary })
+      .expect(201);
+    const second = await request(app)
+      .post('/api/operations/ai/keys')
+      .send({ label: 'Chave B', apiKey: replacement })
+      .expect(201);
     assert.ok(first.body.id && second.body.id, 'REQ-545 cadastra duas chaves adicionais identificáveis');
     await putRecord(db, `ai-key-quota:${first.body.id}`, 'STATE', { until: Date.now() + 60000 });
-    await request(app).put(`/api/operations/ai/keys/${first.body.id}`).send({ label: 'Chave A editada', apiKey: replacement }).expect(200);
-    assert.equal(await db.operationRecord.findUnique({ where: { id: `ai-key-quota:${first.body.id}` } }), null);
-    await request(app).put('/api/operations/ai/keys/order').send({ ids: [second.body.id, first.body.id] }).expect(200);
-    await request(app).put('/api/operations/ai/keys/order').send({ ids: [first.body.id, first.body.id] }).expect(422);
+    await request(app)
+      .put(`/api/operations/ai/keys/${first.body.id}`)
+      .send({ label: 'Chave A editada', apiKey: replacement })
+      .expect(200);
+    assert.equal(
+      await db.operationRecord.findUnique({ where: { id: `ai-key-quota:${first.body.id}` } }),
+      null,
+    );
+    await request(app)
+      .put('/api/operations/ai/keys/order')
+      .send({ ids: [second.body.id, first.body.id] })
+      .expect(200);
+    await request(app)
+      .put('/api/operations/ai/keys/order')
+      .send({ ids: [first.body.id, first.body.id] })
+      .expect(422);
     await request(app).patch(`/api/operations/ai/keys/${first.body.id}`).send({ enabled: false }).expect(200);
     const listing = await request(app).get('/api/operations/ai/keys').expect(200);
-    assert.deepEqual(listing.body.items.map((item: { id: string }) => item.id), [second.body.id, first.body.id], 'REQ-551 relê as chaves na nova ordem');
+    assert.deepEqual(
+      listing.body.items.map((item: { id: string }) => item.id),
+      [second.body.id, first.body.id],
+      'REQ-551 relê as chaves na nova ordem',
+    );
     assert.equal(listing.body.items[1].label, 'Chave A editada', 'REQ-550 confirma a edição do rótulo');
     assert.equal(listing.body.items[1].enabled, false);
     assert.equal(listing.body.primary.configured, true);
@@ -758,15 +1195,28 @@ test('REQ-544/REQ-545/REQ-548/REQ-549/REQ-550/REQ-551 chaves fictícias cobrem c
 });
 
 test('REQ-376/REQ-377/REQ-378/REQ-379 valida modelos de marca d’água e persiste após nova leitura', async () => {
-  const value = { enabledByDefault: false, activeId: 'marca-teste', marks: [{ id: 'marca-teste', name: 'Teste', text: 'Amostra', opacity: 42, position: 'center' }] };
+  const value = {
+    enabledByDefault: false,
+    activeId: 'marca-teste',
+    marks: [{ id: 'marca-teste', name: 'Teste', text: 'Amostra', opacity: 42, position: 'center' }],
+  };
   const result = await request(app).put('/api/operations/settings/watermarks').send(value).expect(200);
   assert.equal(result.body.marks[0].size, 100);
   const persisted = await request(app).get('/api/operations/settings/watermarks').expect(200);
   assert.deepEqual(persisted.body.marks, result.body.marks);
   assert.equal(persisted.body.activeId, 'marca-teste');
-  await request(app).put('/api/operations/settings/watermarks').send({ ...value, activeId: 'inexistente' }).expect(422);
-  await request(app).put('/api/operations/settings/watermarks').send({ ...value, marks: [{ ...value.marks[0], size: 999 }] }).expect(422);
-  await request(app).put('/api/operations/settings/watermarks').send({ ...value, marks: [{ ...value.marks[0], imageData: 'https://externo.example/selo.png' }] }).expect(422);
+  await request(app)
+    .put('/api/operations/settings/watermarks')
+    .send({ ...value, activeId: 'inexistente' })
+    .expect(422);
+  await request(app)
+    .put('/api/operations/settings/watermarks')
+    .send({ ...value, marks: [{ ...value.marks[0], size: 999 }] })
+    .expect(422);
+  await request(app)
+    .put('/api/operations/settings/watermarks')
+    .send({ ...value, marks: [{ ...value.marks[0], imageData: 'https://externo.example/selo.png' }] })
+    .expect(422);
 });
 
 test('REQ-360/REQ-361/REQ-362/REQ-363/REQ-364/REQ-370/REQ-371/REQ-372/REQ-441/REQ-442/REQ-443 roteia modelos simulados e salva estúdio por cliente', async () => {
@@ -774,24 +1224,39 @@ test('REQ-360/REQ-361/REQ-362/REQ-363/REQ-364/REQ-370/REQ-371/REQ-372/REQ-441/RE
   const originalFetch = globalThis.fetch;
   const previous = await db.operationRecord.findUnique({ where: { id: 'integration:ai' } });
   const keyFile = join(dir, 'client-ai-fake-provider.key');
-  const imageData = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/2ioAAAAASUVORK5CYII=';
+  const imageData =
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/2ioAAAAASUVORK5CYII=';
   const calls: { url: string; body?: Record<string, any> }[] = [];
   env.WHATSAPP_KEY_FILE = keyFile;
   try {
-    await request(app).put('/api/operations/ai').send({
-      provider: 'gemini', apiKey: 'fake-local-audit-key-never-valid', model: 'audit-base',
-      fastModel: 'audit-flash', reasoningModel: 'audit-pro', imageModel: 'audit-image',
-      instructions: '', knowledge: '', style: '', enabled: false,
-    }).expect(200);
+    await request(app)
+      .put('/api/operations/ai')
+      .send({
+        provider: 'gemini',
+        apiKey: 'fake-local-audit-key-never-valid',
+        model: 'audit-base',
+        fastModel: 'audit-flash',
+        reasoningModel: 'audit-pro',
+        imageModel: 'audit-image',
+        instructions: '',
+        knowledge: '',
+        style: '',
+        enabled: false,
+      })
+      .expect(200);
     globalThis.fetch = async (input, options) => {
       const url = String(input);
-      const body = options?.body ? JSON.parse(String(options.body)) as Record<string, any> : undefined;
+      const body = options?.body ? (JSON.parse(String(options.body)) as Record<string, any>) : undefined;
       calls.push({ url, body });
-      if (url.includes('/interactions')) return new Response(JSON.stringify({ output_image: { data: imageData } }), { status: 200 });
-      return new Response(JSON.stringify({
-        candidates: [{ content: { parts: [{ text: 'Resposta de IA simulada.' }] } }],
-        usageMetadata: { promptTokenCount: 20, candidatesTokenCount: 8 },
-      }), { status: 200 });
+      if (url.includes('/interactions'))
+        return new Response(JSON.stringify({ output_image: { data: imageData } }), { status: 200 });
+      return new Response(
+        JSON.stringify({
+          candidates: [{ content: { parts: [{ text: 'Resposta de IA simulada.' }] } }],
+          usageMetadata: { promptTokenCount: 20, candidatesTokenCount: 8 },
+        }),
+        { status: 200 },
+      );
     };
 
     const phoneSuffix = String(Date.now() % 10_000_000).padStart(7, '0');
@@ -799,45 +1264,73 @@ test('REQ-360/REQ-361/REQ-362/REQ-363/REQ-364/REQ-370/REQ-371/REQ-372/REQ-441/RE
     const deepChat = await makeContact(`551198${phoneSuffix}2`, 'Cliente Pro Fictício');
     const faqChat = await makeContact(`551197${phoneSuffix}3`, 'Cliente FAQ Fictício');
     await inbound(faqChat.id, 'Qual prazo para entrega do mascote?');
-    await request(app).post(`/api/operations/sessions/${sessionId}/contacts/${faqChat.id}/ai`)
-      .send({ consent: true, task: 'Responda à última mensagem do cliente.' }).expect(200);
+    await request(app)
+      .post(`/api/operations/sessions/${sessionId}/contacts/${faqChat.id}/ai`)
+      .send({ consent: true, task: 'Responda à última mensagem do cliente.' })
+      .expect(200);
     assert.match(calls.at(-1)!.url, /\/models\/audit-flash:generateContent$/);
-    await request(app).post(`/api/operations/sessions/${sessionId}/contacts/${fastChat.id}/ai`)
-      .send({ consent: true, task: 'Sugira uma resposta curta para uma dúvida simples.' }).expect(200);
+    await request(app)
+      .post(`/api/operations/sessions/${sessionId}/contacts/${fastChat.id}/ai`)
+      .send({ consent: true, task: 'Sugira uma resposta curta para uma dúvida simples.' })
+      .expect(200);
     assert.match(calls.at(-1)!.url, /\/models\/audit-flash:generateContent$/);
-    await request(app).post(`/api/operations/sessions/${sessionId}/contacts/${deepChat.id}/ai`)
-      .send({ consent: true, task: 'Negocie o preço e avalie a objeção de orçamento.' }).expect(200);
+    await request(app)
+      .post(`/api/operations/sessions/${sessionId}/contacts/${deepChat.id}/ai`)
+      .send({ consent: true, task: 'Negocie o preço e avalie a objeção de orçamento.' })
+      .expect(200);
     assert.match(calls.at(-1)!.url, /\/models\/audit-pro:generateContent$/);
 
-    const firstMessage = await request(app).post(`/api/operations/client-ai/sessions/${sessionId}/contacts/${fastChat.id}/ai-thread/messages`)
-      .send({ text: 'O cliente Ana prefere apresentação objetiva e cores roxas.' }).expect(200);
+    const firstMessage = await request(app)
+      .post(`/api/operations/client-ai/sessions/${sessionId}/contacts/${fastChat.id}/ai-thread/messages`)
+      .send({ text: 'O cliente Ana prefere apresentação objetiva e cores roxas.' })
+      .expect(200);
     assert.equal(firstMessage.body.entries[1].text, 'Resposta de IA simulada.');
-    await request(app).post(`/api/operations/client-ai/sessions/${sessionId}/contacts/${fastChat.id}/ai-thread/images`)
-      .send({ prompt: 'Crie arte de apresentação do cliente.', template: 'product', aspectRatio: '9:16', reference: { data: Buffer.from('referência de teste').toString('base64'), mimeType: 'image/png' } }).expect(201);
+    await request(app)
+      .post(`/api/operations/client-ai/sessions/${sessionId}/contacts/${fastChat.id}/ai-thread/images`)
+      .send({
+        prompt: 'Crie arte de apresentação do cliente.',
+        template: 'product',
+        aspectRatio: '9:16',
+        reference: { data: Buffer.from('referência de teste').toString('base64'), mimeType: 'image/png' },
+      })
+      .expect(201);
     const imageCall = calls.at(-1)!;
     assert.match(imageCall.url, /\/v1beta\/interactions$/);
     assert.equal(imageCall.body?.model, 'audit-image');
     assert.equal(imageCall.body?.input[0].text.includes('proporção 9:16'), true);
     assert.equal(imageCall.body?.input[1].type, 'image');
-    await request(app).post(`/api/operations/client-ai/sessions/${sessionId}/contacts/${fastChat.id}/ai-thread/messages`)
-      .send({ text: 'Edite a imagem anterior preservando as preferências.' }).expect(200);
+    await request(app)
+      .post(`/api/operations/client-ai/sessions/${sessionId}/contacts/${fastChat.id}/ai-thread/messages`)
+      .send({ text: 'Edite a imagem anterior preservando as preferências.' })
+      .expect(200);
     const editInput = calls.at(-1)!.body?.contents[0].parts[0].text as string;
     assert.match(editInput, /cores roxas/);
     assert.match(editInput, /Imagem product · 9:16/);
     assert.match(editInput, /Edite a imagem anterior/);
 
-    const firstThread = await request(app).get(`/api/operations/client-ai/sessions/${sessionId}/contacts/${fastChat.id}/ai-thread`).expect(200);
-    const secondThread = await request(app).get(`/api/operations/client-ai/sessions/${sessionId}/contacts/${deepChat.id}/ai-thread`).expect(200);
+    const firstThread = await request(app)
+      .get(`/api/operations/client-ai/sessions/${sessionId}/contacts/${fastChat.id}/ai-thread`)
+      .expect(200);
+    const secondThread = await request(app)
+      .get(`/api/operations/client-ai/sessions/${sessionId}/contacts/${deepChat.id}/ai-thread`)
+      .expect(200);
     assert.equal(firstThread.body.entries.length, 6);
     assert.equal(secondThread.body.entries.length, 0);
-    const imageEntry = firstThread.body.entries.find((entry: { kind: string; fileId?: string }) => entry.kind === 'image');
+    const imageEntry = firstThread.body.entries.find(
+      (entry: { kind: string; fileId?: string }) => entry.kind === 'image',
+    );
     assert.equal(imageEntry?.fileId !== undefined, true);
     const storedFile = await db.storedFile.findUniqueOrThrow({ where: { id: imageEntry.fileId } });
     assert.equal(Buffer.from(storedFile.data).toString('base64'), imageData);
   } finally {
     globalThis.fetch = originalFetch;
     env.WHATSAPP_KEY_FILE = originalKeyFile;
-    if (previous) await db.operationRecord.upsert({ where: { id: previous.id }, create: { ...previous, data: previous.data! }, update: { data: previous.data! } });
+    if (previous)
+      await db.operationRecord.upsert({
+        where: { id: previous.id },
+        create: { ...previous, data: previous.data! },
+        update: { data: previous.data! },
+      });
     else await db.operationRecord.deleteMany({ where: { id: 'integration:ai' } });
   }
 });
@@ -848,8 +1341,19 @@ test('REQ-152: catálogo simulado filtra modelos e rejeita número de projeto co
   const previous = await db.operationRecord.findUnique({ where: { id: 'integration:ai' } });
   env.WHATSAPP_KEY_FILE = join(dir, 'models-test.key');
   try {
-    const body = { provider: 'gemini', apiKey: 'fake-catalog-key', model: 'models/gemini-test', instructions: '', knowledge: '', style: '', enabled: false };
-    await request(app).put('/api/operations/ai').send({ ...body, model: '1355654808' }).expect(422);
+    const body = {
+      provider: 'gemini',
+      apiKey: 'fake-catalog-key',
+      model: 'models/gemini-test',
+      instructions: '',
+      knowledge: '',
+      style: '',
+      enabled: false,
+    };
+    await request(app)
+      .put('/api/operations/ai')
+      .send({ ...body, model: '1355654808' })
+      .expect(422);
     await request(app).put('/api/operations/ai').send(body).expect(200);
     const saved = await request(app).get('/api/operations/ai').expect(200);
     assert.equal(saved.body.model, 'gemini-test');
@@ -859,23 +1363,41 @@ test('REQ-152: catálogo simulado filtra modelos e rejeita número de projeto co
       assert.equal(url.hostname, 'generativelanguage.googleapis.com');
       assert.equal(new Headers(options?.headers).get('x-goog-api-key'), 'fake-catalog-key');
       calls++;
-      const data = calls === 1 ? {
-        models: [
-          { name: 'models/gemini-test', displayName: 'Gemini teste', supportedGenerationMethods: ['generateContent'] },
-          { name: 'models/embedding-test', supportedGenerationMethods: ['embedContent'] },
-        ], nextPageToken: 'pagina2',
-      } : { models: [{ name: 'models/gemini-test-fast', supportedGenerationMethods: ['generateContent'] }] };
+      const data =
+        calls === 1
+          ? {
+              models: [
+                {
+                  name: 'models/gemini-test',
+                  displayName: 'Gemini teste',
+                  supportedGenerationMethods: ['generateContent'],
+                },
+                { name: 'models/embedding-test', supportedGenerationMethods: ['embedContent'] },
+              ],
+              nextPageToken: 'pagina2',
+            }
+          : {
+              models: [{ name: 'models/gemini-test-fast', supportedGenerationMethods: ['generateContent'] }],
+            };
       if (calls === 2) assert.equal(url.searchParams.get('pageToken'), 'pagina2');
       return new Response(JSON.stringify(data), { status: 200 });
     };
     const result = await request(app).get('/api/operations/ai/models').expect(200);
     assert.equal(calls, 2);
-    assert.deepEqual(result.body.models.map((model: { id: string }) => model.id), ['gemini-test', 'gemini-test-fast']);
+    assert.deepEqual(
+      result.body.models.map((model: { id: string }) => model.id),
+      ['gemini-test', 'gemini-test-fast'],
+    );
     assert.ok(!JSON.stringify(result.body).includes('fake-catalog-key'));
   } finally {
     globalThis.fetch = originalFetch;
     env.WHATSAPP_KEY_FILE = originalKeyFile;
-    if (previous) await db.operationRecord.upsert({ where: { id: previous.id }, create: { ...previous, data: previous.data! }, update: { data: previous.data! } });
+    if (previous)
+      await db.operationRecord.upsert({
+        where: { id: previous.id },
+        create: { ...previous, data: previous.data! },
+        update: { data: previous.data! },
+      });
     else await db.operationRecord.deleteMany({ where: { id: 'integration:ai' } });
   }
 });
@@ -993,9 +1515,9 @@ test('REQ-157: atribuição persiste e o filtro por responsável respeita o oper
     .send({ pinned: true, assignedTo: 'local' })
     .expect(200);
   const listing = await request(app).get(`/api/attendance/sessions/${sessionId}/conversations`).expect(200);
-  const pinned=listing.body.items.find((item:{id:string})=>item.id===chat.id);
-  assert.equal(pinned?.pinned,true);
-  assert.equal(pinned?.assignedTo,'local');
+  const pinned = listing.body.items.find((item: { id: string }) => item.id === chat.id);
+  assert.equal(pinned?.pinned, true);
+  assert.equal(pinned?.assignedTo, 'local');
   const mine = await request(app)
     .get(`/api/attendance/sessions/${sessionId}/conversations?filter=mine`)
     .expect(200);
@@ -1015,11 +1537,14 @@ test('distribuição por rodízio usa operadores ativos e online e respeita depa
     department: 'Especial',
   });
   await putRecord(db, 'team:offline@example.com', 'TEAM', {
-    email: 'offline@example.com', active: true, department: 'Especial',
+    email: 'offline@example.com',
+    active: true,
+    department: 'Especial',
   });
   for (const email of ['ana@example.com', 'beto@example.com']) {
     await putRecord(db, `presence:${email}`, 'TEAM_PRESENCE', {
-      email, seenAt: new Date().toISOString(),
+      email,
+      seenAt: new Date().toISOString(),
     });
   }
   const a = await makeContact('5511777770013');
@@ -1178,30 +1703,52 @@ test('REQ-134/REQ-149/REQ-172/REQ-173: público combina listas, etiquetas e inat
   const first = await makeContact('5511888810001', 'Público A');
   const second = await makeContact('5511888810002', 'Público B');
   const third = await makeContact('5511888810003', 'Público C');
-  const firstLabel = await db.label.create({ data: { id: 'audience-label-a', sessionId, name: 'Público A' } });
-  const secondLabel = await db.label.create({ data: { id: 'audience-label-b', sessionId, name: 'Público B' } });
-  await db.contactLabel.createMany({ data: [
-    { contactId: first.contactId, labelId: firstLabel.id },
-    { contactId: second.contactId, labelId: secondLabel.id },
-  ] });
+  const firstLabel = await db.label.create({
+    data: { id: 'audience-label-a', sessionId, name: 'Público A' },
+  });
+  const secondLabel = await db.label.create({
+    data: { id: 'audience-label-b', sessionId, name: 'Público B' },
+  });
+  await db.contactLabel.createMany({
+    data: [
+      { contactId: first.contactId, labelId: firstLabel.id },
+      { contactId: second.contactId, labelId: secondLabel.id },
+    ],
+  });
   await db.conversation.updateMany({
     where: { id: { in: [first.id, third.id] } },
     data: { lastMessageAt: new Date(Date.now() - 12 * 86400000) },
   });
   await db.conversation.update({
-    where: { id: second.id }, data: { lastMessageAt: new Date() },
+    where: { id: second.id },
+    data: { lastMessageAt: new Date() },
   });
   const listIds = ['lead-list:audience-a', 'lead-list:audience-b'];
   await putRecord(db, listIds[0]!, 'LEAD_LIST', { sessionId, conversationIds: [first.id] });
   await putRecord(db, listIds[1]!, 'LEAD_LIST', { sessionId, conversationIds: [second.id, third.id] });
   const base = { listIds, labelIds: [firstLabel.id, secondLabel.id], inactiveDays: 10 };
   const url = `/api/operations/sessions/${sessionId}/audience`;
-  const and = await request(app).post(url).send({ ...base, match: 'AND' }).expect(200);
-  assert.deepEqual(and.body.items.map((item: { id: string }) => item.id), [first.id]);
-  const or = await request(app).post(url).send({ ...base, match: 'OR' }).expect(200);
+  const and = await request(app)
+    .post(url)
+    .send({ ...base, match: 'AND' })
+    .expect(200);
+  assert.deepEqual(
+    and.body.items.map((item: { id: string }) => item.id),
+    [first.id],
+  );
+  const or = await request(app)
+    .post(url)
+    .send({ ...base, match: 'OR' })
+    .expect(200);
   assert.equal(or.body.count, 3);
-  const selected = await request(app).post(url).send({ ...base, match: 'OR', conversationIds: [second.id] }).expect(200);
-  assert.deepEqual(selected.body.items.map((item: { id: string }) => item.id), [second.id]);
+  const selected = await request(app)
+    .post(url)
+    .send({ ...base, match: 'OR', conversationIds: [second.id] })
+    .expect(200);
+  assert.deepEqual(
+    selected.body.items.map((item: { id: string }) => item.id),
+    [second.id],
+  );
 });
 
 test('REQ-150/REQ-151: sequência usa variáveis, preserva ordem e aplica pausa por lote', async () => {
@@ -1419,12 +1966,26 @@ test('REQ-431/REQ-432/REQ-433/REQ-434 resumo reduz contexto, retoma e usa resumo
   aiTest(async () => {
     await configureAi();
     const previous = await record<object | null>(db, 'settings:ai-economy', null);
-    const economy = (summaryEvery: number) => ({ enabled: true, semanticCache: false, rag: false, cacheDays: 14, summaryEvery, systems: { autoReply: true, copilot: true, summaries: true } });
+    const economy = (summaryEvery: number) => ({
+      enabled: true,
+      semanticCache: false,
+      rag: false,
+      cacheDays: 14,
+      summaryEvery,
+      systems: { autoReply: true, copilot: true, summaries: true },
+    });
     const addMessages = async (chatId: string, start: number, end: number) => {
-      await db.chatMessage.createMany({ data: Array.from({ length: end - start }, (_, offset) => {
-        const number = start + offset;
-        return { conversationId: chatId, direction: 'INBOUND' as const, text: `Mensagem fictícia ${number}`, sentAt: new Date(Date.UTC(2026, 0, 1, 10, 0, number)) };
-      }) });
+      await db.chatMessage.createMany({
+        data: Array.from({ length: end - start }, (_, offset) => {
+          const number = start + offset;
+          return {
+            conversationId: chatId,
+            direction: 'INBOUND' as const,
+            text: `Mensagem fictícia ${number}`,
+            sentAt: new Date(Date.UTC(2026, 0, 1, 10, 0, number)),
+          };
+        }),
+      });
     };
     let summaries = 0;
     const summaryInputs: string[] = [];
@@ -1433,29 +1994,46 @@ test('REQ-431/REQ-432/REQ-433/REQ-434 resumo reduz contexto, retoma e usa resumo
       if (body.instructions.includes('Resuma fatos')) {
         summaries++;
         summaryInputs.push(body.input);
-        return new Response(JSON.stringify({ output: [{ content: [{ type: 'output_text', text: `Resumo ${summaries}` }] }] }));
+        return new Response(
+          JSON.stringify({ output: [{ content: [{ type: 'output_text', text: `Resumo ${summaries}` }] }] }),
+        );
       }
-      return new Response(JSON.stringify({ output: [{ content: [{ type: 'output_text', text: 'Sugestão fictícia' }] }] }));
+      return new Response(
+        JSON.stringify({ output: [{ content: [{ type: 'output_text', text: 'Sugestão fictícia' }] }] }),
+      );
     };
     try {
       await putRecord(db, 'settings:ai-economy', 'AI_ECONOMY_SETTINGS', economy(10));
       const long = await makeContact('5511777770065');
       await addMessages(long.id, 0, 60);
       await generateSuggestion(db, long.id, 'Sugira uma resposta.');
-      assert.equal((await record<{ covered: number }>(db, `conversation-summary:${long.id}`, { covered: 0 })).covered, 57);
+      assert.equal(
+        (await record<{ covered: number }>(db, `conversation-summary:${long.id}`, { covered: 0 })).covered,
+        57,
+      );
       await addMessages(long.id, 60, 90);
       await generateSuggestion(db, long.id, 'Sugira uma resposta.');
-      assert.equal((await record<{ covered: number }>(db, `conversation-summary:${long.id}`, { covered: 0 })).covered, 87);
+      assert.equal(
+        (await record<{ covered: number }>(db, `conversation-summary:${long.id}`, { covered: 0 })).covered,
+        87,
+      );
       assert.match(summaryInputs[1] ?? '', /Resumo 1/);
       assert.equal(summaries, 2);
       await addMessages(long.id, 90, 160);
       await generateSuggestion(db, long.id, 'Sugira uma resposta.');
-      assert.equal((await record<{ covered: number }>(db, `conversation-summary:${long.id}`, { covered: 0 })).covered, 157);
+      assert.equal(
+        (await record<{ covered: number }>(db, `conversation-summary:${long.id}`, { covered: 0 })).covered,
+        157,
+      );
       assert.match(summaryInputs[2] ?? '', /Resumo 2/);
       assert.equal(summaries, 3);
       await generateSuggestion(db, long.id, 'Sugira uma resposta.');
       assert.equal(summaries, 3);
-      const saved = await record<{ covered: number; cursor?: { sentAt: string; id: string } }>(db, `conversation-summary:${long.id}`, { covered: 0 });
+      const saved = await record<{ covered: number; cursor?: { sentAt: string; id: string } }>(
+        db,
+        `conversation-summary:${long.id}`,
+        { covered: 0 },
+      );
       assert.ok(saved.cursor?.id);
       const reopened = createSqliteClient(url);
       try {
@@ -1468,29 +2046,48 @@ test('REQ-431/REQ-432/REQ-433/REQ-434 resumo reduz contexto, retoma e usa resumo
       const hundred = await makeContact('5511777770066');
       await addMessages(hundred.id, 0, 100);
       await generateSuggestion(db, hundred.id, 'Sugira uma resposta.');
-      assert.equal((await record<{ covered: number }>(db, `conversation-summary:${hundred.id}`, { covered: 0 })).covered, 97);
+      assert.equal(
+        (await record<{ covered: number }>(db, `conversation-summary:${hundred.id}`, { covered: 0 })).covered,
+        97,
+      );
       assert.equal(summaries, 4);
       await putRecord(db, 'settings:ai-economy', 'AI_ECONOMY_SETTINGS', economy(10));
-      await db.chatMessage.create({ data: {
-        conversationId: long.id, direction: 'INBOUND', text: 'Mensagem histórica importada',
-        sentAt: new Date(Date.UTC(2025, 0, 1)),
-      } });
+      await db.chatMessage.create({
+        data: {
+          conversationId: long.id,
+          direction: 'INBOUND',
+          text: 'Mensagem histórica importada',
+          sentAt: new Date(Date.UTC(2025, 0, 1)),
+        },
+      });
       await generateSuggestion(db, long.id, 'Sugira uma resposta.');
       assert.equal(summaries, 5);
       assert.match(summaryInputs[4] ?? '', /Mensagem histórica importada/);
       assert.doesNotMatch(summaryInputs[4] ?? '', /\[Resumo anterior\]/);
-      assert.equal((await record<{ covered: number }>(db, `conversation-summary:${long.id}`, { covered: 0 })).covered, 100);
+      assert.equal(
+        (await record<{ covered: number }>(db, `conversation-summary:${long.id}`, { covered: 0 })).covered,
+        100,
+      );
       const legacy = await makeContact('5511777770067');
       await addMessages(legacy.id, 0, 10);
-      await putRecord(db, `conversation-summary:${legacy.id}`, 'AI_CONVERSATION_SUMMARY', { text: 'Resumo antigo sem cursor', covered: 7 });
+      await putRecord(db, `conversation-summary:${legacy.id}`, 'AI_CONVERSATION_SUMMARY', {
+        text: 'Resumo antigo sem cursor',
+        covered: 7,
+      });
       await generateSuggestion(db, legacy.id, 'Sugira uma resposta.');
       assert.equal(summaries, 6);
       assert.doesNotMatch(summaryInputs[5] ?? '', /Resumo antigo sem cursor/);
-      assert.ok((await record<{ cursor?: { id: string } }>(db, `conversation-summary:${legacy.id}`, {})).cursor?.id);
-      await db.chatMessage.create({ data: {
-        conversationId: long.id, direction: 'INBOUND', text: 'Mensagem histórica após falha',
-        sentAt: new Date(Date.UTC(2024, 0, 1)),
-      } });
+      assert.ok(
+        (await record<{ cursor?: { id: string } }>(db, `conversation-summary:${legacy.id}`, {})).cursor?.id,
+      );
+      await db.chatMessage.create({
+        data: {
+          conversationId: long.id,
+          direction: 'INBOUND',
+          text: 'Mensagem histórica após falha',
+          sentAt: new Date(Date.UTC(2024, 0, 1)),
+        },
+      });
       const workingFetch = globalThis.fetch;
       let fallbackInput = '';
       let failedSummaries = 0;
@@ -1501,7 +2098,11 @@ test('REQ-431/REQ-432/REQ-433/REQ-434 resumo reduz contexto, retoma e usa resumo
           return new Response(JSON.stringify({ error: { message: 'Falha fictícia' } }), { status: 503 });
         }
         fallbackInput = body.input;
-        return new Response(JSON.stringify({ output: [{ content: [{ type: 'output_text', text: 'Sugestão de contingência' }] }] }));
+        return new Response(
+          JSON.stringify({
+            output: [{ content: [{ type: 'output_text', text: 'Sugestão de contingência' }] }],
+          }),
+        );
       };
       const fallback = await generateSuggestion(db, long.id, 'Sugira uma resposta.');
       assert.equal(failedSummaries, 1);
@@ -1526,70 +2127,136 @@ test('REQ-424/REQ-425 cache exige revisão, compara embeddings e isola clientes'
     const third = await makeContact('5511777770063', 'Ana Exemplo');
     const unrelated = await makeContact('5511777770064', 'Bruno Exemplo');
     for (const chat of [first, second, third, unrelated])
-      await db.chatMessage.create({ data: { conversationId: chat.id, direction: 'INBOUND', text: 'Como funciona mascote?', sentAt: new Date() } });
-    await db.chatMessage.updateMany({ where: { conversationId: third.id }, data: { text: 'Como é que o mascote funciona?' } });
-    await db.chatMessage.updateMany({ where: { conversationId: unrelated.id }, data: { text: 'Qual é o horário de funcionamento da loja?' } });
+      await db.chatMessage.create({
+        data: {
+          conversationId: chat.id,
+          direction: 'INBOUND',
+          text: 'Como funciona mascote?',
+          sentAt: new Date(),
+        },
+      });
+    await db.chatMessage.updateMany({
+      where: { conversationId: third.id },
+      data: { text: 'Como é que o mascote funciona?' },
+    });
+    await db.chatMessage.updateMany({
+      where: { conversationId: unrelated.id },
+      data: { text: 'Qual é o horário de funcionamento da loja?' },
+    });
     let calls = 0;
     globalThis.fetch = async () => {
       calls++;
-      return new Response(JSON.stringify({
-        output: [{ content: [{ type: 'output_text', text: calls === 1 ? 'Oi, Joana! Podemos conversar sobre o mascote.' : 'Resposta nova.' }] }],
-        usage: { input_tokens: 12, output_tokens: 8 },
-      }));
+      return new Response(
+        JSON.stringify({
+          output: [
+            {
+              content: [
+                {
+                  type: 'output_text',
+                  text: calls === 1 ? 'Oi, Joana! Podemos conversar sobre o mascote.' : 'Resposta nova.',
+                },
+              ],
+            },
+          ],
+          usage: { input_tokens: 12, output_tokens: 8 },
+        }),
+      );
     };
     const task = 'Responda à última mensagem do cliente.';
-    const wasCached = (result: Awaited<ReturnType<typeof generateSuggestion>>) => 'cached' in result && result.cached === true;
+    const wasCached = (result: Awaited<ReturnType<typeof generateSuggestion>>) =>
+      'cached' in result && result.cached === true;
     assert.equal(wasCached(await generateSuggestion(db, first.id, task)), false);
     assert.equal(wasCached(await generateSuggestion(db, second.id, task)), false);
     assert.equal(calls, 2);
     const cache = await request(app).get('/api/operations/economy/cache').expect(200);
-    const entry = cache.body.items.find((item: { sourceConversationId?: string }) => item.sourceConversationId === first.id);
+    const entry = cache.body.items.find(
+      (item: { sourceConversationId?: string }) => item.sourceConversationId === first.id,
+    );
     assert.ok(entry);
     assert.equal(entry.embedding, undefined, 'embedding internals must not be exposed by the cache API');
     assert.equal(entry.approvedAt, undefined);
-    await request(app).put(`/api/operations/economy/cache/${entry.id}`)
-      .send({ answer: 'Oi, Joana! Podemos conversar sobre o mascote.', approve: true }).expect(422);
-    await request(app).put(`/api/operations/economy/cache/${entry.id}`)
-      .send({ answer: 'Podemos conversar sobre o mascote.', approve: true }).expect(200);
+    await request(app)
+      .put(`/api/operations/economy/cache/${entry.id}`)
+      .send({ answer: 'Oi, Joana! Podemos conversar sobre o mascote.', approve: true })
+      .expect(422);
+    await request(app)
+      .put(`/api/operations/economy/cache/${entry.id}`)
+      .send({ answer: 'Podemos conversar sobre o mascote.', approve: true })
+      .expect(200);
     const reused = await generateSuggestion(db, third.id, task);
     assert.equal(wasCached(reused), true);
     assert.equal(reused.text, 'Podemos conversar sobre o mascote.');
     assert.equal(calls, 2);
     const stored = await db.operationRecord.findUnique({ where: { id: entry.id } });
-    const storedData = stored!.data as { embedding?: number[]; embeddingModel?: string; embeddingRevision?: string };
+    const storedData = stored!.data as {
+      embedding?: number[];
+      embeddingModel?: string;
+      embeddingRevision?: string;
+    };
     assert.equal(storedData.embedding?.length, 384);
     assert.equal(storedData.embeddingModel, 'Xenova/paraphrase-multilingual-MiniLM-L12-v2');
     assert.equal(storedData.embeddingRevision, '2c4055b12046f11709e9df2c122e59ffbdc2f900');
-    assert.equal(wasCached(await generateSuggestion(db, unrelated.id, task)), false, 'unrelated content must not reuse approved answer');
+    assert.equal(
+      wasCached(await generateSuggestion(db, unrelated.id, task)),
+      false,
+      'unrelated content must not reuse approved answer',
+    );
     assert.equal(calls, 3);
-    await request(app).put(`/api/operations/economy/cache/${entry.id}`)
-      .send({ answer: 'Resposta em revisão.' }).expect(200);
+    await request(app)
+      .put(`/api/operations/economy/cache/${entry.id}`)
+      .send({ answer: 'Resposta em revisão.' })
+      .expect(200);
     assert.equal(wasCached(await generateSuggestion(db, third.id, task)), false);
     assert.equal(calls, 4);
     const expired = await makeContact('5511777770098', 'Cliente Cache Vencido');
-    await db.chatMessage.create({ data: { conversationId: expired.id, direction: 'INBOUND', text: 'Qual prazo para mascote?', sentAt: new Date() } });
+    await db.chatMessage.create({
+      data: {
+        conversationId: expired.id,
+        direction: 'INBOUND',
+        text: 'Qual prazo para mascote?',
+        sentAt: new Date(),
+      },
+    });
     const oldDate = new Date(Date.now() - 30 * 86_400_000).toISOString();
     await putRecord(db, 'expired-cache-fixture', 'AI_SEMANTIC_CACHE', {
-      question: 'Qual prazo para mascote?', answer: 'O prazo depende do escopo.', system: 'autoReply',
-      sourceConversationId: first.id, createdAt: oldDate, approvedAt: oldDate, hits: 0,
+      question: 'Qual prazo para mascote?',
+      answer: 'O prazo depende do escopo.',
+      system: 'autoReply',
+      sourceConversationId: first.id,
+      createdAt: oldDate,
+      approvedAt: oldDate,
+      hits: 0,
     });
     assert.equal(wasCached(await generateSuggestion(db, expired.id, task)), false);
     assert.equal(calls, 5);
     await db.operationRecord.deleteMany({ where: { id: 'expired-cache-fixture' } });
     await request(app).delete(`/api/operations/economy/cache/${entry.id}`).expect(200);
     const afterDelete = await request(app).get('/api/operations/economy/cache').expect(200);
-    assert.equal(afterDelete.body.items.some((item: { id: string }) => item.id === entry.id), false);
+    assert.equal(
+      afterDelete.body.items.some((item: { id: string }) => item.id === entry.id),
+      false,
+    );
   }));
 
 test('REQ-415/REQ-416/REQ-417/REQ-418/REQ-426 preferências de economia validam e persistem no banco de teste', async () => {
-  const settings = { enabled: false, semanticCache: true, rag: false, cacheDays: 21, summaryEvery: 15, systems: { autoReply: false, copilot: true, summaries: false } };
+  const settings = {
+    enabled: false,
+    semanticCache: true,
+    rag: false,
+    cacheDays: 21,
+    summaryEvery: 15,
+    systems: { autoReply: false, copilot: true, summaries: false },
+  };
   const previous = await record<object | null>(db, 'settings:ai-economy', null);
   try {
     await request(app).put('/api/operations/economy').send(settings).expect(200);
     const saved = await request(app).get('/api/operations/economy').expect(200);
     assert.deepEqual(saved.body.settings, settings);
     assert.equal(saved.body.settings.cacheDays, 21);
-    await request(app).put('/api/operations/economy').send({ ...settings, cacheDays: 0 }).expect(422);
+    await request(app)
+      .put('/api/operations/economy')
+      .send({ ...settings, cacheDays: 0 })
+      .expect(422);
   } finally {
     if (previous) await putRecord(db, 'settings:ai-economy', 'AI_ECONOMY_SETTINGS', previous);
     else await db.operationRecord.deleteMany({ where: { id: 'settings:ai-economy' } });
@@ -1597,7 +2264,10 @@ test('REQ-415/REQ-416/REQ-417/REQ-418/REQ-426 preferências de economia validam 
 });
 
 test('REQ-429 endpoint limpa somente respostas salvas no cache', async () => {
-  await putRecord(db, 'audit-cache-clear-fixture', 'AI_SEMANTIC_CACHE', { question: 'Fixture?', answer: 'Resposta fictícia.' });
+  await putRecord(db, 'audit-cache-clear-fixture', 'AI_SEMANTIC_CACHE', {
+    question: 'Fixture?',
+    answer: 'Resposta fictícia.',
+  });
   await request(app).delete('/api/operations/economy/cache').expect(200);
   const cache = await request(app).get('/api/operations/economy/cache').expect(200);
   assert.deepEqual(cache.body.items, []);
@@ -1605,59 +2275,120 @@ test('REQ-429 endpoint limpa somente respostas salvas no cache', async () => {
 
 test('REQ-423 economia retorna métricas distintas de hoje e do mês', async () => {
   const now = new Date();
-  const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
-  const monthStart = new Date(now); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+  const monthStart = new Date(now);
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
   const todayId = `audit-economy-today-${randomBytes(5).toString('hex')}`;
   const monthId = `audit-economy-month-${randomBytes(5).toString('hex')}`;
   const lastMonth = new Date(monthStart.getTime() - 60_000);
   try {
     const before = (await request(app).get('/api/operations/economy').expect(200)).body.saved;
-    await db.operationRecord.createMany({ data: [
-      { id: todayId, kind: 'AI_ECONOMY_SAVING', data: { tokens: 120, requests: 2 }, createdAt: new Date(todayStart.getTime() + 1000), updatedAt: now },
-      { id: monthId, kind: 'AI_ECONOMY_SAVING', data: { tokens: 300, requests: 4 }, createdAt: new Date(monthStart.getTime() + 1000), updatedAt: now },
-      { id: `old-${monthId}`, kind: 'AI_ECONOMY_SAVING', data: { tokens: 999, requests: 9 }, createdAt: lastMonth, updatedAt: lastMonth },
-    ] });
+    await db.operationRecord.createMany({
+      data: [
+        {
+          id: todayId,
+          kind: 'AI_ECONOMY_SAVING',
+          data: { tokens: 120, requests: 2 },
+          createdAt: new Date(todayStart.getTime() + 1000),
+          updatedAt: now,
+        },
+        {
+          id: monthId,
+          kind: 'AI_ECONOMY_SAVING',
+          data: { tokens: 300, requests: 4 },
+          createdAt: new Date(monthStart.getTime() + 1000),
+          updatedAt: now,
+        },
+        {
+          id: `old-${monthId}`,
+          kind: 'AI_ECONOMY_SAVING',
+          data: { tokens: 999, requests: 9 },
+          createdAt: lastMonth,
+          updatedAt: lastMonth,
+        },
+      ],
+    });
     const result = await request(app).get('/api/operations/economy').expect(200);
-    assert.deepEqual(result.body.saved.today, { tokens: before.today.tokens + 120, requests: before.today.requests + 2 });
-    assert.deepEqual(result.body.saved.month, { tokens: before.month.tokens + 420, requests: before.month.requests + 6 });
+    assert.deepEqual(result.body.saved.today, {
+      tokens: before.today.tokens + 120,
+      requests: before.today.requests + 2,
+    });
+    assert.deepEqual(result.body.saved.month, {
+      tokens: before.month.tokens + 420,
+      requests: before.month.requests + 6,
+    });
   } finally {
     await db.operationRecord.deleteMany({ where: { id: { in: [todayId, monthId, `old-${monthId}`] } } });
   }
 });
 
-test('REQ-431 RAG envia somente três trechos lexicais relevantes ao provedor simulado', async () => aiTest(async () => {
-  const chat = await makeContact('5511777770097', 'Cliente RAG Fictício');
-  await inbound(chat.id, 'Quero saber prazo e mascote.');
-  const previous = await record<object | null>(db, 'settings:ai-economy', null);
-  await putRecord(db, 'settings:ai-economy', 'AI_ECONOMY_SETTINGS', { enabled: true, semanticCache: false, rag: true, cacheDays: 14, summaryEvery: 10, systems: { autoReply: true, copilot: true, summaries: true } });
-  await configureAi({ knowledge: [1, 2, 3, 4, 5].map((n) => `Trecho ${n}: prazo do mascote; detalhe ${n}.`).join('\n\n') });
-  let instructions = '';
-  globalThis.fetch = async (_url, options) => {
-    instructions = JSON.parse(String(options?.body)).instructions;
-    return new Response(JSON.stringify({ output: [{ content: [{ type: 'output_text', text: 'Resposta simulada.' }] }] }));
-  };
-  try {
-    await generateSuggestion(db, chat.id, 'Responda sobre prazo e mascote.');
-    const chunks = [...instructions.matchAll(/Trecho \d:/g)].map((match) => match[0]);
-    assert.equal(chunks.length, 3);
-    assert.match(instructions, /Trecho 1:/);
-    assert.doesNotMatch(instructions, /Trecho 4:|Trecho 5:/);
-  } finally {
-    if (previous) await putRecord(db, 'settings:ai-economy', 'AI_ECONOMY_SETTINGS', previous);
-    else await db.operationRecord.deleteMany({ where: { id: 'settings:ai-economy' } });
-  }
-}));
+test('REQ-431 RAG envia somente três trechos lexicais relevantes ao provedor simulado', async () =>
+  aiTest(async () => {
+    const chat = await makeContact('5511777770097', 'Cliente RAG Fictício');
+    await inbound(chat.id, 'Quero saber prazo e mascote.');
+    const previous = await record<object | null>(db, 'settings:ai-economy', null);
+    await putRecord(db, 'settings:ai-economy', 'AI_ECONOMY_SETTINGS', {
+      enabled: true,
+      semanticCache: false,
+      rag: true,
+      cacheDays: 14,
+      summaryEvery: 10,
+      systems: { autoReply: true, copilot: true, summaries: true },
+    });
+    await configureAi({
+      knowledge: [1, 2, 3, 4, 5].map((n) => `Trecho ${n}: prazo do mascote; detalhe ${n}.`).join('\n\n'),
+    });
+    let instructions = '';
+    globalThis.fetch = async (_url, options) => {
+      instructions = JSON.parse(String(options?.body)).instructions;
+      return new Response(
+        JSON.stringify({ output: [{ content: [{ type: 'output_text', text: 'Resposta simulada.' }] }] }),
+      );
+    };
+    try {
+      await generateSuggestion(db, chat.id, 'Responda sobre prazo e mascote.');
+      const chunks = [...instructions.matchAll(/Trecho \d:/g)].map((match) => match[0]);
+      assert.equal(chunks.length, 3);
+      assert.match(instructions, /Trecho 1:/);
+      assert.doesNotMatch(instructions, /Trecho 4:|Trecho 5:/);
+    } finally {
+      if (previous) await putRecord(db, 'settings:ai-economy', 'AI_ECONOMY_SETTINGS', previous);
+      else await db.operationRecord.deleteMany({ where: { id: 'settings:ai-economy' } });
+    }
+  }));
 
-test('REQ-439/REQ-440 otimização simulada gera prévia sem aplicar alterações', async () => aiTest(async () => {
-  await configureAi({ instructions: 'Preserve preço e exceção.', style: 'Tom breve.' });
-  globalThis.fetch = async () => new Response(JSON.stringify({ output: [{ content: [{ type: 'output_text', text: JSON.stringify({ instructions: '- Preserve preço e exceção.', style: '- Use tom breve.' }) }] }] }));
-  const proposal = await request(app).post('/api/operations/economy/optimize-prompts')
-    .send({ instructions: 'Preserve preço e exceção.', style: 'Tom breve.' }).expect(200);
-  assert.equal(proposal.body.instructions, '- Preserve preço e exceção.');
-  const unchanged = await request(app).get('/api/operations/ai').expect(200);
-  assert.equal(unchanged.body.instructions, 'Preserve preço e exceção.');
-  assert.equal(unchanged.body.style, 'Tom breve.');
-}));
+test('REQ-439/REQ-440 otimização simulada gera prévia sem aplicar alterações', async () =>
+  aiTest(async () => {
+    await configureAi({ instructions: 'Preserve preço e exceção.', style: 'Tom breve.' });
+    globalThis.fetch = async () =>
+      new Response(
+        JSON.stringify({
+          output: [
+            {
+              content: [
+                {
+                  type: 'output_text',
+                  text: JSON.stringify({
+                    instructions: '- Preserve preço e exceção.',
+                    style: '- Use tom breve.',
+                  }),
+                },
+              ],
+            },
+          ],
+        }),
+      );
+    const proposal = await request(app)
+      .post('/api/operations/economy/optimize-prompts')
+      .send({ instructions: 'Preserve preço e exceção.', style: 'Tom breve.' })
+      .expect(200);
+    assert.equal(proposal.body.instructions, '- Preserve preço e exceção.');
+    const unchanged = await request(app).get('/api/operations/ai').expect(200);
+    assert.equal(unchanged.body.instructions, 'Preserve preço e exceção.');
+    assert.equal(unchanged.body.style, 'Tom breve.');
+  }));
 
 test('REQ-133/REQ-155/REQ-303/REQ-304/REQ-305/REQ-306: conhecimento aprovado conserva ordem, contexto, estilo e regras absolutas', async () =>
   aiTest(async () => {
@@ -1712,11 +2443,47 @@ test('REQ-133/REQ-155/REQ-303/REQ-304/REQ-305/REQ-306: conhecimento aprovado con
 test('REQ-140/REQ-141/REQ-300/REQ-302/REQ-435/REQ-437/REQ-438: transcrição e descrição entram no contexto e são reutilizadas', async () =>
   aiTest(async () => {
     const chat = await makeContact('5511777770064');
-    const audio = await db.storedFile.create({ data: { sha256: 'd'.repeat(64), filename: 'fala.ogg', mimeType: 'audio/ogg', byteLength: 5, data: Buffer.from('audio') } });
-    const video = await db.storedFile.create({ data: { sha256: 'e'.repeat(64), filename: 'cena.mp4', mimeType: 'video/mp4', byteLength: 5, data: Buffer.from('video') } });
-    const first = await db.chatMessage.create({ data: { conversationId: chat.id, direction: 'INBOUND', type: 'audioMessage', fileId: audio.id, sentAt: new Date('2026-01-01T10:00:00Z') } });
-    const second = await db.chatMessage.create({ data: { conversationId: chat.id, direction: 'INBOUND', type: 'videoMessage', fileId: video.id, sentAt: new Date('2026-01-01T10:01:00Z') } });
-    await configureAi({ provider: 'openai', mediaModel: 'modelo-midia-ficticio', transcriptionModel: 'modelo-audio-ficticio' });
+    const audio = await db.storedFile.create({
+      data: {
+        sha256: 'd'.repeat(64),
+        filename: 'fala.ogg',
+        mimeType: 'audio/ogg',
+        byteLength: 5,
+        data: Buffer.from('audio'),
+      },
+    });
+    const video = await db.storedFile.create({
+      data: {
+        sha256: 'e'.repeat(64),
+        filename: 'cena.mp4',
+        mimeType: 'video/mp4',
+        byteLength: 5,
+        data: Buffer.from('video'),
+      },
+    });
+    const first = await db.chatMessage.create({
+      data: {
+        conversationId: chat.id,
+        direction: 'INBOUND',
+        type: 'audioMessage',
+        fileId: audio.id,
+        sentAt: new Date('2026-01-01T10:00:00Z'),
+      },
+    });
+    const second = await db.chatMessage.create({
+      data: {
+        conversationId: chat.id,
+        direction: 'INBOUND',
+        type: 'videoMessage',
+        fileId: video.id,
+        sentAt: new Date('2026-01-01T10:01:00Z'),
+      },
+    });
+    await configureAi({
+      provider: 'openai',
+      mediaModel: 'modelo-midia-ficticio',
+      transcriptionModel: 'modelo-audio-ficticio',
+    });
     let audioCalls = 0;
     globalThis.fetch = async (url, options) => {
       assert.match(String(url), /audio\/transcriptions/);
@@ -1724,8 +2491,14 @@ test('REQ-140/REQ-141/REQ-300/REQ-302/REQ-435/REQ-437/REQ-438: transcrição e d
       audioCalls++;
       return new Response(JSON.stringify({ text: 'Transcrição fictícia do áudio.' }));
     };
-    assert.equal((await preprocessMedia(db, messaging, sessionId, chat.id, first.id)).text, 'Transcrição fictícia do áudio.');
-    assert.equal((await preprocessMedia(db, messaging, sessionId, chat.id, first.id)).text, 'Transcrição fictícia do áudio.');
+    assert.equal(
+      (await preprocessMedia(db, messaging, sessionId, chat.id, first.id)).text,
+      'Transcrição fictícia do áudio.',
+    );
+    assert.equal(
+      (await preprocessMedia(db, messaging, sessionId, chat.id, first.id)).text,
+      'Transcrição fictícia do áudio.',
+    );
     assert.equal(audioCalls, 1);
     await configureAi({ provider: 'gemini', mediaModel: 'modelo-midia-ficticio' });
     let suggestionInput = '';
@@ -1733,12 +2506,21 @@ test('REQ-140/REQ-141/REQ-300/REQ-302/REQ-435/REQ-437/REQ-438: transcrição e d
       const body = JSON.parse(String(options?.body));
       if (body.contents[0].parts[1]?.inlineData) {
         assert.equal(body.contents[0].parts[1].inlineData.data, Buffer.from('video').toString('base64'));
-        return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'Descrição fictícia do vídeo.' }] } }] }));
+        return new Response(
+          JSON.stringify({
+            candidates: [{ content: { parts: [{ text: 'Descrição fictícia do vídeo.' }] } }],
+          }),
+        );
       }
       suggestionInput = body.contents[0].parts[0].text;
-      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'Sugestão fictícia.' }] } }] }));
+      return new Response(
+        JSON.stringify({ candidates: [{ content: { parts: [{ text: 'Sugestão fictícia.' }] } }] }),
+      );
     };
-    assert.equal((await preprocessMedia(db, messaging, sessionId, chat.id, second.id)).text, 'Descrição fictícia do vídeo.');
+    assert.equal(
+      (await preprocessMedia(db, messaging, sessionId, chat.id, second.id)).text,
+      'Descrição fictícia do vídeo.',
+    );
     await generateSuggestion(db, chat.id, 'Sugira uma resposta.');
     assert.match(suggestionInput, /Transcrição fictícia do áudio/);
     assert.match(suggestionInput, /Descrição fictícia do vídeo/);
@@ -1787,24 +2569,46 @@ test('REQ-436/REQ-438 análise de imagem persiste descrição em cache e impede 
   }));
 
 test('recusa explícita do provedor libera reserva; falha incerta mantém estimativa conservadora', async () => {
-  const settings = { enabled: false, model: 'teste', instructions: '', knowledge: '', style: '', dailyLimit: 100, maxOutputTokens: 100, inputPrice: 1, outputPrice: 1 };
+  const settings = {
+    enabled: false,
+    model: 'teste',
+    instructions: '',
+    knowledge: '',
+    style: '',
+    dailyLimit: 100,
+    maxOutputTokens: 100,
+    inputPrice: 1,
+    outputPrice: 1,
+  };
   const id = 'budget-rejection-test';
   const before = await aiUsage(db);
-  await assert.rejects(() => meteredCall(db, settings, id, 'reply', 50, async () => {
-    await providerResponse(new Response('{}', { status: 403 }));
-    return { result: '' };
-  }), /HTTP 403/);
-  const rejected = await db.operationRecord.findFirstOrThrow({ where: { kind: 'AI_USAGE', data: { path: '$.conversationId', equals: id } } });
+  await assert.rejects(
+    () =>
+      meteredCall(db, settings, id, 'reply', 50, async () => {
+        await providerResponse(new Response('{}', { status: 403 }));
+        return { result: '' };
+      }),
+    /HTTP 403/,
+  );
+  const rejected = await db.operationRecord.findFirstOrThrow({
+    where: { kind: 'AI_USAGE', data: { path: '$.conversationId', equals: id } },
+  });
   assert.equal((rejected.data as any).status, 'REJECTED');
   assert.equal((rejected.data as any).estimatedCost, 0);
   const after = await aiUsage(db);
   assert.equal(after.todayTokens, before.todayTokens);
   assert.equal(after.unconfirmed, before.unconfirmed);
   const uncertainId = 'budget-timeout-test';
-  await assert.rejects(() => meteredCall(db, settings, uncertainId, 'reply', 50, async () => {
-    throw new Error('Timeout simulado');
-  }), /Timeout/);
-  const uncertain = await db.operationRecord.findFirstOrThrow({ where: { kind: 'AI_USAGE', data: { path: '$.conversationId', equals: uncertainId } } });
+  await assert.rejects(
+    () =>
+      meteredCall(db, settings, uncertainId, 'reply', 50, async () => {
+        throw new Error('Timeout simulado');
+      }),
+    /Timeout/,
+  );
+  const uncertain = await db.operationRecord.findFirstOrThrow({
+    where: { kind: 'AI_USAGE', data: { path: '$.conversationId', equals: uncertainId } },
+  });
   assert.equal((uncertain.data as any).status, 'UNCONFIRMED');
   assert.equal((uncertain.data as any).inputTokens, 50);
   assert.equal((uncertain.data as any).outputTokens, 100);
@@ -1847,7 +2651,9 @@ test('REQ-466: ordem das etiquetas persiste sem alterar etapas independentes do 
   const columns = board.body.columns.filter((column: { labelId: string | null }) => column.labelId);
   assert.deepEqual(
     columns.map((column: { labelId: string }) => column.labelId),
-    originalBoard.body.columns.filter((column: { labelId: string | null }) => column.labelId).map((column: { labelId: string }) => column.labelId),
+    originalBoard.body.columns
+      .filter((column: { labelId: string | null }) => column.labelId)
+      .map((column: { labelId: string }) => column.labelId),
   );
   await request(app)
     .put(url)
@@ -1863,14 +2669,33 @@ test('REQ-466: ordem das etiquetas persiste sem alterar etapas independentes do 
 test('receita do CRM conta somente vendas ganhas, não duplica campanhas e preserva investimento', async () => {
   const chat = await makeContact('5511888877791', 'Venda fictícia');
   const before = socket.sends.length;
-  await db.crmOpportunity.create({ data: { conversationId: chat.id, title: 'Venda de teste', valueInCents: 10000, status: 'WON', wonAt: new Date(), version: 1 } });
+  await db.crmOpportunity.create({
+    data: {
+      conversationId: chat.id,
+      title: 'Venda de teste',
+      valueInCents: 10000,
+      status: 'WON',
+      wonAt: new Date(),
+      version: 1,
+    },
+  });
   const first = await draft([chat.id], { kind: 'text', text: 'Não ativar: teste financeiro' });
   const second = await draft([chat.id], { kind: 'text', text: 'Não ativar: segunda campanha' });
   const base = `/api/operations/sessions/${sessionId}/batches`;
-  await request(app).put(`${base}/${first.id}`).send({ investmentInCents: 2000, attributedRevenueInCents: 99999 }).expect(200);
-  await request(app).put(`${base}/${first.id}/revenue`).send({ conversationIds: [chat.id] }).expect(200);
-  await request(app).put(`${base}/${first.id}/revenue`).send({ conversationIds: [chat.id] }).expect(200);
-  const readFirst = async () => (await request(app).get(base).expect(200)).body.items.find((item: any) => item.id === first.id);
+  await request(app)
+    .put(`${base}/${first.id}`)
+    .send({ investmentInCents: 2000, attributedRevenueInCents: 99999 })
+    .expect(200);
+  await request(app)
+    .put(`${base}/${first.id}/revenue`)
+    .send({ conversationIds: [chat.id] })
+    .expect(200);
+  await request(app)
+    .put(`${base}/${first.id}/revenue`)
+    .send({ conversationIds: [chat.id] })
+    .expect(200);
+  const readFirst = async () =>
+    (await request(app).get(base).expect(200)).body.items.find((item: any) => item.id === first.id);
   let financial = await readFirst();
   assert.equal(financial.attributedRevenueInCents, 10000);
   assert.equal(financial.manualRevenueInCents, 99999);
@@ -1882,19 +2707,28 @@ test('receita do CRM conta somente vendas ganhas, não duplica campanhas e prese
   assert.equal(overview.body.campaignFinance.investmentInCents, 2000);
   assert.equal(overview.body.campaignFinance.roiPercent, 400);
   assert.equal(overview.body.campaignFinance.sales, 1);
-  await request(app).put(`${base}/${second.id}/revenue`).send({ conversationIds: [chat.id] }).expect(409);
+  await request(app)
+    .put(`${base}/${second.id}/revenue`)
+    .send({ conversationIds: [chat.id] })
+    .expect(409);
   await request(app).get(`/api/operations/sessions/${otherSession}/batches/${first.id}/revenue`).expect(404);
   await db.crmOpportunity.update({ where: { conversationId: chat.id }, data: { valueInCents: 15000 } });
   assert.equal((await readFirst()).attributedRevenueInCents, 15000);
   await db.crmOpportunity.update({ where: { conversationId: chat.id }, data: { status: 'OPEN' } });
   assert.equal((await readFirst()).attributedRevenueInCents, 0);
-  await request(app).put(`${base}/${second.id}/revenue`).send({ conversationIds: [chat.id] }).expect(422);
+  await request(app)
+    .put(`${base}/${second.id}/revenue`)
+    .send({ conversationIds: [chat.id] })
+    .expect(422);
   await putRecord(db, first.id, 'BATCH', { ...first, investmentInCents: 0 });
   financial = await readFirst();
   assert.equal(financial.investmentInCents, 2000, 'a execução não pode sobrescrever o financeiro');
   await request(app).put(`${base}/${first.id}/revenue`).send({ conversationIds: [] }).expect(200);
   await db.crmOpportunity.update({ where: { conversationId: chat.id }, data: { status: 'WON' } });
-  await request(app).put(`${base}/${second.id}/revenue`).send({ conversationIds: [chat.id] }).expect(200);
+  await request(app)
+    .put(`${base}/${second.id}/revenue`)
+    .send({ conversationIds: [chat.id] })
+    .expect(200);
   await request(app).put(`${base}/${first.id}`).send({ revenueSource: 'MANUAL' }).expect(200);
   assert.equal((await readFirst()).attributedRevenueInCents, 99999);
   assert.equal(socket.sends.length, before);
@@ -1936,50 +2770,135 @@ function unzipEntries(bytes: Buffer) {
 }
 test('pré-processamento de histórico exige consentimento, isola conexão, reutiliza cache e respeita snapshot', async () => {
   const chat = await makeContact('5511777770048');
-  const file = await db.storedFile.create({ data: { sha256: 'b'.repeat(64), filename: 'teste.png', mimeType: 'image/png', data: Buffer.from('png'), byteLength: 3 } });
-  const first = await db.chatMessage.create({ data: { id: 'preprocess-a', direction: 'INBOUND', conversationId: chat.id, type: 'imageMessage', fileId: file.id } });
-  await db.chatMessage.create({ data: { id: 'preprocess-b-private', direction: 'INBOUND', conversationId: chat.id, type: 'audioMessage', asViewOnce: true } });
+  const file = await db.storedFile.create({
+    data: {
+      sha256: 'b'.repeat(64),
+      filename: 'teste.png',
+      mimeType: 'image/png',
+      data: Buffer.from('png'),
+      byteLength: 3,
+    },
+  });
+  const first = await db.chatMessage.create({
+    data: {
+      id: 'preprocess-a',
+      direction: 'INBOUND',
+      conversationId: chat.id,
+      type: 'imageMessage',
+      fileId: file.id,
+    },
+  });
+  await db.chatMessage.create({
+    data: {
+      id: 'preprocess-b-private',
+      direction: 'INBOUND',
+      conversationId: chat.id,
+      type: 'audioMessage',
+      asViewOnce: true,
+    },
+  });
   await putRecord(db, `ai-media:${first.id}`, 'AI_MEDIA', { text: 'Descrição salva para exportação.' });
   const url = `/api/operations/sessions/${sessionId}/history-preprocessing`;
-  await request(app).post(url).send({ conversationIds: [chat.id] }).expect(422);
-  await request(app).post(`/api/operations/sessions/${otherSession}/history-preprocessing`).send({ conversationIds: [chat.id], consent: true }).expect(404);
-  const page = await request(app).post(url).send({ conversationIds: [chat.id], consent: true }).expect(200);
+  await request(app)
+    .post(url)
+    .send({ conversationIds: [chat.id] })
+    .expect(422);
+  await request(app)
+    .post(`/api/operations/sessions/${otherSession}/history-preprocessing`)
+    .send({ conversationIds: [chat.id], consent: true })
+    .expect(404);
+  const page = await request(app)
+    .post(url)
+    .send({ conversationIds: [chat.id], consent: true })
+    .expect(200);
   assert.equal(page.body.total, 1);
   assert.equal(page.body.item.status, 'CACHED');
   assert.equal(page.body.nextCursor, first.id);
-  await db.chatMessage.create({ data: { id: 'preprocess-z-new', direction: 'INBOUND', conversationId: chat.id, type: 'imageMessage', sentAt: new Date(new Date(page.body.snapshot).getTime() + 1000) } });
-  const end = await request(app).post(url).send({ conversationIds: [chat.id], consent: true, cursor: page.body.nextCursor, snapshot: page.body.snapshot }).expect(200);
+  await db.chatMessage.create({
+    data: {
+      id: 'preprocess-z-new',
+      direction: 'INBOUND',
+      conversationId: chat.id,
+      type: 'imageMessage',
+      sentAt: new Date(new Date(page.body.snapshot).getTime() + 1000),
+    },
+  });
+  const end = await request(app)
+    .post(url)
+    .send({
+      conversationIds: [chat.id],
+      consent: true,
+      cursor: page.body.nextCursor,
+      snapshot: page.body.snapshot,
+    })
+    .expect(200);
   assert.equal(end.body.done, true);
   assert.equal(end.body.total, 1);
 });
 
-test('REQ-301: pré-processamento de imagem gera análise, reaproveita resultado e interrompe após recusa simulada', async () => aiTest(async () => {
-  const chat = await makeContact('5511777770049');
-  const file = await db.storedFile.create({ data: { sha256: 'c'.repeat(64), filename: 'imagem.png', mimeType: 'image/png', data: Buffer.from('png'), byteLength: 3 } });
-  const first = await db.chatMessage.create({ data: { id: 'preprocess-real-a', direction: 'INBOUND', conversationId: chat.id, type: 'imageMessage', fileId: file.id } });
-  const second = await db.chatMessage.create({ data: { id: 'preprocess-real-b', direction: 'INBOUND', conversationId: chat.id, type: 'imageMessage', fileId: file.id } });
-  await configureAi({ provider: 'gemini', mediaModel: 'modelo-ficticio' });
-  let calls = 0;
-  globalThis.fetch = async () => {
-    calls++;
-    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'Descrição visual de teste.' }] } }], usageMetadata: { promptTokenCount: 8, candidatesTokenCount: 5 } }));
-  };
-  const url = `/api/operations/sessions/${sessionId}/history-preprocessing`;
-  const body = { conversationIds: [chat.id], consent: true };
-  const analyzed = await request(app).post(url).send(body).expect(200);
-  assert.equal(analyzed.body.item.id, first.id);
-  assert.equal(analyzed.body.item.status, 'ANALYZED');
-  assert.equal((await record<any>(db, `ai-media:${first.id}`, null)).text, 'Descrição visual de teste.');
-  const cached = await request(app).post(url).send(body).expect(200);
-  assert.equal(cached.body.item.status, 'CACHED');
-  assert.equal(calls, 1);
-  globalThis.fetch = async () => { calls++; return new Response(JSON.stringify({ error: { message: 'Projeto indisponível' } }), { status: 403 }); };
-  const refused = await request(app).post(url).send({ ...body, cursor: first.id }).expect(200);
-  assert.equal(refused.body.item.id, second.id);
-  assert.equal(refused.body.fatal, true);
-  assert.equal(refused.body.item.status, 'UNAVAILABLE');
-  assert.equal(calls, 2);
-}));
+test('REQ-301: pré-processamento de imagem gera análise, reaproveita resultado e interrompe após recusa simulada', async () =>
+  aiTest(async () => {
+    const chat = await makeContact('5511777770049');
+    const file = await db.storedFile.create({
+      data: {
+        sha256: 'c'.repeat(64),
+        filename: 'imagem.png',
+        mimeType: 'image/png',
+        data: Buffer.from('png'),
+        byteLength: 3,
+      },
+    });
+    const first = await db.chatMessage.create({
+      data: {
+        id: 'preprocess-real-a',
+        direction: 'INBOUND',
+        conversationId: chat.id,
+        type: 'imageMessage',
+        fileId: file.id,
+      },
+    });
+    const second = await db.chatMessage.create({
+      data: {
+        id: 'preprocess-real-b',
+        direction: 'INBOUND',
+        conversationId: chat.id,
+        type: 'imageMessage',
+        fileId: file.id,
+      },
+    });
+    await configureAi({ provider: 'gemini', mediaModel: 'modelo-ficticio' });
+    let calls = 0;
+    globalThis.fetch = async () => {
+      calls++;
+      return new Response(
+        JSON.stringify({
+          candidates: [{ content: { parts: [{ text: 'Descrição visual de teste.' }] } }],
+          usageMetadata: { promptTokenCount: 8, candidatesTokenCount: 5 },
+        }),
+      );
+    };
+    const url = `/api/operations/sessions/${sessionId}/history-preprocessing`;
+    const body = { conversationIds: [chat.id], consent: true };
+    const analyzed = await request(app).post(url).send(body).expect(200);
+    assert.equal(analyzed.body.item.id, first.id);
+    assert.equal(analyzed.body.item.status, 'ANALYZED');
+    assert.equal((await record<any>(db, `ai-media:${first.id}`, null)).text, 'Descrição visual de teste.');
+    const cached = await request(app).post(url).send(body).expect(200);
+    assert.equal(cached.body.item.status, 'CACHED');
+    assert.equal(calls, 1);
+    globalThis.fetch = async () => {
+      calls++;
+      return new Response(JSON.stringify({ error: { message: 'Projeto indisponível' } }), { status: 403 });
+    };
+    const refused = await request(app)
+      .post(url)
+      .send({ ...body, cursor: first.id })
+      .expect(200);
+    assert.equal(refused.body.item.id, second.id);
+    assert.equal(refused.body.fatal, true);
+    assert.equal(refused.body.item.status, 'UNAVAILABLE');
+    assert.equal(calls, 2);
+  }));
 
 test('REQ-132/REQ-158/REQ-299/REQ-302/REQ-303: exportação inclui vídeo, cronologia, papéis e formatos estruturados', async () => {
   const chat = await makeContact('5511777770038');
@@ -2050,108 +2969,281 @@ test('REQ-132/REQ-158/REQ-299/REQ-302/REQ-303: exportação inclui vídeo, crono
   assert.ok(files.has('conversa.jsonl'));
   assert.ok(files.has('dialogo.txt'));
   const mediaFiles = [...files.keys()].filter((name) => name.startsWith('midias/'));
-  assert.ok(mediaFiles.some((name) => name.endsWith('.ogg')), 'REQ-132 inclui áudio disponível');
-  assert.ok(mediaFiles.some((name) => name.endsWith('.png')), 'REQ-132 inclui imagem disponível');
-  assert.ok(mediaFiles.some((name) => name.endsWith('.mp4')), 'REQ-132 inclui vídeo disponível');
+  assert.ok(
+    mediaFiles.some((name) => name.endsWith('.ogg')),
+    'REQ-132 inclui áudio disponível',
+  );
+  assert.ok(
+    mediaFiles.some((name) => name.endsWith('.png')),
+    'REQ-132 inclui imagem disponível',
+  );
+  assert.ok(
+    mediaFiles.some((name) => name.endsWith('.mp4')),
+    'REQ-132 inclui vídeo disponível',
+  );
   await request(app)
     .get(`/api/operations/sessions/${otherSession}/history-export?ids=${chat.id}`)
     .expect(404);
 });
 
-test('campanha congela as variações por destinatário e nunca envia ao salvar',async()=>{const first=await makeContact('5511888877701','Primeiro');const second=await makeContact('5511888877702','Segundo');const before=socket.sends.length;const result=await draft([first.id,second.id],{kind:'text',text:'Base {{nome}}',textVariations:['Olá {{nome}}, opção A','Olá {{nome}}, opção B']});const tasks=await db.deliveryTask.findMany({where:{batchId:result.id},orderBy:{conversationId:'asc'}});const texts=tasks.map((task)=>(task.payload as {snapshot:{text:string}}).snapshot.text);assert.equal(new Set(texts).size,2);assert.ok(texts.every((text)=>text.includes('{{nome}}')));assert.equal(socket.sends.length,before);});
-test('transferência para setor valida a fila, pode ser aceita e não envia WhatsApp',async()=>{const chat=await makeContact('5511888877703','Setor');await putRecord(db,'settings:departments','SETTINGS',{items:[{name:'Comercial',label:''}]});const before=socket.sends.length;await request(app).post(`/api/operations/toolbox/sessions/${sessionId}/transfers`).send({conversationId:chat.id,target:'Inexistente',targetType:'DEPARTMENT',note:''}).expect(422);const created=await request(app).post(`/api/operations/toolbox/sessions/${sessionId}/transfers`).send({conversationId:chat.id,target:'Comercial',targetType:'DEPARTMENT',note:'Acompanhamento'}).expect(201);assert.equal(created.body.department,'Comercial');assert.equal(created.body.targetType,'DEPARTMENT');await request(app).put(`/api/operations/toolbox/sessions/${sessionId}/transfers/${created.body.id}`).send({status:'ACCEPTED'}).expect(200);assert.equal(socket.sends.length,before);});
-test('REQ-169: diretório fornece avatar e presença recente sem expor dados de integração',async()=>{await putRecord(db,'settings:departments','SETTINGS',{items:[{name:'Comercial',label:''}]});await putRecord(db,'team:presence@example.com','TEAM',{email:'presence@example.com',name:'Presença',department:'Comercial',role:'MEMBER',active:true,avatar:''});await putRecord(db,'presence:presence@example.com','TEAM_PRESENCE',{email:'presence@example.com',seenAt:new Date().toISOString()});const result=await request(app).get('/api/operations/directory').expect(200);assert.equal(result.body.items.find((item:{email:string})=>item.email==='presence@example.com').online,true);assert.ok(result.body.departments.some((item:{name:string})=>item.name==='Comercial'));assert.equal(result.body.encryptedKey,undefined);});
+test('campanha congela as variações por destinatário e nunca envia ao salvar', async () => {
+  const first = await makeContact('5511888877701', 'Primeiro');
+  const second = await makeContact('5511888877702', 'Segundo');
+  const before = socket.sends.length;
+  const result = await draft([first.id, second.id], {
+    kind: 'text',
+    text: 'Base {{nome}}',
+    textVariations: ['Olá {{nome}}, opção A', 'Olá {{nome}}, opção B'],
+  });
+  const tasks = await db.deliveryTask.findMany({
+    where: { batchId: result.id },
+    orderBy: { conversationId: 'asc' },
+  });
+  const texts = tasks.map((task) => (task.payload as { snapshot: { text: string } }).snapshot.text);
+  assert.equal(new Set(texts).size, 2);
+  assert.ok(texts.every((text) => text.includes('{{nome}}')));
+  assert.equal(socket.sends.length, before);
+});
+test('transferência para setor valida a fila, pode ser aceita e não envia WhatsApp', async () => {
+  const chat = await makeContact('5511888877703', 'Setor');
+  await putRecord(db, 'settings:departments', 'SETTINGS', { items: [{ name: 'Comercial', label: '' }] });
+  const before = socket.sends.length;
+  await request(app)
+    .post(`/api/operations/toolbox/sessions/${sessionId}/transfers`)
+    .send({ conversationId: chat.id, target: 'Inexistente', targetType: 'DEPARTMENT', note: '' })
+    .expect(422);
+  const created = await request(app)
+    .post(`/api/operations/toolbox/sessions/${sessionId}/transfers`)
+    .send({ conversationId: chat.id, target: 'Comercial', targetType: 'DEPARTMENT', note: 'Acompanhamento' })
+    .expect(201);
+  assert.equal(created.body.department, 'Comercial');
+  assert.equal(created.body.targetType, 'DEPARTMENT');
+  await request(app)
+    .put(`/api/operations/toolbox/sessions/${sessionId}/transfers/${created.body.id}`)
+    .send({ status: 'ACCEPTED' })
+    .expect(200);
+  assert.equal(socket.sends.length, before);
+});
+test('REQ-169: diretório fornece avatar e presença recente sem expor dados de integração', async () => {
+  await putRecord(db, 'settings:departments', 'SETTINGS', { items: [{ name: 'Comercial', label: '' }] });
+  await putRecord(db, 'team:presence@example.com', 'TEAM', {
+    email: 'presence@example.com',
+    name: 'Presença',
+    department: 'Comercial',
+    role: 'MEMBER',
+    active: true,
+    avatar: '',
+  });
+  await putRecord(db, 'presence:presence@example.com', 'TEAM_PRESENCE', {
+    email: 'presence@example.com',
+    seenAt: new Date().toISOString(),
+  });
+  const result = await request(app).get('/api/operations/directory').expect(200);
+  assert.equal(
+    result.body.items.find((item: { email: string }) => item.email === 'presence@example.com').online,
+    true,
+  );
+  assert.ok(result.body.departments.some((item: { name: string }) => item.name === 'Comercial'));
+  assert.equal(result.body.encryptedKey, undefined);
+});
 
-test('REQ-596/REQ-597/REQ-598/REQ-599/REQ-600/REQ-601/REQ-602 ações de etiqueta persistem, confirmam e calculam retorno', async()=>{
-  const chat=await makeContact('5511888800611','Venda etiqueta fictícia');
-  const label=await db.label.create({data:{id:'paid-rule-test',sessionId,name:'Pagamento concluído'}});
-  const base=`/api/operations/sessions/${sessionId}`;
-  const apply=`/api/attendance/sessions/${sessionId}/conversations/${chat.id}/labels/${label.id}`;
-  const before=socket.sends.length;
-  await request(app).put(`${base}/label-rules/${label.id}`).send({enabled:true,recordSale:true,askValue:true,internalNote:'Venda registrada no teste',pinConversation:true,investmentInCents:2000}).expect(200);
-  const persistedRule=await request(app).get(base+'/label-rules/'+label.id).expect(200);assert.deepEqual(persistedRule.body,{enabled:true,recordSale:true,askValue:true,fixedValueInCents:0,internalNote:'Venda registrada no teste',pinConversation:true,investmentInCents:2000});
-  await request(app).put(apply).send({active:true}).expect(409);
-  assert.equal(await db.contactLabel.count({where:{contactId:chat.contactId,labelId:label.id}}),0);
-  await request(app).put(apply).send({active:true,confirmActions:true}).expect(422);
-  await request(app).put(apply).send({active:true,confirmActions:true,saleValueInCents:10000}).expect(200);
-  await request(app).put(apply).send({active:true}).expect(200);
-  let row=(await request(app).get(`${base}/label-finance`).expect(200)).body.items.find((x:{id:string})=>x.id===label.id);
-  assert.equal(row.sales,1);assert.equal(row.revenueInCents,10000);assert.equal(row.roiPercent,400);
-  assert.equal((await db.conversation.findUniqueOrThrow({where:{id:chat.id}})).pinned,true);
-  assert.equal(await db.operationRecord.count({where:{id:`label-note:${chat.id}:${label.id}`}}),1);
-  const second=await db.label.create({data:{id:'paid-second-rule-test',sessionId,name:'Outra classificação financeira'}});
-  await request(app).put(`${base}/label-rules/${second.id}`).send({enabled:true,recordSale:true,askValue:false,fixedValueInCents:12000}).expect(200);
-  await request(app).put(`/api/attendance/sessions/${sessionId}/conversations/${chat.id}/labels/${second.id}`).send({active:true,confirmActions:true}).expect(200);
-  const financial=(await request(app).get(`${base}/label-finance`).expect(200)).body.items;
-  assert.equal(financial.find((x:{id:string})=>x.id===label.id).sales,0);
-  assert.equal(financial.find((x:{id:string})=>x.id===second.id).sales,1);
-  assert.equal(financial.find((x:{id:string})=>x.id===second.id).revenueInCents,12000);
-  await db.crmOpportunity.update({where:{conversationId:chat.id},data:{status:'OPEN'}});
-  row=(await request(app).get(`${base}/label-finance`).expect(200)).body.items.find((x:{id:string})=>x.id===label.id);
-  assert.equal(row.sales,0);assert.equal(row.revenueInCents,0);
+test('REQ-596/REQ-597/REQ-598/REQ-599/REQ-600/REQ-601/REQ-602 ações de etiqueta persistem, confirmam e calculam retorno', async () => {
+  const chat = await makeContact('5511888800611', 'Venda etiqueta fictícia');
+  const label = await db.label.create({
+    data: { id: 'paid-rule-test', sessionId, name: 'Pagamento concluído' },
+  });
+  const base = `/api/operations/sessions/${sessionId}`;
+  const apply = `/api/attendance/sessions/${sessionId}/conversations/${chat.id}/labels/${label.id}`;
+  const before = socket.sends.length;
+  await request(app)
+    .put(`${base}/label-rules/${label.id}`)
+    .send({
+      enabled: true,
+      recordSale: true,
+      askValue: true,
+      internalNote: 'Venda registrada no teste',
+      pinConversation: true,
+      investmentInCents: 2000,
+    })
+    .expect(200);
+  const persistedRule = await request(app)
+    .get(base + '/label-rules/' + label.id)
+    .expect(200);
+  assert.deepEqual(persistedRule.body, {
+    enabled: true,
+    recordSale: true,
+    askValue: true,
+    fixedValueInCents: 0,
+    internalNote: 'Venda registrada no teste',
+    pinConversation: true,
+    investmentInCents: 2000,
+  });
+  await request(app).put(apply).send({ active: true }).expect(409);
+  assert.equal(await db.contactLabel.count({ where: { contactId: chat.contactId, labelId: label.id } }), 0);
+  await request(app).put(apply).send({ active: true, confirmActions: true }).expect(422);
+  await request(app)
+    .put(apply)
+    .send({ active: true, confirmActions: true, saleValueInCents: 10000 })
+    .expect(200);
+  await request(app).put(apply).send({ active: true }).expect(200);
+  let row = (await request(app).get(`${base}/label-finance`).expect(200)).body.items.find(
+    (x: { id: string }) => x.id === label.id,
+  );
+  assert.equal(row.sales, 1);
+  assert.equal(row.revenueInCents, 10000);
+  assert.equal(row.roiPercent, 400);
+  assert.equal((await db.conversation.findUniqueOrThrow({ where: { id: chat.id } })).pinned, true);
+  assert.equal(await db.operationRecord.count({ where: { id: `label-note:${chat.id}:${label.id}` } }), 1);
+  const second = await db.label.create({
+    data: { id: 'paid-second-rule-test', sessionId, name: 'Outra classificação financeira' },
+  });
+  await request(app)
+    .put(`${base}/label-rules/${second.id}`)
+    .send({ enabled: true, recordSale: true, askValue: false, fixedValueInCents: 12000 })
+    .expect(200);
+  await request(app)
+    .put(`/api/attendance/sessions/${sessionId}/conversations/${chat.id}/labels/${second.id}`)
+    .send({ active: true, confirmActions: true })
+    .expect(200);
+  const financial = (await request(app).get(`${base}/label-finance`).expect(200)).body.items;
+  assert.equal(financial.find((x: { id: string }) => x.id === label.id).sales, 0);
+  assert.equal(financial.find((x: { id: string }) => x.id === second.id).sales, 1);
+  assert.equal(financial.find((x: { id: string }) => x.id === second.id).revenueInCents, 12000);
+  await db.crmOpportunity.update({ where: { conversationId: chat.id }, data: { status: 'OPEN' } });
+  row = (await request(app).get(`${base}/label-finance`).expect(200)).body.items.find(
+    (x: { id: string }) => x.id === label.id,
+  );
+  assert.equal(row.sales, 0);
+  assert.equal(row.revenueInCents, 0);
   await request(app).get(`/api/operations/sessions/${otherSession}/label-rules/${label.id}`).expect(404);
-  assert.equal(socket.sends.length,before);
+  assert.equal(socket.sends.length, before);
 });
-test('filtros de resposta e ordenação consideram todos os leads antes de paginar', async()=>{
-  const chats=[];
-  for(let i=0;i<3;i++){
-    const chat=await makeContact(`551188880062${i}`,'FiltroRespostaTeste '+i);chats.push(chat);
-    const date=new Date(Date.now()-(3-i)*60_000);
-    await db.conversation.update({where:{id:chat.id},data:{lastMessageAt:date}});
-    await db.chatMessage.create({data:{conversationId:chat.id,direction:i===2?'OUTBOUND':'INBOUND',status:'SENT',text:'Conteúdo fictício',sentAt:date}});
-    if(i===1) await db.chatMessage.create({data:{conversationId:chat.id,direction:'OUTBOUND',status:'SENT',text:'Resposta anterior',sentAt:new Date(date.getTime()-1000)}});
+test('filtros de resposta e ordenação consideram todos os leads antes de paginar', async () => {
+  const chats = [];
+  for (let i = 0; i < 3; i++) {
+    const chat = await makeContact(`551188880062${i}`, 'FiltroRespostaTeste ' + i);
+    chats.push(chat);
+    const date = new Date(Date.now() - (3 - i) * 60_000);
+    await db.conversation.update({ where: { id: chat.id }, data: { lastMessageAt: date } });
+    await db.chatMessage.create({
+      data: {
+        conversationId: chat.id,
+        direction: i === 2 ? 'OUTBOUND' : 'INBOUND',
+        status: 'SENT',
+        text: 'Conteúdo fictício',
+        sentAt: date,
+      },
+    });
+    if (i === 1)
+      await db.chatMessage.create({
+        data: {
+          conversationId: chat.id,
+          direction: 'OUTBOUND',
+          status: 'SENT',
+          text: 'Resposta anterior',
+          sentAt: new Date(date.getTime() - 1000),
+        },
+      });
   }
-  const base=`/api/attendance/sessions/${sessionId}/conversations?search=FiltroRespostaTeste&pageSize=1`;
-  const recent=await request(app).get(`${base}&sort=recent`).expect(200);
-  assert.equal(recent.body.total,3);assert.equal(recent.body.items[0].id,chats[2]!.id);
-  const ours=await request(app).get(`${base}&response=ours&sort=waiting&page=2`).expect(200);
-  assert.equal(ours.body.total,2);assert.equal(ours.body.items[0].id,chats[1]!.id);
-  const never=await request(app).get(`${base}&response=never`).expect(200);
-  assert.equal(never.body.total,1);assert.equal(never.body.items[0].id,chats[0]!.id);
-  const client=await request(app).get(`${base}&response=client`).expect(200);
-  assert.equal(client.body.total,1);assert.equal(client.body.items[0].id,chats[2]!.id);
+  const base = `/api/attendance/sessions/${sessionId}/conversations?search=FiltroRespostaTeste&pageSize=1`;
+  const recent = await request(app).get(`${base}&sort=recent`).expect(200);
+  assert.equal(recent.body.total, 3);
+  assert.equal(recent.body.items[0].id, chats[2]!.id);
+  const ours = await request(app).get(`${base}&response=ours&sort=waiting&page=2`).expect(200);
+  assert.equal(ours.body.total, 2);
+  assert.equal(ours.body.items[0].id, chats[1]!.id);
+  const never = await request(app).get(`${base}&response=never`).expect(200);
+  assert.equal(never.body.total, 1);
+  assert.equal(never.body.items[0].id, chats[0]!.id);
+  const client = await request(app).get(`${base}&response=client`).expect(200);
+  assert.equal(client.body.total, 1);
+  assert.equal(client.body.items[0].id, chats[2]!.id);
 });
-test('REQ-466: mover etapa não dispara automação de etiqueta configurada',async()=>{
-  const chat=await makeContact('5511888800631','Venda Kanban fictícia');
-  const label=await db.label.create({data:{id:'paid-kanban-rule-test',sessionId,name:'Etiqueta com venda'}});
-  await request(app).put(`/api/operations/sessions/${sessionId}/label-rules/${label.id}`).send({enabled:true,recordSale:true,askValue:true}).expect(200);
-  const stage=await request(app).post(`/api/crm/sessions/${sessionId}/labels`).send({name:'Etapa independente',color:'#aabbcc'}).expect(201);
-  const body={conversationId:chat.id,sourceLabelId:null,targetLabelId:stage.body.id,version:0};
+test('REQ-466: mover etapa não dispara automação de etiqueta configurada', async () => {
+  const chat = await makeContact('5511888800631', 'Venda Kanban fictícia');
+  const label = await db.label.create({
+    data: { id: 'paid-kanban-rule-test', sessionId, name: 'Etiqueta com venda' },
+  });
+  await request(app)
+    .put(`/api/operations/sessions/${sessionId}/label-rules/${label.id}`)
+    .send({ enabled: true, recordSale: true, askValue: true })
+    .expect(200);
+  const stage = await request(app)
+    .post(`/api/crm/sessions/${sessionId}/labels`)
+    .send({ name: 'Etapa independente', color: '#aabbcc' })
+    .expect(201);
+  const body = { conversationId: chat.id, sourceLabelId: null, targetLabelId: stage.body.id, version: 0 };
   await request(app).post(`/api/crm/sessions/${sessionId}/move`).send(body).expect(200);
-  const opportunity=await db.crmOpportunity.findUniqueOrThrow({where:{conversationId:chat.id}});
-  assert.equal(opportunity.status,'OPEN');assert.equal(opportunity.valueInCents,0);
-  assert.equal(await db.contactLabel.count({where:{contactId:chat.contactId,labelId:label.id}}),0);
+  const opportunity = await db.crmOpportunity.findUniqueOrThrow({ where: { conversationId: chat.id } });
+  assert.equal(opportunity.status, 'OPEN');
+  assert.equal(opportunity.valueInCents, 0);
+  assert.equal(await db.contactLabel.count({ where: { contactId: chat.contactId, labelId: label.id } }), 0);
   // Existing authorized label automation remains available only on explicit label application.
-  const url=`/api/attendance/sessions/${sessionId}/conversations/${chat.id}/labels/${label.id}`;
-  await request(app).put(url).send({active:true}).expect(409);
-  await request(app).put(url).send({active:true,confirmActions:true,saleValueInCents:9000}).expect(200);
-  const won=await db.crmOpportunity.findUniqueOrThrow({where:{conversationId:chat.id}});
-  assert.equal(won.status,'WON');assert.equal(won.valueInCents,9000);
-  assert.deepEqual(won.placements,opportunity.placements);
+  const url = `/api/attendance/sessions/${sessionId}/conversations/${chat.id}/labels/${label.id}`;
+  await request(app).put(url).send({ active: true }).expect(409);
+  await request(app)
+    .put(url)
+    .send({ active: true, confirmActions: true, saleValueInCents: 9000 })
+    .expect(200);
+  const won = await db.crmOpportunity.findUniqueOrThrow({ where: { conversationId: chat.id } });
+  assert.equal(won.status, 'WON');
+  assert.equal(won.valueInCents, 9000);
+  assert.deepEqual(won.placements, opportunity.placements);
 });
 
 test('REQ-046 macro importada usa mídia Base64 como áudio de voz no conector fictício', async () => {
   const ffmpeg = createRequire(import.meta.url)('ffmpeg-static') as string;
-  const wav = execFileSync(ffmpeg, [
-    '-nostdin', '-v', 'error', '-f', 'lavfi', '-i', 'sine=frequency=660:duration=0.15',
-    '-c:a', 'pcm_s16le', '-f', 'wav', 'pipe:1',
-  ], { windowsHide: true });
-  const report = await new BackupService(db).import({
-    respostasRapidasAcao: [{
-      id: 'imported-audio-macro-test', name: 'Áudio importado',
-      acao: [{
-        type: 'media', filename: 'amostra.wav', mimeType: 'audio/wav',
-        base64: `data:audio/wav;base64,${wav.toString('base64')}`,
-        aguarde: 0, composing: 0,
-      }],
-    }],
-  }, 'macro-audio-ficticia.json');
+  const wav = execFileSync(
+    ffmpeg,
+    [
+      '-nostdin',
+      '-v',
+      'error',
+      '-f',
+      'lavfi',
+      '-i',
+      'sine=frequency=660:duration=0.15',
+      '-c:a',
+      'pcm_s16le',
+      '-f',
+      'wav',
+      'pipe:1',
+    ],
+    { windowsHide: true },
+  );
+  const report = await new BackupService(db).import(
+    {
+      respostasRapidasAcao: [
+        {
+          id: 'imported-audio-macro-test',
+          name: 'Áudio importado',
+          acao: [
+            {
+              type: 'media',
+              filename: 'amostra.wav',
+              mimeType: 'audio/wav',
+              base64: `data:audio/wav;base64,${wav.toString('base64')}`,
+              aguarde: 0,
+              composing: 0,
+            },
+          ],
+        },
+      ],
+    },
+    'macro-audio-ficticia.json',
+  );
   assert.equal(report.counts.macros, 1);
   const action = await db.macroAction.findFirstOrThrow({ where: { macroId: 'imported-audio-macro-test' } });
   assert.ok(action.fileId);
   const chat = await makeContact('5511888800641', 'Cliente de macro fictício');
   const before = socket.sends.length;
-  const run = await sequences.enqueue(sessionId, chat.id, 'MACRO', 'imported-audio-macro-test', 'imported-audio-macro-request');
+  const run = await sequences.enqueue(
+    sessionId,
+    chat.id,
+    'MACRO',
+    'imported-audio-macro-test',
+    'imported-audio-macro-request',
+  );
   await sequences.flush();
   assert.equal(socket.sends.length, before + 1);
   const sent = socket.sends.at(-1) as { audio?: Buffer; mimetype?: string; ptt?: boolean };
@@ -2161,20 +3253,50 @@ test('REQ-046 macro importada usa mídia Base64 como áudio de voz no conector f
   assert.equal((await db.sequenceRun.findUniqueOrThrow({ where: { id: run.id } })).status, 'COMPLETED');
 });
 
- test('REQ-466: macro adiciona, remove e limpa etiquetas sem alterar a etapa ou o negócio', async () => {
+test('REQ-466: macro adiciona, remove e limpa etiquetas sem alterar a etapa ou o negócio', async () => {
   const chat = await makeContact('5511888840466', 'Cliente Macro Fictício');
-  const stage = await request(app).post(`/api/crm/sessions/${sessionId}/labels`).send({ name: 'Etapa independente', color: '#aabbcc' }).expect(201);
-  await request(app).post(`/api/crm/sessions/${sessionId}/move`).send({ conversationId: chat.id, sourceLabelId: null, targetLabelId: stage.body.id, version: 0 }).expect(200);
+  const stage = await request(app)
+    .post(`/api/crm/sessions/${sessionId}/labels`)
+    .send({ name: 'Etapa independente', color: '#aabbcc' })
+    .expect(201);
+  await request(app)
+    .post(`/api/crm/sessions/${sessionId}/move`)
+    .send({ conversationId: chat.id, sourceLabelId: null, targetLabelId: stage.body.id, version: 0 })
+    .expect(200);
   const before = await db.crmOpportunity.findUniqueOrThrow({ where: { conversationId: chat.id } });
   const label = await db.label.create({ data: { id: 'req466-tag', name: 'Etiqueta fictícia', sessionId } });
-  for (const action of [{ type: 'ADD_LABEL', labelId: label.id }, { type: 'REMOVE_LABEL', labelId: label.id }, { type: 'UTILITY', command: 'CLEAR_LABELS' }]) {
-    const macro = await request(app).post('/api/operations/macros').send({ name: 'Macro fictícia 466', actions: [action] }).expect(201);
-    const run = await sequences.enqueue(sessionId, chat.id, 'MACRO', macro.body.id, `req466-${macro.body.id}`);
-    for (let i=0;i<5;i++) { await sequences.flush(); if ((await db.sequenceRun.findUniqueOrThrow({ where: { id: run.id } })).status === 'COMPLETED') break; }
+  for (const action of [
+    { type: 'ADD_LABEL', labelId: label.id },
+    { type: 'REMOVE_LABEL', labelId: label.id },
+    { type: 'UTILITY', command: 'CLEAR_LABELS' },
+  ]) {
+    const macro = await request(app)
+      .post('/api/operations/macros')
+      .send({ name: 'Macro fictícia 466', actions: [action] })
+      .expect(201);
+    const run = await sequences.enqueue(
+      sessionId,
+      chat.id,
+      'MACRO',
+      macro.body.id,
+      `req466-${macro.body.id}`,
+    );
+    for (let i = 0; i < 5; i++) {
+      await sequences.flush();
+      if ((await db.sequenceRun.findUniqueOrThrow({ where: { id: run.id } })).status === 'COMPLETED') break;
+    }
     assert.equal((await db.sequenceRun.findUniqueOrThrow({ where: { id: run.id } })).status, 'COMPLETED');
-    assert.deepEqual(await db.crmOpportunity.findUniqueOrThrow({ where: { conversationId: chat.id } }), before);
+    assert.deepEqual(
+      await db.crmOpportunity.findUniqueOrThrow({ where: { conversationId: chat.id } }),
+      before,
+    );
     const board = await request(app).get(`/api/crm/sessions/${sessionId}/board`).expect(200);
-    assert.ok(board.body.columns.find((column: any) => column.id === stage.body.id).conversationIds.includes(chat.id));
-    assert.equal(await db.contactLabel.count({ where: { contactId: chat.contactId, labelId: label.id } }), action.type === 'ADD_LABEL' ? 1 : 0);
+    assert.ok(
+      board.body.columns.find((column: any) => column.id === stage.body.id).conversationIds.includes(chat.id),
+    );
+    assert.equal(
+      await db.contactLabel.count({ where: { contactId: chat.contactId, labelId: label.id } }),
+      action.type === 'ADD_LABEL' ? 1 : 0,
+    );
   }
 });

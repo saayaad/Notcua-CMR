@@ -11,7 +11,7 @@ import { nextSendWindowAt, type SendWindow } from './send-window.js';
 export interface Batch {
   name: string;
   sessionId: string;
-  status: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'CANCELLED' | 'COMPLETED';
+  status: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'PAUSED_CONNECTION' | 'BATCH_COMPLETE' | 'CANCELLED' | 'COMPLETED';
   mode: 'CAMPAIGN' | 'SCHEDULE' | 'REMINDER';
   minSeconds: number;
   maxSeconds: number;
@@ -28,6 +28,25 @@ export interface Batch {
   ctaKeyword?: string;
   ctaKeywords?: string[];
   sendWindow?: SendWindow;
+  batchSize?: number;
+  sentTotal?: number;
+  batchSentCount?: number;
+  pauseAfterBatch?: boolean;
+  autoResume?: boolean;
+  distribution?: 'RANDOM' | 'ROUND_ROBIN';
+  variationNames?: string[];
+  ctaMessages?: { keyword: string; replyText: string }[];
+  followUpMessages?: { waitMinutes: number; text: string }[];
+  batchNumber?: number;
+  batchHistory?: {
+    number: number;
+    startedAt: string;
+    completedAt?: string;
+    leadIds: string[];
+    variationByLead: Record<string, number>;
+    textVersion: string[];
+  }[];
+  pauseHistory?: { at: string; reason: string; action: 'paused' | 'resumed' }[];
 }
 export interface Delivery {
   kind: 'text' | 'asset' | 'funnel' | 'flow' | 'reminder' | 'sequence';
@@ -69,14 +88,32 @@ export class DeliveryWorker {
     await this.db.deliveryTask.updateMany({
       where: { status: 'RUNNING' },
       data: {
-        status: 'FAILED',
-        error: 'Servidor interrompido durante o envio. Confira a conversa antes de criar um novo envio.',
+        status: 'VERIFY',
+        error: 'Servidor interrompido durante o envio. Entrega incerta: confira a conversa antes de decidir.',
       },
     });
     for (const { batchId } of interrupted) {
       const current = await record<Batch | null>(this.db, batchId, null);
-      if (current?.status === 'ACTIVE')
-        await putRecord(this.db, batchId, 'BATCH', { ...current, status: 'PAUSED' });
+      if (current?.status === 'ACTIVE') {
+        await putRecord(this.db, batchId, 'BATCH', {
+          ...current,
+          status: 'PAUSED',
+          pauseHistory: [
+            ...(current.pauseHistory ?? []),
+            {
+              at: new Date().toISOString(),
+              reason: 'Servidor reiniciado; envio pendente de conferência.',
+              action: 'paused',
+            },
+          ],
+        });
+        await putRecord(this.db, `notice:campaign:${batchId}:restart:${Date.now()}`, 'NOTICE', {
+          title: current.name,
+          text: 'Campanha pausada após reiniciar o servidor. Um contato estava em envio; confira o status “verificar” antes de prosseguir.',
+          createdAt: new Date().toISOString(),
+          read: false,
+        });
+      }
     }
     this.schedule();
   }
@@ -105,7 +142,8 @@ export class DeliveryWorker {
         .filter((row) => {
           const data = row.data as unknown as Batch;
           return (
-            data.status === 'ACTIVE' && (!data.nextAllowedAt || new Date(data.nextAllowedAt) <= new Date())
+            (data.status === 'ACTIVE' || (data.status === 'PAUSED_CONNECTION' && data.autoResume)) &&
+            (!data.nextAllowedAt || new Date(data.nextAllowedAt) <= new Date())
           );
         })
         .map((row) => row.id);
@@ -124,7 +162,7 @@ export class DeliveryWorker {
         const batch = await record<Batch | null>(this.db, task.batchId, null);
         if (
           !batch ||
-          batch.status !== 'ACTIVE' ||
+          !['ACTIVE', 'PAUSED_CONNECTION'].includes(batch.status) ||
           (batch.nextAllowedAt && new Date(batch.nextAllowedAt) > new Date())
         )
           continue;
@@ -151,15 +189,24 @@ export class DeliveryWorker {
         }
         if (data.followUp && data.sourceMessageAt) {
           const reply = await this.db.chatMessage.findFirst({
-            where: { conversationId: chat.id, direction: 'INBOUND',
-              sentAt: { gte: new Date(new Date(data.sourceMessageAt).getTime() - 1000) } },
+            where: {
+              conversationId: chat.id,
+              direction: 'INBOUND',
+              sentAt: { gte: new Date(new Date(data.sourceMessageAt).getTime() - 1000) },
+            },
             select: { id: true },
           });
           if (reply) {
-            await this.db.deliveryTask.update({ where: { id: task.id }, data: { status: 'CANCELLED', error: 'Follow-up cancelado: o cliente respondeu.' } });
-            const remaining = await this.db.deliveryTask.count({ where: { batchId: task.batchId, status: 'QUEUED' } });
+            await this.db.deliveryTask.update({
+              where: { id: task.id },
+              data: { status: 'CANCELLED', error: 'Follow-up cancelado: o cliente respondeu.' },
+            });
+            const remaining = await this.db.deliveryTask.count({
+              where: { batchId: task.batchId, status: 'QUEUED' },
+            });
             await putRecord(this.db, task.batchId, 'BATCH', {
-              ...batch, status: batch.mode === 'CAMPAIGN' ? (remaining ? batch.status : 'COMPLETED') : 'CANCELLED',
+              ...batch,
+              status: batch.mode === 'CAMPAIGN' ? (remaining ? batch.status : 'COMPLETED') : 'CANCELLED',
             });
             continue;
           }
@@ -178,8 +225,44 @@ export class DeliveryWorker {
           try {
             this.whatsapp.connectedSocket(task.sessionId);
           } catch {
+            if (batch.mode === 'CAMPAIGN' && batch.status === 'ACTIVE') {
+              const at = new Date().toISOString();
+              await putRecord(this.db, task.batchId, 'BATCH', {
+                ...batch,
+                status: 'PAUSED_CONNECTION',
+                pauseHistory: [
+                  ...(batch.pauseHistory ?? []),
+                  { at, reason: 'Conexão WhatsApp indisponível.', action: 'paused' },
+                ],
+              });
+              await putRecord(this.db, `notice:campaign:${task.batchId}:pause:${Date.now()}`, 'NOTICE', {
+                title: batch.name,
+                text: 'Campanha pausada por falha na conexão do WhatsApp. A fila será retomada com segurança quando a conexão voltar.',
+                createdAt: at,
+                read: false,
+              });
+              this.whatsapp.notify(task.sessionId, 'chats');
+            }
             continue;
           }
+        }
+        if (batch.status === 'PAUSED_CONNECTION' && batch.autoResume) {
+          const at = new Date().toISOString();
+          await putRecord(this.db, task.batchId, 'BATCH', {
+            ...batch,
+            status: 'ACTIVE',
+            pauseHistory: [
+              ...(batch.pauseHistory ?? []),
+              { at, reason: 'Conexão WhatsApp restabelecida.', action: 'resumed' },
+            ],
+          });
+          await putRecord(this.db, `notice:campaign:${task.batchId}:resume:${Date.now()}`, 'NOTICE', {
+            title: batch.name,
+            text: 'A conexão voltou. A campanha retomou a fila pelo próximo contato pendente.',
+            createdAt: at,
+            read: false,
+          });
+          this.whatsapp.notify(task.sessionId, 'chats');
         }
         const claimed = await this.db.deliveryTask.updateMany({
           where: { id: task.id, status: 'QUEUED' },
@@ -189,9 +272,12 @@ export class DeliveryWorker {
         const index = data.stepIndex ?? 0;
         const step = data.kind === 'sequence' ? data.steps?.[index] : undefined;
         const followUpIndex = data.followUpIndex ?? 0;
-        const campaignFollowUp = data.kind === 'text' && data.followUp ? data.followUps?.[followUpIndex] : undefined;
+        const campaignFollowUp =
+          data.kind === 'text' && data.followUp ? data.followUps?.[followUpIndex] : undefined;
         const hasNextSequence = data.kind === 'sequence' && index + 1 < (data.steps?.length ?? 0);
-        const hasNextCampaignFollowUp = data.kind === 'text' && Boolean(data.followUps?.length) &&
+        const hasNextCampaignFollowUp =
+          data.kind === 'text' &&
+          Boolean(data.followUps?.length) &&
           (!data.followUp || followUpIndex + 1 < data.followUps!.length);
         const hasNext = hasNextSequence || hasNextCampaignFollowUp;
         try {
@@ -217,7 +303,7 @@ export class DeliveryWorker {
             const sent = await this.messaging.send(task.sessionId, chat.id, {
               ...(campaignFollowUp
                 ? { kind: 'text', text: campaignFollowUp.text }
-                : step?.snapshot ?? data.snapshot ?? { kind: 'text', text: data.text }),
+                : (step?.snapshot ?? data.snapshot ?? { kind: 'text', text: data.text })),
               requestId: `delivery:${task.id}${data.kind === 'sequence' ? `:${index}` : data.followUp && data.kind === 'text' ? `:follow-up:${followUpIndex}` : ''}`,
             });
             sentAt = sent.sentAt;
@@ -228,13 +314,23 @@ export class DeliveryWorker {
               data: hasNext
                 ? {
                     status: 'QUEUED',
-                    payload: json(hasNextCampaignFollowUp
-                      ? { ...data, followUp: true, followUpIndex: data.followUp ? followUpIndex + 1 : 0,
-                          sourceMessageAt: data.sourceMessageAt ?? sentAt?.toISOString() }
-                      : { ...data, stepIndex: index + 1 }),
-                    runAt: new Date(Date.now() + (hasNextCampaignFollowUp
-                      ? data.followUps![data.followUp ? followUpIndex + 1 : 0]!.waitMinutes * 60
-                      : data.steps?.[index + 1]?.waitSeconds ?? 1) * 1000),
+                    payload: json(
+                      hasNextCampaignFollowUp
+                        ? {
+                            ...data,
+                            followUp: true,
+                            followUpIndex: data.followUp ? followUpIndex + 1 : 0,
+                            sourceMessageAt: data.sourceMessageAt ?? sentAt?.toISOString(),
+                          }
+                        : { ...data, stepIndex: index + 1 },
+                    ),
+                    runAt: new Date(
+                      Date.now() +
+                        (hasNextCampaignFollowUp
+                          ? data.followUps![data.followUp ? followUpIndex + 1 : 0]!.waitMinutes * 60
+                          : (data.steps?.[index + 1]?.waitSeconds ?? 1)) *
+                          1000,
+                    ),
                   }
                 : { status: 'COMPLETED' },
             });
@@ -242,24 +338,42 @@ export class DeliveryWorker {
               const transition = data.labelTransition;
               const scope = { isDeleted: false, OR: [{ sessionId: task.sessionId }, { sessionId: null }] };
               const targetLabel = transition.toLabelId
-                ? await tx.label.findFirst({ where: { ...scope, id: transition.toLabelId } }) : null;
+                ? await tx.label.findFirst({ where: { ...scope, id: transition.toLabelId } })
+                : null;
               const sourceLabel = transition.fromLabelId
-                ? await tx.label.findFirst({ where: { ...scope, id: transition.fromLabelId } }) : null;
+                ? await tx.label.findFirst({ where: { ...scope, id: transition.fromLabelId } })
+                : null;
               const jid = chat.contact.whatsappJid || `${chat.contact.phoneNumber}@s.whatsapp.net`;
               if (!transition.toLabelId || targetLabel) {
                 if (sourceLabel && sourceLabel.id !== targetLabel?.id) {
-                  await tx.contactLabel.deleteMany({ where: { contactId: chat.contactId, labelId: sourceLabel.id } });
-                  if (sourceLabel.whatsappId) await queueLabelChange(tx, {
-                    sessionId: task.sessionId, contactId: chat.contactId, labelId: sourceLabel.id,
-                    jid, whatsappId: sourceLabel.whatsappId, active: false,
+                  await tx.contactLabel.deleteMany({
+                    where: { contactId: chat.contactId, labelId: sourceLabel.id },
                   });
+                  if (sourceLabel.whatsappId)
+                    await queueLabelChange(tx, {
+                      sessionId: task.sessionId,
+                      contactId: chat.contactId,
+                      labelId: sourceLabel.id,
+                      jid,
+                      whatsappId: sourceLabel.whatsappId,
+                      active: false,
+                    });
                 }
                 if (targetLabel) {
-                  await tx.contactLabel.upsert({ where: { contactId_labelId: { contactId: chat.contactId, labelId: targetLabel.id } }, create: { contactId: chat.contactId, labelId: targetLabel.id }, update: {} });
-                  if (targetLabel.whatsappId) await queueLabelChange(tx, {
-                    sessionId: task.sessionId, contactId: chat.contactId, labelId: targetLabel.id,
-                    jid, whatsappId: targetLabel.whatsappId, active: true,
+                  await tx.contactLabel.upsert({
+                    where: { contactId_labelId: { contactId: chat.contactId, labelId: targetLabel.id } },
+                    create: { contactId: chat.contactId, labelId: targetLabel.id },
+                    update: {},
                   });
+                  if (targetLabel.whatsappId)
+                    await queueLabelChange(tx, {
+                      sessionId: task.sessionId,
+                      contactId: chat.contactId,
+                      labelId: targetLabel.id,
+                      jid,
+                      whatsappId: targetLabel.whatsappId,
+                      active: true,
+                    });
                 }
               }
             }
@@ -271,16 +385,74 @@ export class DeliveryWorker {
                 data: { status: 'CANCELLED' },
               });
             if (latest?.status === 'ACTIVE') {
-              const remaining = await tx.deliveryTask.count({
+              const countAsLead = !(data.kind === 'text' && data.followUp);
+              const sentTotal = (latest.sentTotal ?? latest.sentCount ?? 0) + (countAsLead ? 1 : 0);
+              const batchSentCount = (latest.batchSentCount ?? 0) + (countAsLead ? 1 : 0);
+              const batchSize = latest.batchSize ?? Infinity;
+              const batchReached = countAsLead && latest.mode === 'CAMPAIGN' && batchSentCount >= batchSize;
+              const pendingTasks = await tx.deliveryTask.findMany({
                 where: { batchId: task.batchId, status: 'QUEUED' },
               });
+              const pendingCampaignTasks = pendingTasks.filter(
+                (pending) => !(pending.payload as { followUp?: boolean }).followUp,
+              );
+              const remaining = pendingCampaignTasks.length;
+              const hasPendingFollowUps = pendingTasks.length > remaining;
+              const nextStatus = remaining
+                ? batchReached && latest.pauseAfterBatch !== false
+                  ? 'BATCH_COMPLETE'
+                  : 'ACTIVE'
+                : hasPendingFollowUps
+                  ? 'ACTIVE'
+                  : 'COMPLETED';
+              const history = (latest.batchHistory ?? []).map((entry) =>
+                entry.number === (data as Delivery & { batchNumber?: number }).batchNumber
+                  ? {
+                      ...entry,
+                      ...(batchReached ? { completedAt: new Date().toISOString() } : {}),
+                      variationByLead: {
+                        ...entry.variationByLead,
+                        [task.conversationId]: data.approachIndex ?? 0,
+                      },
+                    }
+                  : entry,
+              );
+              if (batchReached && latest.pauseAfterBatch === false && remaining) {
+                const nextBatchNumber = (latest.batchNumber ?? 1) + 1;
+                const nextBatchTasks = pendingCampaignTasks.slice(0, batchSize);
+                for (const nextTask of nextBatchTasks) {
+                  await tx.deliveryTask.update({
+                    where: { id: nextTask.id },
+                    data: {
+                      payload: json({
+                        ...(nextTask.payload as Record<string, unknown>),
+                        batchNumber: nextBatchNumber,
+                      }),
+                    },
+                  });
+                }
+                history.push({
+                  number: nextBatchNumber,
+                  startedAt: new Date().toISOString(),
+                  leadIds: nextBatchTasks.map((nextTask) => nextTask.conversationId),
+                  variationByLead: {},
+                  textVersion: latest.approaches ?? [],
+                });
+              }
               await tx.operationRecord.update({
                 where: { id: task.batchId },
                 data: {
                   data: json({
                     ...latest,
-                    status: remaining ? 'ACTIVE' : 'COMPLETED',
-                    sentCount: (latest.sentCount ?? 0) + 1,
+                    status: nextStatus,
+                    sentCount: sentTotal,
+                    sentTotal,
+                    batchSentCount: batchReached && latest.pauseAfterBatch === false ? 0 : batchSentCount,
+                    batchNumber:
+                      batchReached && latest.pauseAfterBatch === false && remaining
+                        ? (latest.batchNumber ?? 1) + 1
+                        : latest.batchNumber,
+                    batchHistory: history,
                     nextAllowedAt: new Date(
                       Date.now() +
                         (randomInt(batch.minSeconds, batch.maxSeconds + 1) +
@@ -301,7 +473,7 @@ export class DeliveryWorker {
             await tx.deliveryTask.updateMany({
               where: { id: task.id, status: 'RUNNING' },
               data: {
-                status: 'FAILED',
+                status: 'VERIFY',
                 error: error instanceof Error ? error.message.slice(0, 300) : 'Envio não confirmado.',
               },
             });
@@ -310,7 +482,20 @@ export class DeliveryWorker {
             if (latest?.status === 'ACTIVE')
               await tx.operationRecord.update({
                 where: { id: task.batchId },
-                data: { data: json({ ...latest, status: 'PAUSED' }) },
+                data: {
+                  data: json({
+                    ...latest,
+                    status: 'PAUSED',
+                    pauseHistory: [
+                      ...(latest.pauseHistory ?? []),
+                      {
+                        at: new Date().toISOString(),
+                        reason: 'Falha durante envio; entrega precisa ser conferida.',
+                        action: 'paused',
+                      },
+                    ],
+                  }),
+                },
               });
           });
         }
