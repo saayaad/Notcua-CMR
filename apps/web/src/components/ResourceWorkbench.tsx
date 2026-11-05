@@ -118,6 +118,8 @@ export function ResourceWorkbench({
   const [section, setSection] = useState('responses');
   const [kind, setKind] = useState<Kind | 'ALL'>('ALL');
   const [search, setSearch] = useState('');
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [expandedResources, setExpandedResources] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<'all' | 'favorites' | 'recent' | 'used'>('all');
   const [category, setCategory] = useState('');
   const [usage, setUsage] = useState<Record<string, number>>({});
@@ -421,175 +423,224 @@ export function ResourceWorkbench({
             }}
           />
         </label>
-        <div className="workbench-kind-chips">
-          <button aria-pressed={kind === 'ALL'} onClick={() => setKind('ALL')}>
-            Tudo
-          </button>
-          {orderItems(libraryFolders, preferences.folderOrder, (item) => item[0]!).map(([id, name]) => {
-            const Icon = kindIcons[id as Kind];
-            return (
-              <button
-                key={id}
-                aria-pressed={kind === id}
-                title={preferences.folderLabels[id!] || name}
-                onClick={() => setKind(id as Kind)}
-              >
-                <Icon size={13} />
-                {preferences.folderLabels[id!] || name}
+        <button
+          className="button small workbench-options-toggle"
+          aria-expanded={optionsOpen}
+          aria-controls="workbench-library-options"
+          onClick={() => setOptionsOpen((value) => !value)}
+        >
+          <Plus size={14} /> Opções <ChevronDown size={12} />
+          {(kind !== 'ALL' || filter !== 'all' || category) && <span aria-label="Filtros ativos">•</span>}
+        </button>
+        {optionsOpen && (
+          <div id="workbench-library-options" className="workbench-options-content">
+            <div className="workbench-kind-chips">
+              <button aria-pressed={kind === 'ALL'} onClick={() => setKind('ALL')}>
+                Tudo
               </button>
-            );
-          })}
-          <button aria-pressed={kind === 'FLOW'} onClick={() => setKind('FLOW')}>
-            <Workflow size={13} />
-            Fluxos
-          </button>
-        </div>
-        <div className="workbench-library-options">
-          <div>
-            {(
-              [
-                { id: 'all', name: 'Todos', icon: null },
-                { id: 'favorites', name: 'Favoritos', icon: Star },
-                { id: 'recent', name: 'Recentes', icon: Clock3 },
-                { id: 'used', name: 'Mais usados', icon: TrendingUp },
-              ] as const
-            ).map(({ id, name, icon: Icon }) => (
-              <button key={id} aria-pressed={filter === id} title={name} onClick={() => setFilter(id)}>
-                {Icon && <Icon size={13} />}
-                <span>{name}</span>
+              {orderItems(libraryFolders, preferences.folderOrder, (item) => item[0]!).map(([id, name]) => {
+                const Icon = kindIcons[id as Kind];
+                return (
+                  <button
+                    key={id}
+                    aria-pressed={kind === id}
+                    title={preferences.folderLabels[id!] || name}
+                    onClick={() => setKind(id as Kind)}
+                  >
+                    <Icon size={13} />
+                    {preferences.folderLabels[id!] || name}
+                  </button>
+                );
+              })}
+              <button aria-pressed={kind === 'FLOW'} onClick={() => setKind('FLOW')}>
+                <Workflow size={13} />
+                Fluxos
               </button>
-            ))}
-          </div>
-          <details className="workbench-create">
-            <summary className="button small">
-              <Plus size={14} />
-              Criar
-              <ChevronDown size={12} />
-            </summary>
-            <div>
-              {libraryFolders.map(([id, name]) => (
-                <button
-                  key={id}
-                  onClick={(event) => {
-                    event.currentTarget.closest('details')?.removeAttribute('open');
-                    create(id as Kind);
-                  }}
-                >
-                  {preferences.folderLabels[id!] || name}
-                </button>
-              ))}
             </div>
-          </details>
-        </div>
-        <div className="workbench-results-heading">
-          <span>{matching.length} recurso(s)</span>
-          <Select
-            className="workbench-category-select"
-            aria-label="Filtrar por categoria"
-            value={category}
-            onChange={(event) => setCategory(event.target.value)}
-          >
-            <option value="">Todas as categorias</option>
-            {organization.categories.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </Select>
-          <button
-            className="icon-button"
-            title="Organizar categorias"
-            aria-label="Organizar categorias"
-            onClick={() => setCategoriesOpen(true)}
-          >
-            <Pencil size={13} />
-          </button>
-          <button
-            className="text-button"
-            onClick={() => {
-              setDraftOrder(ordered.map((item) => item.id));
-              setDraftFolders(
-                completeOrder(
-                  preferences.folderOrder,
-                  libraryFolders.map((item) => item[0]!),
-                ),
-              );
-              setOrganize(true);
-            }}
-          >
-            <GripVertical size={13} />
-            Reordenar
-          </button>
-        </div>
+            <div className="workbench-library-options">
+              <div>
+                {(
+                  [
+                    { id: 'all', name: 'Todos', icon: null },
+                    { id: 'favorites', name: 'Favoritos', icon: Star },
+                    { id: 'recent', name: 'Recentes', icon: Clock3 },
+                    { id: 'used', name: 'Mais usados', icon: TrendingUp },
+                  ] as const
+                ).map(({ id, name, icon: Icon }) => (
+                  <button key={id} aria-pressed={filter === id} title={name} onClick={() => setFilter(id)}>
+                    {Icon && <Icon size={13} />}
+                    <span>{name}</span>
+                  </button>
+                ))}
+              </div>
+              <details className="workbench-create">
+                <summary className="button small">
+                  <Plus size={14} />
+                  Criar
+                  <ChevronDown size={12} />
+                </summary>
+                <div>
+                  {libraryFolders.map(([id, name]) => (
+                    <button
+                      key={id}
+                      onClick={(event) => {
+                        event.currentTarget.closest('details')?.removeAttribute('open');
+                        create(id as Kind);
+                      }}
+                    >
+                      {preferences.folderLabels[id!] || name}
+                    </button>
+                  ))}
+                </div>
+              </details>
+            </div>
+            <div className="workbench-results-heading">
+              <Select
+                className="workbench-category-select"
+                aria-label="Filtrar por categoria"
+                value={category}
+                onChange={(event) => setCategory(event.target.value)}
+              >
+                <option value="">Todas as categorias</option>
+                {organization.categories.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </Select>
+              <button
+                className="icon-button"
+                title="Organizar categorias"
+                aria-label="Organizar categorias"
+                onClick={() => setCategoriesOpen(true)}
+              >
+                <Pencil size={13} />
+              </button>
+              <button
+                className="text-button"
+                onClick={() => {
+                  setDraftOrder(ordered.map((item) => item.id));
+                  setDraftFolders(
+                    completeOrder(
+                      preferences.folderOrder,
+                      libraryFolders.map((item) => item[0]!),
+                    ),
+                  );
+                  setOrganize(true);
+                }}
+              >
+                <GripVertical size={13} />
+                Reordenar
+              </button>
+            </div>
+          </div>
+        )}
+        <span className="workbench-result-count" role="status">
+          {matching.length} recurso(s)
+        </span>
       </div>
       <div className="workbench-scroll resource-results">
         {matching.map((item) => {
           const Icon = kindIcons[item.kind];
           return (
             <article className="workbench-resource-card" key={item.id}>
-              <div className="resource-card-top">
-                <span className={`resource-kind kind-${item.kind.toLowerCase()}`}>
-                  <Icon size={13} />
-                  {kindNames[item.kind]}
-                </span>
+              <div className="resource-card-summary">
+                <span className="workbench-resource-name">{item.name}</span>
+                <div className="resource-card-actions">
+                  <button
+                    className="button primary small"
+                    disabled={!chat || busy || (!connected && !showPreviewFor(item))}
+                    onClick={() => chooseContent(item)}
+                  >
+                    <Send size={14} />
+                    Enviar
+                  </button>
+                </div>
                 <button
-                  className={`icon-button resource-favorite ${favorite(item) ? 'selected' : ''}`}
-                  aria-label={`${favorite(item) ? 'Desfavoritar' : 'Favoritar'} ${item.name}`}
-                  onClick={() => void toggleFavorite(item)}
+                  className="icon-button"
+                  aria-label={
+                    (expandedResources.has(item.id) ? 'Recolher' : 'Expandir') + ' detalhes de ' + item.name
+                  }
+                  aria-expanded={expandedResources.has(item.id)}
+                  aria-controls={'resource-details-' + item.id}
+                  onClick={() =>
+                    setExpandedResources((current) => {
+                      const next = new Set(current);
+                      if (next.has(item.id)) next.delete(item.id);
+                      else next.add(item.id);
+                      return next;
+                    })
+                  }
                 >
-                  <Star size={15} fill={favorite(item) ? 'currentColor' : 'none'} />
+                  <Eye size={16} />
                 </button>
-
-                <details className="resource-more">
-                  <summary className="icon-button" aria-label={`Opções de ${item.name}`}>
-                    <ChevronDown size={16} />
-                  </summary>
-                  <div>
-                    <button onClick={() => edit(item)}>
-                      <Pencil size={14} />
-                      {item.kind === 'PIX' ? 'Cadastrar outra chave' : 'Editar recurso'}
+              </div>
+              {expandedResources.has(item.id) && (
+                <div id={'resource-details-' + item.id} className="resource-card-details">
+                  <p>{item.excerpt}</p>
+                  {item.funnel && (
+                    <ol>
+                      {item.funnel.items.map((step, index) => (
+                        <li key={index}>
+                          {step.asset.name} · espera de {step.delayBeforeSendMs / 1000}s
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                  {organization.assignments[item.id] && (
+                    <small className="workbench-category-tag">{organization.assignments[item.id]}</small>
+                  )}
+                  <div className="resource-card-top">
+                    <span className={`resource-kind kind-${item.kind.toLowerCase()}`}>
+                      <Icon size={13} />
+                      {kindNames[item.kind]}
+                    </span>
+                    <button
+                      className={`icon-button resource-favorite ${favorite(item) ? 'selected' : ''}`}
+                      aria-label={`${favorite(item) ? 'Desfavoritar' : 'Favoritar'} ${item.name}`}
+                      onClick={() => void toggleFavorite(item)}
+                    >
+                      <Star size={15} fill={favorite(item) ? 'currentColor' : 'none'} />
                     </button>
-                    {item.asset && (
-                      <>
-                        <button
-                          onClick={() =>
-                            void request(
-                              `/attendance/assets/${encodeURIComponent(item.id)}/duplicate`,
-                              'POST',
-                            )
-                              .then(onLibraryRefresh)
-                              .catch((error) => notify(errorMessage(error), true))
-                          }
-                        >
-                          <Copy size={14} />
-                          Duplicar
+
+                    <details className="resource-more">
+                      <summary className="icon-button" aria-label={`Opções de ${item.name}`}>
+                        <ChevronDown size={16} />
+                      </summary>
+                      <div>
+                        <button onClick={() => edit(item)}>
+                          <Pencil size={14} />
+                          {item.kind === 'PIX' ? 'Cadastrar outra chave' : 'Editar recurso'}
                         </button>
-                        <button onClick={() => setRemoving(item.asset!)}>
-                          <Trash2 size={14} />
-                          Excluir
-                        </button>
-                      </>
-                    )}
+                        {item.asset && (
+                          <>
+                            <button
+                              onClick={() =>
+                                void request(
+                                  `/attendance/assets/${encodeURIComponent(item.id)}/duplicate`,
+                                  'POST',
+                                )
+                                  .then(onLibraryRefresh)
+                                  .catch((error) => notify(errorMessage(error), true))
+                              }
+                            >
+                              <Copy size={14} />
+                              Duplicar
+                            </button>
+                            <button onClick={() => setRemoving(item.asset!)}>
+                              <Trash2 size={14} />
+                              Excluir
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </details>
                   </div>
-                </details>
-              </div>
-              <button className="workbench-resource-name" onClick={() => openPreview(item)}>
-                {item.name}
-              </button>
-              <p>{item.excerpt}</p>
-              {organization.assignments[item.id] && (
-                <small className="workbench-category-tag">{organization.assignments[item.id]}</small>
+                  <button className="text-button" onClick={() => openPreview(item)}>
+                    <Eye size={14} /> Abrir prévia completa
+                  </button>
+                </div>
               )}
-              <div className="resource-card-actions">
-                <button
-                  className="button primary small"
-                  disabled={!chat || busy || (!connected && !showPreviewFor(item))}
-                  onClick={() => chooseContent(item)}
-                >
-                  <Send size={14} />
-                  Enviar
-                </button>
-              </div>
             </article>
           );
         })}
@@ -597,7 +648,9 @@ export function ResourceWorkbench({
           <div className="workbench-empty">
             <Search size={28} />
             <strong>Nenhum recurso neste filtro</strong>
-            <p>Tente outra busca, troque a categoria ou use “Criar” para adicionar conteúdo.</p>
+            <p>
+              Tente outra busca, troque a categoria ou abra “Opções” e use “Criar” para adicionar conteúdo.
+            </p>
             <button
               className="button"
               onClick={() => {
@@ -951,7 +1004,11 @@ export function ResourceWorkbench({
                   resourceOrder[kind] = draftOrder.filter((id) =>
                     resources.some((item) => item.id === id && item.kind === kind),
                   );
-                void savePreferences({ workbenchResourceOrder: draftOrder, folderOrder: draftFolders, resourceOrder })
+                void savePreferences({
+                  workbenchResourceOrder: draftOrder,
+                  folderOrder: draftFolders,
+                  resourceOrder,
+                })
                   .then(() => {
                     setOrganize(false);
                     notify('Organização salva.');

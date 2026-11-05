@@ -2767,3 +2767,56 @@ dialog.modal.workbench-function-modal {
 .lead-list-controls { display:grid; grid-template-columns:1fr; gap:.35rem; padding:.4rem .7rem; border-bottom:1px solid var(--line); flex-shrink:0; }
 .lead-list-controls label { display:grid; grid-template-columns:3rem minmax(0,1fr); align-items:center; gap:.3rem; font-size:.65rem; color:var(--muted); }
 .lead-list-controls select,.lead-list-controls button { min-height:1.85rem; font-size:.7rem; }
+
+/* Keep the library bounded by the panel so every resource remains reachable. */
+.resource-workbench > .workbench-pane-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+.resource-workbench .workbench-library-body {
+  overflow: hidden;
+}
+.resource-workbench .workbench-library-header {
+  max-height: 55%;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  background: var(--surface);
+}
+.resource-workbench .workbench-options-toggle { justify-self: start; }
+.workbench-options-content { display: grid; gap: 0.6rem; }
+.workbench-result-count { color: var(--muted); font-size: 0.7rem; }
+.resource-workbench .resource-results {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+}
+.resource-workbench .resource-card-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.4rem;
+}
+.resource-workbench .workbench-resource-card { padding: 0.6rem; gap: 0.4rem; }
+.resource-card-details { display: grid; gap: 0.6rem; min-width: 0; }
+.resource-card-details p, .resource-card-details li {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.resource-workbench .resource-card-details .resource-more > div {
+  position: static;
+  width: auto;
+  box-shadow: none;
+}
+.resource-workbench .workbench-create > div {
+  position: static;
+  width: auto;
+  box-shadow: none;
+}
