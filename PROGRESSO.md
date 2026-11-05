@@ -99,19 +99,22 @@ Branch: `auditoria-reqs`. Diretório oficial. Nenhuma chamada de envio real, pro
 
 Decisão: cada alternativa é um conteúdo completo; sequência é uma única alternativa e mantém sua ordem e esperas. Campanhas legadas continuam usando os campos atuais até serem editadas.
 
-### Fase 1 — modelo aditivo e flag desativada — implementação local, aplicação Prisma bloqueada
+### Fase 1 — modelo aditivo e flag desativada — concluída localmente
 
 - [x] Estrutura CampaignAlternative / CampaignAlternativeStep e snapshots por tarefa adicionados ao schema.
 - [x] Migração aditiva cria tabelas/colunas sem atualizar nem apagar os JSONs antigos. Cada BATCH legado recebe uma alternativa compatível; tarefas sequenciais preservam cada etapa, ordem e espera.
 - [x] `CAMPAIGN_ALTERNATIVES_ENABLED` existe e assume `false` por padrão. Nenhuma rota/worker usa o novo modelo enquanto desligada.
 - [x] Prova SQLite isolada: migrações antigas + campanha e tarefa sequencial fictícias + migração nova; JSON legado idêntico antes/depois e etapas de texto/mídia com posições/esperas preservadas.
 - [x] Prisma schema validado; `npm run typecheck` concluiu com exit code 0.
-- [ ] Prisma `migrate deploy` em banco isolado falhou com `Schema engine error` sem detalhe. `prisma generate` falhou ao substituir `query_engine-windows.dll.node` (`EPERM`), provavelmente porque o servidor local o mantém carregado; `--no-engine` gerou um cliente sem engine e não serve para testes/runtime.
-- Bloqueio antes de avançar: aplicar e testar a migração via Prisma com o engine funcional; não parei o servidor em execução para evitar interromper possíveis campanhas. Feature flag permanece desligada; sem deploy.
+- [x] Após autorização explícita e confirmação de zero campanhas ativas, servidor/worker local parados graciosamente; `prisma generate` concluiu com Prisma 6.19.3.
+- [x] Migração passou em cópia do backup: `migrate deploy` aplicou a 9ª migração; 25 campanhas viraram 25 alternativas; 27 etapas backfilled; integrity `ok`; contagens de tarefas preservadas.
+- [x] Migração aplicada no banco real com o mesmo Prisma; integrity `ok`, 25 campanhas, 25 alternativas e 27 etapas. As tarefas permanecem exatamente 2 CANCELLED, 37 COMPLETED, 9 QUEUED e 1 VERIFY.
+- [x] Servidor reiniciado: `/health` retornou `ok`, runtime `firebase`; sessão WhatsApp no banco indica 1 CONNECTED e 3 DISCONNECTED. Worker só seleciona batches `ACTIVE`/retomáveis e tarefas `QUEUED`; `DRAFT` e `VERIFY` não são processados.
+- Feature flag permanece desligada; sem deploy.
 
 ### Verificação prévia autorizada do banco real — 05/11/2026 12:22 BRT
 
 - Backup SQLite consistente feito antes de consultar estados: `.audit/backups/noctua-before-alternatives-20261105-122228.db` (324.792.320 bytes); `PRAGMA integrity_check` no backup retornou `ok`.
-- Banco consultado sem expor dados pessoais: nenhuma campanha em status `ACTIVE`, `RUNNING`, `SCHEDULED` ou `PAUSED_CONNECTION`; existem 9 tarefas `QUEUED` ligadas a campanhas em `DRAFT` e 1 tarefa `VERIFY` ligada a campanha `COMPLETED`.
-- Pela regra de segurança do usuário, tarefas pendentes/VERIFY contam como bloqueio para parar o servidor. Servidor e worker não foram parados; nenhuma migração foi aplicada ao banco real. Aguardar orientação após resolver/revisar essas tarefas.
+- Banco consultado sem expor dados pessoais: nenhuma campanha estava ativa/agendada. As 9 tarefas `QUEUED` eram de campanhas `DRAFT`; a tarefa `VERIFY` pertence a campanha `COMPLETED`. Com autorização explícita posterior do usuário, servidor foi parado graciosamente e as tarefas foram preservadas.
+- Migração real concluída, banco verificado e servidor reiniciado conforme Fase 1.
 - `CAMPAIGN_ALTERNATIVES_ENABLED=false`; sem deploy.
