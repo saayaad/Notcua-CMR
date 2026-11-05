@@ -624,6 +624,57 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
         orderBy: { runAt: 'asc' },
         select: { runAt: true },
       });
+      const queued = await db.deliveryTask.findMany({
+        where: { batchId: row.id, status: 'QUEUED' },
+        select: { payload: true, runAt: true },
+      });
+      const pendingLeadTasks = queued.filter((task) => !((task.payload as unknown as Delivery).followUp)).length;
+      let remainingMessages = 0;
+      let sequenceWaitSeconds = 0;
+      let followUpWaitSeconds = 0;
+      for (const task of queued) {
+        const delivery = task.payload as unknown as Delivery;
+        if (delivery.kind === 'sequence') {
+          const index = delivery.stepIndex ?? 0;
+          remainingMessages += Math.max(0, (delivery.steps?.length ?? 0) - index);
+          sequenceWaitSeconds += (delivery.steps ?? []).slice(index + 1).reduce((sum, step) => sum + step.waitSeconds, 0);
+        } else if (delivery.kind === 'text' && delivery.followUps?.length) {
+          if (delivery.followUp) {
+            const index = delivery.followUpIndex ?? 0;
+            remainingMessages += Math.max(0, delivery.followUps.length - index);
+            followUpWaitSeconds += delivery.followUps.slice(index + 1).reduce((sum, step) => sum + step.waitMinutes * 60, 0);
+          } else {
+            remainingMessages += 1 + delivery.followUps.length;
+            followUpWaitSeconds += delivery.followUps.reduce((sum, step) => sum + step.waitMinutes * 60, 0);
+          }
+        } else remainingMessages += 1;
+      }
+      const averageInterval = ((data.minSeconds ?? 15) + (data.maxSeconds ?? 45)) / 2;
+      const firstDelay = queued.length
+        ? Math.max(
+            0,
+            (new Date(data.nextAllowedAt ?? 0).getTime() - Date.now()) / 1000,
+            ((next?.runAt.getTime() ?? Date.now()) - Date.now()) / 1000,
+          )
+        : 0;
+      const pauseEvery = data.pauseEvery ?? 0;
+      const sentSoFar = data.sentTotal ?? data.sentCount ?? 0;
+      const additionalPauseCount = pauseEvery
+        ? Math.max(
+            0,
+            Math.floor((sentSoFar + Math.max(0, pendingLeadTasks - 1)) / pauseEvery) -
+              Math.floor(sentSoFar / pauseEvery),
+          )
+        : 0;
+      const estimatedRemainingSeconds = queued.length
+        ? Math.ceil(
+            firstDelay +
+              Math.max(0, pendingLeadTasks - 1) * averageInterval +
+              sequenceWaitSeconds +
+              followUpWaitSeconds +
+              additionalPauseCount * (data.pauseSeconds ?? 0),
+          )
+        : 0;
       const finance = financials.configurations.get(financeKey(row.id)) ?? defaultFinance(data);
       const sales = financials.totals.get(row.id) ?? { revenue: 0, sales: 0 };
       items.push({
@@ -636,6 +687,8 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
         crmSales: sales.sales,
         counts,
         nextTaskAt: next?.runAt?.toISOString() ?? null,
+        remainingMessages,
+        estimatedRemainingSeconds,
       });
     }
     res.json({ items });
@@ -761,6 +814,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
         }),
         minSeconds: z.number().int().min(1).max(86400).default(15),
         maxSeconds: z.number().int().min(1).max(86400).default(45),
+        speedMultiplier: z.union([z.literal(1), z.literal(1.5), z.literal(2)]).default(1),
         investmentInCents: z.number().int().min(0).max(2_000_000_000).default(0),
         attributedRevenueInCents: z.number().int().min(0).max(2_000_000_000).default(0),
         pauseEvery: z.number().int().min(0).max(5000).default(0),
@@ -929,12 +983,14 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       mode: input.mode,
       minSeconds: input.minSeconds,
       maxSeconds: input.maxSeconds,
+      speedMultiplier: input.speedMultiplier,
       pauseEvery: input.pauseEvery,
       pauseSeconds: input.pauseSeconds,
       batchSize: input.mode === 'CAMPAIGN' ? input.batchSize : undefined,
       pauseAfterBatch: input.pauseAfterBatch,
       autoResume: input.autoResume,
       distribution: input.distribution,
+      ...(delivery.kind === 'sequence' ? { sequenceMode: true } : {}),
       variationNames: ['Mensagem principal', ...input.delivery.variationNames],
       batchNumber: 1,
       sentTotal: 0,
@@ -1171,6 +1227,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
         optOutLine: z.string().trim().max(200).optional(),
         minSeconds: z.number().int().min(1).max(86400).optional(),
         maxSeconds: z.number().int().min(1).max(86400).optional(),
+        speedMultiplier: z.union([z.literal(1), z.literal(1.5), z.literal(2)]).optional(),
         pauseEvery: z.number().int().min(0).max(5000).optional(),
         pauseSeconds: z.number().int().min(0).max(86400).optional(),
         ctas: z.array(campaignCtaSchema).max(20).optional(),
@@ -1284,6 +1341,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
             batchSize: size,
             minSeconds,
             maxSeconds,
+            speedMultiplier: input.speedMultiplier ?? batch.speedMultiplier ?? 1,
             ...(input.pauseEvery === undefined ? {} : { pauseEvery: input.pauseEvery }),
             ...(input.pauseSeconds === undefined ? {} : { pauseSeconds: input.pauseSeconds }),
             batchSentCount: 0,

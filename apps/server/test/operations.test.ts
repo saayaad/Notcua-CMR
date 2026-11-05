@@ -1751,8 +1751,11 @@ test('REQ-134/REQ-149/REQ-172/REQ-173: público combina listas, etiquetas e inat
   );
 });
 
-test('REQ-150/REQ-151: sequência usa variáveis, preserva ordem e aplica pausa por lote', async () => {
-  const chat = await makeContact('5511777770031', 'Pessoa Sequência');
+test('REQ-150/REQ-151: sequência conclui cada contato antes do próximo, preserva ordem e conta pausas por lead', async () => {
+  const chats = await Promise.all([
+    makeContact('5511777770031', 'Pessoa Sequência 1'),
+    makeContact('5511777770032', 'Pessoa Sequência 2'),
+  ]);
   const asset = await db.asset.create({
     data: { id: 'sequence-frozen', name: 'Segunda', kind: 'MESSAGE', text: 'Segundo original' },
   });
@@ -1761,21 +1764,27 @@ test('REQ-150/REQ-151: sequência usa variáveis, preserva ordem e aplica pausa 
     .send({
       name: 'Sequência fictícia',
       mode: 'CAMPAIGN',
-      audience: { conversationIds: [chat.id] },
+      audience: { conversationIds: chats.map((chat) => chat.id) },
       delivery: {
         kind: 'sequence',
         steps: [
           { kind: 'text', text: '{{saudacao}}, {{nome}}!', waitSeconds: 0 },
-          { kind: 'asset', assetId: asset.id, waitSeconds: 0 },
+          { kind: 'asset', assetId: asset.id, waitSeconds: 2 },
           { kind: 'text', text: 'Terceiro', waitSeconds: 0 },
         ],
       },
       minSeconds: 1,
       maxSeconds: 1,
+      speedMultiplier: 2,
       pauseEvery: 2,
-      pauseSeconds: 300,
+      pauseSeconds: 150,
     })
     .expect(201);
+  const monitor = await request(app).get(`/api/operations/sessions/${sessionId}/batches`).expect(200);
+  const monitoredBatch = (monitor.body.items as Array<{ id: string; speedMultiplier: number; remainingMessages: number; estimatedRemainingSeconds: number }>).find((item) => item.id === created.body.id)!;
+  assert.equal(monitoredBatch.speedMultiplier, 2);
+  assert.equal(monitoredBatch.remainingMessages, 6);
+  assert.ok(monitoredBatch.estimatedRemainingSeconds > 0);
   await db.asset.update({ where: { id: asset.id }, data: { text: 'Mudança posterior' } });
   const batchId = created.body.id as string;
   await request(app)
@@ -1784,23 +1793,47 @@ test('REQ-150/REQ-151: sequência usa variáveis, preserva ordem e aplica pausa 
     .expect(200);
   const before = socket.sends.length;
   await worker.flush();
-  await worker.flush();
   assert.equal(socket.sends.length, before + 1);
-  assert.match(
-    (socket.sends.at(-1) as { text: string }).text,
-    /^(Bom dia|Boa tarde|Boa noite), Pessoa Sequência!$/,
-  );
+  const sentTexts = () => socket.sends.slice(before).map((message) => 'text' in message ? message.text : 'MÍDIA');
+  const firstIndex = sentTexts()[0]!.includes('Pessoa Sequência 1') ? 0 : 1;
+  const firstChat = chats[firstIndex]!;
+  const firstName = `Pessoa Sequência ${firstIndex + 1}`;
+  const secondChat = chats.find((chat) => chat.id !== firstChat.id)!;
+  const secondName = `Pessoa Sequência ${firstIndex === 0 ? 2 : 1}`;
+  assert.match(sentTexts()[0]!, new RegExp(`^(Bom dia|Boa tarde|Boa noite), ${firstName}!$`));
+  const continueSequence = async (conversationId: string) => {
+    let batch = await record<Batch>(db, batchId, created.body);
+    await putRecord(db, batchId, 'BATCH', { ...batch, nextAllowedAt: new Date(0).toISOString() });
+    const countBeforeWait = socket.sends.length;
+    await worker.flush();
+    assert.equal(socket.sends.length, countBeforeWait, 'a próxima mensagem do contato aguarda o intervalo configurado');
+    const nextStep = await db.deliveryTask.findFirstOrThrow({
+      where: { batchId, conversationId, status: 'QUEUED' },
+    });
+    assert.equal((nextStep.payload as { stepIndex?: number }).stepIndex, 1);
+    await db.deliveryTask.update({ where: { id: nextStep.id }, data: { runAt: new Date(0) } });
+    batch = await record<Batch>(db, batchId, created.body);
+    await putRecord(db, batchId, 'BATCH', { ...batch, nextAllowedAt: new Date(0).toISOString() });
+    await worker.flush();
+  };
+  await continueSequence(firstChat.id);
+  await worker.flush();
+  assert.equal(sentTexts()[1], 'Segundo original');
+  assert.equal(sentTexts()[2], 'Terceiro');
   let batch = await record<Batch>(db, batchId, created.body);
+  assert.equal(batch.sentCount, 1, 'a sequência inteira representa um lead enviado');
   await putRecord(db, batchId, 'BATCH', { ...batch, nextAllowedAt: new Date(0).toISOString() });
   await worker.flush();
-  assert.equal((socket.sends.at(-1) as { text: string }).text, 'Segundo original');
+  assert.match(sentTexts()[3]!, new RegExp(`^(Bom dia|Boa tarde|Boa noite), ${secondName}!$`));
+  await continueSequence(secondChat.id);
+  await worker.flush();
+  assert.deepEqual(sentTexts(), [
+    sentTexts()[0], 'Segundo original', 'Terceiro', sentTexts()[3], 'Segundo original', 'Terceiro',
+  ]);
   batch = await record<Batch>(db, batchId, created.body);
-  assert.ok(new Date(batch.nextAllowedAt!).getTime() > Date.now() + 295000);
+  assert.equal(batch.status, 'COMPLETED');
   assert.equal(batch.sentCount, 2);
-  await putRecord(db, batchId, 'BATCH', { ...batch, nextAllowedAt: new Date(0).toISOString() });
-  await worker.flush();
-  assert.equal((socket.sends.at(-1) as { text: string }).text, 'Terceiro');
-  assert.equal((await record<Batch>(db, batchId, created.body)).status, 'COMPLETED');
+  assert.ok(new Date(batch.nextAllowedAt!).getTime() > Date.now() + 145000);
 });
 
 async function aiTest(run: () => Promise<void>) {

@@ -203,12 +203,103 @@ interface Lead {
 }
 interface ImportPreview {
   headers: string[];
+  sheets: string[];
+  sheetIndex: number;
   phoneColumn: number;
   nameColumn: number;
   items: Lead[];
   rejected: { row: number; reason: string }[];
   total: number;
   inferred: boolean;
+}
+export function SpreadsheetsPage({
+  sessionId,
+  onCampaign,
+}: {
+  sessionId: string;
+  onCampaign: () => void;
+}) {
+  const { request, notify } = useApi();
+  const [lists, setLists] = useState<{ id: string; name: string; count: number }[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [revision, setRevision] = useState(0);
+  const [loading, setLoading] = useState(Boolean(sessionId));
+  useEffect(() => {
+    if (!sessionId) {
+      setLists([]);
+      setLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    setLoading(true);
+    void request<{ items: typeof lists }>(
+      `/operations/sessions/${sessionId}/lead-lists`,
+      'GET',
+      undefined,
+      controller.signal,
+    )
+      .then((result) => setLists(result.items))
+      .catch((error) => {
+        if (!controller.signal.aborted) notify(errorMessage(error), true);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [sessionId, revision, request, notify]);
+  return (
+    <main className="workspace-page operations-page">
+      <div className="page-heading">
+        <div>
+          <h1>Planilhas</h1>
+          <p>Importe contatos do Excel ou CSV e escolha a lista ao preparar uma campanha.</p>
+        </div>
+        <div className="operation-actions">
+          <button className="button" disabled={!sessionId} onClick={onCampaign}>
+            <Send size={16} />
+            Abrir campanhas
+          </button>
+          <button className="button primary" disabled={!sessionId} onClick={() => setImporting(true)}>
+            <Upload size={16} />
+            Adicionar planilha
+          </button>
+        </div>
+      </div>
+      {lists.length > 0 && (
+        <p className="muted">
+          {lists.length} {lists.length === 1 ? 'lista importada' : 'listas importadas'} nesta conexão
+        </p>
+      )}
+      <div className="contacts-table">
+        {lists.map((list) => (
+          <div key={list.id} className="surface spreadsheet-list-row">
+            <div>
+              <strong>{list.name}</strong>
+              <small>{list.count.toLocaleString('pt-BR')} leads</small>
+            </div>
+            <span>Disponível no público das campanhas</span>
+          </div>
+        ))}
+      </div>
+      {!sessionId ? (
+        <p className="operation-empty">Conecte o WhatsApp para ver e importar suas listas.</p>
+      ) : loading ? (
+        <p className="operation-empty"><Spinner /> Carregando listas…</p>
+      ) : !lists.length ? (
+        <p className="operation-empty">Nenhuma planilha importada nesta conexão.</p>
+      ) : null}
+      {importing && (
+        <LeadImport
+          sessionId={sessionId}
+          onClose={() => setImporting(false)}
+          onImported={() => {
+            setImporting(false);
+            setRevision((value) => value + 1);
+          }}
+        />
+      )}
+    </main>
+  );
 }
 export function ContactsPage({ sessionId, onOpen }: { sessionId: string; onOpen: (id: string) => void }) {
   const { request, notify } = useApi();
@@ -384,7 +475,8 @@ function LeadImport({
   const [countryCode, setCountryCode] = useState('55');
   const [areaCode, setAreaCode] = useState('');
   const [listName, setListName] = useState('');
-  const inspect = async (phoneColumn?: number, nameColumn?: number) => {
+  const [sheetIndex, setSheetIndex] = useState(0);
+  const inspect = async (phoneColumn?: number, nameColumn?: number, selectedSheet = sheetIndex) => {
     if (!file) return;
     setBusy(true);
     try {
@@ -396,6 +488,7 @@ function LeadImport({
           areaCode,
           phoneColumn,
           nameColumn,
+          sheetIndex: selectedSheet,
         }),
       );
     } catch (error) {
@@ -411,19 +504,20 @@ function LeadImport({
       </p>
       <label className="file-upload">
         <Upload size={22} />
-        {file?.name ?? 'Escolher .xls, .xlsx ou .csv de até 10 MiB'}
+        {file?.name ?? 'Escolher .xls, .xlsx, .csv ou .json de até 10 MiB'}
         <input
           type="file"
-          accept=".xls,.xlsx,.csv"
+          accept=".xls,.xlsx,.csv,.json"
           disabled={busy}
           onChange={(event) => {
             const chosen = event.target.files?.[0];
             if (chosen && chosen.size <= 10 * 1024 * 1024) {
               setFile(chosen);
               setListName(
-                (current) => current || chosen.name.replace(/\.(xls|xlsx|csv)$/i, '').slice(0, 100),
+                (current) => current || chosen.name.replace(/\.(xls|xlsx|csv|json)$/i, '').slice(0, 100),
               );
               setPreview(null);
+              setSheetIndex(0);
             } else notify('Escolha um arquivo de até 10 MiB.', true);
           }}
         />
@@ -466,6 +560,24 @@ function LeadImport({
       </label>
       {preview && (
         <>
+          {preview.sheets.length > 1 && (
+            <label>
+              Aba do arquivo
+              <Select
+                value={preview.sheetIndex}
+                disabled={busy}
+                onChange={(event) => {
+                  const index = Number(event.target.value);
+                  setSheetIndex(index);
+                  void inspect(undefined, undefined, index);
+                }}
+              >
+                {preview.sheets.map((name, index) => (
+                  <option key={index} value={index}>{name}</option>
+                ))}
+              </Select>
+            </label>
+          )}
           <div className="form-grid">
             <label>
               Coluna do telefone
@@ -474,6 +586,7 @@ function LeadImport({
                 value={preview.phoneColumn}
                 onChange={(event) => void inspect(Number(event.target.value), preview.nameColumn)}
               >
+                <option value={-1}>Usar telefone como nome</option>
                 {preview.headers.map((header, index) => (
                   <option key={index} value={index}>
                     {header || `Coluna ${index + 1}`}
@@ -1256,6 +1369,8 @@ export function BatchEditor({
             event.preventDefault();
             if (!preview) return;
             const data = new FormData(event.currentTarget);
+            const speedMultiplier = Number(data.get('speedMultiplier') || 1);
+            const scaleDelay = (seconds: number, minimum = 0) => Math.max(minimum, Math.floor(seconds / speedMultiplier));
             setBusy(true);
             void request(`/operations/sessions/${sessionId}/batches`, 'POST', {
               name: data.get('name'),
@@ -1273,11 +1388,11 @@ export function BatchEditor({
                 variationNames: kind === 'text' ? variantNames : undefined,
                 steps:
                   kind === 'asset' && selectedAssets.length > 1
-                    ? selectedAssets.map((assetId) => ({ kind: 'asset', assetId, waitSeconds: 1 }))
+                    ? selectedAssets.map((assetId) => ({ kind: 'asset', assetId, waitSeconds: scaleDelay(1) }))
                     : kind === 'sequence'
                       ? steps.map((step) => ({
                           kind: step.kind,
-                          waitSeconds: step.waitSeconds,
+                          waitSeconds: scaleDelay(step.waitSeconds),
                           text: step.kind === 'text' ? step.text : undefined,
                           assetId: step.kind === 'asset' ? step.assetId : undefined,
                         }))
@@ -1303,10 +1418,11 @@ export function BatchEditor({
                       }
                     : undefined,
               },
-              minSeconds: Number(data.get('minSeconds') || 15),
-              maxSeconds: Number(data.get('maxSeconds') || 45),
+              minSeconds: scaleDelay(Number(data.get('minSeconds') || 15), 1),
+              maxSeconds: scaleDelay(Number(data.get('maxSeconds') || 45), 1),
+              speedMultiplier: speedMultiplier as 1 | 1.5 | 2,
               pauseEvery: Number(data.get('pauseEvery') || 0),
-              pauseSeconds: Number(data.get('pauseSeconds') || 0),
+              pauseSeconds: scaleDelay(Number(data.get('pauseSeconds') || 0)),
               batchSize: Number(data.get('batchSize') || 50),
               pauseAfterBatch: data.get('pauseAfterBatch') === 'on',
               autoResume: data.get('autoResume') === 'on',
@@ -1823,6 +1939,15 @@ export function BatchEditor({
                 <label>
                   Intervalo máximo (s)
                   <input name="maxSeconds" type="number" min={1} max={86400} defaultValue={45} required />
+                </label>
+                <label>
+                  Velocidade de envio
+                  <select name="speedMultiplier" defaultValue="1">
+                    <option value="1">Normal (1×)</option>
+                    <option value="1.5">Acelerado (1,5×)</option>
+                    <option value="2">Mais rápido (2×)</option>
+                  </select>
+                  <small className="muted">A opção reduz proporcionalmente os intervalos configurados.</small>
                 </label>
               </div>
               <p className="muted">Intervalos variáveis não garantem proteção contra bloqueios.</p>

@@ -10,6 +10,9 @@ interface Batch {
   count: number;
   minSeconds: number;
   maxSeconds: number;
+  speedMultiplier?: 1 | 1.5 | 2;
+  remainingMessages?: number;
+  estimatedRemainingSeconds?: number;
   nextAllowedAt?: string;
   nextTaskAt?: string;
   counts: { status: string; _count: number }[];
@@ -31,6 +34,16 @@ interface ApproachStats {
   replied: number;
   responseRate: number;
 }
+function formatDuration(seconds: number) {
+  const total = Math.max(0, Math.round(seconds));
+  const days = Math.floor(total / 86400);
+  const hours = Math.floor((total % 86400) / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  if (days) return `${days}d ${hours}h`;
+  if (hours) return `${hours}h ${minutes}min`;
+  if (minutes) return `${minutes}min ${total % 60}s`;
+  return `${total}s`;
+}
 export function CampaignMonitor({ sessionId, connected }: { sessionId: string; connected: boolean }) {
   const { request, notify } = useApi();
   const [items, setItems] = useState<Batch[]>([]);
@@ -43,6 +56,7 @@ export function CampaignMonitor({ sessionId, connected }: { sessionId: string; c
   const [nextApproaches, setNextApproaches] = useState<string[]>([]);
   const [nextMinSeconds, setNextMinSeconds] = useState(15);
   const [nextMaxSeconds, setNextMaxSeconds] = useState(45);
+  const [nextSpeedMultiplier, setNextSpeedMultiplier] = useState<1 | 1.5 | 2>(1);
   const [nextPauseEvery, setNextPauseEvery] = useState(0);
   const [nextPauseSeconds, setNextPauseSeconds] = useState(300);
   const [nextCtas, setNextCtas] = useState<{ keyword: string; replyText: string }[]>([]);
@@ -116,14 +130,16 @@ export function CampaignMonitor({ sessionId, connected }: { sessionId: string; c
   const continueBatch = async () => {
     if (!editing) return;
     setBusy(true);
+    const scaleDelay = (seconds: number, minimum = 0) => Math.max(minimum, Math.floor(seconds / nextSpeedMultiplier));
     try {
       await request(`/operations/sessions/${sessionId}/batches/${editing.id}/continue`, 'POST', {
         batchSize: nextBatchSize,
         approaches: nextApproaches,
-        minSeconds: nextMinSeconds,
-        maxSeconds: nextMaxSeconds,
+        minSeconds: scaleDelay(nextMinSeconds, 1),
+        maxSeconds: scaleDelay(nextMaxSeconds, 1),
+        speedMultiplier: nextSpeedMultiplier,
         pauseEvery: nextPauseEvery,
-        pauseSeconds: nextPauseSeconds,
+        pauseSeconds: scaleDelay(nextPauseSeconds),
         ctas: nextCtas,
         followUps: nextFollowUps,
         sendWindow: limitHours
@@ -178,6 +194,11 @@ export function CampaignMonitor({ sessionId, connected }: { sessionId: string; c
               : item.minSeconds < 30
                 ? 'Ritmo moderado'
                 : 'Envios mais espaçados';
+          const remainingLeads = Math.max(0, item.count - sent);
+          const estimatedSeconds = item.estimatedRemainingSeconds ?? Math.ceil(
+            seconds + Math.max(0, remainingLeads - 1) * ((item.minSeconds + item.maxSeconds) / 2),
+          );
+          const eta = formatDuration(estimatedSeconds);
           return (
             <section key={item.id}>
               <strong>{item.name}</strong>
@@ -186,6 +207,14 @@ export function CampaignMonitor({ sessionId, connected }: { sessionId: string; c
                 {item.sentTotal !== undefined ? ` · Restantes: ${Math.max(0, item.count - sent)}` : ''}
               </span>
               <progress value={sent} max={Math.max(item.count, 1)} />
+              {item.status !== 'BATCH_COMPLETE' && (item.remainingMessages ?? remainingLeads) > 0 && (
+                <small>
+                  Tempo estimado até finalizar: ~{eta} ·{' '}
+                  {item.remainingMessages !== undefined
+                    ? `${item.remainingMessages} mensagens restantes`
+                    : `${remainingLeads} contatos restantes`}
+                </small>
+              )}
               {approachStats[item.id]?.map((stat) => (
                 <small key={stat.index}>
                   {stat.name}: {stat.sent} enviados · {stat.replied} respostas (
@@ -220,7 +249,7 @@ export function CampaignMonitor({ sessionId, connected }: { sessionId: string; c
                         : 'pace-low'
                   }
                 />
-                <span>{pressure}</span>
+                <span>{pressure}{item.speedMultiplier ? ` · ${item.speedMultiplier}×` : ''}</span>
               </div>
               <div className="campaign-monitor-actions">
                 {item.status === 'BATCH_COMPLETE' && (
@@ -231,10 +260,12 @@ export function CampaignMonitor({ sessionId, connected }: { sessionId: string; c
                       setEditing(item);
                       setNextBatchSize(item.batchSize ?? 50);
                       setNextApproaches(item.approaches ?? []);
-                      setNextMinSeconds(item.minSeconds);
-                      setNextMaxSeconds(item.maxSeconds);
+                      const multiplier = item.speedMultiplier ?? 1;
+                      setNextMinSeconds(Math.round(item.minSeconds * multiplier));
+                      setNextMaxSeconds(Math.round(item.maxSeconds * multiplier));
+                      setNextSpeedMultiplier(item.speedMultiplier ?? 1);
                       setNextPauseEvery(item.pauseEvery ?? 0);
-                      setNextPauseSeconds(item.pauseSeconds ?? 300);
+                      setNextPauseSeconds(Math.round((item.pauseSeconds ?? 300) * multiplier));
                       setNextCtas(item.ctaMessages ?? []);
                       setNextFollowUps(item.followUpMessages ?? []);
                       setLimitHours(Boolean(item.sendWindow));
@@ -358,6 +389,17 @@ export function CampaignMonitor({ sessionId, connected }: { sessionId: string; c
                 value={nextPauseSeconds}
                 onChange={(event) => setNextPauseSeconds(Number(event.target.value))}
               />
+            </label>
+            <label>
+              Velocidade do próximo lote
+              <select
+                value={nextSpeedMultiplier}
+                onChange={(event) => setNextSpeedMultiplier(Number(event.target.value) as 1 | 1.5 | 2)}
+              >
+                <option value={1}>Normal (1×)</option>
+                <option value={1.5}>Acelerado (1,5×)</option>
+                <option value={2}>Mais rápido (2×)</option>
+              </select>
             </label>
           </div>
           <h3>Respostas de CTA</h3>

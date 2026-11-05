@@ -21,6 +21,7 @@ export interface Batch {
   mode: 'CAMPAIGN' | 'SCHEDULE' | 'REMINDER';
   minSeconds: number;
   maxSeconds: number;
+  speedMultiplier?: 1 | 1.5 | 2;
   nextAllowedAt?: string;
   count: number;
   createdAt: string;
@@ -39,6 +40,8 @@ export interface Batch {
   batchSentCount?: number;
   pauseAfterBatch?: boolean;
   autoResume?: boolean;
+  sequenceMode?: boolean;
+  activeSequenceTaskId?: string;
   distribution?: 'RANDOM' | 'ROUND_ROBIN';
   variationNames?: string[];
   ctaMessages?: CampaignCta[];
@@ -147,22 +150,75 @@ export class DeliveryWorker {
         where: { kind: 'BATCH' },
         orderBy: { updatedAt: 'asc' },
       });
-      const activeIds = batches
+      const activeBatches = batches
         .filter((row) => {
           const data = row.data as unknown as Batch;
           return (
             (data.status === 'ACTIVE' || (data.status === 'PAUSED_CONNECTION' && data.autoResume)) &&
             (!data.nextAllowedAt || new Date(data.nextAllowedAt) <= new Date())
           );
-        })
-        .map((row) => row.id);
-      const tasks = [];
-      for (const batchId of activeIds.slice(0, 30)) {
-        const task = await this.db.deliveryTask.findFirst({
-          where: { batchId, status: 'QUEUED', runAt: { lte: new Date() } },
-          orderBy: [{ runAt: 'asc' }, { id: 'asc' }],
         });
-        if (task) tasks.push(task);
+      const tasks = [];
+      for (const row of activeBatches.slice(0, 30)) {
+        const batchId = row.id;
+        let batch = row.data as unknown as Batch;
+        let task;
+        let inspectLegacySequence = false;
+        if (batch.activeSequenceTaskId) {
+          task = await this.db.deliveryTask.findFirst({
+            where: { id: batch.activeSequenceTaskId, batchId, status: 'QUEUED' },
+          });
+          if (!task) {
+            batch = { ...batch, activeSequenceTaskId: undefined };
+            await putRecord(this.db, batchId, 'BATCH', batch);
+            inspectLegacySequence = true;
+          } else if (task.runAt > new Date()) {
+            const nextAllowedAt = task.runAt.toISOString();
+            if (!batch.nextAllowedAt || new Date(batch.nextAllowedAt) < task.runAt)
+              await putRecord(this.db, batchId, 'BATCH', { ...batch, nextAllowedAt });
+            continue;
+          }
+        }
+        if (!task) {
+          const firstQueued = await this.db.deliveryTask.findFirst({
+            where: { batchId, status: 'QUEUED' },
+            orderBy: [{ runAt: 'asc' }, { id: 'asc' }],
+          });
+          if (!firstQueued) continue;
+          const firstPayload = firstQueued.payload as unknown as Delivery;
+          if (firstPayload.kind === 'sequence' && (!batch.sequenceMode || inspectLegacySequence)) {
+            const queued = await this.db.deliveryTask.findMany({ where: { batchId, status: 'QUEUED' } });
+            const inProgress = queued
+              .filter((candidate) => {
+                const payload = candidate.payload as unknown as Delivery;
+                return payload.kind === 'sequence' && (payload.stepIndex ?? 0) > 0;
+              })
+              .sort((left, right) => {
+                const leftOrder = Number((left.payload as { batchOrder?: number }).batchOrder ?? 0);
+                const rightOrder = Number((right.payload as { batchOrder?: number }).batchOrder ?? 0);
+                return leftOrder - rightOrder || left.createdAt.getTime() - right.createdAt.getTime() || left.id.localeCompare(right.id);
+              });
+            const active = inProgress[0];
+            batch = {
+              ...batch,
+              sequenceMode: true,
+              ...(active ? { activeSequenceTaskId: active.id } : { activeSequenceTaskId: undefined }),
+            };
+            await putRecord(this.db, batchId, 'BATCH', batch);
+            if (active) {
+              if (active.runAt > new Date()) {
+                const nextAllowedAt = active.runAt.toISOString();
+                if (!batch.nextAllowedAt || new Date(batch.nextAllowedAt) < active.runAt)
+                  await putRecord(this.db, batchId, 'BATCH', { ...batch, nextAllowedAt });
+                continue;
+              }
+              task = active;
+            } else if (firstQueued.runAt <= new Date()) task = firstQueued;
+            else continue;
+          } else if (firstQueued.runAt <= new Date()) task = firstQueued;
+          else continue;
+        }
+        tasks.push(task);
       }
       const handled = new Set<string>();
       for (const task of tasks) {
@@ -289,6 +345,8 @@ export class DeliveryWorker {
           Boolean(data.followUps?.length) &&
           (!data.followUp || followUpIndex + 1 < data.followUps!.length);
         const hasNext = hasNextSequence || hasNextCampaignFollowUp;
+        const countAsLead =
+          !(data.kind === 'text' && data.followUp) && !(data.kind === 'sequence' && hasNextSequence);
         try {
           let sentAt: Date | undefined;
           if (data.kind === 'reminder')
@@ -394,7 +452,6 @@ export class DeliveryWorker {
                 data: { status: 'CANCELLED' },
               });
             if (latest?.status === 'ACTIVE') {
-              const countAsLead = !(data.kind === 'text' && data.followUp);
               const sentTotal = (latest.sentTotal ?? latest.sentCount ?? 0) + (countAsLead ? 1 : 0);
               const batchSentCount = (latest.batchSentCount ?? 0) + (countAsLead ? 1 : 0);
               const batchSize = latest.batchSize ?? Infinity;
@@ -414,6 +471,19 @@ export class DeliveryWorker {
                 : hasPendingFollowUps
                   ? 'ACTIVE'
                   : 'COMPLETED';
+              const pauseLong = Boolean(
+                countAsLead && latest.pauseEvery &&
+                ((latest.sentCount ?? 0) + 1) % latest.pauseEvery === 0,
+              );
+              const nextWaitSeconds = hasNextSequence
+                ? (data.steps?.[index + 1]?.waitSeconds ?? 1)
+                : randomInt(batch.minSeconds, batch.maxSeconds + 1) +
+                  (pauseLong ? (latest.pauseSeconds ?? 0) : 0);
+              const activeSequenceTaskId = hasNextSequence
+                ? task.id
+                : latest.activeSequenceTaskId === task.id
+                  ? undefined
+                  : latest.activeSequenceTaskId;
               const history = (latest.batchHistory ?? []).map((entry) =>
                 entry.number === (data as Delivery & { batchNumber?: number }).batchNumber
                   ? {
@@ -453,6 +523,8 @@ export class DeliveryWorker {
                 data: {
                   data: json({
                     ...latest,
+                    ...(data.kind === 'sequence' ? { sequenceMode: true } : {}),
+                    ...(activeSequenceTaskId ? { activeSequenceTaskId } : { activeSequenceTaskId: undefined }),
                     status: nextStatus,
                     sentCount: sentTotal,
                     sentTotal,
@@ -462,14 +534,7 @@ export class DeliveryWorker {
                         ? (latest.batchNumber ?? 1) + 1
                         : latest.batchNumber,
                     batchHistory: history,
-                    nextAllowedAt: new Date(
-                      Date.now() +
-                        (randomInt(batch.minSeconds, batch.maxSeconds + 1) +
-                          (latest.pauseEvery && ((latest.sentCount ?? 0) + 1) % latest.pauseEvery === 0
-                            ? (latest.pauseSeconds ?? 0)
-                            : 0)) *
-                          1000,
-                    ).toISOString(),
+                    nextAllowedAt: new Date(Date.now() + nextWaitSeconds * 1000).toISOString(),
                   }),
                 },
               });

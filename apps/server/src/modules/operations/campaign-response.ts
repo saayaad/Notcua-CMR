@@ -126,6 +126,7 @@ export async function queueCampaignResponse(
       name: `Resposta à CTA ${cta.keyword} · ${batch.name}`,
       sessionId, status: 'ACTIVE', mode: 'SCHEDULE', minSeconds: 1, maxSeconds: 1,
       count: 1, sentCount: 0, createdAt: new Date().toISOString(),
+      ...(replyDelivery.kind === 'sequence' ? { sequenceMode: true } : {}),
       ...(batch.sendWindow ? { sendWindow: batch.sendWindow } : {}),
     };
     await tx.operationRecord.create({ data: { id: responseBatchId, kind: 'BATCH', data: json(responseBatch) } });

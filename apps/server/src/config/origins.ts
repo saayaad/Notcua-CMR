@@ -6,6 +6,9 @@ export const allowedOrigins = [
     ...env.CLIENT_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean),
     'http://127.0.0.1:5173',
     'http://localhost:5173',
+    ...(env.NODE_ENV === 'development'
+      ? ['http://127.0.0.1:5174', 'http://localhost:5174']
+      : []),
     `http://127.0.0.1:${env.PORT}`,
     `http://localhost:${env.PORT}`,
     `http://[::1]:${env.PORT}`,

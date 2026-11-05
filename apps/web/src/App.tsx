@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   CalendarDays,
   Users,
+  Table2,
   Send,
   Workflow,
   KanbanSquare,
@@ -47,7 +48,7 @@ import { ConnectionsPage } from './pages/ConnectionsPage';
 const FlowsPage = lazy(() => import('./pages/FlowsPage').then((module) => ({ default: module.FlowsPage })));
 import { CrmPage } from './pages/CrmPage';
 import { WorkspaceSettings } from './pages/WorkspaceSettings';
-import { OverviewPage, ContactsPage, CampaignsPage } from './pages/OperationsPages';
+import { OverviewPage, ContactsPage, CampaignsPage, SpreadsheetsPage } from './pages/OperationsPages';
 import { usePreferences } from './context/PreferencesContext';
 import { HelpCenter } from './pages/HelpCenter';
 import { SandboxPage } from './pages/SandboxPage';
@@ -62,6 +63,7 @@ type View =
   | 'flows'
   | 'overview'
   | 'contacts'
+  | 'spreadsheets'
   | 'campaigns'
   | 'schedule'
   | 'sandbox'
@@ -334,6 +336,7 @@ export default function App() {
     { id: 'flows' as const, name: 'Autoatendimento', icon: Workflow },
     { id: 'sandbox' as const, name: 'Espaço de Teste', icon: FlaskConical },
     { id: 'contacts' as const, name: 'Contatos', icon: Users },
+    { id: 'spreadsheets' as const, name: 'Planilhas', icon: Table2 },
     { id: 'crm' as const, name: 'CRM e negócios', icon: KanbanSquare },
     { id: 'connections' as const, name: 'Conexões', icon: Wifi },
     { id: 'settings' as const, name: 'Configurações', icon: Settings },
@@ -700,6 +703,8 @@ export default function App() {
                 .catch((error) => notify(errorMessage(error), true));
             }}
           />
+        ) : view === 'spreadsheets' ? (
+          <SpreadsheetsPage sessionId={workspace.sessionId} onCampaign={() => setView('campaigns')} />
         ) : view === 'crm' ? (
           <CrmPage
             key={`crm:${workspace.sessionId}`}
@@ -747,7 +752,7 @@ export default function App() {
         ) : view === 'sandbox' ? (
           <SandboxPage />
         ) : view === 'help' ? (
-          <HelpCenter onNavigate={setView} />
+          <HelpCenter onNavigate={(target) => setView(target as View)} />
         ) : view === 'settings' || view === 'personalization' ? (
           <WorkspaceSettings
             key={view}

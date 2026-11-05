@@ -133,6 +133,20 @@
   color: var(--muted);
   margin-top: 6px;
 }
+.spreadsheet-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  margin: 8px 0;
+}
+.spreadsheet-list-row > div { min-width: 0; overflow-wrap: anywhere; }
+.spreadsheet-list-row > span { color: var(--muted); font-size: 13px; text-align: right; }
+@media (max-width: 600px) {
+  .spreadsheet-list-row { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .spreadsheet-list-row > span { text-align: left; }
+}
 .operation-empty {
   display: flex;
   align-items: center;
