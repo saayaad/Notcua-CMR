@@ -1360,6 +1360,16 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
           batchNumber?: number;
           textVersion?: string[];
         };
+        const nextBatchNumber = (batch.batchNumber ?? 1) + 1;
+        const nextBatchOrder = Number((payload as Delivery & { batchOrder?: number }).batchOrder ?? index);
+        // Each unsent lead keeps its frozen alternative. Assign batch numbers
+        // by stable public order so later batches are not mislabeled as batch N.
+        if (task.alternativeId && task.frozenContent != null) {
+          await tx.deliveryTask.update({ where: { id: task.id }, data: { payload: json({
+            ...payload, batchNumber: nextBatchNumber + Math.floor(index / size), batchOrder: nextBatchOrder,
+          }) } });
+          continue;
+        }
         const variantIndex = approaches?.length ? variantAssignment[index]! : (payload.approachIndex ?? 0);
         const text =
           approaches?.[variantIndex] ??
@@ -1372,7 +1382,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
             payload: json({
               ...payload,
               approachIndex: variantIndex,
-              batchNumber: (batch.batchNumber ?? 1) + 1,
+              batchNumber: nextBatchNumber + Math.floor(index / size),
               textVersion: approaches ?? [],
               ...(input.ctas ? { ctas: input.ctas, cta: undefined } : {}),
               ...(input.defaultReplyText === undefined ? {} : { defaultReplyText: input.defaultReplyText }),

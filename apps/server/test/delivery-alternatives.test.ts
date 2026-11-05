@@ -377,3 +377,60 @@ test('Fase 3: editor recebe a capacidade de alternativas sem habilitar a flag', 
     env.CAMPAIGN_ALTERNATIVES_ENABLED = previous;
   }
 });
+
+test('Fase 4: continuação mantém snapshots e distribui números de lote na ordem congelada', async () => {
+  const previous = env.CAMPAIGN_ALTERNATIVES_ENABLED;
+  env.CAMPAIGN_ALTERNATIVES_ENABLED = true;
+  try {
+    const chats = [];
+    for (let i = 0; i < 5; i++) chats.push(await makeContact(`551177779020${i}`, `Lead de lote ${i + 1}`));
+    const app = createApp(db, whatsapp, sequences, messaging);
+    const response = await request(app).post(`/api/operations/sessions/${sessionId}/batches`).send({
+      name: 'Lotes de alternativas', mode: 'CAMPAIGN', audience: { conversationIds: chats.map((chat) => chat.id) },
+      delivery: { kind: 'text', text: 'Compatibilidade legada' }, batchSize: 2, distribution: 'ROUND_ROBIN',
+      minSeconds: 1, maxSeconds: 1,
+      alternatives: [
+        { name: 'Uma', delivery: { kind: 'text', text: 'Alternativa um congelada' } },
+        { name: 'Duas', delivery: { kind: 'text', text: 'Alternativa dois congelada' } },
+        { name: 'Três', delivery: { kind: 'text', text: 'Alternativa três congelada' } },
+      ],
+    }).expect(201);
+    await request(app).put(`/api/operations/sessions/${sessionId}/batches/${response.body.id}`).send({ status: 'ACTIVE' }).expect(200);
+    const batchId = response.body.id as string;
+    const originals = await db.deliveryTask.findMany({ where: { batchId }, orderBy: { payload: 'asc' } });
+    const byLead = new Map(originals.map((task) => [task.conversationId, task.frozenContent]));
+    const before = socket.sends.length;
+    await worker.flush();
+    let batch = await record<Batch>(db, batchId, {} as Batch);
+    await putRecord(db, batchId, 'BATCH', { ...batch, nextAllowedAt: undefined });
+    await worker.flush();
+    batch = await record<Batch>(db, batchId, {} as Batch);
+    assert.equal(batch.status, 'BATCH_COMPLETE');
+    assert.equal(batch.sentTotal, 2);
+    await db.contact.updateMany({ where: { id: { in: chats.slice(2).map((chat) => chat.contactId) } }, data: { metadata: { optOut: false, changedDuringPause: true } } });
+    await request(app).post(`/api/operations/sessions/${sessionId}/batches/${batchId}/continue`)
+      .send({ batchSize: 2 }).expect(200, { saved: true, batchNumber: 2, count: 3 });
+    const afterContinue = await db.deliveryTask.findMany({ where: { batchId }, orderBy: { createdAt: 'asc' } });
+    const pending = afterContinue.filter((task) => task.status === 'QUEUED').sort((a, b) =>
+      Number((a.payload as { batchOrder?: number }).batchOrder ?? 0) - Number((b.payload as { batchOrder?: number }).batchOrder ?? 0));
+    assert.equal(afterContinue.filter((task) => task.status === 'COMPLETED').length, 2);
+    assert.deepEqual(pending.map((task) => (task.payload as { batchNumber: number }).batchNumber), [2, 2, 3]);
+    for (const task of pending) assert.deepEqual(task.frozenContent, byLead.get(task.conversationId));
+    assert.deepEqual(pending.map((task) => task.alternativeIndex), [2, 0, 1]);
+    batch = await record<Batch>(db, batchId, {} as Batch);
+    assert.deepEqual(batch.batchHistory?.at(-1)?.leadIds, pending.slice(0, 2).map((task) => task.conversationId));
+    for (const task of pending.slice(0, 2)) await db.deliveryTask.update({ where: { id: task.id }, data: { runAt: new Date(0) } });
+    for (let send = 0; send < 2; send++) {
+      batch = await record<Batch>(db, batchId, {} as Batch);
+      await putRecord(db, batchId, 'BATCH', { ...batch, nextAllowedAt: undefined });
+      await worker.flush();
+    }
+    assert.equal((await db.deliveryTask.findMany({ where: { batchId, status: 'COMPLETED' } })).length, 4);
+    assert.deepEqual(socket.sends.slice(before), [
+      { text: 'Alternativa um congelada' }, { text: 'Alternativa dois congelada' },
+      { text: 'Alternativa três congelada' }, { text: 'Alternativa um congelada' },
+    ]);
+  } finally {
+    env.CAMPAIGN_ALTERNATIVES_ENABLED = previous;
+  }
+});
