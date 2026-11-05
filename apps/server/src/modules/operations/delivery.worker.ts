@@ -143,10 +143,11 @@ export class DeliveryWorker {
     });
     for (const { batchId } of interrupted) {
       const current = await record<Batch | null>(this.db, batchId, null);
-      if (current?.status === 'ACTIVE') {
+      if (current && ['ACTIVE', 'PAUSED_CONNECTION'].includes(current.status)) {
         await putRecord(this.db, batchId, 'BATCH', {
           ...current,
           status: 'PAUSED',
+          autoResume: false,
           pauseHistory: [
             ...(current.pauseHistory ?? []),
             {
@@ -383,11 +384,20 @@ export class DeliveryWorker {
           });
           this.whatsapp.notify(task.sessionId, 'chats');
         }
-        const claimed = await this.db.deliveryTask.updateMany({
-          where: { id: task.id, status: 'QUEUED' },
-          data: { status: 'RUNNING' },
+        // Claim only while the persisted campaign state still permits sending.
+        // A manual pause that wins the race prevents this task from reaching WhatsApp.
+        const claimed = await this.db.$transaction(async (tx) => {
+          const current = await tx.operationRecord.findUnique({ where: { id: task.batchId } });
+          const latest = current?.data as unknown as Batch | undefined;
+          if (!latest || !(latest.status === 'ACTIVE' || (latest.status === 'PAUSED_CONNECTION' && latest.autoResume)))
+            return false;
+          const changed = await tx.deliveryTask.updateMany({
+            where: { id: task.id, status: 'QUEUED' },
+            data: { status: 'RUNNING' },
+          });
+          return changed.count > 0;
         });
-        if (!claimed.count) continue;
+        if (!claimed) continue;
         const index = data.stepIndex ?? 0;
         const step = data.kind === 'sequence' ? data.steps?.[index] : undefined;
         const followUpIndex = data.followUpIndex ?? 0;
@@ -509,7 +519,7 @@ export class DeliveryWorker {
                 where: { id: task.id, status: 'QUEUED' },
                 data: { status: 'CANCELLED' },
               });
-            if (latest?.status === 'ACTIVE') {
+            if (latest && ['ACTIVE', 'PAUSED', 'PAUSED_CONNECTION'].includes(latest.status)) {
               const sentTotal = (latest.sentTotal ?? latest.sentCount ?? 0) + (countAsLead ? 1 : 0);
               const batchSentCount = (latest.batchSentCount ?? 0) + (countAsLead ? 1 : 0);
               const batchSize = latest.batchSize ?? Infinity;
@@ -522,13 +532,18 @@ export class DeliveryWorker {
               );
               const remaining = pendingCampaignTasks.length;
               const hasPendingFollowUps = pendingTasks.length > remaining;
-              const nextStatus = remaining
+              const calculatedStatus = remaining
                 ? batchReached && latest.pauseAfterBatch !== false
                   ? 'BATCH_COMPLETE'
                   : 'ACTIVE'
                 : hasPendingFollowUps
                   ? 'ACTIVE'
                   : 'COMPLETED';
+              const nextStatus = latest.status === 'PAUSED' && calculatedStatus === 'ACTIVE'
+                ? 'PAUSED'
+                : latest.status === 'PAUSED_CONNECTION' && calculatedStatus === 'ACTIVE'
+                  ? 'PAUSED_CONNECTION'
+                  : calculatedStatus;
               const pauseLong = Boolean(
                 countAsLead && latest.pauseEvery &&
                 ((latest.sentCount ?? 0) + 1) % latest.pauseEvery === 0,

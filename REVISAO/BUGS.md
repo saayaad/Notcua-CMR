@@ -312,3 +312,11 @@ A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, po
 - O contador dentro do label era incluído no nome acessível do textarea. Acrescentado aria-label estável “Texto da etapa N”; teste continua exigindo o texto e os contadores corretos. Asserção da prévia foi delimitada ao balão, que também contém o número da etapa.
 - Conferência visual detectou legenda pouco legível no fundo escuro interno do AssetPreview. A prévia de campanha agora herda as cores do balão para mídia/legenda; corrigido também o alinhamento da opção de alternativas. Atualização assíncrona da mídia usa o estado atual, evitando substituir edições feitas durante upload.
 - Resultado final: Playwright 9/9 em três tamanhos e servidor 86/86. Não houve falha em envio real; todas as requisições de interface foram simuladas.
+
+## BUG-036 — Pausa durante envio perdia contagem e retomava com etapa incerta — corrigido localmente em 05/11/2026
+
+- Reprodução: iniciar campanha fictícia com dois leads; segurar a confirmação de envio do primeiro no FakeSocket; pausar a campanha; liberar a confirmação; depois tentar retomar.
+- Resultado: a mensagem confirmada e a tarefa eram persistidas, mas os contadores só eram atualizados se o estado continuasse `ACTIVE`. A rota também permitia retomar com tarefa `VERIFY`, e a retomada depois de reinício em `PAUSED_CONNECTION` não garantia pausa segura.
+- Causa: claim do lead, atualização do estado da campanha, resolução de `VERIFY` e atualização dos contadores não protegiam as transições contra concorrência.
+- Correção: claim transacional valida o estado atual da campanha; pausa no meio do envio preserva resultado/cursor/contadores e impede o próximo lead; restart converte campanhas interrompidas em pausa manual com `VERIFY`; retomar exige resolver toda incerteza. Resolução usa update condicional transacional, contagem única e ID de envio idempotente; retry não reativa campanha terminal.
+- Reteste: testes de pausa concorrente, reinício/VERIFY, retry idempotente, resolução repetida e reconexão passaram em SQLite temporário e FakeSocket; regressão conjunta 89/89. Nenhum envio real.

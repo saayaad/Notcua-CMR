@@ -5,8 +5,14 @@ AUDITORIA DO NOCTUA — PROTOCOLO
 ## Estado ao encerrar a Fase 4 — 05/11/2026
 
 - A Fase 4 de envio em lotes foi validada localmente: 87/87 testes relevantes passaram; typecheck e build do servidor passaram; build web passou com `--configLoader runner` após o Vite padrão falhar por acesso negado ao diretório ascendente.
-- O commit manual `f262490` inclui código de continuação e teste de Fase 4. A atualização final de `PROGRESSO.md` permanece modificada e sem commit porque o ambiente recusou criar `.git/index.lock` (`Permission denied`).
-- Para concluir o registro local, o usuário precisa executar `git add -- PROGRESSO.md` e `git commit -m "docs: record phase 4 batch delivery"`. Nenhum deploy ou push foi feito.
+- O commit `f262490` contém código de continuação e teste de Fase 4; o registro final foi commitado em `b8782e0` (`docs: record phase 4 batch delivery`). Nenhum deploy ou push foi feito.
+
+## Estado ao encerrar a Fase 5 — 05/11/2026
+
+- Pausa manual, entrega em curso, retomada após resolução de `VERIFY`, restart e retry idempotente validados localmente. A suíte relevante passou 89/89; typecheck dos dois workspaces e builds server/web passaram, usando `--configLoader runner` no Vite por restrição de leitura de diretório ascendente.
+- O commit não pôde ser criado neste ambiente: `git add` foi recusado ao criar `.git/index.lock` (`Permission denied`). As seis alterações da Fase 5 permanecem fora do staging; não incluir os artefatos preexistentes de `REVISAO/evidencias/` nem o arquivo não rastreado `git`.
+- Para registrar a Fase 5 no terminal do VS Code, executar: `git add -- PROGRESSO.md REVISAO/BUGS.md REVISAO/PROTOCOLO.md apps/server/src/modules/operations/delivery.worker.ts apps/server/src/modules/operations/operations.routes.ts apps/server/test/operations.test.ts` e `git commit -m "fix: make campaign pause and resume safe"`.
+- Sem produção, deploy, push ou envio real.
 
 META
 

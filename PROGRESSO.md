@@ -91,7 +91,7 @@ Branch: `auditoria-reqs`. Diretório oficial. Nenhuma chamada de envio real, pro
 - [ ] Conteúdo e alternativa congelados por contato.
 - [ ] Até 10 alternativas; adicionar, duplicar e remover com confirmação e mínimo 1.
 - [ ] Lotes estáveis, continuação, exclusão de contatos já enviados e histórico por lote.
-- [ ] Pausa/retomada segura no servidor, estados por lead e proteção contra duplicidade.
+- [x] Pausa/retomada segura no servidor, estados por lead e proteção contra duplicidade.
 - [ ] Compatibilidade retroativa com campanhas já existentes.
 - [ ] Testes fictícios: queda, reinício, lotes 1/2, filtro alterado e rotação 1-2-3.
 - [ ] Build e suíte relevante aprovados.
@@ -164,4 +164,14 @@ Decisão: cada alternativa é um conteúdo completo; sequência é uma única al
 - A numeração e a ordem dos lotes seguintes são persistidas no payload em ordem estável. O cálculo usa o número do lote anterior e o tamanho selecionado, identificando corretamente lote 2, lote 3 e os seguintes mesmo quando há mais de um lote restante.
 - Teste novo em `apps/server/test/delivery-alternatives.test.ts` cobre 5 leads, tamanho 2, rotação 1–2–3, mudança de metadados durante a pausa, snapshots intactos, histórico de leads do lote e envio na ordem congelada. Testes existentes cobrem queda/retomada, `VERIFY` após reinício, idempotência e os aceites de lotes 1/2 e filtros alterados.
 - Suíte conjunta `delivery-alternatives.test.ts` + `operations.test.ts`: **87/87 passaram**, com SQLite temporário e FakeSocket. Typecheck do servidor passou; o build do servidor passou. `npm run build` executou `tsc` do web, mas o carregador padrão do Vite falhou por acesso negado ao diretório ascendente no Windows; `npm exec -w @noctua/web -- vite build --configLoader runner` passou. Permanece apenas o aviso conhecido de chunk acima de 500 kB.
-- Nenhum deploy, push, envio real ou acesso ao banco real foi feito. O código de continuação e o teste de Fase 4 constam no commit `f262490`, feito manualmente pelo usuário durante esta execução. A atualização deste registro não pôde ser commitada: o ambiente recusou criar `.git/index.lock` (`Permission denied`); somente `PROGRESSO.md` ficou modificado para commit.
+- Nenhum deploy, push, envio real ou acesso ao banco real foi feito. O código de continuação e o teste de Fase 4 constam no commit `f262490`; o fechamento documental foi commitado em `b8782e0` (`docs: record phase 4 batch delivery`).
+
+### Fase 5 — pausa e retomada segura — concluída localmente em 05/11/2026
+
+- Claim de tarefa e conferência do estado da campanha agora são transacionais: uma pausa que acontece antes do claim impede o envio; uma pausa durante envio deixa somente a mensagem já em curso concluir, persiste cursor/contadores e mantém a fila seguinte bloqueada.
+- Após reinício, tarefas `RUNNING` viram `VERIFY` e campanhas `ACTIVE` ou `PAUSED_CONNECTION` são pausadas sem retomada automática. A ação de retomar recusa campanhas com qualquer tarefa `VERIFY` pendente.
+- Resolver `VERIFY` é transacional e idempotente: `mark-sent` só conta uma vez; `retry` respeita estados terminais, só reabre a campanha após resolver a última incerteza e reutiliza o ID persistente por etapa para evitar duplicidade.
+- Reproduções locais e testes adicionados em `apps/server/test/operations.test.ts` cobrem pausa durante envio, contagem correta do lead já confirmado, bloqueio do próximo, retomada após resolver `VERIFY`, tentativa de resolução duplicada e retry com entrega já confirmada no FakeSocket. O aceite de desconexão/reconexão existente também passou.
+- Suíte conjunta `delivery-alternatives.test.ts` + `operations.test.ts`: **89/89 passaram** com SQLite temporário e FakeSocket. `npm run typecheck` (servidor e web) e build do servidor passaram. Build web passou com `vite build --configLoader runner`; o comando padrão segue bloqueado por acesso negado do esbuild a diretório ascendente no Windows. Aviso conhecido de chunk >500 kB.
+- Nenhum envio real, acesso ao banco real, push ou deploy foi feito.
+- O commit da Fase 5 não pôde ser criado neste ambiente: `git add` foi recusado ao criar `.git/index.lock` (`Permission denied`). As seis alterações da Fase 5 permanecem fora do staging; os artefatos preexistentes não foram incluídos.

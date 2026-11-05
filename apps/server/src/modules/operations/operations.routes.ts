@@ -1219,26 +1219,43 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     if (status && (data.status === 'CANCELLED' || data.status === 'COMPLETED'))
       throw new AppError(409, 'Esta execução foi encerrada. Crie uma nova.');
     if (status) {
-      if (status === 'ACTIVE' && data.status === 'BATCH_COMPLETE')
-        throw new AppError(409, 'Use Continuar próximo lote para avançar a fila de forma controlada.');
-      await putRecord(db, batchId, 'BATCH', {
-        ...data,
-        status,
-        ...(['PAUSED', 'PAUSED_CONNECTION'].includes(status)
-          ? {
-              pauseHistory: [
-                ...(data.pauseHistory ?? []),
-                { at: new Date().toISOString(), reason: 'Pausa manual.', action: 'paused' },
-              ],
-            }
-          : status === 'ACTIVE' && ['PAUSED', 'PAUSED_CONNECTION'].includes(data.status)
-            ? {
-                pauseHistory: [
-                  ...(data.pauseHistory ?? []),
-                  { at: new Date().toISOString(), reason: 'Retomada manual.', action: 'resumed' },
-                ],
-              }
-            : {}),
+      await db.$transaction(async (tx) => {
+        const current = await tx.operationRecord.findUnique({ where: { id: batchId } });
+        const latest = current?.data as unknown as Batch | undefined;
+        if (!latest || latest.sessionId !== sessionId) throw new AppError(404, 'Campanha não encontrada.');
+        if (latest.status === 'CANCELLED' || latest.status === 'COMPLETED')
+          throw new AppError(409, 'Esta execução foi encerrada. Crie uma nova.');
+        if (status === 'ACTIVE' && latest.status === 'BATCH_COMPLETE')
+          throw new AppError(409, 'Use Continuar próximo lote para avançar a fila de forma controlada.');
+        if (status === 'ACTIVE' && await tx.deliveryTask.count({ where: { batchId, status: 'VERIFY' } }))
+          throw new AppError(409, 'Resolva os envios em verificação antes de retomar a campanha.');
+        if (status === 'PAUSED' && !['ACTIVE', 'PAUSED', 'PAUSED_CONNECTION'].includes(latest.status))
+          throw new AppError(409, 'Só é possível pausar uma campanha em execução.');
+        const resumed = status === 'ACTIVE' && ['PAUSED', 'PAUSED_CONNECTION'].includes(latest.status);
+        const paused = status === 'PAUSED' && latest.status !== 'PAUSED';
+        await tx.operationRecord.update({
+          where: { id: batchId },
+          data: {
+            data: json({
+              ...latest,
+              status,
+              ...(paused || resumed
+                ? {
+                    pauseHistory: [
+                      ...(latest.pauseHistory ?? []),
+                      {
+                        at: new Date().toISOString(),
+                        reason: paused ? 'Pausa manual.' : 'Retomada manual.',
+                        action: paused ? 'paused' : 'resumed',
+                      },
+                    ],
+                  }
+                : {}),
+            }),
+          },
+        });
+        if (status === 'CANCELLED')
+          await tx.deliveryTask.updateMany({ where: { batchId, status: 'QUEUED' }, data: { status: 'CANCELLED' } });
       });
     } else {
       if (data.mode !== 'CAMPAIGN')
@@ -1255,11 +1272,6 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       res.json({ saved: true });
       return;
     }
-    if (status === 'CANCELLED')
-      await db.deliveryTask.updateMany({
-        where: { batchId, status: 'QUEUED' },
-        data: { status: 'CANCELLED' },
-      });
     res.json({ saved: true });
   });
   router.post('/sessions/:sessionId/batches/:batchId/continue', async (req, res) => {
@@ -1480,41 +1492,57 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       return;
     }
     if (action === 'retry') {
-      await db.deliveryTask.update({
-        where: { id: taskId },
-        data: { status: 'QUEUED', runAt: new Date(), error: null },
-      });
-      await putRecord(db, batchId, 'BATCH', {
-        ...batch,
-        status: 'ACTIVE',
-        pauseHistory: [
-          ...(batch.pauseHistory ?? []),
-          {
-            at: new Date().toISOString(),
-            reason: 'Envio em verificação autorizado para nova tentativa.',
-            action: 'resumed',
-          },
-        ],
+      await db.$transaction(async (tx) => {
+        const current = await tx.operationRecord.findUnique({ where: { id: batchId } });
+        const latest = current?.data as unknown as Batch | undefined;
+        if (!latest || ['CANCELLED', 'COMPLETED', 'BATCH_COMPLETE'].includes(latest.status))
+          throw new AppError(409, 'Esta campanha não pode retomar envios neste estado.');
+        const changed = await tx.deliveryTask.updateMany({
+          where: { id: taskId, batchId, status: 'VERIFY' },
+          data: { status: 'QUEUED', runAt: new Date(), error: null },
+        });
+        if (!changed.count) throw new AppError(409, 'Este envio já foi resolvido.');
+        const moreUncertain = await tx.deliveryTask.count({ where: { batchId, status: 'VERIFY' } });
+        const resumed = !moreUncertain && ['PAUSED', 'PAUSED_CONNECTION'].includes(latest.status);
+        await tx.operationRecord.update({
+          where: { id: batchId },
+          data: { data: json({
+            ...latest,
+            status: moreUncertain ? 'PAUSED' : latest.status === 'PAUSED' || latest.status === 'PAUSED_CONNECTION' ? 'ACTIVE' : latest.status,
+            ...(moreUncertain ? { autoResume: false } : {}),
+            ...(resumed ? {
+              pauseHistory: [
+                ...(latest.pauseHistory ?? []),
+                { at: new Date().toISOString(), reason: 'Envio em verificação autorizado para nova tentativa.', action: 'resumed' },
+              ],
+            } : {}),
+          }) },
+        });
       });
     } else {
       const payload = task.payload as Record<string, unknown>;
-      await db.deliveryTask.update({
-        where: { id: taskId },
-        data: {
-          status: 'COMPLETED',
-          error: null,
-          payload: json({
-            ...payload,
-            manualResolution: 'marked-sent',
-            resolvedAt: new Date().toISOString(),
-          }),
-        },
-      });
-      await putRecord(db, batchId, 'BATCH', {
-        ...batch,
-        sentTotal: (batch.sentTotal ?? batch.sentCount ?? 0) + 1,
-        sentCount: (batch.sentTotal ?? batch.sentCount ?? 0) + 1,
-        batchSentCount: (batch.batchSentCount ?? 0) + 1,
+      await db.$transaction(async (tx) => {
+        const changed = await tx.deliveryTask.updateMany({
+          where: { id: taskId, batchId, status: 'VERIFY' },
+          data: {
+            status: 'COMPLETED',
+            error: null,
+            payload: json({ ...payload, manualResolution: 'marked-sent', resolvedAt: new Date().toISOString() }),
+          },
+        });
+        if (!changed.count) throw new AppError(409, 'Este envio já foi resolvido.');
+        const current = await tx.operationRecord.findUniqueOrThrow({ where: { id: batchId } });
+        const latest = current.data as unknown as Batch;
+        await tx.operationRecord.update({
+          where: { id: batchId },
+          data: { data: json({
+            ...latest,
+            sentTotal: (latest.sentTotal ?? latest.sentCount ?? 0) + 1,
+            sentCount: (latest.sentTotal ?? latest.sentCount ?? 0) + 1,
+            batchSentCount: (latest.batchSentCount ?? 0) + 1,
+            ...(latest.activeSequenceTaskId === taskId ? { activeSequenceTaskId: undefined } : {}),
+          }) },
+        });
       });
     }
     res.json({ saved: true, status: action === 'retry' ? 'PENDING' : 'SENT' });

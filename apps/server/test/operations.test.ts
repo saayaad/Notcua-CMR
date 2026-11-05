@@ -548,6 +548,10 @@ test('saída de campanha após seleção impede envio e finaliza o lote', async 
 test('ACEITE 2: reinício marca envio incerto para conferência e não o reenvia', async () => {
   const chat = await makeContact('5511777770006');
   const item = await draft([chat.id], { kind: 'text', text: 'Incerto' });
+  await request(app)
+    .put(`/api/operations/sessions/${sessionId}/batches/${item.id}`)
+    .send({ status: 'ACTIVE' })
+    .expect(200);
   await db.deliveryTask.updateMany({ where: { batchId: item.id }, data: { status: 'RUNNING' } });
   const restarted = new DeliveryWorker(db, whatsapp, messaging, sequences);
   const before = socket.sends.length;
@@ -557,6 +561,11 @@ test('ACEITE 2: reinício marca envio incerto para conferência e não o reenvia
     assert.equal(socket.sends.length, before);
     const uncertain = await db.deliveryTask.findFirstOrThrow({ where: { batchId: item.id } });
     assert.equal(uncertain.status, 'VERIFY');
+    assert.equal((await record<Batch>(db, item.id, item)).status, 'PAUSED');
+    await request(app)
+      .put(`/api/operations/sessions/${sessionId}/batches/${item.id}`)
+      .send({ status: 'ACTIVE' })
+      .expect(409);
     await request(app)
       .post(`/api/operations/sessions/${sessionId}/batches/${item.id}/tasks/${uncertain.id}/resolve`)
       .send({ action: 'mark-sent' })
@@ -566,9 +575,97 @@ test('ACEITE 2: reinício marca envio incerto para conferência e não o reenvia
       'COMPLETED',
     );
     assert.equal(socket.sends.length, before, 'marcar como enviado não dispara uma nova mensagem');
+    await request(app)
+      .post(`/api/operations/sessions/${sessionId}/batches/${item.id}/tasks/${uncertain.id}/resolve`)
+      .send({ action: 'mark-sent' })
+      .expect(409);
+    assert.equal((await record<Batch>(db, item.id, item)).sentTotal, 1, 'a resolução repetida não conta o lead novamente');
+    await request(app)
+      .put(`/api/operations/sessions/${sessionId}/batches/${item.id}`)
+      .send({ status: 'ACTIVE' })
+      .expect(200);
+    assert.equal((await record<Batch>(db, item.id, item)).status, 'ACTIVE');
   } finally {
     await restarted.stop();
   }
+});
+test('Fase 5: nova tentativa de VERIFY reutiliza a chave idempotente do lead', async () => {
+  const chat = await makeContact('5511777770220', 'Retry idempotente');
+  const item = await draft([chat.id], { kind: 'text', text: 'Mensagem incerta' });
+  await request(app).put(`/api/operations/sessions/${sessionId}/batches/${item.id}`)
+    .send({ status: 'ACTIVE' }).expect(200);
+  const task = await db.deliveryTask.findFirstOrThrow({ where: { batchId: item.id } });
+  await db.deliveryTask.update({ where: { id: task.id }, data: { status: 'RUNNING' } });
+  const before = socket.sends.length;
+  await messaging.send(sessionId, chat.id, {
+    kind: 'text', text: 'Mensagem incerta', requestId: `delivery:${task.id}`,
+  });
+  assert.equal(socket.sends.length, before + 1);
+  const restarted = new DeliveryWorker(db, whatsapp, messaging, sequences);
+  try {
+    await restarted.start();
+    await request(app).post(`/api/operations/sessions/${sessionId}/batches/${item.id}/tasks/${task.id}/resolve`)
+      .send({ action: 'retry' }).expect(200);
+    await worker.flush();
+    assert.equal(socket.sends.length, before + 1, 'a tentativa autorizada não duplica uma confirmação já persistida');
+    assert.equal((await db.deliveryTask.findUniqueOrThrow({ where: { id: task.id } })).status, 'COMPLETED');
+    assert.equal((await record<Batch>(db, item.id, item)).sentTotal, 1);
+  } finally {
+    await restarted.stop();
+  }
+});
+test('Fase 5: pausa durante envio confirma a etapa, preserva contadores e bloqueia o próximo lead', async () => {
+  const first = await makeContact('5511777770221', 'Pausa durante envio 1');
+  const second = await makeContact('5511777770222', 'Pausa durante envio 2');
+  const item = await draft(
+    [first.id, second.id],
+    { kind: 'text', text: 'Envio protegido {{nome}}' },
+    'CAMPAIGN',
+    undefined,
+    { batchSize: 10, minSeconds: 1, maxSeconds: 1 },
+  );
+  await request(app).put(`/api/operations/sessions/${sessionId}/batches/${item.id}`)
+    .send({ status: 'ACTIVE' }).expect(200);
+  let enteredSend!: () => void;
+  let releaseSend!: () => void;
+  const sendEntered = new Promise<void>((resolve) => { enteredSend = resolve; });
+  const sendGate = new Promise<void>((resolve) => { releaseSend = resolve; });
+  const originalSend = messaging.send.bind(messaging);
+  (messaging as unknown as { send: typeof messaging.send }).send = async (...args: Parameters<typeof messaging.send>) => {
+    enteredSend();
+    await sendGate;
+    return originalSend(...args);
+  };
+  const before = socket.sends.length;
+  try {
+    const flushing = worker.flush();
+    await sendEntered;
+    await request(app).put(`/api/operations/sessions/${sessionId}/batches/${item.id}`)
+      .send({ status: 'PAUSED' }).expect(200);
+    releaseSend();
+    await flushing;
+  } finally {
+    releaseSend();
+    (messaging as unknown as { send: typeof messaging.send }).send = originalSend;
+  }
+  let batch = await record<Batch>(db, item.id, item);
+  let tasks = await db.deliveryTask.findMany({ where: { batchId: item.id }, orderBy: { createdAt: 'asc' } });
+  assert.equal(batch.status, 'PAUSED');
+  assert.equal(batch.sentTotal, 1);
+  assert.equal(batch.batchSentCount, 1);
+  assert.equal(tasks[0]?.status, 'COMPLETED');
+  assert.equal(tasks[1]?.status, 'QUEUED');
+  await worker.flush();
+  assert.equal(socket.sends.length, before + 1, 'o próximo lead aguarda a retomada explícita');
+  await request(app).put(`/api/operations/sessions/${sessionId}/batches/${item.id}`)
+    .send({ status: 'ACTIVE' }).expect(200);
+  batch = await record<Batch>(db, item.id, item);
+  await putRecord(db, item.id, 'BATCH', { ...batch, nextAllowedAt: new Date(0).toISOString() });
+  await worker.flush();
+  tasks = await db.deliveryTask.findMany({ where: { batchId: item.id } });
+  assert.equal(socket.sends.length, before + 2);
+  assert.ok(tasks.every((task) => task.status === 'COMPLETED'));
+  assert.equal((await record<Batch>(db, item.id, item)).sentTotal, 2);
 });
 test('ACEITE 1: conexão interrompida pausa e retoma no próximo lead sem repetir o confirmado', async () => {
   const first = await makeContact('5511777770211', 'Retomada 1');
