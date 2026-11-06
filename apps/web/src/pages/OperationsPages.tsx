@@ -1233,6 +1233,7 @@ export function BatchEditor({
   const [variantIndex, setVariantIndex] = useState(0);
   const [ctas, setCtas] = useState<{ keyword: string; replyText: string; assetId: string; labelId: string }[]>([]);
   const [defaultReplyText, setDefaultReplyText] = useState('');
+  const [followUps, setFollowUps] = useState<{ text: string; waitMinutes: number }[]>([]);
   const [optOutLineEnabled, setOptOutLineEnabled] = useState(false);
   const [optOutLine, setOptOutLine] = useState('Se não fizer sentido, é só avisar');
   const [testBusy, setTestBusy] = useState(false);
@@ -1422,6 +1423,7 @@ export function BatchEditor({
                   assetId: cta.assetId || undefined,
                   labelId: cta.labelId || undefined,
                 })) : undefined,
+                followUps: kind === 'text' && !schedule ? followUps : undefined,
                 defaultReplyText: defaultReplyText.trim() || undefined,
                 optOutLineEnabled,
                 optOutLine,
@@ -1729,24 +1731,27 @@ export function BatchEditor({
             </div>
           ) : ['text', 'reminder'].includes(kind) ? (
             <div>
-              <label>
-                {kind === 'reminder' ? 'Texto do lembrete' : 'Mensagem'}
-                <textarea
-                  name="text"
-                  value={message}
-                  onChange={(event) => {
-                    setMessage(event.target.value);
-                    setVariants([]);
-                    setVariantNames([]);
-                    setVariantIndex(0);
-                  }}
-                  rows={4}
-                  required
-                  maxLength={10000}
-                  placeholder="Use {{nome}} e {{saudacao}} para personalizar"
-                />
-                {kind === 'text' && <small className="muted">{message.length} / 10.000 caracteres</small>}
-              </label>
+              <details className="campaign-section" open>
+                <summary>{kind === 'reminder' ? 'Mensagem do lembrete' : 'Mensagem'}</summary>
+                <label>
+                  {kind === 'reminder' ? 'Texto do lembrete' : 'Mensagem'}
+                  <textarea
+                    name="text"
+                    value={message}
+                    onChange={(event) => {
+                      setMessage(event.target.value);
+                      setVariants([]);
+                      setVariantNames([]);
+                      setVariantIndex(0);
+                    }}
+                    rows={4}
+                    required
+                    maxLength={10000}
+                    placeholder="Use {{nome}} e {{saudacao}} para personalizar"
+                  />
+                  {kind === 'text' && <small className="muted">{message.length} / 10.000 caracteres</small>}
+                </label>
+              </details>
               {kind === 'text' && (
                 <>
                   <AiOnly>
@@ -1776,22 +1781,24 @@ export function BatchEditor({
                       {generating ? <Spinner /> : '✨'}Gerar variações com IA
                     </button>
                   </AiOnly>
-                  <p className="muted">
-                    As variações alternam entre contatos. Também aceita spintax, por exemplo {'{Olá|Oi}'}.
-                    Variações e intervalos não garantem proteção contra bloqueios.
-                  </p>
-                  <button
-                    type="button"
-                    className="text-button"
-                    disabled={variants.length >= 9}
-                    onClick={() => {
-                      setVariants((current) => [...current, message]);
-                      setVariantNames((current) => [...current, `Variação ${current.length + 2}`]);
-                    }}
-                  >
-                    Adicionar variação
-                  </button>
-                  {variants.map((text, index) => (
+                  <details className="campaign-section">
+                    <summary>Variações ({variants.length})</summary>
+                    <p className="muted">
+                      As variações alternam entre contatos. Também aceita spintax, por exemplo {'{Olá|Oi}'}.
+                      Variações e intervalos não garantem proteção contra bloqueios.
+                    </p>
+                    <button
+                      type="button"
+                      className="button campaign-add-button"
+                      disabled={variants.length >= 9}
+                      onClick={() => {
+                        setVariants((current) => [...current, message]);
+                        setVariantNames((current) => [...current, `Variação ${current.length + 2}`]);
+                      }}
+                    >
+                      Adicionar variação
+                    </button>
+                    {variants.map((text, index) => (
                     <div className="variation-editor" key={index}>
                       <label>
                         Nome da variação {index + 2}
@@ -1851,8 +1858,8 @@ export function BatchEditor({
                         Remover
                       </button>
                     </div>
-                  ))}
-                  {variants.length > 0 && (
+                    ))}
+                    {variants.length > 0 && (
                     <label>
                       Prévia da mensagem
                       <select
@@ -1867,14 +1874,16 @@ export function BatchEditor({
                         ))}
                       </select>
                     </label>
-                  )}
+                    )}
+                  </details>
                 </>
               )}
               {kind === 'text' && !schedule && (
-                <div className="surface">
-                  <h3>Respostas por palavra-chave</h3>
-                  <p className="muted">Separe sinônimos por vírgula. A comparação ignora acentos, maiúsculas e pontuação.</p>
-                  {ctas.map((cta, index) => (
+                <div className="campaign-sections">
+                  <details className="campaign-section">
+                    <summary>Respostas automáticas (CTA) · {ctas.length}/20</summary>
+                    <p className="muted">Separe sinônimos por vírgula. A comparação ignora acentos, maiúsculas e pontuação.</p>
+                    {ctas.map((cta, index) => (
                     <section className="surface" key={index}>
                       <label>Palavras-chave (ex.: QUERO, EU QUERO, SIM)
                         <input maxLength={500} value={cta.keyword} placeholder="QUERO, EU QUERO, SIM" onChange={(event) => setCtas((items) => items.map((item, i) => i === index ? { ...item, keyword: event.target.value } : item))} />
@@ -1898,11 +1907,34 @@ export function BatchEditor({
                       </div>
                       <button className="text-button" type="button" onClick={() => setCtas((items) => items.filter((_item, i) => i !== index))}>Remover CTA</button>
                     </section>
-                  ))}
-                  <button className="button" type="button" disabled={ctas.length >= 20} onClick={() => setCtas((items) => [...items, { keyword: '', replyText: '', assetId: '', labelId: '' }])}>Adicionar CTA</button>
-                  <label>Resposta padrão para texto fora das opções (opcional)
-                    <textarea maxLength={10000} value={defaultReplyText} onChange={(event) => setDefaultReplyText(event.target.value)} placeholder="Não entendi. Digite VÍDEO para receber o exemplo." />
-                  </label>
+                    ))}
+                    <button className="button campaign-add-button" type="button" disabled={ctas.length >= 20} onClick={() => setCtas((items) => [...items, { keyword: '', replyText: '', assetId: '', labelId: '' }])}>Adicionar CTA</button>
+                  </details>
+                  <details className="campaign-section">
+                    <summary>Follow-up · {followUps.length}/100</summary>
+                    <p className="muted">As etapas são enviadas em sequência quando o contato não responde à campanha nem às respostas automáticas (CTA).</p>
+                    {followUps.map((step, index) => (
+                      <section className="campaign-follow-up-step" key={index}>
+                        <strong>Etapa {index + 1}</strong>
+                        <label>Prazo após a etapa anterior (minutos)
+                          <input type="number" min={1} max={43200} value={step.waitMinutes} onChange={(event) => setFollowUps((items) => items.map((item, i) => i === index ? { ...item, waitMinutes: Number(event.target.value) } : item))} />
+                        </label>
+                        <label>Mensagem
+                          <textarea maxLength={10000} required value={step.text} onChange={(event) => setFollowUps((items) => items.map((item, i) => i === index ? { ...item, text: event.target.value } : item))} placeholder="Use {{nome}} e {{saudacao}} para personalizar" />
+                        </label>
+                        <button className="button small" type="button" onClick={() => setFollowUps((items) => items.filter((_item, i) => i !== index))}>Remover etapa</button>
+                      </section>
+                    ))}
+                    <button className="button campaign-add-button" type="button" disabled={followUps.length >= 100} onClick={() => setFollowUps((items) => [...items, { text: '', waitMinutes: 1440 }])}>Adicionar follow-up</button>
+                  </details>
+                  <details className="campaign-section">
+                    <summary>Resposta padrão</summary>
+                    <label>Resposta para texto fora das opções (opcional)
+                      <textarea maxLength={10000} value={defaultReplyText} onChange={(event) => setDefaultReplyText(event.target.value)} placeholder="Não entendi. Digite VÍDEO para receber o exemplo." />
+                    </label>
+                  </details>
+                  <details className="campaign-section">
+                    <summary>Opções da mensagem</summary>
                   <label><input type="checkbox" checked={optOutLineEnabled} onChange={(event) => setOptOutLineEnabled(event.target.checked)} /> Adicionar linha para parar mensagens ao final</label>
                   {optOutLineEnabled && <label>Texto da linha de saída<input maxLength={200} value={optOutLine} onChange={(event) => setOptOutLine(event.target.value)} required /></label>}
                   <div className="form-grid">
@@ -1913,6 +1945,7 @@ export function BatchEditor({
                       Enviar teste · {variantNames[index] || `Variação ${index + 2}`}
                     </button>)}
                   </div>
+                  </details>
                 </div>
               )}
             </div>

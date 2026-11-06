@@ -2293,6 +2293,24 @@ dialog.modal.batch-editor-modal {
   background: var(--surface);
   border-top: 1px solid var(--line);
 }
+.campaign-sections { display: grid; gap: 1rem; }
+.campaign-section {
+  display: grid;
+  gap: .9rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: .8rem;
+  background: var(--surface);
+}
+.campaign-section > summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--text);
+  list-style-position: inside;
+}
+.campaign-section[open] > summary { padding-bottom: .75rem; border-bottom: 1px solid var(--line); }
+.campaign-add-button { justify-self: start; min-height: 2.5rem; padding: .5rem 1rem; border: 1px solid var(--line); }
+.campaign-follow-up-step { display: grid; gap: .75rem; padding: .9rem; border: 1px solid var(--line); border-radius: .65rem; background: var(--background, rgba(0,0,0,.12)); }
 .campaign-phone-panel {
   display: flex;
   flex-direction: column;
