@@ -143,7 +143,7 @@ export function AttendanceDock({
   editRequest?: number;
   onEditRequestHandled?: () => void;
 }) {
-  const { preferences, savePreferences } = usePreferences();
+  const { preferences, savePreferences, loaded: preferencesLoaded } = usePreferences();
   const { notify } = useApi();
   const api = useRef<DockviewApi | null>(null);
   const [instance, setInstance] = useState<DockviewApi | null>(null);
@@ -333,6 +333,7 @@ export function AttendanceDock({
               : direction,
     });
   };
+  if (!preferencesLoaded) return <div className="operation-empty" aria-busy="true">Restaurando o layout salvo…</div>;
   return (
     <DockingContext.Provider value={true}>
       <Content.Provider value={children}>
@@ -425,6 +426,9 @@ export function AttendanceDock({
                         }
                       >
                         Atalhos e aparência
+                      </button>
+                      <button className="button small" onClick={reset}>
+                        Restaurar layout padrão
                       </button>
                       <button className="button small" onClick={onClassic}>
                         Voltar ao layout clássico

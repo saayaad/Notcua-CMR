@@ -96,3 +96,24 @@ Na página publicada, uma aba mantida aberta tentou importar um arquivo JavaScri
 ## BUG-011 — Iniciador falhou ao carregar verificador de assinatura após reinício — correção parcial em 28/10/2026
 
 A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, pois o PowerShell não carregou `Microsoft.PowerShell.Security` automaticamente. O mesmo módulo e a assinatura válida da Cloudflare funcionaram na execução interativa seguinte, que restaurou site, API e túnel. O iniciador passou a importar o módulo explicitamente e repetir a tentativa até três vezes antes de falhar; não remove o executável por falha de importação. Parser e assinatura aprovados. Falta repetir o teste com outro desligamento real para confirmar que o erro transitório foi eliminado. Evidência: `evidencias/reinicio-2026-10-28.json`.
+# BUG-037 — Follow-ups em lote concluído e recuperação de envios — mantido em 11/11/2026
+
+- **Estado:** correção anterior preservada e integrada ao worker persistente.
+- **Reprodução:** campanha em `BATCH_COMPLETE` com follow-ups pendentes; resultados incertos `VERIFY` precisam de revisão antes de retry; resposta CTA e mensagens sem follow-up requerem recuperação agrupada.
+- **Correção mantida:** worker processa apenas follow-ups e retries autorizados em `BATCH_COMPLETE`; recuperação mostra incertezas, usa identificador distinto por tentativa, inclui filhos CTA e agenda follow-ups ausentes usando o horário original do envio. A atualização do worker preservou esse código já existente no checkout persistente.
+- **Verificação:** suíte local com mocks 206/206; checagem direcionada do worker persistente e API saudável. Nenhuma mensagem real foi enviada como teste.
+
+# BUG-038 — Follow-ups sem limites operacionais e controles de recuperação insuficientes
+
+- **Estado:** corrigido e publicado em 11/11/2026.
+- **Reprodução:** ativar sequência de follow-up e deixar prazos vencerem; observar que o worker não aplica limite horário/diário, janela aleatória por etapa, pausa global nem disjuntor de falhas.
+- **Impacto:** ritmo de envio sem proteção configurável suficiente e falhas pendentes difíceis de recuperar em lote.
+- **Correção:** guardas server-side com pausa global/por campanha, jitter por etapa, janela de envio comercial e horário da empresa, quotas e circuit breaker; recuperação preserva as guardas e reenvia apenas após confirmação no painel, com aviso para resultado incerto. Cobertura fictícia inclui pausa/retomada, oscilação, janelas, quotas, três falhas consecutivas, BATCH_COMPLETE e recuperação.
+- **Publicação:** frontend em `https://notcua.vercel.app`; worker persistente atualizado no servidor local/túnel fora da Vercel.
+
+# BUG-039 — Controles de Atendimento e layout não preservam todos os ajustes
+
+- **Estado:** corrigido e publicado em 11/11/2026.
+- **Reprodução:** abrir Personalização e Organiz. painéis; não há preferência de ocultar o botão de nova conversa nem tamanho de atalhos; restaurar/alterar dock pode reaplicar tamanhos padrão e não há affordance única para reconfigurar/restaurar.
+- **Impacto:** opções solicitadas indisponíveis e layout sujeito a restauração inesperada.
+- **Correção:** preferências de usuário ocultam o botão de nova conversa e ajustam tamanho dos atalhos; carregamento aguarda o perfil salvo, layout pode ser restaurado explicitamente e o dock lateral fica integrado à área de trabalho. Visual verificado localmente com conta e contatos fictícios; testes de layout/persistência existentes aprovados. Publicado em `https://notcua.vercel.app`.

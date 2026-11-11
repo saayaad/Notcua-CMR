@@ -157,7 +157,11 @@ export function ChatPane({
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [followUpOpen, setFollowUpOpen] = useState(false);
   const [followUpBusy, setFollowUpBusy] = useState(false);
-  const [followUpSteps, setFollowUpSteps] = useState([{ waitMinutes: 120, text: '' }, { waitMinutes: 1440, text: '' }]);
+  const [followUpSteps, setFollowUpSteps] = useState([{ waitMinutes: 120, text: '', enabled: true, minDelaySeconds: 10, maxDelaySeconds: 90, restrictHours: false, start: '08:00', end: '18:00' }, { waitMinutes: 1440, text: '', enabled: true, minDelaySeconds: 10, maxDelaySeconds: 90, restrictHours: false, start: '08:00', end: '18:00' }]);
+  const [followUpBatchId, setFollowUpBatchId] = useState('');
+  const [followUpGlobalPaused, setFollowUpGlobalPaused] = useState(false);
+  const [followUpMaxPerHour, setFollowUpMaxPerHour] = useState(30);
+  const [followUpMaxPerDay, setFollowUpMaxPerDay] = useState(100);
   const [summaryOpen, setSummaryOpen] = useState(false);
   useEffect(() => { if (!aiEnabled) { setAiOpen(false); setClientAiOpen(false); setSummaryOpen(false); } }, [aiEnabled]);
   const [summary, setSummary] = useState('');
@@ -342,15 +346,30 @@ export function ChatPane({
     { id: 'flow', name: 'Iniciar fluxo', icon: Workflow, run: () => setFlowOpen(true) },
     { id: 'ai', name: 'Assistente de IA', icon: Sparkles, run: () => setAiOpen(true) },
   ];
+  useEffect(() => {
+    if (!followUpOpen) return;
+    void request<{ paused?: boolean; maxPerHour?: number; maxPerDay?: number }>('/operations/settings/followups').then((value) => { setFollowUpGlobalPaused(Boolean(value.paused)); setFollowUpMaxPerHour(value.maxPerHour ?? 30); setFollowUpMaxPerDay(value.maxPerDay ?? 100); }).catch(() => undefined);
+  }, [followUpOpen, request]);
+  const toggleGlobalFollowUps = async () => {
+    const next = !followUpGlobalPaused;
+    try { await request('/operations/settings/followups', 'PUT', { paused: next, maxPerHour: followUpMaxPerHour, maxPerDay: followUpMaxPerDay }); setFollowUpGlobalPaused(next); notify(next ? 'Todos os follow-ups foram pausados.' : 'Follow-ups globais retomados.'); }
+    catch (error) { notify(errorMessage(error), true); }
+  };
+  const toggleCurrentFollowUp = async () => {
+    if (!followUpBatchId) return;
+    try { await request(`/operations/sessions/${sessionId}/batches/${followUpBatchId}`, 'PUT', { status: 'PAUSED' }); notify('Follow-up desta conversa pausado.'); }
+    catch (error) { notify(errorMessage(error), true); }
+  };
   const saveFollowUp = async () => {
     setFollowUpBusy(true);
     try {
-      const result = await request<{ scheduled: number; firstRunAt: string }>(
+      const result = await request<{ id: string; scheduled: number; firstRunAt: string }>(
         `/operations/sessions/${sessionId}/conversations/${chat.id}/follow-ups`,
         'POST',
-        { steps: followUpSteps },
+        { steps: followUpSteps.map(({ restrictHours, start, end, ...step }) => ({ ...step, ...(restrictHours ? { sendWindow: { timezone: 'America/Sao_Paulo', days: [1,2,3,4,5], start, end } } : {}) })) },
       );
       setFollowUpOpen(false);
+      setFollowUpBatchId(result.id);
       notify(`Follow-up ativado com ${result.scheduled} etapas. Ele será cancelado assim que o cliente responder.`);
     } catch (error) { notify(errorMessage(error), true); }
     finally { setFollowUpBusy(false); }
@@ -613,6 +632,7 @@ export function ChatPane({
               onRefresh();
             }}
             onQuick={onQuick}
+            onFollowUp={() => setFollowUpOpen(true)}
           />
         </div>
       </div>
@@ -659,21 +679,26 @@ export function ChatPane({
         </Modal>
       )}
       {followUpOpen && (
-        <Modal title="Follow-up automático" onClose={() => setFollowUpOpen(false)}>
+        <Modal title="Follow-up automático" className="follow-up-modal" wide onClose={() => setFollowUpOpen(false)}>
           <p>Programe mensagens após o orçamento. Qualquer resposta recebida cancela automaticamente as etapas restantes.</p>
           <small className="muted">Use somente com contatos que aceitaram receber mensagens. O envio exige a sessão WhatsApp conectada na hora programada.</small>
+          <div className="follow-up-toolbar"><button className="button" onClick={() => void toggleGlobalFollowUps()}>{followUpGlobalPaused ? 'Retomar todos os follow-ups' : 'Pausar todos os follow-ups'}</button>{followUpBatchId && <button className="button" onClick={() => void toggleCurrentFollowUp()}>Pausar desta conversa</button>}<label>Limite por hora<input type="number" min="1" max="500" value={followUpMaxPerHour} onChange={(event) => setFollowUpMaxPerHour(Number(event.target.value))}/></label><label>Limite por dia<input type="number" min="1" max="5000" value={followUpMaxPerDay} onChange={(event) => setFollowUpMaxPerDay(Number(event.target.value))}/></label><button className="button small" onClick={() => void request('/operations/settings/followups', 'PUT', { paused: followUpGlobalPaused, maxPerHour: followUpMaxPerHour, maxPerDay: followUpMaxPerDay }).then(() => notify('Limites globais salvos.')).catch((error) => notify(errorMessage(error), true))}>Salvar limites</button></div>
           <div className="follow-up-editor">
             {followUpSteps.map((step, index) => (
               <fieldset key={index}>
-                <legend>Mensagem {index + 1}</legend>
+                <legend>Etapa {index + 1}</legend>
+                <label className="check-row"><input type="checkbox" checked={step.enabled} onChange={(event) => setFollowUpSteps((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, enabled: event.target.checked } : item))}/>Etapa ativa</label>
                 <label>Enviar após (minutos)<input type="number" min="1" max="43200" value={step.waitMinutes} onChange={(event) => setFollowUpSteps((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, waitMinutes: Number(event.target.value) } : item))}/></label>
+                <div className="follow-up-delay"><label>Intervalo aleatório mín. (segundos)<input type="number" min="0" max="86400" value={step.minDelaySeconds} onChange={(event) => setFollowUpSteps((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, minDelaySeconds: Number(event.target.value) } : item))}/></label><label>máx. (segundos)<input type="number" min={step.minDelaySeconds} max="86400" value={step.maxDelaySeconds} onChange={(event) => setFollowUpSteps((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, maxDelaySeconds: Number(event.target.value) } : item))}/></label></div>
+                <label className="check-row"><input type="checkbox" checked={step.restrictHours} onChange={(event) => setFollowUpSteps((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, restrictHours: event.target.checked } : item))}/>Restringir horário permitido (seg–sex, Brasília)</label>
+                {step.restrictHours && <div className="follow-up-delay"><label>Início<input type="time" value={step.start} onChange={(event) => setFollowUpSteps((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, start: event.target.value } : item))}/></label><label>Fim<input type="time" value={step.end} onChange={(event) => setFollowUpSteps((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, end: event.target.value } : item))}/></label></div>}
                 <label>Mensagem<textarea rows={3} maxLength={10000} value={step.text} onChange={(event) => setFollowUpSteps((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, text: event.target.value } : item))}/></label>
                 {followUpSteps.length > 1 && <button className="button small" onClick={() => setFollowUpSteps((items) => items.filter((_, itemIndex) => itemIndex !== index))}>Remover etapa</button>}
               </fieldset>
             ))}
           </div>
-          {followUpSteps.length < 5 && <button className="button small" onClick={() => setFollowUpSteps((items) => [...items, { waitMinutes: 2880, text: '' }])}>Adicionar etapa</button>}
-          <div className="modal-actions"><button className="button" onClick={() => setFollowUpOpen(false)}>Cancelar</button><button className="button primary" disabled={followUpBusy || followUpSteps.some((step) => !step.text.trim() || step.waitMinutes < 1)} onClick={() => void saveFollowUp()}>{followUpBusy ? <Spinner/> : <Clock3 size={15}/>}Ativar follow-up</button></div>
+          {followUpSteps.length < 100 && <button className="button small" onClick={() => setFollowUpSteps((items) => [...items, { waitMinutes: 2880, text: '', enabled: true, minDelaySeconds: 10, maxDelaySeconds: 90, restrictHours: false, start: '08:00', end: '18:00' }])}>Adicionar follow-up</button>}
+          <div className="modal-actions"><button className="button" onClick={() => setFollowUpOpen(false)}>Cancelar</button><button className="button primary" disabled={followUpBusy || !followUpSteps.some((step) => step.enabled && step.text.trim()) || followUpSteps.some((step) => step.maxDelaySeconds < step.minDelaySeconds)} onClick={() => void saveFollowUp()}>{followUpBusy ? <Spinner/> : <Clock3 size={15}/>}Ativar follow-up</button></div>
         </Modal>
       )}
     </main>

@@ -58,7 +58,7 @@ export function AttendanceShortcuts({ onAction }: { onAction: (id: string) => vo
       className="attendance-shortcuts"
       aria-label="Atalhos do atendimento"
       {...placement.attributes}
-      style={placement.style}
+      style={{ ...placement.style, ['--attendance-shortcut-scale' as string]: preferences.attendanceShortcutSize === 'small' ? 0.86 : preferences.attendanceShortcutSize === 'large' ? 1.18 : 1 }}
     >
       <HudMoveHandle placement={placement} name="atalhos" />
       <div className="attendance-shortcuts-scroll">

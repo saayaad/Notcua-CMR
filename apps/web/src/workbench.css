@@ -597,13 +597,13 @@
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
-  gap: 0.35rem;
-  padding: 0.4rem 0.55rem;
+  gap: calc(0.35rem * var(--attendance-shortcut-scale, 1));
+  padding: calc(0.4rem * var(--attendance-shortcut-scale, 1)) calc(0.55rem * var(--attendance-shortcut-scale, 1));
   border: 0;
   border-radius: 0.45rem;
   background: var(--surface2);
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: calc(0.68rem * var(--attendance-shortcut-scale, 1));
   white-space: nowrap;
 }
 .attendance-shortcuts-scroll > button:hover,
@@ -611,6 +611,14 @@
   color: var(--accent);
   background: var(--accent-bg);
 }
+.follow-up-modal { width: min(760px, calc(100vw - 2rem)); max-height: min(88vh, 920px); overflow: hidden; }
+.follow-up-modal .follow-up-editor { max-height: min(52vh, 560px); overflow: auto; display: grid; gap: 0.85rem; padding: 0.25rem 0.35rem 0.75rem 0; }
+.follow-up-modal .follow-up-editor fieldset { display: grid; gap: 0.65rem; padding: 0.9rem; border: 1px solid var(--border); border-radius: 0.8rem; background: var(--surface); }
+.follow-up-modal .follow-up-editor label { display: grid; gap: 0.35rem; }
+.follow-up-modal .follow-up-delay { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.7rem; }
+.follow-up-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 0.55rem; margin: 1rem 0; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.7rem; }
+.follow-up-toolbar .muted { margin-left: auto; }
+@media (max-width: 600px) { .follow-up-modal { width: calc(100vw - 1rem); max-height: 94vh; } .follow-up-modal .follow-up-editor { max-height: 48vh; } .follow-up-modal .follow-up-delay { grid-template-columns: 1fr; } .follow-up-toolbar .muted { margin-left: 0; width: 100%; } }
 .attendance-shortcuts > .icon-button {
   flex-shrink: 0;
   height: 1.8rem;

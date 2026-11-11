@@ -80,6 +80,16 @@ export default function App() {
   const [view, setView] = useState<View>(() =>
     window.location.pathname.replace(/\/+$/, '') === '/atendimento' ? 'inbox' : 'overview',
   );
+  const [settingsInitialTab, setSettingsInitialTab] = useState('general');
+  useEffect(() => {
+    const go = (event: Event) => {
+      const target = (event as CustomEvent<string>).detail;
+      if (target === 'business') { setSettingsInitialTab('business'); setView('settings'); }
+      else if (target === 'campaigns') setView('campaigns');
+    };
+    window.addEventListener('noctua:quick-navigation', go);
+    return () => window.removeEventListener('noctua:quick-navigation', go);
+  }, []);
   const { preferences, updatePreferences } = usePreferences();
   const leadSort = preferences.leadSort ?? 'priority';
   const leadResponse = preferences.leadResponse ?? 'all';
@@ -164,7 +174,7 @@ export default function App() {
   }, []);
   const setToolsOpen = (value: boolean) => {
     setToolsOpenState(value);
-    updatePreferences({ toolsVisible: value });
+    updatePreferences({ toolsVisible: value, ...(value && viewportWidth >= 1120 ? { toolsDocked: true } : {}) });
   };
   const setCompactTools = (value: boolean) => {
     setCompactToolsState(value);
@@ -704,7 +714,7 @@ export default function App() {
         ) : view === 'settings' || view === 'personalization' ? (
           <WorkspaceSettings
             key={view}
-            initialTab={view === 'personalization' ? 'personalization' : 'general'}
+            initialTab={view === 'personalization' ? 'personalization' : settingsInitialTab}
             focusSection={view === 'personalization' ? personalizationFocus : null}
             sessionId={workspace.sessionId}
             library={workspace.library}

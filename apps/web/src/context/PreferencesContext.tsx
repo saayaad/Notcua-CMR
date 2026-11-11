@@ -20,6 +20,8 @@ export interface Preferences {
   dockingEnabled: boolean;
   dockingLayout: string;
   attendanceCustomizationVersion: number;
+  hideNewConversationButton: boolean;
+  attendanceShortcutSize: 'small' | 'medium' | 'large';
   shortcutLabels: Record<string, string>;
   shortcutKeys: Record<string, string>;
   showPinnedPreview: boolean;
@@ -82,6 +84,8 @@ const defaults: Preferences = {
   dockingEnabled: false,
   dockingLayout: '',
   attendanceCustomizationVersion: 3,
+  hideNewConversationButton: false,
+  attendanceShortcutSize: 'medium',
   shortcutLabels: {},
   shortcutKeys: {},
   showPinnedPreview: true,
@@ -183,18 +187,21 @@ const Context = createContext<{
   savePreferences: (value: Partial<Preferences>) => Promise<void>;
   saveError: string;
   retrySave: () => void;
+  loaded: boolean;
 }>({
   preferences: defaults,
   updatePreferences: () => undefined,
   savePreferences: async () => undefined,
   saveError: '',
   retrySave: () => undefined,
+  loaded: false,
 });
 export function PreferencesProvider({ children }: { children: ReactNode }) {
   const storageKey = `noctua-preferences:${firebaseAuth?.currentUser?.uid ?? 'local'}`;
   const { request, notify } = useApi();
   const [saveError, setSaveError] = useState('');
   const [loadRevision, setLoadRevision] = useState(0);
+  const [loaded, setLoaded] = useState(false);
   const writer = useRef(new PreferenceSaveQueue());
   const saveRevision = useRef(0);
   const lastSaved = useRef('');
@@ -263,6 +270,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       .then((saved) => {
         if (active) {
           ready.current = true;
+          setLoaded(true);
           setSaveError('');
           setPreferences((current) => {
             const next = normalizeAttendancePreferences({
@@ -278,6 +286,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       .catch((error) => {
         if (active) {
           ready.current = false;
+          setLoaded(true);
           setSaveError(errorMessage(error));
           notify(`Não foi possível carregar suas preferências da conta. ${errorMessage(error)}`, true);
         }
@@ -299,6 +308,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       value={{
         preferences,
         saveError,
+        loaded,
         retrySave: () => {
           if (!ready.current) setLoadRevision((value) => value + 1);
           else void persist(preferences).catch(() => undefined);

@@ -26,6 +26,12 @@ export function ShortcutSettings({ value, onChange, disabled }: EditorProps) {
       <p className="muted">
         Ative apenas os botões que deseja usar. Cada botão tem seu próprio nome e sua tecla configurável.
       </p>
+      <label className="check-row"><input type="checkbox" checked={value.hideNewConversationButton} onChange={(event) => onChange({ hideNewConversationButton: event.target.checked })}/>Ocultar botão “+” de nova conversa</label>
+      <label className="field">Tamanho dos botões de atalho
+        <select value={value.attendanceShortcutSize} onChange={(event) => onChange({ attendanceShortcutSize: event.target.value as Preferences['attendanceShortcutSize'] })}>
+          <option value="small">Pequeno</option><option value="medium">Médio</option><option value="large">Grande</option>
+        </select>
+      </label>
       <ReorderList
         label="Ordem dos atalhos"
         disabled={disabled}

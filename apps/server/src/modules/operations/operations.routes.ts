@@ -1,6 +1,6 @@
 import { chooseCampaignText } from './campaign-text.js';
 import { normalizeCampaignKeyword } from './campaign-response.js';
-import { validTimezone } from './send-window.js';
+import { nextSendWindowAt, validTimezone } from './send-window.js';
 import { labelActionRoutes } from './label-actions.js';
 import { safetyRoutes } from './safety.routes.js';
 import { simulatorRoutes } from './simulator.routes.js';
@@ -10,7 +10,7 @@ import { directoryRoutes, teamDirectory } from './team-directory.js';
 import { Router } from 'express';
 import { aiFeatureEnabled, setAiFeature } from './ai-feature.js';
 import { retryDatabaseOperation } from '../../database/retry.js';
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import { stat } from 'node:fs/promises';
 import { z } from 'zod';
 import type { PrismaClient, Prisma } from '@prisma/client';
@@ -206,7 +206,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     res.json(data);
   });
   router.get('/settings/:key', async (req, res) => {
-    const key = z.enum(['business', 'preferences', 'departments', 'shortcuts', 'watermarks', 'optout']).parse(req.params.key);
+    const key = z.enum(['business', 'preferences', 'departments', 'shortcuts', 'watermarks', 'optout', 'followups']).parse(req.params.key);
     res.json(
       await record(
         db,
@@ -216,7 +216,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     );
   });
   router.put('/settings/:key', async (req, res) => {
-    const key = z.enum(['business', 'preferences', 'departments', 'shortcuts', 'watermarks', 'optout']).parse(req.params.key);
+    const key = z.enum(['business', 'preferences', 'departments', 'shortcuts', 'watermarks', 'optout', 'followups']).parse(req.params.key);
     if (key !== 'preferences') admin(res.locals.identity.role);
     let data = z.record(z.string().max(100), z.json()).parse(req.body);
     if (key === 'watermarks') {
@@ -233,6 +233,11 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       data = settings;
     }
     if (key === 'preferences') data.brandingName = 'noctua';
+    if (key === 'followups') {
+      const current = await record<{ hourKey?: string; hourCount?: number; dayKey?: string; dayCount?: number; consecutiveFailures?: number }>(db, 'settings:followups', {});
+      const control = z.object({ paused: z.boolean(), maxPerHour: z.number().int().min(1).max(500).default(30), maxPerDay: z.number().int().min(1).max(5000).default(100) }).parse(data);
+      data = { ...current, ...control, consecutiveFailures: 0 };
+    }
     if (JSON.stringify(data).length > (key === 'watermarks' ? 2_000_000 : 30000)) throw new AppError(413, 'Configuração muito grande.');
     await putRecord(
       db,
@@ -605,7 +610,10 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
           followUps: z.array(z.object({
             waitMinutes: z.number().int().min(1).max(43200),
             text: z.string().trim().min(1).max(10000),
-          })).max(100).default([]),
+            minDelaySeconds: z.number().int().min(0).max(86400).default(10),
+            maxDelaySeconds: z.number().int().min(0).max(86400).default(90),
+            sendWindow: z.object({ timezone: z.string().refine(validTimezone), days: z.array(z.number().int().min(0).max(6)).min(1).max(7), start: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/), end: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/) }).optional(),
+          }).refine((step) => step.maxDelaySeconds >= step.minDelaySeconds && (!step.sendWindow || step.sendWindow.start < step.sendWindow.end), 'Confira o intervalo aleatório e o horário permitido.')).max(100).default([]),
           cta: z.object({
             keyword: z.string().trim().min(1).max(100),
             replyText: z.string().trim().min(1).max(10000),
@@ -798,8 +806,9 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       throw new AppError(422, 'Follow-up indisponível: confira se a conversa está aberta e se o contato não pediu para sair.');
     const input = z.object({
       name: z.string().trim().min(1).max(100).default('Follow-up individual'),
-      steps: z.array(z.object({ waitMinutes: z.number().int().min(1).max(43200), text: z.string().trim().min(1).max(10000) })).min(1).max(5),
+      steps: z.array(z.object({ waitMinutes: z.number().int().min(1).max(43200), text: z.string().trim().min(1).max(10000), enabled: z.boolean().default(true), minDelaySeconds: z.number().int().min(0).max(86400).default(0), maxDelaySeconds: z.number().int().min(0).max(86400).default(0), sendWindow: z.object({ timezone: z.string().refine(validTimezone), days: z.array(z.number().int().min(0).max(6)).min(1).max(7), start: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/), end: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/) }).optional() }).refine((step) => step.maxDelaySeconds >= step.minDelaySeconds && (!step.sendWindow || step.sendWindow.start < step.sendWindow.end), 'Confira o intervalo e o horário permitido.')).min(1).max(100),
     }).parse(req.body);
+    if (!input.steps.some((step) => step.enabled)) throw new AppError(422, 'Ative ao menos uma etapa de follow-up.');
     const lastOutbound = await db.chatMessage.findFirst({ where: { conversationId, direction: 'OUTBOUND', type: { not: 'internalNote' } }, orderBy: [{ sentAt: 'desc' }, { id: 'desc' }] });
     if (!lastOutbound) throw new AppError(422, 'Envie ou registre um orçamento antes de ativar o follow-up.');
     const lastMessage = await db.chatMessage.findFirst({ where: { conversationId }, orderBy: [{ sentAt: 'desc' }, { id: 'desc' }] });
@@ -810,9 +819,12 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       kind: 'sequence',
       followUp: true,
       sourceMessageAt: lastOutbound.sentAt.toISOString(),
-      steps: input.steps.map((step) => ({ snapshot: { kind: 'text', text: step.text }, waitSeconds: step.waitMinutes * 60 })),
+      steps: input.steps.filter((step) => step.enabled).map((step) => ({ snapshot: { kind: 'text', text: step.text }, waitSeconds: step.waitMinutes * 60, minDelaySeconds: step.minDelaySeconds, maxDelaySeconds: step.maxDelaySeconds, sendWindow: step.sendWindow })),
     };
     const now = new Date();
+    const firstStep = input.steps.find((step) => step.enabled)!;
+    const firstRunAt = new Date(now.getTime() + firstStep.waitMinutes * 60_000 + randomInt(firstStep.minDelaySeconds, firstStep.maxDelaySeconds + 1) * 1000);
+    const scheduledFirstRunAt = firstStep.sendWindow ? nextSendWindowAt(firstStep.sendWindow, firstRunAt) : firstRunAt;
     const batch: Batch = {
       name: input.name,
       sessionId,
@@ -824,6 +836,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       sentCount: 0,
       createdAt: now.toISOString(),
     };
+    if (!payload.steps?.length) throw new AppError(422, 'Ative ao menos uma etapa de follow-up.');
     await db.$transaction(async (tx) => {
       await tx.operationRecord.create({ data: { id: batchId, kind: 'BATCH', data: json(batch) } });
       await tx.deliveryTask.create({
@@ -832,11 +845,11 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
           sessionId,
           conversationId,
           payload: json(payload),
-          runAt: new Date(now.getTime() + input.steps[0]!.waitMinutes * 60_000),
+          runAt: scheduledFirstRunAt,
         },
       });
     });
-    res.status(201).json({ id: batchId, scheduled: input.steps.length, firstRunAt: new Date(now.getTime() + input.steps[0]!.waitMinutes * 60_000).toISOString() });
+    res.status(201).json({ id: batchId, scheduled: payload.steps.length, firstRunAt: scheduledFirstRunAt.toISOString() });
   });
   router.put('/sessions/:sessionId/batches/:batchId', async (req, res) => {
     admin(res.locals.identity.role);
@@ -847,6 +860,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     const update = z
       .object({
         status: z.enum(['ACTIVE', 'PAUSED', 'CANCELLED']).optional(),
+        followUpPaused: z.boolean().optional(),
         investmentInCents: z.number().int().min(0).max(2_000_000_000).optional(),
         attributedRevenueInCents: z.number().int().min(0).max(2_000_000_000).optional(),
         revenueSource: z.enum(['MANUAL', 'CRM']).optional(),
@@ -854,12 +868,31 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       .refine((value) => Object.values(value).some((item) => item !== undefined))
       .parse(req.body);
     const { status } = update;
-    if (status && (update.investmentInCents !== undefined || update.attributedRevenueInCents !== undefined || update.revenueSource !== undefined))
+    if (status && (update.investmentInCents !== undefined || update.attributedRevenueInCents !== undefined || update.revenueSource !== undefined || update.followUpPaused !== undefined))
       throw new AppError(422, 'Atualize o estado e os valores financeiros em operações separadas.');
-    if (status && (data.status === 'CANCELLED' || data.status === 'COMPLETED'))
+    if (status && data.status === 'COMPLETED')
       throw new AppError(409, 'Esta execução foi encerrada. Crie uma nova.');
+    if (status === 'ACTIVE' && data.status === 'CANCELLED' && data.mode !== 'CAMPAIGN')
+      throw new AppError(409, 'Esta execução foi encerrada. Crie uma nova.');
+    if (!status && update.followUpPaused !== undefined && update.investmentInCents === undefined && update.attributedRevenueInCents === undefined && update.revenueSource === undefined) {
+      await putRecord(db, batchId, 'BATCH', { ...data, followUpPaused: update.followUpPaused });
+      res.json({ saved: true });
+      return;
+    }
     if (status) {
-      await putRecord(db, batchId, 'BATCH', { ...data, status });
+      const effectiveStatus = status === 'CANCELLED' && data.mode === 'CAMPAIGN' ? 'PAUSED' : status;
+      await putRecord(db, batchId, 'BATCH', { ...data, status: effectiveStatus });
+      if (status === 'ACTIVE' && data.status === 'CANCELLED' && data.mode === 'CAMPAIGN') {
+        await db.deliveryTask.updateMany({ where: { batchId, status: 'CANCELLED', error: null }, data: { status: 'QUEUED', runAt: new Date(Date.now() + randomInt(10, 91) * 1000) } });
+        const related = await db.operationRecord.findMany({ where: { kind: 'BATCH' }, select: { id: true, data: true } });
+        for (const row of related.filter((item) => item.id.startsWith(`cta:${batchId}:`))) {
+          const child = row.data as unknown as Batch;
+          if (child.status === 'CANCELLED' && child.sessionId === sessionId) {
+            await putRecord(db, row.id, 'BATCH', { ...child, status: 'ACTIVE' });
+            await db.deliveryTask.updateMany({ where: { batchId: row.id, status: 'CANCELLED', error: null }, data: { status: 'QUEUED', runAt: new Date(Date.now() + randomInt(10, 91) * 1000) } });
+          }
+        }
+      }
     } else {
       if (data.mode !== 'CAMPAIGN')
         throw new AppError(422, 'Valores financeiros pertencem apenas a campanhas.');
@@ -872,12 +905,84 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       res.json({ saved: true });
       return;
     }
-    if (status === 'CANCELLED')
+    if (update.followUpPaused !== undefined) await putRecord(db, batchId, 'BATCH', { ...data, followUpPaused: update.followUpPaused });
+    if (status === 'CANCELLED' && data.mode !== 'CAMPAIGN')
       await db.deliveryTask.updateMany({
         where: { batchId, status: 'QUEUED' },
         data: { status: 'CANCELLED' },
       });
     res.json({ saved: true });
+  });
+  router.get('/sessions/:sessionId/batches/:batchId/recovery', async (req, res) => {
+    admin(res.locals.identity.role);
+    const sessionId = id.parse(req.params.sessionId);
+    const batchId = id.parse(req.params.batchId);
+    const batch = await record<Batch | null>(db, batchId, null);
+    if (!batch || batch.sessionId !== sessionId || batch.mode !== 'CAMPAIGN') throw new AppError(404, 'Campanha não encontrada.');
+    const rows = await db.operationRecord.findMany({ where: { kind: 'BATCH' }, select: { id: true, data: true } });
+    const batchIds = rows.filter((row) => row.id === batchId || row.id.startsWith(`cta:${batchId}:`) || row.id.startsWith(`campaign-default:${batchId}:`)).filter((row) => (row.data as unknown as Batch).status !== 'CANCELLED').map((row) => row.id);
+    const pending = await db.deliveryTask.findMany({ where: { sessionId, batchId: { in: batchIds }, status: { in: ['FAILED', 'VERIFY'] } }, select: { status: true } });
+    res.json({ count: pending.length, uncertainCount: pending.filter((task) => task.status === 'VERIFY').length });
+  });
+  router.get('/sessions/:sessionId/batches/:batchId/edit', async (req, res) => {
+    admin(res.locals.identity.role);
+    const sessionId = id.parse(req.params.sessionId); const batchId = id.parse(req.params.batchId);
+    const batch = await record<Batch | null>(db, batchId, null);
+    if (!batch || batch.sessionId !== sessionId || batch.mode !== 'CAMPAIGN' || !['PAUSED', 'CANCELLED'].includes(batch.status)) throw new AppError(409, 'Só é possível editar campanhas pausadas.');
+    const task = await db.deliveryTask.findFirst({ where: { sessionId, batchId, OR: [{ status: 'QUEUED' }, { status: 'CANCELLED', error: null }] }, orderBy: { createdAt: 'asc' } });
+    const payload = task?.payload as unknown as Delivery | undefined;
+    res.json({ name: batch.name, text: payload?.snapshot && typeof payload.snapshot.text === 'string' ? payload.snapshot.text : payload?.text ?? '', pending: await db.deliveryTask.count({ where: { sessionId, batchId, OR: [{ status: 'QUEUED' }, { status: 'CANCELLED', error: null }] } }) });
+  });
+  router.put('/sessions/:sessionId/batches/:batchId/edit', async (req, res) => {
+    admin(res.locals.identity.role);
+    const sessionId = id.parse(req.params.sessionId); const batchId = id.parse(req.params.batchId);
+    const batch = await record<Batch | null>(db, batchId, null);
+    if (!batch || batch.sessionId !== sessionId || batch.mode !== 'CAMPAIGN' || !['PAUSED', 'CANCELLED'].includes(batch.status)) throw new AppError(409, 'Só é possível editar campanhas pausadas.');
+    const { text } = z.object({ text: z.string().trim().min(1).max(10000) }).parse(req.body);
+    const tasks = await db.deliveryTask.findMany({ where: { sessionId, batchId, OR: [{ status: 'QUEUED' }, { status: 'CANCELLED', error: null }] } });
+    if (!tasks.length) throw new AppError(409, 'Não há mensagens pendentes para editar.');
+    await db.$transaction(async (tx) => {
+      for (const task of tasks) {
+        const payload = task.payload as unknown as Delivery;
+        if (payload.followUp) continue;
+        const next = { ...payload, text, snapshot: { ...(payload.snapshot ?? {}), kind: 'text', text } };
+        await tx.deliveryTask.update({ where: { id: task.id }, data: { payload: json(next) } });
+      }
+    });
+    res.json({ saved: true });
+  });
+  router.post('/sessions/:sessionId/batches/:batchId/recovery', async (req, res) => {
+    admin(res.locals.identity.role);
+    const sessionId = id.parse(req.params.sessionId);
+    const batchId = id.parse(req.params.batchId);
+    const batch = await record<Batch | null>(db, batchId, null);
+    if (!batch || batch.sessionId !== sessionId || batch.mode !== 'CAMPAIGN') throw new AppError(404, 'Campanha não encontrada.');
+    if (['DRAFT', 'CANCELLED'].includes(batch.status)) throw new AppError(409, 'Ative a campanha antes de recuperar falhas.');
+    const rows = await db.operationRecord.findMany({ where: { kind: 'BATCH' }, select: { id: true, data: true } });
+    const related = rows.filter((row) => row.id === batchId || row.id.startsWith(`cta:${batchId}:`) || row.id.startsWith(`campaign-default:${batchId}:`)).filter((row) => (row.data as unknown as Batch).status !== 'CANCELLED');
+    const ids = related.map((row) => row.id);
+    const failed = await db.deliveryTask.findMany({ where: { sessionId, batchId: { in: ids }, status: { in: ['FAILED', 'VERIFY'] } } });
+    if (!failed.length) throw new AppError(409, 'Não há mensagens pendentes com falha para corrigir.');
+    await db.$transaction(async (tx) => {
+      for (const task of failed) {
+        const payload = task.payload as unknown as Delivery;
+        await tx.deliveryTask.updateMany({
+          where: { id: task.id, status: task.status },
+          data: {
+            status: 'QUEUED',
+            runAt: new Date(Date.now() + randomInt(10, 91) * 1000),
+            error: null,
+            payload: json({ ...payload, retryAttempt: (payload.retryAttempt ?? 0) + 1, recoveryAuthorized: true }),
+          },
+        });
+      }
+      for (const row of related) {
+        const current = row.data as unknown as Batch;
+        if (current.status === 'COMPLETED' || current.status === 'PAUSED') await tx.operationRecord.update({ where: { id: row.id }, data: { data: json({ ...current, status: 'ACTIVE', nextAllowedAt: undefined }) } });
+      }
+      if (batch.status === 'COMPLETED' || batch.status === 'PAUSED') await tx.operationRecord.update({ where: { id: batchId }, data: { data: json({ ...batch, status: 'ACTIVE', nextAllowedAt: undefined }) } });
+    });
+    res.json({ count: failed.length });
   });
   router.get('/sessions/:sessionId/batches/:batchId/tasks', async (req, res) => {
     const sessionId = id.parse(req.params.sessionId);

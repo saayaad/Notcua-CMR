@@ -44,6 +44,7 @@ class FakeSocket implements WhatsappSocket {
   lookupCalls = 0;
   lookupFails = false;
   lookupStrict = false;
+  failSends = false;
   async onWhatsApp(...numbers: string[]) {
     this.lookupCalls++;
     if (this.lookupFails) throw new Error('Consulta indisponível');
@@ -65,6 +66,7 @@ class FakeSocket implements WhatsappSocket {
     content: AnyMessageContent,
     options?: { messageId?: string },
   ): Promise<WAMessage> {
+    if (this.failSends) throw new Error('Falha fictícia de envio');
     this.sends.push(content);
     return {
       key: { id: options?.messageId, remoteJid: jid, fromMe: true },
@@ -314,6 +316,163 @@ test('campanha envia follow-ups em sequência e interrompe ao receber resposta',
   assert.equal((await record<Batch>(db, batch.id, batch)).status, 'COMPLETED');
   await worker.flush();
   assert.equal(socket.sends.length, before + 2);
+});
+test('cancelar campanha agora pausa e permite retomar ou editar mensagens pendentes', async () => {
+  const chat = await makeContact('5511777770888');
+  const batch = await draft([chat.id], { kind: 'text', text: 'Texto original' });
+  await request(app).put(`/api/operations/sessions/${sessionId}/batches/${batch.id}`).send({ status: 'ACTIVE' }).expect(200);
+  await request(app).put(`/api/operations/sessions/${sessionId}/batches/${batch.id}`).send({ status: 'CANCELLED' }).expect(200);
+  assert.equal((await record<Batch>(db, batch.id, batch)).status, 'PAUSED');
+  const pausedTask = await db.deliveryTask.findFirstOrThrow({ where: { batchId: batch.id } });
+  assert.equal(pausedTask.status, 'QUEUED');
+  const edit = await request(app).get(`/api/operations/sessions/${sessionId}/batches/${batch.id}/edit`).expect(200);
+  assert.equal(edit.body.pending, 1);
+  await request(app).put(`/api/operations/sessions/${sessionId}/batches/${batch.id}/edit`).send({ text: 'Texto revisado' }).expect(200);
+  const updated = await db.deliveryTask.findUniqueOrThrow({ where: { id: pausedTask.id } });
+  assert.equal((updated.payload as { snapshot: { text: string } }).snapshot.text, 'Texto revisado');
+  await request(app).put(`/api/operations/sessions/${sessionId}/batches/${batch.id}`).send({ status: 'ACTIVE' }).expect(200);
+  assert.equal((await record<Batch>(db, batch.id, batch)).status, 'ACTIVE');
+});
+test('pausa global de follow-up segura etapas vencidas até retomada', async () => {
+  const chat = await makeContact('5511777770889');
+  const batch = await draft([chat.id], { kind: 'text', text: 'Inicial', followUps: [{ waitMinutes: 60, text: 'Acompanhamento', minDelaySeconds: 1, maxDelaySeconds: 2 }] });
+  await request(app).put(`/api/operations/sessions/${sessionId}/batches/${batch.id}`).send({ status: 'ACTIVE' }).expect(200);
+  await worker.flush();
+  const task = await db.deliveryTask.findFirstOrThrow({ where: { batchId: batch.id } });
+  await db.deliveryTask.update({ where: { id: task.id }, data: { runAt: new Date(0) } });
+  await putRecord(db, batch.id, 'BATCH', { ...await record<Batch>(db, batch.id, batch), nextAllowedAt: new Date(0).toISOString() });
+  await putRecord(db, 'settings:followups', 'SETTING', { paused: true, maxPerHour: 30, maxPerDay: 100 });
+  const count = socket.sends.length;
+  await worker.flush();
+  assert.equal(socket.sends.length, count);
+  assert.equal((await db.deliveryTask.findUniqueOrThrow({ where: { id: task.id } })).status, 'QUEUED');
+  await putRecord(db, 'settings:followups', 'SETTING', { paused: false, maxPerHour: 30, maxPerDay: 100 });
+  const guard = await record<{ hourKey?: string; hourCount?: number; dayKey?: string; dayCount?: number }>(db, 'settings:followups', {});
+  const current = new Date();
+  await putRecord(db, 'settings:followups', 'SETTING', { ...guard, paused: false, maxPerHour: 1, maxPerDay: 10, hourKey: current.toISOString().slice(0, 13), hourCount: 1, dayKey: current.toISOString().slice(0, 10), dayCount: 1 });
+  await worker.flush();
+  assert.equal(socket.sends.length, count);
+  await putRecord(db, 'settings:followups', 'SETTING', { ...guard, paused: false, maxPerHour: 30, maxPerDay: 100, hourCount: 0, dayCount: 0 });
+  await putRecord(db, batch.id, 'BATCH', { ...await record<Batch>(db, batch.id, batch), nextAllowedAt: new Date(0).toISOString() });
+  await worker.flush();
+  assert.equal(socket.sends.length, count + 1);
+});
+test('campanha em BATCH_COMPLETE processa follow-ups sem iniciar o próximo lote', async () => {
+  const chats = await Promise.all([makeContact('5511777770884'), makeContact('5511777770885')]);
+  const batch = await draft(chats.map((chat) => chat.id), {
+    kind: 'text', text: 'Inicial', followUps: [{ waitMinutes: 60, text: 'Retorno' }],
+  });
+  await putRecord(db, batch.id, 'BATCH', { ...await record<Batch>(db, batch.id, batch), status: 'BATCH_COMPLETE' });
+  const tasks = await db.deliveryTask.findMany({ where: { batchId: batch.id }, orderBy: { createdAt: 'asc' } });
+  const first = tasks[0]!;
+  await db.deliveryTask.update({
+    where: { id: first.id },
+    data: { runAt: new Date(0), payload: {
+      ...(first.payload as object), followUp: true, followUpIndex: 0,
+      sourceMessageAt: new Date(Date.now() - 60 * 60_000).toISOString(),
+    } },
+  });
+  const before = socket.sends.length;
+  await worker.flush();
+  assert.equal(socket.sends.length, before + 1);
+  assert.deepEqual(socket.sends.at(-1), { text: 'Retorno' });
+  assert.equal((await db.deliveryTask.findUniqueOrThrow({ where: { id: tasks[1]!.id } })).status, 'QUEUED');
+});
+test('follow-up soma uma oscilação aleatória dentro do intervalo configurado', async () => {
+  const chat = await makeContact('5511777770887');
+  const batch = await draft([chat.id], {
+    kind: 'text', text: 'Inicial',
+    followUps: [{ waitMinutes: 60, text: 'Retorno', minDelaySeconds: 1, maxDelaySeconds: 2 }],
+  });
+  await request(app).put(`/api/operations/sessions/${sessionId}/batches/${batch.id}`).send({ status: 'ACTIVE' }).expect(200);
+  await worker.flush();
+  const task = await db.deliveryTask.findFirstOrThrow({ where: { batchId: batch.id } });
+  const delay = task.runAt.getTime() - task.updatedAt.getTime();
+  assert.ok(delay >= 60 * 60_000 + 900, `atraso abaixo do mínimo: ${delay}ms`);
+  assert.ok(delay <= 60 * 60_000 + 2_500, `atraso acima do máximo: ${delay}ms`);
+});
+test('follow-up aguarda a próxima janela permitida sem enviar fora do horário', async () => {
+  const chat = await makeContact('5511777770886');
+  const batch = await draft([chat.id], {
+    kind: 'text', text: 'Inicial',
+    followUps: [{ waitMinutes: 60, text: 'Retorno', sendWindow: {
+      timezone: 'America/Sao_Paulo', days: [6], start: '00:00', end: '23:59',
+    } }],
+  });
+  await request(app).put(`/api/operations/sessions/${sessionId}/batches/${batch.id}`).send({ status: 'ACTIVE' }).expect(200);
+  const sentBefore = socket.sends.length;
+  await worker.flush();
+  const task = await db.deliveryTask.findFirstOrThrow({ where: { batchId: batch.id } });
+  await db.deliveryTask.update({ where: { id: task.id }, data: { runAt: new Date(0) } });
+  await putRecord(db, batch.id, 'BATCH', { ...await record<Batch>(db, batch.id, batch), nextAllowedAt: new Date(0).toISOString() });
+  await worker.flush();
+  const delayedBatch = await record<Batch>(db, batch.id, batch);
+  assert.ok(new Date(delayedBatch.nextAllowedAt!).getTime() > Date.now() + 24 * 60 * 60_000);
+  assert.equal(socket.sends.length, sentBefore + 1);
+  assert.equal((await db.deliveryTask.findUniqueOrThrow({ where: { id: task.id } })).status, 'QUEUED');
+});
+test('follow-up respeita também o horário de funcionamento da empresa', async () => {
+  const chat = await makeContact('5511777770880');
+  const batch = await draft([chat.id], { kind: 'text', text: 'Inicial', followUps: [{ waitMinutes: 60, text: 'Retorno' }] });
+  await request(app).put(`/api/operations/sessions/${sessionId}/batches/${batch.id}`).send({ status: 'ACTIVE' }).expect(200);
+  const sentBefore = socket.sends.length;
+  await worker.flush();
+  const task = await db.deliveryTask.findFirstOrThrow({ where: { batchId: batch.id } });
+  await db.deliveryTask.update({ where: { id: task.id }, data: { runAt: new Date(0) } });
+  await putRecord(db, batch.id, 'BATCH', { ...await record<Batch>(db, batch.id, batch), nextAllowedAt: new Date(0).toISOString() });
+  const weekday = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Sao_Paulo', weekday: 'short' }).format(new Date());
+  const dayIndex = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(weekday);
+  await putRecord(db, 'settings:business', 'SETTINGS', { schedule: { days: [(dayIndex + 2) % 7], minTime: '00:00', maxTime: '23:59' } });
+  await worker.flush();
+  const delayed = await record<Batch>(db, batch.id, batch);
+  assert.ok(new Date(delayed.nextAllowedAt!).getTime() > Date.now() + 20 * 60 * 60_000);
+  assert.equal(socket.sends.length, sentBefore + 1);
+  await putRecord(db, 'settings:business', 'SETTINGS', {});
+});
+test('disjuntor pausa globalmente após três falhas seguidas de follow-up', async () => {
+  const chats = await Promise.all([
+    makeContact('5511777770881'), makeContact('5511777770882'), makeContact('5511777770883'),
+  ]);
+  const batches = await Promise.all(chats.map((chat) => draft([chat.id], {
+    kind: 'text', text: 'Inicial', followUps: [{ waitMinutes: 60, text: 'Retorno' }],
+  })));
+  for (const batch of batches)
+    await request(app).put(`/api/operations/sessions/${sessionId}/batches/${batch.id}`).send({ status: 'ACTIVE' }).expect(200);
+  await worker.flush();
+  for (const batch of batches) {
+    const task = await db.deliveryTask.findFirstOrThrow({ where: { batchId: batch.id } });
+    await db.deliveryTask.update({ where: { id: task.id }, data: { runAt: new Date(0) } });
+    await putRecord(db, batch.id, 'BATCH', { ...await record<Batch>(db, batch.id, batch), nextAllowedAt: new Date(0).toISOString() });
+  }
+  socket.failSends = true;
+  await worker.flush();
+  socket.failSends = false;
+  const guard = await record<{ paused?: boolean; consecutiveFailures?: number }>(db, 'settings:followups', {});
+  assert.equal(guard.paused, true);
+  assert.equal(guard.consecutiveFailures, 3);
+  await putRecord(db, 'settings:followups', 'SETTING', { paused: false, consecutiveFailures: 0 });
+});
+test('recuperação reenvia falhas com atraso aleatório e mantém a campanha ativa', async () => {
+  const chats = await Promise.all([makeContact('5511777770890'), makeContact('5511777770891')]);
+  const batch = await draft(chats.map((chat) => chat.id), { kind: 'text', text: 'Mensagem de teste' });
+  await request(app).put(`/api/operations/sessions/${sessionId}/batches/${batch.id}`).send({ status: 'ACTIVE' }).expect(200);
+  const [task, uncertainTask] = await db.deliveryTask.findMany({ where: { batchId: batch.id }, orderBy: { createdAt: 'asc' } });
+  assert.ok(task && uncertainTask);
+  await db.deliveryTask.update({ where: { id: task.id }, data: { status: 'FAILED', error: 'Falha simulada' } });
+  await db.deliveryTask.update({ where: { id: uncertainTask.id }, data: { status: 'VERIFY', error: 'Resultado incerto simulado' } });
+  await putRecord(db, batch.id, 'BATCH', { ...await record<Batch>(db, batch.id, batch), status: 'PAUSED' });
+  const preview = await request(app).get(`/api/operations/sessions/${sessionId}/batches/${batch.id}/recovery`).expect(200);
+  assert.equal(preview.body.count, 2);
+  assert.equal(preview.body.uncertainCount, 1);
+  const result = await request(app).post(`/api/operations/sessions/${sessionId}/batches/${batch.id}/recovery`).expect(200);
+  assert.equal(result.body.count, 2);
+  const recovered = await db.deliveryTask.findUniqueOrThrow({ where: { id: task.id } });
+  assert.equal(recovered.status, 'QUEUED');
+  assert.equal(recovered.error, null);
+  assert.equal((recovered.payload as { retryAttempt: number; recoveryAuthorized: boolean }).retryAttempt, 1);
+  assert.equal((recovered.payload as { recoveryAuthorized: boolean }).recoveryAuthorized, true);
+  assert.ok(recovered.runAt.getTime() >= Date.now() + 9000 && recovered.runAt.getTime() <= Date.now() + 92_000);
+  assert.equal((await record<Batch>(db, batch.id, batch)).status, 'ACTIVE');
 });
 test('resposta de um lead não cancela follow-ups dos demais', async () => {
   const first = await makeContact('5511777770878');

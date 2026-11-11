@@ -7,11 +7,19 @@ import { record, putRecord } from './records.js';
 import { json } from '../backups/validation.js';
 import { FlowEngine } from '../flows/flow.engine.js';
 import { queueLabelChange } from '../whatsapp/label-changes.js';
-import { nextSendWindowAt, type SendWindow } from './send-window.js';
+import { nextSendWindowAt, type SendWindow, withinBusinessHours } from './send-window.js';
+type CompanySchedule = { days: number[]; minTime: string; maxTime: string };
+function nextCompanyWindowAt(schedule: CompanySchedule, from: Date) {
+  if (withinBusinessHours(schedule, from)) return from;
+  let candidate = new Date(Math.ceil(from.getTime() / 60_000) * 60_000);
+  for (let minute = 0; minute < 8 * 24 * 60; minute++, candidate = new Date(candidate.getTime() + 60_000))
+    if (withinBusinessHours(schedule, candidate)) return candidate;
+  return null;
+}
 export interface Batch {
   name: string;
   sessionId: string;
-  status: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'CANCELLED' | 'COMPLETED';
+  status: 'DRAFT' | 'ACTIVE' | 'BATCH_COMPLETE' | 'PAUSED' | 'CANCELLED' | 'COMPLETED';
   mode: 'CAMPAIGN' | 'SCHEDULE' | 'REMINDER';
   minSeconds: number;
   maxSeconds: number;
@@ -25,13 +33,14 @@ export interface Batch {
   attributedRevenueInCents?: number;
   approaches?: string[];
   followUpCount?: number;
+  followUpPaused?: boolean;
   ctaKeyword?: string;
   ctaKeywords?: string[];
   sendWindow?: SendWindow;
 }
 export interface Delivery {
   kind: 'text' | 'asset' | 'funnel' | 'flow' | 'reminder' | 'sequence';
-  steps?: { snapshot: Record<string, unknown>; waitSeconds: number }[];
+  steps?: { snapshot: Record<string, unknown>; waitSeconds: number; minDelaySeconds?: number; maxDelaySeconds?: number; sendWindow?: SendWindow }[];
   stepIndex?: number;
   text?: string;
   approachIndex?: number;
@@ -41,11 +50,13 @@ export interface Delivery {
   snapshot?: Record<string, unknown>;
   followUp?: boolean;
   sourceMessageAt?: string;
-  followUps?: { waitMinutes: number; text: string }[];
+  followUps?: { waitMinutes: number; text: string; minDelaySeconds?: number; maxDelaySeconds?: number; sendWindow?: SendWindow }[];
   followUpIndex?: number;
   cta?: { keyword: string; replyText: string };
   ctas?: { keyword: string; replyText: string }[];
   sourceCampaignId?: string;
+  retryAttempt?: number;
+  recoveryAuthorized?: boolean;
   labelTransition?: { fromLabelId?: string; toLabelId?: string };
 }
 export class DeliveryWorker {
@@ -101,20 +112,27 @@ export class DeliveryWorker {
         where: { kind: 'BATCH' },
         orderBy: { updatedAt: 'asc' },
       });
-      const activeIds = batches
+      const activeRows = batches
         .filter((row) => {
           const data = row.data as unknown as Batch;
           return (
-            data.status === 'ACTIVE' && (!data.nextAllowedAt || new Date(data.nextAllowedAt) <= new Date())
+            (data.status === 'ACTIVE' || data.status === 'BATCH_COMPLETE') &&
+            (!data.nextAllowedAt || new Date(data.nextAllowedAt) <= new Date())
           );
-        })
-        .map((row) => row.id);
+        });
       const tasks = [];
-      for (const batchId of activeIds.slice(0, 30)) {
-        const task = await this.db.deliveryTask.findFirst({
-          where: { batchId, status: 'QUEUED', runAt: { lte: new Date() } },
+      for (const row of activeRows.slice(0, 30)) {
+        const candidates = await this.db.deliveryTask.findMany({
+          where: { batchId: row.id, status: 'QUEUED', runAt: { lte: new Date() } },
           orderBy: [{ runAt: 'asc' }, { id: 'asc' }],
         });
+        const onlyFollowUps = (row.data as unknown as Batch).status === 'BATCH_COMPLETE';
+        const task = onlyFollowUps
+          ? candidates.find((candidate) => {
+              const payload = candidate.payload as unknown as Delivery;
+              return Boolean(payload.followUp || payload.recoveryAuthorized);
+            })
+          : candidates[0];
         if (task) tasks.push(task);
       }
       const handled = new Set<string>();
@@ -124,18 +142,55 @@ export class DeliveryWorker {
         const batch = await record<Batch | null>(this.db, task.batchId, null);
         if (
           !batch ||
-          batch.status !== 'ACTIVE' ||
+          !['ACTIVE', 'BATCH_COMPLETE'].includes(batch.status) ||
           (batch.nextAllowedAt && new Date(batch.nextAllowedAt) > new Date())
         )
           continue;
-        if (batch.sendWindow) {
-          const next = nextSendWindowAt(batch.sendWindow, new Date());
+        const data = task.payload as unknown as Delivery;
+        const recoveryAuthorized = Boolean(data.recoveryAuthorized);
+        if (batch.status === 'BATCH_COMPLETE' && !data.followUp && !recoveryAuthorized) continue;
+        const followStepWindow = data.followUp
+          ? data.kind === 'sequence' ? data.steps?.[data.stepIndex ?? 0]?.sendWindow : data.followUps?.[data.followUpIndex ?? 0]?.sendWindow
+          : undefined;
+        const sendWindow = followStepWindow ?? batch.sendWindow;
+        if (sendWindow) {
+          const next = nextSendWindowAt(sendWindow, new Date());
           if (next.getTime() > Date.now()) {
             await putRecord(this.db, task.batchId, 'BATCH', { ...batch, nextAllowedAt: next.toISOString() });
             continue;
           }
         }
-        const data = task.payload as unknown as Delivery;
+        const isFollowUp = Boolean(data.followUp);
+        if (isFollowUp) {
+          const business = await record<{ schedule?: CompanySchedule | null }>(this.db, 'settings:business', {});
+          if (business.schedule) {
+            const next = nextCompanyWindowAt(business.schedule, new Date());
+            if (next && next.getTime() > Date.now()) {
+              await putRecord(this.db, task.batchId, 'BATCH', { ...batch, nextAllowedAt: next.toISOString() });
+              continue;
+            }
+          }
+        }
+        const guard = isFollowUp ? await record<{ paused?: boolean; hourKey?: string; hourCount?: number; dayKey?: string; dayCount?: number; consecutiveFailures?: number; maxPerHour?: number; maxPerDay?: number }>(this.db, 'settings:followups', {}) : {};
+        if (isFollowUp && (batch.followUpPaused || guard.paused)) continue;
+        if (isFollowUp) {
+          const now = new Date();
+          const hourKey = now.toISOString().slice(0, 13);
+          const dayKey = now.toISOString().slice(0, 10);
+          const hourCount = guard.hourKey === hourKey ? guard.hourCount ?? 0 : 0;
+          const dayCount = guard.dayKey === dayKey ? guard.dayCount ?? 0 : 0;
+          if (hourCount >= (guard.maxPerHour ?? 30) || dayCount >= (guard.maxPerDay ?? 100)) {
+            const retryAt = new Date(now);
+            if (hourCount >= (guard.maxPerHour ?? 30)) retryAt.setUTCHours(retryAt.getUTCHours() + 1, 0, 0, 0);
+            else retryAt.setUTCHours(24, 0, 0, 0);
+            await putRecord(this.db, task.batchId, 'BATCH', { ...batch, nextAllowedAt: retryAt.toISOString() });
+            continue;
+          }
+          if ((guard.consecutiveFailures ?? 0) >= 3) {
+            await putRecord(this.db, 'settings:followups', 'SETTING', { ...guard, paused: true });
+            continue;
+          }
+        }
         const chat = await this.db.conversation.findFirst({
           where: { id: task.conversationId, sessionId: task.sessionId },
           include: { contact: true },
@@ -181,11 +236,18 @@ export class DeliveryWorker {
             continue;
           }
         }
-        const claimed = await this.db.deliveryTask.updateMany({
-          where: { id: task.id, status: 'QUEUED' },
-          data: { status: 'RUNNING' },
+        const claimed = await this.db.$transaction(async (tx) => {
+          const current = await tx.operationRecord.findUnique({ where: { id: task.batchId } });
+          const latest = current?.data as unknown as Batch | undefined;
+          if (!latest || !(latest.status === 'ACTIVE' || (latest.status === 'BATCH_COMPLETE' && (data.followUp || recoveryAuthorized))))
+            return false;
+          const changed = await tx.deliveryTask.updateMany({
+            where: { id: task.id, status: 'QUEUED' },
+            data: { status: 'RUNNING' },
+          });
+          return changed.count > 0;
         });
-        if (!claimed.count) continue;
+        if (!claimed) continue;
         const index = data.stepIndex ?? 0;
         const step = data.kind === 'sequence' ? data.steps?.[index] : undefined;
         const followUpIndex = data.followUpIndex ?? 0;
@@ -218,7 +280,7 @@ export class DeliveryWorker {
               ...(campaignFollowUp
                 ? { kind: 'text', text: campaignFollowUp.text }
                 : step?.snapshot ?? data.snapshot ?? { kind: 'text', text: data.text }),
-              requestId: `delivery:${task.id}${data.kind === 'sequence' ? `:${index}` : data.followUp && data.kind === 'text' ? `:follow-up:${followUpIndex}` : ''}`,
+              requestId: `delivery:${task.id}${data.kind === 'sequence' ? `:${index}` : data.followUp && data.kind === 'text' ? `:follow-up:${followUpIndex}` : ''}${data.retryAttempt ? `:retry:${data.retryAttempt}` : ''}`,
             });
             sentAt = sent.sentAt;
           }
@@ -233,8 +295,8 @@ export class DeliveryWorker {
                           sourceMessageAt: data.sourceMessageAt ?? sentAt?.toISOString() }
                       : { ...data, stepIndex: index + 1 }),
                     runAt: new Date(Date.now() + (hasNextCampaignFollowUp
-                      ? data.followUps![data.followUp ? followUpIndex + 1 : 0]!.waitMinutes * 60
-                      : data.steps?.[index + 1]?.waitSeconds ?? 1) * 1000),
+                      ? (() => { const next = data.followUps![data.followUp ? followUpIndex + 1 : 0]!; const base = next.waitMinutes * 60; const min = next.minDelaySeconds ?? 0; const max = next.maxDelaySeconds ?? min; return base + (max >= min && max > 0 ? randomInt(min, max + 1) : 0); })()
+                      : (() => { const next = data.steps?.[index + 1]; const min = next?.minDelaySeconds ?? 0; const max = next?.maxDelaySeconds ?? min; return (next?.waitSeconds ?? 1) + (max >= min && max > 0 ? randomInt(min, max + 1) : 0); })()) * 1000),
                   }
                 : { status: 'COMPLETED' },
             });
@@ -293,6 +355,11 @@ export class DeliveryWorker {
                 },
               });
             }
+            if (data.followUp) {
+              const latestGuard = await record<{ hourKey?: string; hourCount?: number; dayKey?: string; dayCount?: number; consecutiveFailures?: number }>(tx as unknown as PrismaClient, 'settings:followups', {});
+              const at = new Date(); const hourKey = at.toISOString().slice(0, 13); const dayKey = at.toISOString().slice(0, 10);
+              await tx.operationRecord.upsert({ where: { id: 'settings:followups' }, create: { id: 'settings:followups', kind: 'SETTING', data: json({ hourKey, hourCount: 1, dayKey, dayCount: 1, consecutiveFailures: 0 }) }, update: { data: json({ ...latestGuard, hourKey, hourCount: (latestGuard.hourKey === hourKey ? latestGuard.hourCount ?? 0 : 0) + 1, dayKey, dayCount: (latestGuard.dayKey === dayKey ? latestGuard.dayCount ?? 0 : 0) + 1, consecutiveFailures: 0 }) } });
+            }
           });
           if (!hasNext && data.labelTransition && data.kind !== 'reminder')
             this.whatsapp.notify(task.sessionId, 'labels');
@@ -307,6 +374,12 @@ export class DeliveryWorker {
             });
             const current = await tx.operationRecord.findUnique({ where: { id: task.batchId } });
             const latest = current?.data as unknown as Batch | undefined;
+            if (data.followUp) {
+              const guard = await tx.operationRecord.findUnique({ where: { id: 'settings:followups' } });
+              const latestGuard = guard?.data as { consecutiveFailures?: number; paused?: boolean } | undefined;
+              const failures = (latestGuard?.consecutiveFailures ?? 0) + 1;
+              await tx.operationRecord.upsert({ where: { id: 'settings:followups' }, create: { id: 'settings:followups', kind: 'SETTING', data: json({ consecutiveFailures: failures, paused: failures >= 3 }) }, update: { data: json({ ...latestGuard, consecutiveFailures: failures, paused: failures >= 3 }) } });
+            }
             if (latest?.status === 'ACTIVE')
               await tx.operationRecord.update({
                 where: { id: task.batchId },

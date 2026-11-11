@@ -2,7 +2,7 @@ import { optimizeImage, createVideoWatermark, type Watermark } from '../image-pr
 import { captureMicrophone } from '../microphone';
 import { usePreferences } from '../context/PreferencesContext';
 import { useEffect, useRef, useState } from 'react';
-import { Send, Paperclip, Mic, Square, Trash2, Zap, Smile, Eye, FileText, MessageSquare } from 'lucide-react';
+import { Send, Paperclip, Mic, Square, Trash2, Zap, Smile, Eye, FileText, MessageSquare, Clock3, CalendarDays, Megaphone } from 'lucide-react';
 import { errorMessage, useApi } from '../context/ApiContext';
 import { AiOnly, useAiFeatures } from '../context/AiFeatures';
 import { Modal, Spinner } from './ui';
@@ -29,6 +29,7 @@ export function Composer({
   conversationId,
   library,
   onInternalNote,
+  onFollowUp,
 }: {
   base: string;
   sessionId: string;
@@ -38,6 +39,7 @@ export function Composer({
   onSent: () => void;
   onQuick: () => void;
   onInternalNote: (text: string) => Promise<void>;
+  onFollowUp: () => void;
 }) {
   const { request, notify } = useApi();
   const { preferences } = usePreferences();
@@ -597,6 +599,10 @@ export function Composer({
             <small>
               {internalMode ? 'Enter para salvar nota' : 'Enter para enviar'} · Shift + Enter para nova linha
             </small>
+            <div className="composer-send-actions">
+            <button type="button" className="composer-quick-icon" title="Horário de atendimento" aria-label="Abrir horário de atendimento" onClick={() => window.dispatchEvent(new CustomEvent('noctua:quick-navigation', { detail: 'business' }))}><CalendarDays size={16}/></button>
+            <button type="button" className="composer-quick-icon" title="Configurar follow-up automático" aria-label="Abrir follow-up automático" onClick={onFollowUp}><Clock3 size={16}/></button>
+            <button type="button" className="composer-quick-icon" title="Campanhas e disparos" aria-label="Abrir campanhas" onClick={() => window.dispatchEvent(new CustomEvent('noctua:quick-navigation', { detail: 'campaigns' }))}><Megaphone size={16}/></button>
             <button
               className="send-button"
               aria-label={internalMode ? 'Salvar nota interna' : 'Enviar mensagem'}
@@ -606,6 +612,7 @@ export function Composer({
             >
               {busy ? <Spinner /> : <Send size={19} />}
             </button>
+            </div>
           </div>
         </div>
       </div>

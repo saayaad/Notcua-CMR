@@ -594,6 +594,7 @@ interface BatchRow {
   crmSales?: number;
   approaches?: string[];
   followUpCount?: number;
+  followUpPaused?: boolean;
   ctaKeyword?: string;
   ctaKeywords?: string[];
   sendWindow?: { timezone: string; days: number[]; start: string; end: string };
@@ -642,6 +643,8 @@ export function CampaignsPage({
   const [finance, setFinance] = useState({ investment: '0.00', revenue: '0.00', revenueSource: 'MANUAL' as 'MANUAL' | 'CRM' });
   const [revenueBatch, setRevenueBatch] = useState('');
   const [approachReport, setApproachReport] = useState<{ name: string; items: ApproachResult[] } | null>(null);
+  const [recovery, setRecovery] = useState<{ id: string; name: string; count: number; uncertainCount: number } | null>(null);
+  const [campaignEdit, setCampaignEdit] = useState<{ id: string; name: string; text: string; pending: number } | null>(null);
   useEffect(() => setSearch(initialSearch), [initialSearch]);
   useEffect(() => {
     if (!sessionId) return;
@@ -789,6 +792,7 @@ export function CampaignsPage({
                     </button>
                   )}
                   {!schedule && <button className="button" onClick={() => setRevenueBatch(item.id)}>Vincular vendas do CRM</button>}
+                  {!schedule && Boolean(item.followUpCount) && <button className="button" title="Pausar ou retomar apenas as etapas de follow-up desta campanha" onClick={() => void request(`/operations/sessions/${sessionId}/batches/${item.id}`, 'PUT', { followUpPaused: !item.followUpPaused }).then(() => { notify(item.followUpPaused ? 'Follow-ups da campanha retomados.' : 'Follow-ups da campanha pausados.'); setTick((value) => value + 1); }).catch((error) => notify(errorMessage(error), true))}>{item.followUpPaused ? 'Retomar follow-up' : 'Pausar follow-up'}</button>}
                   {!schedule && item.approaches?.length && <button className="button" onClick={() => {
                     void request<{ items: ApproachResult[] }>(`/operations/sessions/${sessionId}/batches/${item.id}/approaches`)
                       .then((data) => setApproachReport({ name: item.name, items: data.items }))
@@ -806,19 +810,21 @@ export function CampaignsPage({
                   >
                     Ver envios
                   </button>
-                  {['DRAFT', 'PAUSED'].includes(item.status) && (
+                  {!schedule && !['DRAFT', 'CANCELLED'].includes(item.status) && <button className="button" onClick={() => void request<{ count: number; uncertainCount: number }>(`/operations/sessions/${sessionId}/batches/${item.id}/recovery`).then((result) => { if (!result.count) notify('Não há envios com falha para corrigir.'); else setRecovery({ id: item.id, name: item.name, ...result }); }).catch((error) => notify(errorMessage(error), true))}>Corrigir falhas</button>}
+                  {['DRAFT', 'PAUSED', 'CANCELLED'].includes(item.status) && (
                     <button className="button primary" disabled={busy} onClick={() => setActivate(item)}>
                       <Play size={14} />
-                      Ativar
+                      {item.status === 'DRAFT' ? 'Ativar' : 'Retomar'}
                     </button>
                   )}
+                  {['PAUSED', 'CANCELLED'].includes(item.status) && !schedule && <button className="button" onClick={() => void request<{ name: string; text: string; pending: number }>(`/operations/sessions/${sessionId}/batches/${item.id}/edit`).then((value) => setCampaignEdit({ id: item.id, ...value })).catch((error) => notify(errorMessage(error), true))}>Editar pendentes</button>}
                   {item.status === 'ACTIVE' && (
                     <button className="button" disabled={busy} onClick={() => change(item, 'PAUSED')}>
                       <Pause size={14} />
                       Pausar
                     </button>
                   )}
-                  {!['COMPLETED', 'CANCELLED'].includes(item.status) && (
+                  {schedule && !['COMPLETED', 'CANCELLED'].includes(item.status) && (
                     <button className="button" disabled={busy} onClick={() => change(item, 'CANCELLED')}>
                       <Square size={13} />
                       Cancelar
@@ -983,6 +989,16 @@ export function CampaignsPage({
           </div>
         </Modal>
       )}
+      {recovery && <Modal title="Corrigir falhas da campanha" onClose={() => setRecovery(null)}>
+        <p><strong>{recovery.name}</strong>: {recovery.count} mensagem(ns) com falha serão colocadas novamente na fila, respeitando os limites de follow-up e os horários permitidos.</p>
+        {recovery.uncertainCount > 0 && <p className="notice">{recovery.uncertainCount} falha(s) podem ter resultado incerto; uma nova tentativa pode duplicar mensagens que chegaram a ser entregues.</p>}
+        <div className="modal-actions"><button className="button" onClick={() => setRecovery(null)}>Cancelar</button><button className="button primary" disabled={busy} onClick={() => { setBusy(true); void request<{ count: number }>(`/operations/sessions/${sessionId}/batches/${recovery.id}/recovery`, 'POST').then((result) => { notify(`${result.count} envio(s) retornaram à fila. A pausa e as cotas continuam ativas.`); setRecovery(null); setTick((value) => value + 1); }).catch((error) => notify(errorMessage(error), true)).finally(() => setBusy(false)); }}>Reenviar pendências</button></div>
+      </Modal>}
+      {campaignEdit && <Modal title="Editar mensagens pendentes" wide onClose={() => setCampaignEdit(null)}>
+        <p><strong>{campaignEdit.name}</strong> · {campaignEdit.pending} mensagem(ns) ainda podem ser editadas. As mensagens já encaminhadas não serão alteradas.</p>
+        <label>Texto da mensagem principal<textarea rows={7} maxLength={10000} value={campaignEdit.text} onChange={(event) => setCampaignEdit((current) => current ? { ...current, text: event.target.value } : current)}/></label>
+        <div className="modal-actions"><button className="button" onClick={() => setCampaignEdit(null)}>Fechar</button><button className="button primary" disabled={!campaignEdit.text.trim()} onClick={() => void request(`/operations/sessions/${sessionId}/batches/${campaignEdit.id}/edit`, 'PUT', { text: campaignEdit.text }).then(() => { notify('Mensagens pendentes atualizadas.'); setCampaignEdit(null); setTick((value) => value + 1); }).catch((error) => notify(errorMessage(error), true))}>Salvar alterações</button></div>
+      </Modal>}
     </main>
   );
 }
@@ -1005,7 +1021,7 @@ export function BatchEditor({
   const { preferences } = usePreferences();
   const [message, setMessage] = useState('');
   const [variants, setVariants] = useState<string[]>([]);
-  const [followUps, setFollowUps] = useState<{ id: string; waitMinutes: number; text: string }[]>([]);
+  const [followUps, setFollowUps] = useState<{ id: string; waitMinutes: number; text: string; minDelaySeconds: number; maxDelaySeconds: number; restrictHours: boolean; start: string; end: string }[]>([]);
   const [ctas, setCtas] = useState<{ id: string; keyword: string; replyText: string }[]>([]);
   const [sendWindowEnabled, setSendWindowEnabled] = useState(false);
   const [sendDays, setSendDays] = useState([1, 2, 3, 4, 5]);
@@ -1160,7 +1176,7 @@ export function BatchEditor({
                 kind: kind === 'asset' && selectedAssets.length > 1 ? 'sequence' : kind,
                 textVariations: kind === 'text' ? variants : undefined,
                 followUps: !schedule && kind === 'text'
-                  ? followUps.map(({ waitMinutes, text }) => ({ waitMinutes, text })) : undefined,
+                  ? followUps.map(({ waitMinutes, text, minDelaySeconds, maxDelaySeconds, restrictHours, start, end }) => ({ waitMinutes, text, minDelaySeconds, maxDelaySeconds, ...(restrictHours ? { sendWindow: { timezone: 'America/Sao_Paulo', days: [1,2,3,4,5], start, end } } : {}) })) : undefined,
                 ctas: !schedule && kind === 'text'
                   ? ctas.map(({ keyword, replyText }) => ({ keyword, replyText })) : undefined,
                 steps:
@@ -1565,12 +1581,15 @@ export function BatchEditor({
                       <label>Esperar (minutos)
                         <input type="number" min={1} max={43200} required value={step.waitMinutes} onChange={(event) => setFollowUps((current) => current.map((item) => item.id === step.id ? { ...item, waitMinutes: Number(event.target.value) } : item))} />
                       </label>
+                      <div className="form-grid"><label>Intervalo aleatório mínimo (segundos)<input type="number" min="0" max="86400" value={step.minDelaySeconds} onChange={(event) => setFollowUps((current) => current.map((item) => item.id === step.id ? { ...item, minDelaySeconds: Number(event.target.value) } : item))}/></label><label>Máximo (segundos)<input type="number" min={step.minDelaySeconds} max="86400" value={step.maxDelaySeconds} onChange={(event) => setFollowUps((current) => current.map((item) => item.id === step.id ? { ...item, maxDelaySeconds: Number(event.target.value) } : item))}/></label></div>
+                      <label className="check-row"><input type="checkbox" checked={step.restrictHours} onChange={(event) => setFollowUps((current) => current.map((item) => item.id === step.id ? { ...item, restrictHours: event.target.checked } : item))}/>Restringir horário permitido (seg–sex, Brasília)</label>
+                      {step.restrictHours && <div className="form-grid"><label>Início<input type="time" value={step.start} onChange={(event) => setFollowUps((current) => current.map((item) => item.id === step.id ? { ...item, start: event.target.value } : item))}/></label><label>Fim<input type="time" value={step.end} onChange={(event) => setFollowUps((current) => current.map((item) => item.id === step.id ? { ...item, end: event.target.value } : item))}/></label></div>}
                       <label>Mensagem
                         <textarea required maxLength={10000} value={step.text} onChange={(event) => setFollowUps((current) => current.map((item) => item.id === step.id ? { ...item, text: event.target.value } : item))} />
                       </label>
                       <button type="button" className="text-button" onClick={() => setFollowUps((current) => current.filter((item) => item.id !== step.id))}>Remover follow-up</button>
                     </div>)}
-                    <button type="button" className="button small" disabled={followUps.length >= 100} onClick={() => setFollowUps((current) => [...current, { id: crypto.randomUUID(), waitMinutes: 1440, text: '' }])}>Adicionar follow-up</button>
+                    <button type="button" className="button small" disabled={followUps.length >= 100} onClick={() => setFollowUps((current) => [...current, { id: crypto.randomUUID(), waitMinutes: 1440, text: '', minDelaySeconds: 10, maxDelaySeconds: 90, restrictHours: false, start: '08:00', end: '18:00' }])}>Adicionar follow-up</button>
                     <small className="muted">Até 100 etapas por campanha.</small>
                   </fieldset>}
                 </>

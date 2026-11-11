@@ -318,6 +318,10 @@
   width: 2rem;
   border-radius: 0.55rem;
 }
+.inbox-layout .composer-send-actions { display: flex; align-items: center; gap: 0.3rem; }
+.inbox-layout .composer-quick-icon { display: inline-grid; place-items: center; width: 2rem; height: 2rem; border: 1px solid var(--border); border-radius: 0.55rem; color: var(--muted); background: var(--surface2); }
+.inbox-layout .composer-quick-icon:hover { color: var(--accent); border-color: var(--accent); }
+@media (max-width: 520px) { .inbox-layout .composer-send-actions { gap: 0.15rem; } .inbox-layout .composer-quick-icon, .inbox-layout .send-button { width: 1.8rem; height: 1.8rem; } }
 .inbox-layout .tools-heading {
   min-height: 3.35rem;
   padding: 0.75rem;

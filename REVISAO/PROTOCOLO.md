@@ -1,0 +1,756 @@
+AUDITORIA DO NOCTUA — PROTOCOLO
+
+(Salve este texto em REVISAO/PROTOCOLO.md e siga-o em todas as sessões.)
+
+## Estado ao encerrar a Fase 4 — 05/11/2026
+
+- A Fase 4 de envio em lotes foi validada localmente: 87/87 testes relevantes passaram; typecheck e build do servidor passaram; build web passou com `--configLoader runner` após o Vite padrão falhar por acesso negado ao diretório ascendente.
+- O commit `f262490` contém código de continuação e teste de Fase 4; o registro final foi commitado em `b8782e0` (`docs: record phase 4 batch delivery`). Nenhum deploy ou push foi feito.
+
+## Estado ao encerrar a Fase 5 — 05/11/2026
+
+- Pausa manual, entrega em curso, retomada após resolução de `VERIFY`, restart e retry idempotente validados localmente. A suíte relevante passou 89/89; typecheck dos dois workspaces e builds server/web passaram, usando `--configLoader runner` no Vite por restrição de leitura de diretório ascendente.
+- Commit da Fase 5 confirmado em `2e97192` (`fix: make campaign pause and resume safe`).
+- Sem produção, deploy, push ou envio real.
+- Na tentativa da Fase 6, 47 arquivos rastreados de evidência foram regravados pela E2E parcial; todos foram restaurados byte a byte de `HEAD`. Não guardar as saídas dessa tentativa incompleta.
+
+META
+
+Levar as 296 REQs "Parcial" e as 234 "A verificar" de REVISAO/REQUISITOS.md a um ESTADO FINAL, cada uma com prova individual. "Parcial" e "A verificar" deixam de ser estados finais.
+
+## 1) ONDE PODE E ONDE NÃO PODE MEXER
+
+PRODUÇÃO (notcua.vercel.app, WhatsApp real, banco real, Vercel, Firebase, túnel): SOMENTE LEITURA. Não enviar mensagem, não subir nem excluir arquivo, não salvar preferência, não mexer em chave, não publicar, não dar push na main.
+
+AMBIENTE DE TESTE LOCAL: você tem autorização TOTAL e permanente para criar, editar, salvar, recarregar, subir arquivos que você mesmo gerar, excluir, resetar, criar contas/papéis de teste e cadastrar chave FALSA. Não peça confirmação para nada disso. O ambiente usa:
+
+- servidor local com SQLite temporário (nunca o banco real);
+- WhatsApp FICTÍCIO (o conector dos testes / Espaço de Teste): nenhum envio real;
+- IA com provedor SIMULADO: nenhuma chamada real;
+- front local ligado ao servidor local, sem login real (use o modo sem Firebase se existir; senão o Firebase Auth Emulator). Qualquer atalho de login só pode existir fora do build de produção;
+- Playwright próprio (headless), não o navegador do chat; viewports 1366x768, 1920x1080 e celular emulado 390x844.
+
+Dados de teste sempre fictícios (e-mails @example.com, telefones inventados).
+
+## 2) PREPARAÇÃO (uma vez, antes de testar qualquer REQ)
+
+a) Crie a branch auditoria-reqs, faça commit de TODAS as alterações locais e dê push só dessa branch. Se o push pedir login, avise no fim desta etapa e continue.
+
+b) Crie `npm run audit:dev` (sobe servidor + front locais com dados de exemplo: contatos, conversas, biblioteca, funis, etiquetas e 2 usuários com papéis diferentes) e `npm run audit:reset` (apaga e recria tudo).
+
+c) Crie a pasta e2e/ com Playwright. Todo teste leva o ID da REQ no título, ex.: test('REQ-215 densidade Média persiste após recarregar'). Todo teste precisa afirmar o resultado esperado ("a tela abriu" não conta). Evidências em REVISAO/evidencias/REQ-xxx/.
+
+d) Crie `npm run audit:ledger`: cruza REVISAO/REQUISITOS.md com os IDs encontrados nos testes e gera REVISAO/LEDGER.csv, 1 linha por REQ (id, módulo, tela, estado, tipo_de_prova, teste, evidência, resultado, bloqueio, data, commit). O LEDGER é a fonte única de status; não escreva novos relatórios narrativos.
+
+e) Rode e me mostre SÓ as contagens: REQs com teste vinculado × sem teste.
+
+## 3) CLASSIFICAR (sem testar ainda)
+
+Para cada REQ pendente, escreva 1 frase com o critério de aceite verificável e o tipo de prova:
+
+A = teste automatizado de regra (servidor/API)
+
+B = teste no navegador, ambiente local (inclui "salvar, recarregar e continuar salvo")
+
+C = exige algo externo: WhatsApp real, iPhone/Android físico, 2º monitor, janela externa real, e-mail real, chave real de IA
+
+D = depende de decisão minha (inclui REQ vaga demais para virar critério: escreva a pergunta em 1 linha)
+
+E = controle sem efeito ou função inexistente
+
+REQs que descrevem a mesma função podem dividir um teste, mas cada uma precisa de pelo menos uma asserção própria com o seu ID. Agrupe por MÓDULO/TELA, não por número.
+
+## 4) EXECUTAR EM LOTES (repita até acabar)
+
+Lote = 1 módulo (20 a 50 REQs). Para cada REQ tipo A ou B:
+
+1. escreva ou ajuste o teste e rode;
+2. passou → COMPLETO, com evidência;
+3. falhou → abra BUG-xxx em REVISAO/BUGS.md com passos para reproduzir; se a correção for pequena e segura, corrija, rode de novo e depois rode a suíte inteira; senão fica DEFEITO;
+4. máximo de 2 tentativas por REQ. Travou? Registre o motivo e vá para a próxima; não investigue o navegador ou a ferramenta além disso.
+
+Não enfraqueça teste nem mude regra de negócio só para passar. Não refaça REQs que já têm evidência.
+
+Fim do lote: atualize LEDGER.csv e REQUISITOS.md, faça commit na branch e comece o próximo lote SEM esperar minha resposta.
+
+## 5) ESTADOS FINAIS (toda REQ termina em um destes)
+
+COMPLETO — critério escrito + teste passando + (se grava dado) persistência após recarregar + evidência + commit.
+
+COMPLETO-LOCAL — provado no ambiente local; só falta a prova externa (tipo C), que vai para REVISAO/CHECKLIST-MANUAL.md.
+
+DEFEITO — falhou; BUG aberto.
+
+DECISÃO — depende de mim.
+
+DESCONECTADA ou AUSENTE — propor ligar a função ou retirar o controle da tela.
+
+É proibido marcar COMPLETO só porque o código existe, porque a suíte geral está verde ou porque a tela abriu.
+
+## 6) DECISÕES JÁ TOMADAS (não pergunte de novo)
+
+- IA: opcional e desligada por padrão; testar só com provedor simulado. O que exigir chave real vira COMPLETO-LOCAL (tipo C) e não conta como pendência.
+- REQ-316: inatividade = pelo menos X dias.
+- REQ-410: não implementar; marcar como cancelada.
+- REQ-526: só serviços gratuitos; sem cota, a IA pausa e o resto do app segue normal.
+- REQ-573: adiada até eu enviar a Parte 8; fora da contagem.
+
+## 7) COMO ME REPORTAR
+
+Durante os lotes: nada de narrativa.
+
+Ao parar: tabela antes × depois por estado, IDs que mudaram, defeitos novos e UMA lista única do que só eu posso fazer (decisões + CHECKLIST-MANUAL.md, com passo a passo de 3 linhas por item, agrupado por aparelho/serviço).
+
+Só pare quando a lista acabar ou quando precisar de algo que só eu posso fazer (junte tudo numa lista e pare).
+
+Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISAO/LEDGER.csv e processe o próximo lote.
+
+## Ponto de retomada — 30/10/2026
+
+- Lote Mensagens REQ-236–268 atualizado: 19 `COMPLETO`, 10 `COMPLETO-LOCAL`, itens anteriormente completos preservados; BUG-017/018/019 registrados em BUGS.md. Ledger regenerado após regressão: servidor 206/206; Playwright 36/36; build/typecheck aprovados.
+- Evidências Playwright por requisito em `REVISAO/evidencias/REQ-236/` a `REQ-268/`; 18 casos de mensagens, 9 de mídia e 9 de IA simulada aprovados em três viewports. Servidor `attendance.test.ts` + `whatsapp.test.ts`: 40/40 aprovados com banco/socket fictícios.
+- REQ-263/264/265 e 267 estão `COMPLETO-LOCAL`; checklist externo detalha a validação futura em aparelho/WhatsApp descartável. Nada foi enviado ao WhatsApp de produção.
+- Os serviços locais do usuário continuam ativos em `127.0.0.1:5180` e `127.0.0.1:3340`; usar `AUDIT_USE_RUNNING_SERVER=1`. Banco confirmado `.audit/noctua-audit.db`; não resetar nem subir serviços adicionais.
+- Próximo lote: módulo Campanhas e agenda, iniciando REQ-269. Não tocar em produção, Firebase, chaves reais, Vercel ou `.env.local`.
+- Conforme instrução mais recente do usuário/AGENTS.md, após cada falha registrar mensagem completa, corrigir uma causa real e retestar; não repetir o mesmo teste sem alteração e não parar pelo limite de tentativas antigo.
+
+## Ponto de retomada — 30/10/2026 — após Campanhas e agenda
+
+- Lote REQ-269–297 fechado: 25 `COMPLETO`, REQ-279 `COMPLETO-LOCAL`; REQ-272–274 preservadas. BUG-020 corrigido e anotado. Evidências individuais em `REVISAO/evidencias/REQ-269/`–`REQ-297/` (sem reexecutar 272–274).
+- Playwright final `e2e/campaigns.spec.ts`: 18/18 aprovados em 1366×768, 1920×1080 e 390×844; persistência pós-reload em rascunhos, contato/agendamento, equipe e Biblioteca. Dados exclusivamente fictícios no banco `.audit/noctua-audit.db`; rascunhos cancelados, nenhum envio.
+- Contagens após o lote: 179 A VERIFICAR; 251 COMPLETO; 30 COMPLETO-LOCAL; 178 PARCIAL; 50 cancelados/substituídos; 10 decisão; 4 desconectados; 0 com defeito; 1 ausente.
+- Próximo lote: REQ-298–327, módulo Exportação e operação. Retomar sem reiniciar os serviços locais; não resetar o banco.
+- Regressão final pós-lote Campanhas: servidor 206/206, typecheck aprovado, build aprovado com aviso de bundle >500 kB, Playwright 18/18 em três viewports.
+
+## Ponto de retomada — 30/10/2026 — após Exportação e operação
+
+- Lote REQ-298–327 fechado; regressão Playwright 48/48 e operações de servidor 51/51. Ledger: 197 REQs com teste vinculado, 506 sem.
+- Estado global: 162 A VERIFICAR; 268 COMPLETO; 38 COMPLETO-LOCAL; 171 PARCIAL; 50 canceladas/substituídas; 9 decisões pendentes; 2 decisões confirmadas; 4 desconectadas; 1 ausente.
+- 25 REQs mudaram: 17 COMPLETO e 8 COMPLETO-LOCAL. Evidências em `REVISAO/evidencias/REQ-298/`–`REQ-327/`. `.audit/noctua-audit.db` preservado; servidor do usuário respondeu HTTP 200 em `127.0.0.1:3340/atendimento`.
+- Próximo módulo: Sandbox e suporte, REQ-328–356. Preservar REQ-357–359 já completas. Siga usando os serviços existentes; não resetar banco nem tocar em produção.
+- `scripts/iniciar-noctua-online.ps1` continua fora do commit: muda a raiz usada para CLI Vercel e arquivos de vínculo, portanto pode mudar a origem da publicação. Nenhuma publicação foi executada.
+
+## Ponto de retomada — 30/10/2026 — após Sandbox e suporte
+
+- REQ-328–356 avaliadas; 21 estados mudaram (18 COMPLETO, 3 COMPLETO-LOCAL). REQ-357–359 preservadas. Playwright: 9/9 casos (27 execuções em três viewports); operações: 52/52.
+- BUG-021 fechado: fala pt-BR sintética no áudio de exemplo e transcrição coincidente. Evidências em `REVISAO/evidencias/REQ-328/`–`REQ-356/` para os itens testados.
+- Contagem global: 149 A VERIFICAR; 286 COMPLETO; 41 COMPLETO-LOCAL; 163 PARCIAL; canceladas/substituídas e bloqueios mantidos.
+- Front e API do usuário em `127.0.0.1:5180` / `127.0.0.1:3340`; Vite aponta ao endereço de API fornecido via `VITE_API_URL`. SQLite `.audit/noctua-audit.db` não foi resetado. Nenhuma produção tocada.
+- Próximo módulo: IA e mídia, REQ-360. Não solicitar chave; IA real não está disponível. Prova permitida: provedores simulados locais; recursos que dependem de chave ficam COMPLETO-LOCAL.
+
+
+## Ponto de retomada — 30/10/2026 — após IA e mídia
+
+- REQ-360–391 fechadas: 15 `COMPLETO`, 16 `COMPLETO-LOCAL`, 1 `DEFEITO` (REQ-381). BUG-022 aberto para compressão de vídeo ausente; BUG-023 corrigido para atalho móvel do Estúdio de IA.
+- `e2e/ai-media.spec.ts`: 24/24 aprovações Playwright em 1366×768, 1920×1080 e 390×844; rotas de upload, envio e provedor foram simuladas. Servidor: 208/208. Typecheck e build web passaram; build mantém aviso de bundle principal 597 kB.
+- Teste registrou aviso React de `src` vazio. Recibo de leitura da conversa fictícia retornava HTTP 409 porque a conexão de WhatsApp está desconectada; fixture passou a interceptar essa rota. Nenhuma página sofreu erro e as provas foram repetidas.
+- API e front existentes responderam HTTP 200 em `127.0.0.1:3340/atendimento` e `127.0.0.1:5180/`. Banco `.audit/noctua-audit.db` não foi resetado. Sem chave de IA real; nenhum serviço externo foi chamado.
+- Próximo módulo: Automações, começando REQ-392. Continuar em local e fechar cada lote com ledger, evidências, commit e push em `auditoria-reqs`.
+- `scripts/iniciar-noctua-online.ps1` permanece fora do commit; diff preexistente não foi alterado nesta auditoria. O arquivo `npx` não existe na raiz.
+
+## Ponto de retomada — 30/10/2026 — após Automações
+
+- REQ-392–413 avaliadas: 2 `COMPLETO` (402–403), 14 `COMPLETO-LOCAL`, 2 `AUSENTE` (408–409), 1 `DECISÃO` (401), 1 cancelada (410). REQ-404–405 permaneceram intactas.
+- Playwright: 15/15 em 1366×768, 1920×1080 e 390×844; rechecagem dos marcadores AUSENTE: 3/3. Servidor integral: 213/213. Typecheck e build web passaram; bundle 597,29 kB gera aviso >500 kB.
+- Correção BUG-024: textarea de opt-out não refletia termos assíncronos. `key` baseada nos dados carregados força aplicação de configuração persistida; teste visual salva e confirma após reload. Primeiro regressão apontou também asserção global frágil em REQ-131; teste agora compara o delta de envios do próprio caso e a regressão integral passou.
+- BUG-022 segue aberto para compressão de vídeo; BUG-023 e BUG-024 corrigidos localmente. Referral, opt-out, envio e validação usaram somente eventos, provedores e conectores fictícios.
+- REQ-401 aguarda definição de eventos, destino do webhook e métricas. REQ-408/409 não possuem seleção multiconexão ou failover. REQ-410 foi cancelada pela decisão explícita da seção 6.
+- API/front existentes responderam HTTP 200. `.audit/noctua-audit.db` preservado; produção só leitura.
+- Próximo módulo: Economia de IA, REQ-414. Provedor simulado; não solicitar chave real.
+- `scripts/iniciar-noctua-online.ps1` continua fora do commit. O arquivo raiz `npx` não existe.
+
+## Ponto de retomada — 30/10/2026 — após Economia de IA
+
+- REQ-414–443 fechadas: 10 `COMPLETO`, 14 `COMPLETO-LOCAL`, 1 `DEFEITO` (REQ-425/BUG-025), 4 `DESCONECTADO` (419–422) e 1 `AUSENTE` (430). 25 estados mudaram.
+- Playwright 9/9 em três viewports; servidor 218/218; typecheck e build passaram. Evidências individuais em `REVISAO/evidencias/REQ-414/`–`REQ-443/`.
+- BUG de REQ-423 corrigido: métricas separadas por dia e mês. Bundle web 597,52 kB mantém aviso >500 kB.
+- Falhas de fixture/expectativa corrigidas e regressão integral repetida. Banco do usuário `.audit/noctua-audit.db` preservado; nenhum provedor de IA ou dado de produção foi acessado.
+- REQ-425 segue em defeito: cache não entende equivalência semântica geral. REQ-430 sem embeddings; REQ-419–422 mostram flags sem consumidores. Nenhuma chave real foi solicitada.
+- Próximo módulo: Ferramentas laterais e respostas padrão, REQ-444–469. Avaliar critérios ambíguos por item e registrar decisões sem envio de WhatsApp.
+- `scripts/iniciar-noctua-online.ps1` permanece modificado previamente e fora de qualquer commit.
+
+## Ponto de retomada — 30/10/2026 — após Ferramentas laterais/Atendimento
+
+- Lote REQ-444–487 fechado: 25 `COMPLETO`, 14 `DECISÃO` e 1 `DEFEITO` (REQ-464/BUG-026); quatro itens já completos foram preservados.
+- Playwright `e2e/side-tools.spec.ts`: 30/30 em três viewports; suíte integral do servidor: 219/219; typecheck e build passaram. Ledger: 326 REQs com teste vinculado e 377 sem.
+- BUG-027/028/029 corrigidos localmente. BUG-026 permanece aberto: ação de macro anuncia figurinha, mas seletor/dispatch não oferece suporte a sticker.
+- Evidências visuais em `REVISAO/evidencias/REQ-444/` até `REQ-487/` para os itens exercitados. `.audit/noctua-audit.db` preservado, organização temporária restaurada e nenhuma mensagem enviada.
+- Próximo lote pela lista: L-18, REQ-488 em diante. Continuar com o ambiente local existente, sem reset e sem acesso de escrita à produção.
+- `scripts/iniciar-noctua-online.ps1` permanece fora do commit por alterar a raiz de execução dos comandos Vercel; mudança já explicada. O arquivo `npx` não está na raiz.
+
+## Ponto de retomada — 30/10/2026 — após Atendimento e Personalização
+
+- Lote REQ-488–503 avaliado: 15 `COMPLETO`; REQ-499 em `DECISÃO` quanto a remover também teclas numéricas configuráveis.
+- Playwright `e2e/personalization-attendance.spec.ts`: 15/15 testes (45 execuções) nos três viewports; evidências em `REVISAO/evidencias/REQ-488/`–`REQ-503/`. Ledger: 342 com teste vinculado, 361 sem.
+- As preferências visuais foram interceptadas no fixture de teste. Nenhum dado foi escrito no banco `.audit`, nenhuma mensagem foi enviada e nenhuma produção foi acessada.
+- Correção no teste: informar a versão 3 de personalização para a normalização não ocultar todos os atalhos; seletores corrigidos para os nomes e destinos reais, com validação mobile responsiva.
+- Próximo lote: L-19, iniciando REQ-507. Manter local, sem reset do banco; script Vercel permanece fora do commit.
+
+## Ponto de retomada — 30/10/2026 — após revisão do HUD
+
+- Lote REQ-507–519 avaliado: 12 `COMPLETO`; REQ-512 segue `PARCIAL` enquanto os filhos ativos das Partes 1/2 não estiverem concluídos ou decididos.
+- Regressão visual final `e2e/personalization-attendance.spec.ts`: 36/36; typecheck passou. Ledger: 354 com teste vinculado, 349 sem. Evidências em `REVISAO/evidencias/REQ-507/`–`REQ-519/`.
+- REQ-510 confirmou arraste para colisão, encaixe e persistência sem sobreposição no desktop; mobile manteve o layout responsivo encaixado. Todos os writes de preferência foram interceptados pelo fixture, `.audit/noctua-audit.db` preservado.
+- Sem defeitos novos. Próximo módulo: L-20, começando REQ-520; inspeção de infra permanece read-only conforme protocolo. Script Vercel fora do commit.
+
+## Ponto de retomada — 30/10/2026 — após L-20 Infraestrutura
+
+- REQ-521/526 receberam prova local: corpo de backup >100 MiB importado pela API persistente em SQLite temporário; IA sem ativação não faz chamada externa nem reserva custo. Ambas `COMPLETO-LOCAL` conforme política de serviços gratuitos e IA opcional.
+- REQ-535/538/539/543 foram fechadas com documentação operacional e/ou publicação histórica verificável. L-20 registrou 6 alterações de estado no total; a ledger conta 356 com teste vinculado e 347 sem.
+- API local `127.0.0.1:3340/atendimento` respondeu 200; arquivo `npx` na raiz não existe. Não houve acesso ao `.audit/noctua-audit.db`, a valores de `.env`, Vercel, Firebase, túnel, WhatsApp real ou produção.
+- `scripts/iniciar-noctua-online.ps1` continua modificado e fora de staging/commit; não executar nem publicar com ele.
+- Bloqueios conhecidos reunidos para avaliação final: REQ-523 hospedagem persistente/API sem PC; REQ-527 escopo das contas conectadas; REQ-530 conexão WhatsApp real; REQ-533/541 partida controlada do iniciador, que publica; REQ-534 saída do console; REQ-540 identificadores públicos Firebase locais; REQ-542 publicação na branch de produção.
+- Próximo lote: L-21, chaves de IA e geração, REQ-544 em diante. Usar somente provedor simulado; a decisão de não exigir chave real e pausar a IA sem cota permanece válida.
+
+## Ponto de retomada — 30/10/2026 — após L-21 chaves de IA
+
+- REQ-544–555 foram avaliadas: 10 `COMPLETO`, 2 `COMPLETO-LOCAL`; ledger: 368 com teste, 335 sem. Testes: servidor 2/2, Playwright 3/3 em três viewports, typecheck aprovado.
+- Chaves/API e respostas de cota foram fictícias; integração de UI mockada. Nenhum segredo real, chamada externa ou faturamento. Não pedir novamente chave de IA: usar simulador e respeitar serviços gratuitos/IA opcional.
+- Duas falhas iniciais de seletor e uma tentativa com caminho de teste errado foram corrigidas e repetidas com sucesso; progresso descreve causas. Nenhum BUG de produto surgiu.
+- Próximo lote: L-22, REQ-556–573. REQ-573 já está adiada até o proprietário enviar a Parte 8 e deve ficar fora da contagem, conforme §6.
+- `scripts/iniciar-noctua-online.ps1` permanece fora de staging e commit.
+
+## Ponto de retomada — 30/10/2026 — após L-22 Qualidade e documentação
+
+- REQ-556–572 fechadas ou classificadas; REQ-573 permanece adiada conforme §6. Totais após L-22: 393 COMPLETO, 91 COMPLETO-LOCAL, 93 PARCIAL, 41 A VERIFICAR, 51 substituídos/cancelados, 24 decisões (2 confirmadas), 4 desconectados, 3 defeitos, 3 ausentes; 370 com teste e 333 sem.
+- REQ-567 precisa de definição do período de sono, classes de fila e regra de retomada. Nenhum controle de envio foi alterado.
+- REQ-565 exige conferência física em dois monitores e está no CHECKLIST-MANUAL. REQ-566 foi retomada após reinício do PC, sem simular BSOD.
+- Prova de reconexão WhatsApp foi feita apenas com QR fictício na interface; botão não acionado. PTT testado em WAV fictício/socket. Áudio de iPhone e resposta de follow-up são provas históricas do contato de teste, não autorização para novos envios.
+- Próximo lote: L-23, painéis encaixáveis e recuperação de controles (REQ-574 em diante). Produção continua somente leitura.
+- `scripts/iniciar-noctua-online.ps1` permanece fora de staging/commit.
+
+## Auditoria Sandbox e suporte — complemento REQ-337/338/339/343/345/346/351/352 — 30/10/2026
+
+- O módulo já tinha 21 REQs com prova. Foram fechadas as 8 lacunas sem teste vinculado, preservando os estados finais existentes.
+- e2e/sandbox-support-gaps.spec.ts: 24/24 em 1366×768, 1920×1080 e 390×844; REQ-345 repetida 3/3 após correção. Capturas e JSON individuais em REVISAO/evidencias/REQ-337/, REQ-338/, REQ-339/, REQ-343/, REQ-345/, REQ-346/, REQ-351/ e REQ-352/.
+- Suíte completa do servidor: 220/220. Banco .audit/noctua-audit.db preservado, sem reset; mutações de API e chamadas externas foram bloqueadas nos testes visuais.
+- BUG-030 corrigido: Chromium do Playwright não decodificava o MP4 H.264/AAC; exemplo trocado por WebM VP8 local sem mudar o resultado esperado.
+- API local 127.0.0.1:3340/atendimento respondeu HTTP 200. Console registrou somente falhas esperadas de https://apis.google.com, bloqueado pela isolação do teste; zero erros de página.
+- scripts/iniciar-noctua-online.ps1 permanece fora de staging/commit. Nenhuma publicação foi executada.
+- Próximo lote do protocolo: L-23, painéis encaixáveis e recuperação de controles, começando REQ-574.
+
+- Typecheck geral do repositório passou; foram ajustados apenas os tipos do fixture em pps/server/test/ai-feature.test.ts, sem mudar asserções ou resultados esperados.
+
+## Lote L-23 — Painéis encaixáveis e recuperação — 30/10/2026
+
+- REQ-574–595 fechadas: 22 COMPLETO. Playwright 66/66; 66 JSON e 72 PNG em REVISAO/evidencias/REQ-574/–REQ-595/. Desktop 1366×768/1920×1080; mobile 390×844 confirmou fallback clássico.
+- REQ-578 também comprovou persistência de dockingEnabled/dockingLayout ao reabrir SQLite temporário (teste de servidor 1/1). Preferências visuais E2E mockadas; .audit/noctua-audit.db preservado, sem reset.
+- Zero erros de página. Vinte e dois erros de console foram chamadas de apis.google.com bloqueadas de propósito nos casos mobile. Nenhuma falha de produto confirmada; sem entrada nova em BUGS.md.
+- tsx inicialmente não rodou por uv_os_get_passwd ... ENOMEM; preload CommonJS temporário e caminho NODE_OPTIONS com barras / resolveram. Resultado final 1/1; nenhuma dependência alterada.
+- Próximo lote: L-24, Etiquetas e leads, REQ-596–602; preservar REQ-603–608 já completas.
+
+## Lote L-24 — Etiquetas e leads — 30/10/2026
+
+- REQ-596–602 fechadas: 7 COMPLETO; 603–608 preservadas. Playwright 21/21 em 1366×768, 1920×1080 e 390×844; 21 JSON e 21 PNG individuais.
+- Servidor operations.test.ts passou 1/1 em SQLite temporário: regra lida após salvar; confirmação exigida; valor inválido bloqueado; uma venda atribuída; ROI 400%; nota interna e fixação; zero envios fictícios.
+- Writes visuais interceptados; .audit/noctua-audit.db não mudou. Zero erros de página; nove logs de console apis.google.com bloqueados de propósito no mobile. Nenhum defeito novo.
+- Próximo: Revisão e menu contextual, somente pendências REQ-660–668, 673, 675, 676, 678, 680, 682, 684–687.
+## Ponto de retomada — 30/10/2026 — após L-25
+
+- L-25 Revisão/menu contextual conferiu as REQs 660–668, 673, 675, 676, 678, 680, 682 e 684–687. Resultados e limites por ID estão no LEDGER; decisão REQ-680 aguarda aprovação para ações de reação reais.
+- Playwright `e2e/context-menu-audit.spec.ts`: 18/18 nas três viewports após correção. Testes processuais 12/12; suíte completa do servidor 232/232; typecheck/build aprovados (aviso de chunk web >500 kB). Chromium local; escritas API/socket e chamadas externas interceptadas. Nenhum envio/exclusão/ação de menu executado; banco `.audit/noctua-audit.db` preservado.
+- Evidências individuais em `REVISAO/evidencias/REQ-668/`, `REQ-673/`, `REQ-675/`, `REQ-676/`, `REQ-678/`, `REQ-682/`; a suíte de processo cobre REQ-660–667 e 684–687.
+- Toque prolongado real, leitor de tela, janela destacada e compatibilidade de navegador permanecem em `CHECKLIST-MANUAL.md`; não contar como prova física.
+- Regra de parada reaplicada no lote: suspender em regra de negócio, exclusão, banco, remoção, tecnologia grande, custo ou ambiguidade; registrar no protocolo e avançar os itens independentes. REQ-680 é o único bloqueio decisório deste módulo.
+- Próximo lote segue o primeiro módulo pendente da LEDGER após REQ-687. `scripts/iniciar-noctua-online.ps1` continua intocado e fora do commit. Sem push/publicação.
+
+## Ponto de retomada — 30/10/2026 — após L-27 Chaves e operações
+
+- REQ-695–697 receberam prova API local por contas fictícias e estão `COMPLETO-LOCAL`: operações isoladas, ativação por chave, persistência na consulta seguinte, uso único e dispensa de aprovação manual passaram em `apps/server/test/access.test.ts` (20/20 na suíte).
+- A primeira chamada `tsx` falhou antes dos testes com `uv_os_get_passwd ... ENOMEM`; preload CommonJS de processo com `NODE_OPTIONS` resolveu sem alterar dependências nem asserções. A suíte usou SQLite em `%TEMP%` e removeu o diretório ao terminar; `.audit/noctua-audit.db` permaneceu intacto.
+- O front local reporta `authMode=local`; não há Firebase Auth Emulator configurado. Cadastro/verificação de e-mail e percurso visual de uma segunda conta permanecem no `CHECKLIST-MANUAL.md`; nenhum cadastro ou e-mail real foi feito.
+- Próximo passo: primeiro módulo não finalizado pela ordem do `LEDGER.csv`; conferir status, log, API e metadados do banco antes de qualquer novo teste. `scripts/iniciar-noctua-online.ps1` permanece fora do lote. Sem push/publicação.
+
+## Ponto de retomada — 31/10/2026 — após L-01 Estrutura
+
+- REQ-001 e REQ-008 concluídas: `REQ-001` compilou os dois workspaces em modo estrito e não encontrou marcadores de implementação pendente em comentários; `REQ-008` moveu cartão com a alça do Kanban, persistiu a etapa em SQLite temporário e confirmou a ordem visual após recarregar.
+- Testes finais: estrutura + CRM 9/9; Playwright REQ-008 3/3 (1366×768, 1920×1080, 390×844). Evidências sob `REVISAO/evidencias/REQ-001/` e `REQ-008/`.
+- Falhas de teste corrigidas sem alterar critérios: o detector de pendências confundiu o português “todo” com `TODO`; agora exige marcador de comentário explícito. No Playwright, a rolagem da lista ocultava a origem e o índice do cartão mudava durante o arraste; destino passou a ser selecionado pelo contato e a rolagem automática foi exercitada. Dois POSTs de presença esperados foram isolados junto com o POST de movimento; todos foram interceptados.
+- Nenhum defeito de produto confirmado e nenhum código funcional do app alterado. Front/API responderam 200; `.audit/noctua-audit.db` permaneceu em 2.039.808 bytes com `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`.
+- Próximo módulo pela ordem do ledger: Conexões, REQ-017–021. Reconfirmar `git status`, `git log`, serviços e banco antes dos testes. Sem reset, push ou produção.
+
+## Ponto de retomada — 31/10/2026 — após Conexões
+
+- REQ-017–020 ficaram `COMPLETO-LOCAL`; REQ-021 ficou `COMPLETO`. Provas individuais em `REVISAO/evidencias/REQ-017/`–`REQ-021/`; REQ-021 passou Playwright em três viewports.
+- Servidor focado: 31/31; Playwright: 3/3. API/front existentes responderam HTTP 200. `.audit/noctua-audit.db` permaneceu inalterado: 2.039.808 bytes, `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`.
+- Não houve defeito funcional. Duas correções de fixture foram testadas novamente; details em `PROGRESSO_REQS.md`. Writes visuais foram interceptados, testes de servidor usaram SQLite temporário e produção não foi acessada.
+- Pendência externa: validar agenda, fotos visíveis, histórico disponível e etiqueta importada em conta WhatsApp descartável; seguir `REVISAO/CHECKLIST-MANUAL.md`.
+- Próximo lote: módulo Mensagens, primeira REQ pendente após REQ-021. Reconfirmar Git, API/front e metadados do banco antes de testar.
+- `scripts/iniciar-noctua-online.ps1` permanece fora do lote e do commit.
+## Ponto de retomada — 31/10/2026 — após Mensagens L-03
+
+- REQ-024–053 avaliadas: 14 COMPLETO, 10 COMPLETO-LOCAL; REQ-036 foi posteriormente esclarecida e fechada como COMPLETO, conforme registro ao final deste protocolo. REQs já finais foram preservadas.
+- Playwright: 21/21 em três viewports. Servidor focado: 9/9 em SQLite temporário. Front/API: HTTP 200. .audit/noctua-audit.db preservado (2.039.808 bytes; 2026-10-30 18:07:20 UTC). As mutações visuais e envios foram interceptados; nenhuma produção acessada.
+- REQ-036: decisão pendente à época deste checkpoint; atualizada após esclarecimento do usuário no registro de 31/10/2026 ao final deste protocolo.
+- Conferências externas pendentes estão agrupadas no REVISAO/CHECKLIST-MANUAL.md; nenhum envio real foi feito.
+- Próximo lote por módulo: Fluxos e CRM, REQ-054–075 (22 pendentes). Não resetar o banco nem refazer itens já completos.
+- scripts/iniciar-noctua-online.ps1 permanece modificado fora do lote e fora de staging; sem push ou publicação.
+
+## Ponto de retomada — 31/10/2026 — após Fluxos e CRM L-04
+
+- L-04 fechado no commit `3ea699a`: REQ-054–075, 22 COMPLETO-LOCAL. Playwright final 21/21 nos três viewports; evidências PNG/JSON individuais em `REVISAO/evidencias/REQ-054/`–`REQ-075/`.
+- LEDGER regenerado após o commit: 482 REQs com teste vinculado, 221 sem. Contagens: 454 COMPLETO, 133 COMPLETO-LOCAL, 24 PARCIAL; demais estados preservados.
+- Local continua em `127.0.0.1:5180` e `:3340`; ambos HTTP 200. `.audit/noctua-audit.db` sem alteração (2.039.808 bytes, `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`). Não resetar, não iniciar outro servidor, sem produção.
+- Mobile registra somente chamadas `apis.google.com` bloqueadas pelo isolamento; sem erros de página ou mutações não interceptadas. REQ-064/065 aguardam recebimento em aparelho descartável; conferir `CHECKLIST-MANUAL.md`. Modo teclado do Kanban permanece conferência opcional.
+- Próximo módulo por ordem: L-05 Backups, REQ-076–097. Antes de testes: confirmar status/log, front/API e metadados do `.audit`; testes graváveis devem usar SQLite temporário ou fixture, nunca resetar o banco.
+- Sem push/publicação. `scripts/iniciar-noctua-online.ps1` segue modificado e fora de staging.
+
+## Ponto de retomada — 31/10/2026 — após Backups L-05
+
+- L-05 REQ-076–097 fechado: 15 COMPLETO, 5 COMPLETO-LOCAL; REQ-091/092 preservadas. LEDGER.csv deve refletir as provas individuais e o commit ao final da etapa.
+- Resultados: Playwright 49 aprovados/2 pulados; backup.test.ts 16/16; authenticated-request.test.ts 5/5. Casos e correções do harness em REVISAO/evidencias/lote-L05-backups-2026-10-31.md.
+- Front/API existentes responderam HTTP 200. .audit/noctua-audit.db permaneceu em 2.039.808 bytes com LastWriteTimeUtc 2026-10-30T18:07:20.5497691Z. Sem servidor adicional, reset, produção, envio ou publicação.
+- Pendências manuais: arquivo histórico/reporte Teste para REQ-089/090; futura inicialização local segura REQ-093; QR em aparelho descartável REQ-094; túnel real não interrompido REQ-095. Detalhes e limites em CHECKLIST-MANUAL.md.
+- REQ-126 permanece DECISÃO. Próximo defeito aberto não relacionado a chave de IA: REQ-381/BUG-022, compressão de vídeo; investigar e tentar uma correção local segura, preservando o resultado esperado.
+- scripts/iniciar-noctua-online.ps1 continua modificado e não deve ser staged, committed ou executado; não publicar nem fazer push.
+
+## Ponto de retomada — 31/10/2026 — após correção de diagnóstico REQ-381
+
+- BUG-022 foi encerrado como falso positivo: o teste antigo comparava os bytes antes da transcodificação do servidor. REQ-381 agora está COMPLETO com prova real no endpoint compartilhado pelo chat e Biblioteca.
+- Regressões: `attendance.test.ts` 25/25; `e2e/ai-media.spec.ts` 24/24 em três viewports. Evidências individuais em `REVISAO/evidencias/REQ-381/`; Playwright final registrou `passed` e zero testes falhos.
+- Banco `.audit/noctua-audit.db` intacto; testes do servidor usaram SQLite temporário e mutações visuais foram interceptadas. Sem produção, envio ou chave real.
+- Próximas pendências não finais: REQ-408/409 ausentes, REQ-419–422 desconectadas, REQ-425 defeito de cache semântico e REQ-430 ausente; seguir pelo próximo item corrigível sem chave real e registrar decisões/ausências conforme o protocolo.
+- `scripts/iniciar-noctua-online.ps1` permanece fora de staging/commit. Sem push ou publicação.
+
+## Ponto de retomada — 31/10/2026 — após correção REQ-464
+
+- BUG-026 corrigido: macros aceitam mídia WebP como figurinha por meio de `asSticker`; servidor valida MIME, persiste `send.kind=sticker` e a execução usa o campo sticker do conector fictício. REQ-464 agora está COMPLETO.
+- Regressões: `operations.test.ts` 62/62; `side-tools.spec.ts` 30/30 nas três viewports; typecheck aprovado. Salvamento visual interceptado e nenhum envio real.
+- A falha incidental de REQ-402/403 foi corrigida no teste por injeção de relógio opcional no `BusinessWorker`; produção continua usando `new Date()` por padrão.
+- Banco `.audit/noctua-audit.db` intacto; front/API existentes HTTP 200. Próximo defeito aberto: REQ-425/BUG-025, cache “semântico” apenas lexical; IA externa continua fora do escopo, mas a implementação local pode ser investigada.
+- `scripts/iniciar-noctua-online.ps1` permanece fora de staging/commit. Sem push ou publicação.
+
+## Ponto de retomada — 31/10/2026 — após fechamento REQ-512
+
+- REQ-512 agora está `COMPLETO`: o teste exige que REQ-488–511 estejam completos ou com decisão registrada e confirmou as sete abas do editor em três viewports (3/3).
+- Evidências atualizadas em `REVISAO/evidencias/REQ-512/`. Front/API HTTP 200; `.audit/noctua-audit.db` inalterado em 2.039.808 bytes, `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`.
+- REQ-425/BUG-025 não deve ser reclassificada por regras léxicas adicionais. Sem embedding/modelo local, permanece defeito de IA separado; nenhuma chave externa deve ser solicitada.
+- Próximo lote fechável sem produção: Infraestrutura REQ-527/534/542. Inspecionar e testar apenas localmente; não executar nem commitar `scripts/iniciar-noctua-online.ps1`, não fazer push/publicação.
+
+## Ponto de retomada — 31/10/2026 — após fechamento de Infraestrutura
+
+- REQ-523/527/540 estão em `DECISÃO`; REQ-530/533/541/542 em `COMPLETO-LOCAL`; REQ-534 em `COMPLETO`. Não restam estados `PARCIAL` ou `A VERIFICAR` na Infraestrutura.
+- Testes: infraestrutura 4/4 e persistência REQ-530 1/1, todos locais. Banco `.audit` inalterado. Evidências individuais em `REVISAO/evidencias/REQ-523/`, `527/`, `530/`, `533/`, `534/`, `540/`, `541/` e `542/`.
+- O iniciador não foi executado; `scripts/iniciar-noctua-online.ps1` permanece modificado fora do staging/commit. Nenhum push, publicação, Firebase, túnel ou WhatsApp real foi alterado.
+- Próximo trabalho: regenerar ledger, rodar regressões dos dois arquivos e fechar o commit; depois recontar apenas defeitos/ausências/desconexões e decisões restantes.
+
+## Retomada — 31/10/2026 — fechamento da regressão de Infraestrutura
+
+- O pedido de retomar Sandbox foi conferido: REQ-328–356 já estão finais no LEDGER (21 `COMPLETO`, 8 `COMPLETO-LOCAL`), com evidências existentes. Não repeti testes nem mexi nos dados.
+- Fechamento pendente do ponto anterior concluído: `infrastructure-audit.test.ts` 4/4 e teste REQ-530 em `whatsapp.test.ts` 1/1. Primeira execução falhou antes de iniciar por diretório de trabalho relativo errado; corrigido o diretório, sem mudar teste ou expectativa.
+- LEDGER regenerado: 506 REQs com teste vinculado, 197 sem. Estados atuais: 473 `COMPLETO`, 142 `COMPLETO-LOCAL`, 3 `AUSENTE`, 1 `DEFEITO`, 4 `DESCONECTADO`, 29 em decisão (7 `DECISÃO`, 7 `PRECISA DE DECISÃO`, 15 decisões registradas), 51 substituídas/canceladas.
+- API local retornou HTTP 200. `.audit/noctua-audit.db` preservado: 2.039.808 bytes, `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`. Teste REQ-530 usou SQLite temporário; nenhuma gravação no banco `.audit`.
+- Branch `auditoria-reqs`; único arquivo preexistente fora do escopo segue modificado: `scripts/iniciar-noctua-online.ps1`, não executado nem staged. Sem push/publicação.
+- Próxima retomada: escolher próximo defeito/ausência/desconexão que possa ser verificado localmente sem chave de IA ou produção; manter decisões para o usuário agrupadas.
+
+## Lote — Automações REQ-408/409 — 31/10/2026
+
+- Revalidei no front local a distribuição entre conexões (REQ-408) e o failover de chip (REQ-409). Os controles seguem ausentes; estados `AUSENTE` mantidos, sem alterar regra esperada ou código do produto.
+- Playwright `e2e/automations.spec.ts`, caso REQ-408/409: 3/3 em 1366×768, 1920×1080 e 390×844. Capturas PNG e recibos JSON individuais em `REVISAO/evidencias/REQ-408/` e `REQ-409/`.
+- O teste só abriu o editor; não criou nem salvou campanha. API/front responderam HTTP 200; `.audit/noctua-audit.db` permaneceu com 2.039.808 bytes e `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`.
+- Branch `auditoria-reqs` sincronizada antes do lote. Próximo módulo com itens não aprovados: Economia de IA (REQ-419–422, 425, 430). IA real/chave real não será usada.
+
+## Lote — Economia de IA REQ-419–422, 425 e 430 — 31/10/2026
+
+- Playwright `e2e/economy.spec.ts`: 6/6 (REQ-419–422 e REQ-430) em 1366×768, 1920×1080 e 390×844. Evidências visuais atualizadas em REQ-419–422 e REQ-430; REQ-439/440 também foram exercitadas pelo caso compartilhado de prévia e aplicação.
+- `operations.test.ts`, caso REQ-424/425: 1/1 em SQLite criado sob `%TEMP%`. Evidência REQ-425 atualizada. O teste passou; `BUG-025` e estado `DEFEITO` permanecem porque a reutilização lexical controlada não satisfaz equivalência semântica geral.
+- Mantidos `DESCONECTADO` para REQ-419–422 e `AUSENTE` para REQ-430. Sem chamada externa, chave real, modelo externo ou gravação no banco `.audit`; API/front locais permanecem ativos.
+- Entre os itens não aprovados tipo A/B no LEDGER, REQ-425 é o único restante. Corrigi-la exige escolher/autorizar tecnologia de modelo ou embedding local; sinônimos adicionais não resolvem o critério. Próxima retomada aguarda essa decisão técnica; demais decisões e verificações externas seguem registrados no LEDGER/CHECKLIST-MANUAL.
+
+## REQ-425 — dependência e modelo local autorizados — 31/10/2026
+
+- Autorização recebida para dependência/modelo de embeddings gratuita, open source e local, sem chave paga e sem envio de conversas.
+- Dependência fixada: `@huggingface/transformers` 3.8.1 (Apache-2.0). Modelo: `Xenova/paraphrase-multilingual-MiniLM-L12-v2`, revisão `2c4055b12046f11709e9df2c122e59ffbdc2f900`, ONNX quantizado `model_quantized.onnx` (118 MB); base `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` sob Apache-2.0, 50 idiomas incluindo português.
+- Motivo: produzir vetores semânticos multilíngues localmente para cumprir REQ-425. O runtime será configurado com `allowRemoteModels=false`; os arquivos do modelo ficam em `.audit/models/`, ignorado pelo Git. O downloader busca somente arquivos estáticos públicos e valida SHA-256 do ONNX; não transmite conversas.
+- Referências: [Transformers.js Node/offline](https://huggingface.co/docs/transformers.js/en/tutorials/node), [modelo multilíngue e licença](https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2), [modelo ONNX compatível](https://huggingface.co/Xenova/paraphrase-multilingual-MiniLM-L12-v2).
+
+## Retificação e fechamento da REQ-425 — 31/10/2026
+
+- Retifica os apontamentos anteriores que deixavam REQ-425 como bloqueada/defeito: a decisão de usar embeddings locais foi recebida e implementada abaixo; REQ-430 permanece separada como `AUSENTE` porque não há ferramenta de indexação vetorial de histórico/regras na interface.
+- Dependência: `@huggingface/transformers` 3.8.1, Apache-2.0. Modelo: `Xenova/paraphrase-multilingual-MiniLM-L12-v2`, revisão `2c4055b12046f11709e9df2c122e59ffbdc2f900`, Apache-2.0; ONNX quantizado 118 MB; inclui português.
+- `npm run model:download -w @noctua/server` baixa apenas arquivos públicos para `.audit/models/` (ignorado pelo Git) e valida SHA-256. Inferência local força `allowRemoteModels=false`; nenhum texto de conversa sai do processo.
+- Cache compara embeddings normalizados por cosseno com limiar 0,84; mantém aprovação, validade e filtro de PII. Vetor e revisão ficam internos e não são retornados pela API. Falha ao indexar uma nova resposta não bloqueia a sugestão.
+- Teste focal REQ-424/425 passou 1/1 em SQLite temporário e provedor simulado: paráfrase PT-BR reutilizada, pergunta sem relação recusada, vetor de 384 dimensões persistido sem vazamento. Typecheck aprovado. Banco `.audit` preservado.
+- Tentativas registradas: chamada de teste com filtro após o glob iniciou suíte ampla; interrompida e substituída por comando focal correto. Caso negativo novo revelou contador esperado desatualizado; corrigida só a expectativa de chamadas simuladas, e reteste passou.
+- Instalação relatou 13 vulnerabilidades transitivas (11 moderadas, 2 altas); `npm audit fix` não foi executado. Revisar em tarefa separada.
+- Próximo passo: atualizar LEDGER, commitar e fazer push desta correção na branch `auditoria-reqs`; depois seguir pelo próximo módulo não final, sem produção ou novo servidor.
+
+## Próximo módulo e bloqueio de decisão — 31/10/2026
+
+- REQ-425 foi fechada como `COMPLETO-LOCAL` no commit `b5cbd76`, já publicado na branch `auditoria-reqs`.
+- Próximo módulo aberto na ordem do LEDGER: Atendimento (REQ-448–499). Os 15 IDs ainda não finais estão todos em `DECISÃO`: critérios pedem mudanças amplas de visual, estrutura, dados ou ações rápidas sem definir resultado esperado; detalhes individuais permanecem no LEDGER.
+- Não alterei código nem dados para esses critérios vagos. Próxima ação depende de definir quais comportamentos/escopo são desejados para Atendimento. Nenhum acesso a produção.
+
+
+## Atendimento — fechamento visual parcial — 31/10/2026
+
+- REQ-455/457/458: os recibos e capturas correspondem aos testes E2E em `http://127.0.0.1:5180/atendimento`; os metadados registram `fixtureApi: true`, valores sintéticos e nenhum erro de console. 455/457 ficam `DECISÃO` porque persistência não resolve se telefone é editável nem se valor sincroniza com CRM. 458 permanece `COMPLETO`.
+- REQ-686 `process.json` não é evidência de teste: registra apenas um `git status` e o estado de dois arquivos. Permanece pendente e fora do commit. `scripts/iniciar-noctua-online.ps1` também segue intocado por esta auditoria e fora do staging.
+- Regressão Playwright focal: 21/21 casos passaram em 1366x768, 1920x1080 e 390x844 para REQ-448/453, 455/457/458, 461–466, 472, 475, 482 e 484–486/487. Primeiro comando falhou antes de executar por omitir `--config e2e/playwright.config.ts` (`/atendimento` foi tratado como URL inválida); comando corrigido usou a configuração correta e os servidores já ativos. Nenhuma expectativa foi alterada para forçar aprovação.
+- REQ-472 foi verificada até o pedido POST `{blocked:true}` com confirmação; endpoint interceptado pelo fixture, portanto contato WhatsApp real não foi bloqueado. `COMPLETO-LOCAL`; prova externa somente em conector descartável.
+- REQ-475, 482 e 499 fechadas como `COMPLETO`: ativação de atalho persistida, reordenação por setas persistida, e ausência de campo numérico de ordenação (teclas ficam separadas). REQ-448/453/455/457/461/462/463/465/466/483/487 continuam `DECISÃO`, com perguntas exatas no LEDGER.
+- Validação de segurança: front e API local responderam HTTP 200; `.audit/noctua-audit.db` permaneceu com 2.039.808 bytes e `LastWriteTimeUtc=2026-10-30T18:07:20.5497691Z`. Sem produção, WhatsApp real, Firebase, Vercel, túnel ou `.env.local`.
+- Embeddings REQ-425: `@huggingface/transformers` 3.8.1 e `Xenova/paraphrase-multilingual-MiniLM-L12-v2` revisão `2c4055b12046f11709e9df2c122e59ffbdc2f900`; inferência local **não exige chave de API** e **não transmite dados de conversas**. Só o download inicial obtém artefatos públicos fixos; inferência usa `allowRemoteModels=false`.
+- Próximo ponto: concluir commit/push deste lote e prosseguir pelo próximo módulo não final do LEDGER.
+
+
+## Ponto de parada — decisões necessárias após Atendimento — 31/10/2026
+
+- Lote Atendimento fechado no commit `8365815`, push confirmado em `origin/auditoria-reqs`. Playwright: 21/21 em três viewports. Estados alterados: REQ-472 para `COMPLETO-LOCAL`, REQ-475/482/499 para `COMPLETO`. REQ-455/457/458 capturas confirmadas; 455/457 mantidas em decisão e 458 completa. Restam 11 decisões no módulo Atendimento: 448, 453, 455, 457, 461, 462, 463, 465, 466, 483 e 487; perguntas exatas no LEDGER.
+- REQ-686/process.json segue não confirmado como evidência de teste e não foi commitado; `scripts/iniciar-noctua-online.ps1` permaneceu fora do staging.
+- Próximo módulo na sequência: Infraestrutura. REQ-523 depende de escolher PC+túnel versus hospedagem persistente, incluindo provedor/orçamento/região/volume/backup; REQ-527 depende de lista de serviços/contas e escopo de acesso por serviço; REQ-540 depende de IDs públicos do Firebase de teste ou de manter authMode local. Perguntas completas já constam em REQUISITOS/LEDGER. Não houve conexão externa nem alteração.
+- Verificação seguinte: Qualidade e documentação, REQ-567 depende de horários, filas/tipos de envio e retomada automática; REQ-573 permanece adiada até o usuário enviar Parte 8, conforme decisão já registrada. Em Revisão e menu contextual, REQ-680 aguarda aprovação do proprietário para ações de reação/permissão/persistência.
+- Serviços locais continuam HTTP 200; banco `.audit/noctua-audit.db` preservado. Nenhum serviço de produção acessado. Retomar após as decisões/artefatos que só o usuário pode fornecer ou aprovar.
+
+
+## Retomada — decisões de Infraestrutura e auditoria de Qualidade — 31/10/2026
+
+- Decisões do usuário registradas: REQ-523 permanece `DECISÃO` sem implementar hospedagem; REQ-527 permanece `DECISÃO` sem conectar contas; REQ-540 permanece `DECISÃO` sem tocar em Firebase ou configuração de produção. Evidências JSON guardam a decisão. Nenhum serviço externo foi acessado.
+- Os dois arquivos E2E `e2e/side-tools.spec.ts` e `e2e/personalization-attendance.spec.ts` estão commitados no `8365815`; push dos commits `8365815` e `f183e33` confirmado.
+- Próximo módulo independente, Qualidade e documentação: busca local em `apps`/`e2e` não encontrou política global de horário de sono; há pausas de campanhas, sequências e fluxos, mas o período, tipos de mensagem e retomada requerem decisão. REQ-567 continua `PRECISA DE DECISÃO` com pergunta exata no LEDGER; não alterei filas nem envios.
+- REQ-573 continua adiada, conforme decisão anterior do usuário, até o envio da Parte 8. Não há artefato para especificar ou testar.
+- Depois, REQ-680 segue bloqueada por aprovação do proprietário para a semântica e efeitos das reações. Nenhuma implementação de reação foi iniciada.
+- REQ-686/process.json e `scripts/iniciar-noctua-online.ps1` continuam fora do staging/commit. API/front locais responderam HTTP 200; banco .audit preservado.
+
+
+## Decisões registradas — Qualidade e documentação — 31/10/2026
+
+- REQ-567: decisão do usuário registrada como `DECISÃO`, adiada. Não definir política de pausa, horários, filas ou retomada automática. Nenhum fluxo/envio foi alterado.
+- REQ-573: a Parte 8 não foi fornecida; registrar como `DECISÃO` dependente de envio futuro do texto. Não presumir escopo nem declarar conclusão. Recibo em `REVISAO/evidencias/REQ-573/decisao-parte-8.json`.
+- Próximo módulo não fechado independente dessas duas decisões: Revisão e menu contextual, REQ-680. Conferir apenas o que já pode ser verificado localmente; aprovação do proprietário ainda é necessária antes de alterar ações, permissões ou persistência de reações.
+
+
+## Revisão e menu contextual — REQ-680 — 31/10/2026
+
+- Playwright local focal: REQ-680 passou 3/3 (1366x768, 1920x1080 e 390x844). Menu de mensagem fictícia não apresentou botão acessível/faixa nem item de reação; itens sem marca foram conferidos. Capturas e recibos em `REVISAO/evidencias/REQ-680/`.
+- Mantido `DECISÃO`: implementação requer aprovação do proprietário sobre ação, permissão e persistência das reações. Não criei controle nem alterei o app.
+- O teste bloqueou gravações de API e origens externas. Os 403 no console foram gerados pela guarda ao interceptar POSTs de presença e socket; nenhuma escrita chegou ao servidor. `.audit/noctua-audit.db` manteve 2.039.808 bytes e timestamp 2026-10-30T18:07:20Z.
+- Nenhum outro módulo com requisito A/B independente ficou na sequência imediata; restantes itens pendentes no LEDGER dependem de decisões, artefatos ausentes ou funções já registradas como AUSENTE/DESCONECTADO. Retomar após aprovação da semântica de REQ-680 ou avançar para outro módulo independentemente escolhido.
+
+
+## Ponto de retomada — após REQ-680 — 31/10/2026
+
+- Commit `3e69197` enviado a `origin/auditoria-reqs`; Playwright REQ-680 3/3 e capturas registradas. LEDGER mantém o item em `DECISÃO`.
+- Próxima ação neste módulo exige aprovação do usuário sobre semântica das reações, ações disponíveis, permissões e persistência. Até lá, não implementar.
+- REQ-567 e REQ-573 foram decididas conforme seção anterior: pausa adiada; Parte 8 ausente, depende de envio futuro.
+- REQ-686/process.json e `scripts/iniciar-noctua-online.ps1` seguem preexistentes e fora dos commits.
+
+## Revisão e menu contextual — REQ-680 autorizada e fechada — 31/10/2026
+
+- O usuário autorizou persistir reações e alterar papéis sintéticos no banco `.audit`; produção e banco real permaneceram intocados.
+- Implementada faixa de 👍, ❤️, 😂, 😮, 😢 e 🙏. Cada integrante (`ADMIN`/`MEMBER`) mantém uma reação por mensagem; clicar na mesma remove, escolher outra substitui. GET devolve contagem e marca a reação do usuário. Notas internas não aceitam reação. O endpoint valida sessão/conversa/mensagem, papel e emoji; notifica a UI, sem enviar mensagem ao WhatsApp.
+- Migration aditiva `20261031090000_message_reactions`, tabela `ChatReaction`, chave única mensagem/ator e FK com cascade. `prisma migrate status` confirmou schema atualizado em `.audit/noctua-audit.db`; nenhum reset ocorreu.
+- Prisma `migrate deploy` encontrou `database is locked` duas vezes enquanto o servidor existente mantinha SQLite aberto. A migration foi aplicada atomicamente com espera de lock de 30 s e inserção de checksum Prisma; `migrate status` depois confirmou consistência. Não parei nem subi serviço.
+- `apps/server/test/reactions-audit.test.ts`: 1/1 passou com fixtures únicas no `.audit`; criou e alterou MEMBER→ADMIN, verificou gravação, agregação, remoção, reload via GET, negação sem ator e emoji inválido; limpou apenas as próprias linhas.
+- Playwright `e2e/message-reactions.spec.ts`: 3/3 viewports (1366×768, 1920×1080, 390×844), add/reload/menu e fixture de papéis; `e2e/context-menu-audit.spec.ts` REQ-682: 3/3. Imagens e recibos em `REVISAO/evidencias/REQ-680/` e `REQ-682/`. E2E interceptou gravações fora da reação, bloqueou origens externas e não teve erros de console/página.
+- Ocorrências de teste corrigidas e retestadas: cliente de teste inicialmente gerado sem engine entrou no modo Data Proxy; o cliente padrão foi restaurado por geração num caminho temporário, sem substituir o binário carregado pelo servidor. O teste usa `PrismaClient` com datasource `.audit` explícito. Middleware próprio do harness reportava Zod 500, enquanto handler real retorna 422; harness alinhado ao `errorHandler`. Corrigido contador de notificações (4). E2E corrigiu a leitura de query em `URL.searchParams` e passou a usar mensagem sintética determinística. Nenhuma expectativa de produto foi enfraquecida.
+- Regressão integral do servidor: 250/250. Typecheck passou; build servidor/web passou com aviso existente de bundle web 599,33 kB (>500 kB). Ledger e Requisitos atualizados; REQ-680 mudou de `DECISÃO` para `COMPLETO`.
+- Regressão encontrou BUG-032 em REQ-425: o modelo era procurado em `apps/.audit` por caminho relativo incorreto quando npm executava no workspace do servidor. Caminho corrigido a partir de `import.meta.url`; teste focal e suíte integral passaram. `REVISAO/BUGS.md` e prova REQ-425 atualizados.
+- Próximo módulo elegível: nenhum item A/B não final no LEDGER. Restam estados finais que dependem de decisão/artefato (`REQ-126`, `REQ-194–197`, `REQ-223`, `REQ-401`, `REQ-448` etc., `REQ-567/573`, `REQ-523/527/540`) ou classificações `AUSENTE`/`DESCONECTADO` (`REQ-408/409`, `REQ-419–422/430`). Não há lote independente de decisão para iniciar nesta sequência.
+- O primeiro ensaio da suíte integral acionou o teste histórico REQ-686, que regravou `REVISAO/evidencias/REQ-686/process.json`, já modificado antes desta execução. Não consigo reconstruir o conteúdo não commitado anterior com segurança; o arquivo atual permanece fora do staging e precisa ser restaurado pelo usuário a partir da própria cópia/histórico, se aquele conteúdo precisar ser preservado. A suíte histórica foi ajustada para gravar futuras provas em `process-next-run.json`; `process.json` não foi escrito na regressão final.
+- Commit `54e4189` fechado e push confirmado em `origin/auditoria-reqs`; LEDGER registra esse commit para REQ-425/680. A branch ficou sem commits à frente.
+- Nenhum próximo módulo tem requisito A/B pendente. Restantes REQs estão em decisão/ausente/desconectado, todos estados finais do protocolo.
+- Parada desta sequência: pedir ao usuário restauração do conteúdo prévio não commitado de `REVISAO/evidencias/REQ-686/process.json`, sobrescrito pelo teste histórico antes do bloqueio ser corrigido. O arquivo e `scripts/iniciar-noctua-online.ps1` ficaram fora do staging e dos commits.
+
+## Registro de integridade de evidências — 31/10/2026
+
+- `REVISAO/evidencias/REQ-686/process.json` foi sobrescrito pelo teste histórico. O artefato precisa ser regenerado a partir de uma nova execução verificável; não restaurar nem tentar reconstruí-lo com versões antigas.
+- Regra: testes não podem gravar, substituir ou remover arquivos em `REVISAO/evidencias/REQ-<id>/` de REQs já fechadas sem autorização explícita do usuário. Para reexecuções, usar saída temporária fora dessas pastas; evidência fechada só pode ser atualizada com autorização.
+
+## Decisão e fechamento local — REQ-036 — 31/10/2026
+
+- Decisão do usuário: a chave aleatória deve ser a própria chave EVP/UUID do usuário, obtida do participante Pix e cadastrada por ele no Noctua. O Noctua salva e usa a chave para montar QR/Copia e Cola; não emite uma EVP válida no DICT.
+- O Banco Central especifica a EVP como UUID gerado pelo DICT; a prova desta auditoria usa somente UUIDs fictícios. Não se cadastrou chave real nem se enviou pagamento.
+- Usadas provas já existentes, sem executar testes novos: `apps/server/test/attendance.test.ts` cobre cadastro, consulta e payload/QR; `e2e/messages-audit.spec.ts` cobre cadastro na Biblioteca, recarga e prévia. Evidências existentes em `REVISAO/evidencias/REQ-036/`.
+- REQ-036 atualizada para `COMPLETO` no LEDGER e em REQUISITOS; removida da lista de decisões. Nenhum código, banco, evidência, `scripts/iniciar-noctua-online.ps1` ou `REVISAO/evidencias/REQ-686/process.json` foi alterado.
+
+## Ponto de retomada — REQ-126 bloqueada por fonte ausente — 31/10/2026
+
+- Retomada na branch `auditoria-reqs`, commit base `59d3176`; `git status -sb` confirmou apenas alterações preexistentes em `REVISAO/evidencias/REQ-686/process.json` e `scripts/iniciar-noctua-online.ps1`, mantidas fora do staging.
+- Primeiro item A VERIFICAR: REQ-126 (Acesso e operação). Busca local por `6.txt` e nomes relacionados não encontrou a fonte; não existe critério verificável para um teste de navegador sem presumir escopo.
+- Nenhum teste de produto foi executado. Registro do inventário/bloqueio em `REVISAO/evidencias/REQ-126/blocked-missing-source.json`; estado permanece A VERIFICAR. Nenhuma evidência de REQ fechada foi gravada.
+- Próxima ação: usuário deve enviar/anexar a fonte 6.txt. Depois retomar REQ-126, fechar o módulo quando verificável e seguir a ordem por módulo do LEDGER.
+
+## Retomada — interface global e próximos itens A VERIFICAR — 31/10/2026
+
+- REQ-126 continua bloqueada pela ausência da fonte `6.txt`; não foi testada e não é o próximo item. Aguardar o usuário fornecer a fonte.
+- REQ-194–197 verificadas localmente com Playwright nas telas Atendimento, CRM, Campanhas e Configurações, em 1366×768, 1920×1080 e 390×844. Evidências novas somente em `REVISAO/evidencias/REQ-194/` a `REQ-197/`.
+- REQ-194: os quatro conteúdos não excederam os limites horizontais registrados (0 px de overflow nas capturas); a prova não mede alinhamento interno completo, portanto permanece A VERIFICAR.
+- REQ-195: tokens atuais e estilo de botão, campo, card e modal registrados. Busca no código não encontrou tabela HTML/role table; consistência exaustiva entre todas as telas/componentes continua sem prova, portanto A VERIFICAR.
+- REQ-196: spinner `rotate`, página `noctua-view-in`, modal `noctua-modal-in` e `animation:none` sob `prefers-reduced-motion`; 3 viewports aprovados. Pode ser fechado como COMPLETO-LOCAL.
+- REQ-197: nenhuma ação testada apresentou botão visível sem nome acessível nas quatro telas; foram abertos e fechados os diálogos de nova etapa/campanha e navegado para Identidade e cores. Isso não comprova ação+sucesso/erro para todos os botões; permanece A VERIFICAR.
+- Suíte focal `e2e/interface-open-reqs.spec.ts`: 12/12 aprovados. Não houve escrita em dados; capturas e recibos ficaram apenas nas pastas abertas acima. Nenhum resultado de teste foi alterado para obter aprovação.
+- Próximo item na ordem do LEDGER, exceto REQ-126 bloqueada: REQ-223 (Personalização). Continuar verificando o que pode ser provado sem implementar função nova nem alterar preferências reais.
+- REQ-223: inventário TSV revalidado contra a cópia atual: 504 controles em 70 arquivos, nenhum arquivo ausente e nenhum registro sem ligação sintática. Evidência adicional em `REVISAO/evidencias/REQ-223/inventory-recheck.json`. Mantém A VERIFICAR: handler ligado não comprova efeito, permissão, persistência nem retorno de sucesso/erro; escopo de “todos os botões” segue sem lista de ações.
+- REQ-401 é o próximo item da sequência: a decisão existente registra que expansão de webhooks/métricas carece de eventos, endpoint, esquema, autenticação, volume e retenção. Verificar fontes locais e registrar a falta de critério, sem inventar integração.
+- REQ-401: busca em código confirmou atribuição de campanha via `CAMPAIGN_ATTRIBUTION`, mas não definiu qualquer requisito de webhook. Mantida `DECISÃO` pela pergunta exata já registrada em `REVISAO/evidencias/REQ-401/decision.json`.
+- REQ-419–422: decisão B executada removendo da tela os controles de campaigns, training, receipts e dailyDigest; consumidores não foram adicionados. `npm run typecheck --workspace @noctua/web` passou. Playwright visual não pôde verificar o resultado: front `127.0.0.1:5180` parou de responder (HTTP request expirou em 5 s; `page.goto` em 30 s com `net::ERR_ABORTED`), enquanto API `127.0.0.1:3340/health` respondeu 200. A tentativa foi registrada somente em `REVISAO/evidencias/REQ-419/front-unavailable.json`; aguardar o front existente voltar, sem subir outro servidor.
+- REQ-430: teste focal `REQ-431` passou 1/1 em SQLite temporário e provedor simulado; busca lexical escolheu três trechos relevantes. REQ-425 não substitui este comportamento: usa embeddings somente no cache de respostas aprovadas. Evidência em `REVISAO/evidencias/REQ-430/lexical-rag-server-test.json`; estado pode ser COMPLETO-LOCAL.
+- Próximo item A VERIFICAR fora do grupo da Economia bloqueado visualmente: REQ-448 (Atendimento). Testar apenas o que não exigir front enquanto a porta 5180 estiver indisponível; manter captura apenas em pastas de REQs ainda abertas.
+- REQ-448/453: nova prova visual também bloqueada pela indisponibilidade de `127.0.0.1:5180`; registros em `REVISAO/evidencias/REQ-448/resume-test.json` e `REQ-453/resume-test.json`. Critérios continuam A VERIFICAR.
+- REQ-455: teste focal de aceitação falhou em SQLite temporário; telefone permaneceu `5511777770188` em vez de `5511777770189`. Código não tem campo de telefone e schema `profile` remove `phoneNumber`; defeito BUG-033 registrado. IDs de conversa/contato/conexão foram incluídos como invariantes de aceitação, mas não chegaram à asserção final por causa da falha do telefone.
+- REQ-457: teste focal falhou em SQLite temporário; `Contact.metadata.dealValue` foi salvo, porém não havia `CrmOpportunity` da conversa. Defeito BUG-034 registrado. Typecheck do servidor passou.
+- Próximo item: REQ-461; decisão B pede convite nativo em macro condicionado ao suporte do conector. Verificar esse suporte no código e registrar AUSENTE/DECISÃO sem alterar a função.
+- Revisão estática dos seguintes itens foi registrada em `source-review.json` apenas nas respectivas pastas ainda abertas: REQ-461/462/463/465/466/483/487. A enumeração de ações de macro não contém convite nativo, vCard ou lista interativa; mídia/texto suporta caminho de legenda mas não foi visualmente enviado; as ações CRM cobertas no enum são de etiqueta, e a barra de funções guarda uma posição `top|bottom`. Todas permanecem A VERIFICAR até prova visual no front ativo; para recursos do conector a compatibilidade externa também não foi presumida.
+- Próximo grupo: REQ-461–466 já revisado no código sem gravação de macro/envio; REQ-472 e seguintes já fechadas devem permanecer intocadas. O próximo requisito aberto é REQ-483 (configuração de posição), cuja prova visual está igualmente bloqueada.
+
+## Retomada atual — auditoria em andamento — 31/10/2026
+
+- REQ-126 permanece bloqueada por falta da fonte `6.txt`; não testar e não tratar como próximo item.
+- Provas da rodada: interface focal REQ-194–197 passou 12/12; REQ-196 fechada COMPLETO-LOCAL; REQ-194/195/197 continuam abertas por cobertura incompleta. REQ-223 tem inventário parcial (504/70), sem prova de resultado de todos os botões. REQ-401 foi classificada DECISÃO por falta de escopo verificável. REQ-430 passou 1/1 em SQLite temporário e foi fechada COMPLETO-LOCAL.
+- Decisões B de REQ-419–422 foram aplicadas removendo os controles desconectados. Typecheck web passou; teste visual está em espera porque `127.0.0.1:5180` não responde. API `127.0.0.1:3340/health` responde 200. Não iniciar servidor novo.
+- REQ-455 e REQ-457 têm testes de aceitação falhos em SQLite temporário e BUG-033/034 registrados; não foram corrigidos conforme a instrução de não implementar função nova. REQ-448/453 e REQ-461/462/463/465/466/483/487 têm registros estáticos parciais, sem falsa aprovação visual.
+- Arquivos protegidos `REVISAO/evidencias/REQ-686/process.json` e `scripts/iniciar-noctua-online.ps1` não devem entrar no staging/commit. Evidências de REQs fechadas não foram escritas.
+- Próximo passo por ordem do LEDGER: retomar prova visual de REQ-419–422 quando o front já existente voltar a responder; depois REQ-448 e 453, então seguir em ordem. Não reexecutar REQ-126 até receber `6.txt`.
+
+## Economia de IA — reteste e fechamento — 31/10/2026
+
+- Front e API locais responderam HTTP 200. Teste focal `e2e/economy.spec.ts` das REQ-419–422 passou 3/3 viewports (1366×768, 1920×1080, 390×844); os quatro controles removidos não aparecem e autoReply, copilot e summaries permanecem. Apenas fixtures de GET; nenhum dado persistido ou envio externo.
+- Capturas/recibos atualizados em `REVISAO/evidencias/REQ-419/` a `REQ-422/`. Não atualizar essas pastas novamente após o fechamento.
+- REQ-419–422: `COMPLETO-LOCAL`, decisão B aplicada. Módulo Economia de IA (REQ-414–443) sem itens A VERIFICAR; fechar e commitar este lote.
+- Próximo item em aberto na ordem do LEDGER, ignorando REQ-126 bloqueada: REQ-194. Revisão das capturas anteriores mostrou que Atendimento foi fotografado durante o carregamento lazy; o teste foi corrigido para esperar o layout real e repetido em 3 viewports, 3/3 aprovado. Capturas de REQ-194 atualizadas somente na pasta ainda aberta.
+- Ao seguir, nunca regravar as evidências fechadas REQ-419–422 nem REQ-196/430. `process.json` e `scripts/iniciar-noctua-online.ps1` permanecem fora do staging.
+- REQ-194: reteste corrigiu a espera de carregamento lazy e passou 3/3 viewports; layout atual medido, 0 px overflow, conteúdo dentro de 2 px. Fechada COMPLETO-LOCAL.
+- REQ-195: matriz ampliada passou 3/3 viewports nas quatro telas; tokens/tipografia/estilos computados registrados, tabela não aplicável (nenhuma tabela HTML/role=table). Fechada COMPLETO-LOCAL. Um primeiro ensaio mobile supôs raio arredondado para todo botão; a falha decorreu da suposição de teste, removida por não ser parte do critério. Reteste passou.
+- REQ-197: verificação parcial confirmou nomes acessíveis e fluxos seguros; não comprova os 504 botões/ações globais. Estado DECISÃO com pergunta exata em LEDGER/PENDENCIAS-DECISAO.md. Interface Global (REQ-194–197) fica auditada: 194/195/196 locais completos; 197 depende da definição de inventário/aceite.
+- Próximo item na ordem do LEDGER, exceto REQ-126 bloqueada: REQ-223 (Personalização). Retomar a prova parcial já registrada; não tocar em evidências fechadas.
+
+## Personalização — REQ-223 — 31/10/2026
+
+- Inventário estático revalidado; 504 controles em 70 arquivos, sem arquivo ausente ou registro sem ligação sintática. A prova não demonstra resultado real, persistência, permissão ou sucesso/erro.
+- REQ-223 classificada DECISÃO com pergunta exata em LEDGER/PENDENCIAS-DECISAO.md. Nenhuma função ou preferência foi alterada.
+- Próximo item aberto em ordem do LEDGER: REQ-448 (Atendimento); REQ-126 segue bloqueada por falta de `6.txt` e continua fora da sequência de teste.
+
+## Atendimento — reteste visual e correções locais — 31/10/2026
+
+- Reconfirmei front `127.0.0.1:5180` e API `127.0.0.1:3340` em HTTP 200. Branch inicial `auditoria-reqs`, limpa de commits à frente; arquivos protegidos já estavam modificados e permaneceram fora do staging.
+- REQ-419–422: reteste visual Playwright passou 3/3 viewports; controles removidos ausentes e consumidores mantidos. Para não gravar nas REQs fechadas, atualizei `e2e/economy.spec.ts` para aceitar `AUDIT_EVIDENCE_ROOT` e direcionei as novas capturas a `.audit/req419-retest-evidence/`. Evidências finais em `REVISAO/evidencias/REQ-419–422/` não foram regravadas.
+- REQ-453 passou 3/3: busca na Biblioteca lateral e ações Anexar/Enviar visíveis no compositor. REQ-463 passou 3/3 visualmente; teste isolado de servidor confirmou legenda URL enviada pelo FakeSocket. Sem mensagem externa.
+- BUG-033/REQ-455 corrigido: ficha edita telefone, associa ao mesmo contato/conversa, valida conflito 409; teste de servidor e Playwright com fixture passaram. BUG-034/REQ-457 corrigido: ficha sincroniza `dealValue` com `CrmOpportunity` e edição CRM atualiza a ficha; teste isolado e Playwright com fixture passaram. Não houve alteração de schema nem migration.
+- REQ-483/487 passaram 6/6 em três viewports: seletor exclusivo top/bottom e releitura após reload pela fixture de preferências; nenhuma preferência real foi gravada.
+- REQ-461/462/465: UI 3/3 confirma ausência das ações nativas; suporte condicional permanece não verificável sem conector descartável. Macro não foi salva nem enviada. REQ-448 permanece DECISÃO pela falta de alvo/resultado visual específico, embora botões tenham nomes acessíveis.
+- REQ-466: teste de aceitação falhou conforme A (somente etiquetas); macro ainda oferece “Adicionar etapa ou etiqueta”/“Remover etapa ou etiqueta”. BUG-035 registrado. `Label` é compartilhada com colunas CRM; aguarda decisão se separar tags/etapas ou aceitar movimento de cartão.
+- `typecheck` dos dois workspaces passou. Testes focais de servidor REQ-455/457/463 passaram 3/3 em SQLite temporário efêmero. Playwright REQ-455/457 passou 3/3; REQ-463 e REQ-483/487 passou 6/6; REQ-461/462/463/465/466 passou 3/3; o teste esperado da REQ-466 reproduziu o defeito em 1366×768.
+- Um comando `npm run test` executou a suíte integral apesar do filtro recebido: 250 passaram e 3 falharam naquele estado anterior às correções (BUG-033, BUG-034 e `reactions-audit.test.ts` sem `AUDIT_DB_PATH`, abortado antes de executar). Os dois testes de produto passaram na rodada focal posterior. Não repetir suíte integral sem configurar o runner e a variável exigida.
+- Efeito colateral do runner integral: criou/atualizou `REVISAO/evidencias/REQ-686/process-next-run.json`; `process.json` continua com alteração preexistente/sem reconstrução segura. Ambos ficam intocados, fora do staging; não restaurar nem commitar. `scripts/iniciar-noctua-online.ps1` também permanece fora do staging.
+- Próximo ponto por ordem: decisão visual REQ-448; obter conector descartável para a condição das REQ-461/462/465; decidir separação de etiqueta/etapa em REQ-466. REQ-126 permanece bloqueada pela fonte `6.txt`. Não há outro item A VERIFICAR independente dessas dependências.
+
+### Correção de integridade da captura REQ-463 — 31/10/2026
+
+- A captura REQ-463 foi substituída pela prova descritiva do conjunto de macros antes do fechamento definitivo; reabri o item, repeti o teste específico em 3 viewports e confirmei que as novas capturas mostram seleção da imagem fictícia com URL na legenda. REQ-463 foi então fechada novamente.
+- Durante a correção, `REVISAO/evidencias/REQ-463/server-caption-test.json` foi criado enquanto o item ainda constava fechado. É um artefato adicional não necessário ao fechamento; fica fora do commit e não será removido nem regravado nesta rodada.
+- Fora os efeitos colaterais já registrados do runner integral em REQ-686, os retestes direcionados não gravaram em pastas fechadas. O reteste REQ-419–422 permaneceu em `.audit/`.
+
+## Retomada — REQ condicionais de macro — 31/10/2026
+
+- Reteste visual REQ-419–422 confirmado em Playwright, três viewports (1366×768, 1920×1080 e 390×844), com recibos em `.audit/req419-retest-evidence/` para preservar as evidências fechadas. Commit `c27ec02` foi enviado a `origin/auditoria-reqs`; branch alinhada após push.
+- Front `127.0.0.1:5180` e API `127.0.0.1:3340/health` responderam HTTP 200.
+- Próximos itens A VERIFICAR na ordem do ledger, ignorando REQ-126 bloqueada: REQ-461, REQ-462 e REQ-465. A inspeção visual já confirmou a ausência das três ações no editor; não salvar macros nem enviar mensagens.
+- Para fechar a condição “se suportado pelo conector”, falta um conector descartável de teste que declare suporte a convite nativo, vCard e lista interativa. O fake connector disponível não expõe essas capacidades e o código não define um contrato local para elas; não inferir compatibilidade de produção.
+- REQ-126 segue bloqueada aguardando a fonte `6.txt`. Nenhum novo teste foi executado nesta retomada e nenhuma evidência de REQ fechada foi alterada.
+
+## Decisão registrada — REQ-461/462/465 — 31/10/2026
+
+- Decisão do usuário: manter REQ-461, REQ-462 e REQ-465 como `A VERIFICAR`, com o motivo comum: “depende de conector de teste com suporte a convite, vCard e lista interativa; não implementado”. Não criar conector novo.
+- Atualizados os motivos no LEDGER.csv e na lista de pendências. Não foram executados testes nem alteradas evidências.
+- REQ-126 continua bloqueada pela falta de `6.txt`. Não há outros itens `A VERIFICAR` na ordem do ledger.
+- Arquivos protegidos e pastas de REQs fechadas permanecem sem staging ou alteração nesta ação.
+
+## Critério substituto aprovado — REQ-126 — 31/10/2026
+
+- O texto original em `REVISAO/REQUISITOS.md` (L-06, item 6) diz: “Integrar funcionalidades de referência ao site agora; extensão fica para o futuro” e pede uma lista fechada derivada de `6.txt`, que não foi encontrada.
+- O item 6 de `docs/revisao-solicitada.md` cobre parte do escopo: detalha operações de campanhas, segmentação, conteúdo/recursos, intervalos, prévia, agendamento/cancelamento e importação com mapeamento/revisão. A identidade completa com o `6.txt` ausente não pode ser confirmada; classificar como cobertura parcial/temática, não equivalente integral.
+- Decisão do usuário: usar esse item como critério substituto. Checkpoints: segmentação por etiquetas, inatividade e lista importada; conteúdo e intervalo; prévia do público; agendamento/cancelamento; importação CSV/XLSX com mapeamento e revisão antes de gravar. Dados fictícios, sem envio e sem extensão.
+- Ledger atualizado para `A VERIFICAR` com a fonte ausente e o critério substituto explícitos. Nenhum teste ainda foi executado nesta etapa.
+
+## REQ-126 — checkpoints do critério substituto auditados — 31/10/2026
+
+- Escopo: o texto original de REQ-126 em `REVISAO/REQUISITOS.md` (L-06, item 6) é “Integrar funcionalidades de referência ao site agora; extensão fica para o futuro” e exige uma lista fechada derivada de `6.txt`. O texto substituto, seção 6 de `docs/revisao-solicitada.md`, detalha operação de campanhas e importação. Classificação: cobre parte/mesmo tema, mas não há como demonstrar equivalência integral com a fonte ausente.
+- O usuário aprovou o texto substituto. Sem extensão, sem envio de mensagem e com dados fictícios.
+- Segmentação por etiquetas, inatividade e listas importadas: provas já fechadas REQ-315/316 e teste `e2e/campaigns.spec.ts`; seleção combinada e contador aprovados.
+- Conteúdo e intervalo: provas REQ-317/318; mídia em sequência, intervalo mínimo/máximo, pausas e rascunho após reload, sem envio.
+- Prévia do público: contador e seleção manual verificados em REQ-315/316 antes de gravar.
+- Agendamento e cancelamento: REQ-320 salvou agendamento fictício como rascunho, confirmou após reload e o removeu da fila; REQ-288 confirmou cancelamento no monitor. Nenhum envio real.
+- CSV/XLSX com mapeamento/revisão: REQ-309 aprovou XLSX com colunas invertidas, mapeamento manual, prévia e reload; REQ-311/314 têm CSV, revisão prévia, confirmação e reload. Novo teste `e2e/req126-operation-acceptance.spec.ts` comprovou mapeamento CSV e prévia antes de gravar em Playwright, 3/3 viewports, com dados fictícios. A chamada de importação não ocorreu.
+- Reexecução dos testes dos REQs fechados foi evitada. Os resultados e screenshots existentes foram somente lidos. Mutações de API no teste novo foram bloqueadas/mockadas; `.audit/noctua-audit.db` manteve o mesmo tamanho e horário. O teste não gravou no banco.
+- Primeira tentativa do teste focal falhou por bloquear a chamada automática de presença; a causa foi corrigida no harness, que passou a mockar presença sem persistência. Duas falhas de sintaxe no harness durante a edição foram corrigidas; execução final passou 3/3. Nenhum bug de produto identificado; não foi alterada expectativa.
+- REQ-126 fechada como `COMPLETO` pelo critério substituto, com a ressalva documental da fonte original ausente. Evidências agregadas em `REVISAO/evidencias/REQ-126/operation-acceptance-*`; o recibo `blocked-missing-source.json` é preservado como histórico.
+
+## Ordem de retomada — REQ-126 ao final — 31/10/2026
+
+- REQ-126 está `COMPLETO-LOCAL` pelo critério substituto aprovado. Não retomar agora; voltar após os demais A VERIFICAR para revisão final e confirmação da ressalva de que a fonte `6.txt` original está ausente e a equivalência integral não foi comprovada.
+- REQ-461, REQ-462 e REQ-465 são os únicos outros itens `A VERIFICAR` no LEDGER.csv. Permanecem bloqueados pelo motivo registrado: “depende de conector de teste com suporte a convite, vCard e lista interativa; não implementado”. Nenhum outro item A VERIFICAR sem dependência externa foi encontrado.
+- Ajuste de estado/observação de REQ-126 no LEDGER.csv foi commitado e enviado em `eb21527`; protocolo atualizado separadamente.
+
+## Retomada verificada — 31/10/2026 — dependências restantes
+
+- Escrita autorizada pelo ambiente declarado, sem criar arquivo de sondagem. Branch auditoria-reqs; nenhum teste, serviço ou código de produto executado/alterado nesta retomada.
+- Ledger lido: 703 registros; 478 COMPLETO, 159 COMPLETO-LOCAL, 53 SUBSTITUÍDO OU CANCELADO, 10 DECISÃO e 3 A VERIFICAR. Sem mudanças de estado. Resumos de REQUISITOS.md e PENDENCIAS-DECISAO.md alinhados ao ledger, sem regenerar evidências.
+- Únicos A VERIFICAR: REQ-461/462/465, dependentes de conector descartável com convite nativo, vCard e lista interativa. Decisão anterior proíbe criar conector novo; aguardar conector fornecido/autorizado pelo usuário.
+- BUG-035/REQ-466 aberto: etiquetas também definem colunas CRM (crm.service.ts, belongs). Decidir entre separar entidades de etiquetas/etapas ou aceitar o movimento do cartão; não presumir regra de negócio. BUG-033/034 já corrigidos conforme evidências e registros existentes, sem reteste nesta rodada.
+- BUG-011 tem correção parcial: validação restante exige desligamento/reinício e iniciador online protegido; não executar nem modificar. INT-001/LAC-001 são relatos históricos com resoluções posteriores nas REQ-419–425/430; não reabrir requisitos fechados apenas pelo texto antigo.
+- Demais decisões: REQ-197/223 (inventário/aceite por módulo), REQ-401 (eventos, endpoint e métricas), REQ-448 (botões/alvo visual); REQ-523/527/540 permanecem com restrições de infraestrutura/contas/Firebase; REQ-567 adiada e REQ-573 aguarda Parte 8. REQ-126 permanece COMPLETO-LOCAL com critério substituto e ressalva de fonte ausente, sem nova prova.
+- Nenhum lote de implementação independente encontrado. Não executar testes fechados para simular avanço. Próximo lote depende das decisões acima; provas externas futuras permanecem em CHECKLIST-MANUAL.md, sem pedir chave de IA real.
+- Preservados sem escrita, restauração ou staging: REVISAO/evidencias/REQ-686/process.json, REVISAO/evidencias/REQ-686/process-next-run.json e scripts/iniciar-noctua-online.ps1. Artefatos preexistentes não rastreados não incluídos. Sem .env.local, produção ou publicação.
+
+## Lote CRM — BUG-035 / REQ-466 — 31/10/2026
+
+- Decisão atual substitui bloqueio anterior: etiquetas e etapas independentes. Implementação concluída com armazenamento separado e conversão única transacional dos vínculos antigos; nenhuma nova automação. CRM/operações 75/75; UI REQ-466 3/3 viewports; typecheck dos dois workspaces aprovado. Testes usam bancos temporários sob .audit, dados e sockets fictícios.
+- Regressão inicial: 74/75; teste legado exigia venda via movimento de etiqueta e recebeu expected 200 got 409 em operations.test.ts:2122. Causa: contrato antigo de colunas por etiquetas, substituído pela decisão explícita. Corrigido o cenário para etapa própria, mantendo a prova de confirmação/valor da automação quando etiqueta é aplicada explicitamente; reteste 75/75. Sem enfraquecer a regra atual.
+- REQ-466 COMPLETO-LOCAL; BUG-035 corrigido. Nenhum arquivo protegido ou artefato preexistente entrou no lote. Próximo: REQ-461/462/465, conector simulado agora autorizado, sem adaptar conectores de produção.
+
+## Lote conector descartável — REQ-461/462/465 — 31/10/2026
+
+- Criado adaptador simulado sem dependência de socket/rede/credenciais, explicitamente habilitado com AUDIT_SIMULATED_CONNECTOR=1, auth local e NODE_ENV fora de production. Convites com IDs fictícios, vCard com faixa fictícia e lista com 1–10 opções/IDs únicos. Macros persistem formato validado; endpoint local grava recibo idempotente, nunca ChatMessage/envio. Fila normal rejeita ações simuladas. Nenhum conector de produção foi modificado.
+- Servidor 5/5: asserções próprias por REQ, persistência após reabrir SQLite, schemas/rollback, membro 403, entrada 422, conflito 409, bloqueios em production e flag desativada. UI 9/9: três formatos × três viewports, POST interceptado; testes de servidor usam banco descartável em .audit/tmp. Typecheck dos dois workspaces passou.
+- Três REQs COMPLETO-LOCAL; prova externa futura explicitada em CHECKLIST-MANUAL.md. Sem novo teste em requisito fechado. Arquivos protegidos e artefatos preexistentes preservados fora do staging. Próximo lote: aceite representativo REQ-197/223 e controles documentados REQ-448; telemetria REQ-401 apenas no escopo da fonte original.
+
+## Lote telemetria local — REQ-401 — 31/10/2026
+
+- Fonte original pede preparar expansão futura para webhooks e métricas de origem. Código existente define atribuição CRM de receita a campanha. Instrumentada apenas essa operação local, com AUDIT_LOCAL_TELEMETRY=1, auth local e NODE_ENV fora de production; zero endpoint externo/serviço real. Evento guarda apenas categoria, origem CRM, horário, resultado, status e duração; sem URL, IDs, corpo, erro detalhado ou dados pessoais. Consulta local limitada aos 100 eventos recentes e ADMIN.
+- Testes 2/2 em banco descartável sob .audit: sucesso 200, validação 422 e permissão 403; persistência após reabrir SQLite; esquema sem PII; flag desligada e production impedem coleta/leitura. Regressão integrada 82/82 (CRM, operações, conector e telemetria).
+- REQ-401 permanece DECISÃO apenas para contrato CTWA/referral não especificado: eventos, campos, destino e autenticação. Não inventar nem integrar. Próximo: concluir aceite por cenários representativos REQ-197/223/448 e preparar roteiro manual BUG-011 sem executar iniciador.
+
+## Lote aceite representativo — REQ-197/223/448 — 31/10/2026
+
+- Aceite aprovado agora permite cenários representativos com asserção própria por REQ. Inventário dos controles e efeitos esperados em representative-inventory.json de cada requisito; não certifica todas as 504 ações históricas. CRM: salvar etapa cria coluna e toast, cor independente de etiqueta. Campanhas: atualizar muda resultado e busca oculta/restaura item. Personalização: prévia, confirmação, toast e persistência após reload. Atendimento: salvar macro informa carregamento, bloqueia botão, apresenta erro 503 sem perder rascunho e confirma sucesso após retry.
+- Testes Playwright representativos: 9/9 em 1366×768, 1920×1080 e 390×844; complemento de independência visual da etapa 3/3. Escritas de API interceptadas; nenhuma mensagem ou preferência real gravada. Typecheck nos dois workspaces aprovado.
+- Falhas iniciais completas preservadas em .audit/representative-controls-initial-failures.txt e .audit/representative-controls-final-tests.txt: busca global antecipava leitura de campanha; fixture de erro sem error.message; toast dentro do dialog alterava associação de getByLabel(Mensagem); lateral oculta em mobile. Causas corrigidas nas fixtures/seletores (textbox por role, abertura explícita da lateral), mantendo as mesmas expectativas funcionais. Reteste 9/9.
+- Regressão integrada servidor anterior 82/82. Teste novo de conversão do CRM inicializa etapas antes de workers/requisições, evitando herdar etiquetas aplicadas após a mudança antes de abrir quadro. Validar agora CRM/operações/acesso; regressão ampliada em andamento, excluindo context-menu-audit-process.test.ts porque regrava REQ-686 protegida. Evidências de attendance/backup/conector/telemetria aceitam AUDIT_EVIDENCE_ROOT e são direcionadas para .audit em regressão; nenhuma regravação de prova fechada é necessária. Recibos simulados regenerados pela primeira regressão foram recuperados do commit desta sessão e redirecionados, sem tocar arquivos preexistentes do usuário.
+- BUG-011: preparado scripts/audit-validate-signature.ps1, somente parser PowerShell executado; roteiro no checklist não inicia aplicativo/túnel/publicação nem toca iniciador protegido.
+
+## Ponto de retomada final — 31/10/2026 — lotes locais autorizados concluídos
+
+- Regressão ampliada do servidor: 249/249, excluído apenas context-menu-audit-process.test.ts por gravar os arquivos protegidos. Durante essa rodada o complemento de inicialização foi incluído; CRM/acesso/operações foram verificados novamente no estado final, 96/96. Typecheck de ambos os workspaces passou no estado final. UI: REQ-466 3/3; conector 9/9; aceite representativo 9/9; complemento de independência visual de etapa 3/3 (reexecução focal, não somar como requisito novo). Evidências consolidadas adicionais na REQ-197; provas fechadas preservadas via AUDIT_EVIDENCE_ROOT=.audit/... nas regressões.
+- Antes/depois desta autorização: COMPLETO 478→478; COMPLETO-LOCAL 159→166; A VERIFICAR 3→0; DECISÃO 10→6; SUBSTITUÍDO/CANCELADO 53→53. IDs concluídos localmente: REQ-466, 461, 462, 465, 197, 223 e 448. Nenhum defeito funcional novo aberto. BUG-035 corrigido; BUG-011 apenas roteiro manual preparado. REQ-401 teve avanço local sem fechamento indevido do contrato externo.
+- Commits enviados até aqui exclusivamente em auditoria-reqs: 5ddb9eb (CRM), d3636f4 (conector fictício), da1ae22 (telemetria local). Último lote enviado em 6b6b12e contém aceite representativo, complemento da inicialização do CRM e roteiro BUG-011. Ledger vinculado aos commits de implementação/evidência.
+- Única decisão funcional nova necessária: REQ-401 — definir os eventos CTWA/referral do webhook, os campos, destino e autenticação. Sem contrato, não criar endpoint externo nem inferir integração. Telemetria local de atribuição CRM está pronta e aprovada, desativada por padrão e em production.
+- Restrições mantidas: REQ-523 hospedagem, REQ-527 contas externas e REQ-540 Firebase/infraestrutura real sem autorização; REQ-567 adiada; REQ-573 aguarda Parte 8; REQ-126 mantém ressalva da fonte 6.txt ausente. Provas físicas/serviços externos de COMPLETO-LOCAL estão no CHECKLIST-MANUAL.md e não significam pendência executável agora; não pedir chave real de IA.
+- Próximo passo após resposta do usuário: trabalhar apenas no contrato especificado da REQ-401 ou na Parte 8 se fornecida. Nenhum outro lote local independente foi identificado no ledger. Não reexecutar requisitos fechados sem regressão justificada. Não iniciar produção, túnel, publicação ou iniciador protegido.
+- Os três arquivos protegidos e todos os artefatos preexistentes permanecem fora do staging e dos commits. Nenhum uso de .env.local, serviço externo ou outra cópia do projeto. O único processo de teste interrompido foi a primeira rodada representativa após identificar erros de fixture; serviços locais existentes não foram reiniciados.
+
+
+## Decisões finais de escopo — 31/10/2026
+
+- Usuário confirmou: não precisa de webhook e não existe Parte 8. REQ-401 e REQ-573 retiradas do escopo, SUBSTITUÍDO OU CANCELADO. Não voltar a pedir contrato de webhook nem Parte 8. Telemetria local existente fica preservada e desligada por padrão; nenhum código alterado.
+- Contagens: 478 COMPLETO; 166 COMPLETO-LOCAL; 55 SUBSTITUÍDO OU CANCELADO; 4 DECISÃO (restrições já definidas em REQ-523/527/540 e adiamento REQ-567); zero A VERIFICAR.
+- BUG-011 é um incidente histórico do iniciador online após reiniciar Windows: PowerShell falhou ao carregar o módulo que verifica a assinatura digital do executável do túnel. Importação explícita e novas tentativas já foram adicionadas anteriormente, mas falta repetir o cenário após reinício. Isso não comprova falha atual no CRM e não bloqueia a homologação local. Não executar nem modificar o iniciador protegido. Roteiro diagnóstico separado só verifica o ambiente, não equivale a validação integral do iniciador.
+- Alteração apenas documental, sem novos testes/execução de scripts. Os três arquivos protegidos e artefatos preexistentes permanecem intocados e fora do staging. Próximo trabalho local possível: homologação de jornadas já autorizadas se houver falha concreta; nenhuma especificação nova pendente nesta decisão.
+
+## Homologação integrada local — contato e CRM — 03/11/2026
+
+- Continuação autorizada: jornada real de interface contra createApp e SQLite temporário, sem usar o banco de demonstração. Primeiro acesso preparado por PUT local com perfil fictício; a interface realizou edição do contato, criação de etapa, edição do valor, mudança explícita de etapa, alternância de etiqueta true/false/true, reload e reabertura do banco.
+- Resultado: 3/3 viewports (1366×768, 1920×1080, 390×844). REQ-455 confirmou nome e telefone preservados no contato; REQ-457 confirmou R$ 125,50 / 12.550 centavos; REQ-466 confirmou que as alterações de etiqueta não mudam placements, valor ou versão do negócio e que a etapa continua após reload. Zero mensagens e zero falhas HTTP inesperadas.
+- A primeira tentativa não contou como prova: a interface local ficou indisponível em dois casos e o primeiro acesso não concluiu. A jornada foi ajustada para precondicionar o perfil pela mesma API local isolada e repetida; os três casos passaram. Não foi identificado defeito de produto, nenhuma expectativa funcional foi alterada.
+- Evidências novas, sem sobrescrever as anteriores: REVISAO/evidencias/local-journey-2026-11-03 (screenshots, recibos JSON e saída integral). Harness e API geram banco somente sob .audit/journey-*; sockets externos lançam erro e tráfego externo do navegador é bloqueado. O teste exige a interface local já ativa em 127.0.0.1:5180 e define CLIENT_ORIGIN apenas para o processo de teste.
+- Arquivos protegidos continuam fora de alterações e staging; artefatos não rastreados preexistentes não foram incluídos. Lote registrado e sincronizado em `86a459f` (jornada) e `fefeb5c` (ledger). Próxima retomada: consultar o estado atual e seguir homologação integrada independente em banco isolado; não repetir estes quatro cenários sem motivo de regressão.
+
+## Homologação integrada local — rascunho de campanha — 03/11/2026
+
+- Jornada real pela interface contra API e SQLite temporários: criar campanha de texto com público fictício, conferir audiência, salvar e reabrir a página. O registro permaneceu `DRAFT`, as tarefas ficaram `QUEUED`, houve zero ChatMessage e zero falhas HTTP; nenhuma ativação ou envio ocorreu.
+- Resultado: 1/1 desktop. Evidências em REVISAO/evidencias/local-campaign-2026-11-03. E2E reaproveita o ambiente isolado da jornada CRM; sockets externos proibidos por factory que falha, tráfego externo bloqueado, nenhum banco demo alterado.
+- REQ-315/317 recebem somente evidência integrada suplementar; os estados já aceitos não foram alterados nem ampliados para além da cobertura anterior. Nenhum defeito funcional apareceu neste fluxo.
+- Harness e recibos enviados em `b9e36ac`; referências documentais e ledger enviados em `fe49d25`, ambos na branch `auditoria-reqs`.
+- Ponto de retomada: a jornada de campanha é suplementar e nenhum requisito foi reaberto. As decisões funcionais autorizadas estão aplicadas, e o ledger continua sem itens A VERIFICAR. Prosseguir somente com integração local que exercite o app; preservar `DRAFT`, zero mensagens e todas as restrições permanentes.
+
+## Resumo final da auditoria — 03/11/2026
+
+- REQ-461, REQ-462 e REQ-465 foram reclassificados no LEDGER como `NÃO VERIFICÁVEL NESTE AMBIENTE`. Observação comum: “depende de conector de teste com convite, vCard e lista interativa; conector não criado”. O simulador fictício local já existente não equivale ao conector exigido e não comprova esses requisitos.
+- PENDENCIAS-DECISAO.md e LEDGER.csv agora registram 3 não verificáveis, 0 A VERIFICAR; total de 703: 478 COMPLETO, 163 COMPLETO-LOCAL, 55 SUBSTITUÍDO OU CANCELADO e 4 DECISÃO.
+- A auditoria local anterior permanece como evidência suplementar: CRM 3/3 viewports e campanha 1/1 desktop, ambas com API/SQLite temporários e sem mensagens. Nenhuma nova execução de teste nem gravação em evidências nesta atualização.
+- Esta atualização limita-se a REVISAO/LEDGER.csv, REVISAO/PENDENCIAS-DECISAO.md e REVISAO/PROTOCOLO.md. Manter branch `auditoria-reqs`; não incluir `REVISAO/evidencias/REQ-686/process.json`, `scripts/iniciar-noctua-online.ps1` ou outros artefatos preexistentes.
+
+## Retomada — Fase 2 de alternativas — 05/11/2026
+
+- Escopo solicitado concluído localmente: criação transacional de alternativas/tarefas em rodízio estável por lead, snapshots, cursor por etapa, exclusividade de sequência por contato e idempotência de texto/mídia usando requestId persistente.
+- Testes dedicados 9/9; Operations completo 74/74 após corrigir isolamento das fixtures; typecheck servidor/web e build servidor aprovados. Detalhes e limites em PROGRESSO.md; flag permanece desligada, sem produção/push/deploy.
+- Commit pendente por restrição do ambiente: `git add -- PROGRESSO.md REVISAO/BUGS.md apps/server/src/modules/operations/delivery.worker.ts apps/server/src/modules/operations/operations.routes.ts apps/server/test/operations.test.ts apps/server/test/delivery-alternatives.test.ts` falhou com `fatal: Unable to create .../.git/index.lock: Permission denied`. O perfil atual concede somente leitura à pasta .git; não é um lock antigo a apagar.
+- Somente o usuário/ambiente pode liberar escrita em .git ou executar o commit. Incluir também este PROTOCOLO.md no commit. Não incluir .gitignore modificado anteriormente, evidências preexistentes nem arquivos protegidos. LEDGER não foi reclassificado: esta implementação de Fase 2 não constitui novo lote de auditoria de REQs.
+- Não iniciar outras fases. Nenhuma ação de produção foi executada.
+
+## Fechamento complementar da Fase 2 — 05/11/2026
+
+- Revisão solicitada antes da Fase 3 identificou e corrigiu duas lacunas reais: ultrapassagem da alternativa com espera inicial e descarte das próximas etapas ao marcar uma etapa VERIFY como enviada. Ambas reproduzidas antes da correção; testes adicionados em delivery-alternatives.test.ts, correções em delivery.worker.ts e operations.routes.ts, registro em BUGS.md e PROGRESSO.md.
+- Validação final: 85/85 testes (11 dedicados + 74 Operations), typecheck servidor/web e build servidor/web passaram. Build web usou --configLoader runner para evitar a falha de acesso do carregador padrão a diretórios ascendentes. Flag permanece desligada; nenhuma produção ou deploy.
+- Fase 3 não iniciada: conforme condição do usuário, este trabalho concluiu somente a Fase 2 que apresentou lacunas na verificação.
+- Commit novamente bloqueado por `Unable to create .../.git/index.lock: Permission denied`. Ambiente ainda concede somente leitura em .git; não tentar remover locks ou contornar permissões. Commit local pendente dos sete arquivos listados na retomada anterior, com este protocolo atualizado; preservar .gitignore e artefatos preexistentes fora do staging. LEDGER inalterado, sem novo lote de REQs.
+
+## Retomada — Fase 3 do editor — 05/11/2026
+
+- Somente Fase 3 implementada: editor de 1–10 alternativas, adicionar/duplicar/remover com confirmação, etapas de texto/mídia/espera e reordenação, preview com seletor sincronizado e contadores, validação completa e serialização para a API já existente.
+- Novo modo protegido pela flag existente, consultada no GET /operations/features; a flag continua desligada. Editor legado preservado. Sem migração, alteração de worker, produção, envio real, push ou deploy nesta fase.
+- Validação: Playwright 9/9 (1366×768, 1920×1080, 390×844), servidor 86/86, typecheck servidor/web e builds servidor/web aprovados. Detector sem apontamentos; inspeção visual desktop/mobile concluída em duas passagens. Evidências .audit/phase3-confirmation.txt, .audit/phase3-screenshots/ e apps/server/.audit/phase3-server-tests.txt. O servidor de fixture iniciado por esta sessão na porta 5188 foi encerrado; serviços do usuário não foram reiniciados.
+- Commit solicitado mas impedido: git add com caminhos explícitos falhou ao criar .git/index.lock (Permission denied). .git tem somente leitura neste ambiente. Não remover locks, não contornar a restrição; somente usuário/ambiente pode habilitar escrita ou criar o commit.
+- Arquivos da Fase 3: apps/web/src/components/CampaignAlternativesEditor.tsx, campaign-alternatives.ts, CampaignPhonePreview.tsx; apps/web/src/pages/OperationsPages.tsx e operations.css; capacidade em apps/server/src/modules/operations/operations.routes.ts e teste em apps/server/test/delivery-alternatives.test.ts; e2e/campaign-alternatives.spec.ts, phase3.config.ts, fixtures/campaign-editor.tsx, fixtures/phase3-editor.html, scripts/phase3-editor-server.mjs; PROGRESSO.md, BUGS.md e este protocolo.
+- Mudanças não commitadas anteriores da Fase 2 ainda estão presentes nos arquivos compartilhados. Preservar .gitignore modificado pelo usuário, evidências e arquivos protegidos fora do staging. LEDGER não foi reclassificado, pois não é novo lote de auditoria de REQs. Não iniciar outras fases.
+
+## Estado ao encerrar — solicitação de deploy da aba de campanhas — 06/11/2026
+
+- A interface de campanha foi conectada ao follow-up existente no backend/worker, com etapas de mensagem e prazo (limite de 100), e reorganizada em seções recolhíveis. Typecheck aprovado; build server aprovado; build web aprovado com --configLoader runner devido ao bloqueio do Vite ao ler diretório ascendente.
+- O usuário solicitou deploy e publicação na Vercel. Nenhuma publicação foi executada: a regra da seção 1 deste protocolo classifica a Vercel como produção, permitida somente para leitura.
+- Estado do código: alteração local não publicada. Aguardar instrução compatível com o protocolo do projeto antes de qualquer ação de produção.
+
+
+## Estado — publicação Vercel pendente de autorização de envio ao GitHub — 06/11/2026
+
+- O usuário autorizou excepcionalmente a publicação na Vercel. A flag CAMPAIGN_ALTERNATIVES_ENABLED foi conferida no app de produção: o editor não exibiu a opção de alternativas, que só é renderizada quando a API informa a flag ativa; a leitura da variável no projeto Vercel mostrou apenas configurações do frontend, pois a API usa endpoint externo. Evidência funcional indica flag desativada.
+- Não há mudanças em schema Prisma, migrações ou código do servidor nesta publicação. 
+pm run typecheck passou; build do servidor passou; build web passou com --configLoader runner após o bloqueio conhecido do Vite.
+- Commit local a64576 (eat: reconnect campaign follow-ups in editor) contém somente pps/web/src/pages/OperationsPages.tsx e pps/web/src/workbench.css. Ainda não foi enviado nem publicado.
+- Push para origin/auditoria-reqs foi rejeitado pela revisão automática: autorização para Vercel não autorizava envio separado de código-fonte para GitHub. Não tentar contornar. Aguardar autorização explícita para enviar o commit ao repositório GitHub; depois gerar a prévia e promover a versão exata para produção na Vercel.
+- A exceção de produção foi concedida para esta publicação; a publicação ainda não ocorreu. A regra normal de produção somente leitura permanece até que o usuário autorize outra exceção.
+
+
+## Estado final — publicação excepcional da interface de campanhas — 06/11/2026
+
+- Exceção pontual autorizada pelo usuário: publicar na Vercel o commit a64576 (eat: reconnect campaign follow-ups in editor), após confirmar que contém exclusivamente pps/web/src/pages/OperationsPages.tsx e pps/web/src/workbench.css. O diff não contém chaves, variáveis de ambiente, configuração de infraestrutura, schema ou migração.
+- CAMPAIGN_ALTERNATIVES_ENABLED foi conferida como desativada pelo app de produção (o modo de alternativas não apareceu; a opção depende da resposta da API). Sem alteração de schema de banco ou necessidade de migração.
+- O preview do commit ficou Ready, porém não conectou à API porque a variável VITE_API_URL existe apenas no ambiente Production. Sem alterar variáveis, foi criado um redeploy do mesmo commit com o ambiente Production da Vercel. Deployment DvWB3evDRa5USfbujzU8ijDhFoKH terminou Ready; domínio de produção https://notcua.vercel.app/ (também atribuído https://noctua-crm.vercel.app/).
+- A URL de produção abriu a tela de autenticação no navegador de validação; a campanha não foi verificada dentro de uma sessão autenticada após o deploy. Build Vercel Ready; localmente typecheck e builds já aprovados. Nenhuma mensagem ou campanha foi enviada.
+- A exceção pontual está concluída. A regra de produção somente leitura volta a valer normalmente a partir daqui.
+
+## Retomada — correção de follow-up e recuperação de falhas — 06/11/2026
+
+- Correção local em `apps/server/src/modules/operations/delivery.worker.ts`, `operations.routes.ts`, `campaign-response.ts`, `apps/web/src/pages/OperationsPages.tsx` e `REVISAO/BUGS.md` (BUG-037). Typecheck passou; builds do servidor e web passaram. Build web requer `--configLoader runner`; nenhum teste automatizado foi executado e nenhum envio real foi feito.
+- O usuário pediu nova publicação na Vercel nesta data. Não foi iniciado deploy: esta cópia não contém `.vercel/project.json` nem o comando Vercel disponível; branch `auditoria-reqs` está em `ea64576` e sincronizada com `origin`, mas o working tree contém mais de mil alterações locais/evidências fora do escopo. O protocolo de produção continua somente leitura após a exceção anterior, e manda parar ao tocar produção.
+- Não fazer push, criar commit amplo nem publicar este working tree. As cinco alterações locais da correção permanecem preservadas para futura publicação isolada, sob nova exceção de produção compatível com o protocolo e com um caminho de deploy do projeto disponível. A regra de produção somente leitura permanece vigente.
+
+## Retomada — pedido de publicação da correção de follow-up — 11/11/2026
+
+- O usuário pediu “publique”. Typecheck e os builds de servidor e web da correção já passaram em 06/11; o BUG-037 e o código continuam locais.
+- A configuração Vercel deste repositório publica somente `apps/web/dist`. A correção também depende de `apps/server` (worker e novas rotas); a arquitetura documentada usa API/worker persistentes fora da Vercel. Não há CLI `vercel`, `.vercel/project.json` nem manifesto de provedor do servidor nesta cópia. Publicar apenas o frontend apresentaria o botão novo contra endpoints ainda não disponíveis e não corrigiria o worker de produção.
+- Branch está em `ea64576`, sincronizada com `origin/auditoria-reqs`; existem 1.025 entradas locais alteradas/não rastreadas, em sua maioria evidências e trabalho fora do escopo. Nenhum commit, push, deploy Vercel ou reinício do servidor persistente foi feito neste pedido. Não publicar o working tree inteiro nem o frontend isolado sem o backend correspondente.
+- Próximo passo para uma publicação funcional: definir/autorizar o caminho de atualização do servidor persistente e depois publicar o frontend e backend compatíveis. Até lá, a regra de produção somente leitura permanece vigente; correções locais preservadas.
+
+## Exceção pontual — seis correções de Atendimento — 11/11/2026
+
+- O usuário autorizou explicitamente uma exceção pontual para executar as seis tarefas de segurança e interface de Atendimento descritas na autorização colada nesta conversa, incluindo publicar a interface na Vercel e atualizar o servidor persistente após validação local. O trabalho está isolado em worktree limpa baseada em `origin/main`, branch `codex/followup-hardening`; o checkout original permanece intacto.
+- Escopo: proteção operacional dos follow-ups e recuperação; editor completo de etapas; atalhos de horário/follow-up/campanha; controles de Personalização; dock Biblioteca/Fixados; persistência de layout por usuário e tamanhos proporcionais.
+- Nenhum teste pode enviar mensagens reais. A verificação usa mocks/fixture local. Não usar o WhatsApp conectado de produção para teste.
+- O servidor/worker está fora da Vercel: `Iniciar Noctua.cmd` inicia o worker persistente local na porta 3333 e o túnel. A interface Vercel não substitui esse processo. Antes de atualização do servidor, verificar atividade pendente; não reiniciar enquanto puder interromper envio em curso.
+- A exceção está limitada às alterações deste escopo e termina ao concluir a publicação e relatório final. A regra de produção somente leitura volta a valer normalmente após esta publicação.
+- Estado inicial desta retomada: foi encontrada sessão válida da Vercel CLI (`saayaad`), então a verificação por código não bloqueia o deploy.
+
+## Exceção pontual autorizada — correções de atendimento, campanhas e layout — 11/11/2026
+
+- O proprietário autorizou expressamente este lote completo, incluindo a publicação Vercel e a atualização do servidor/worker persistente fora da Vercel. A exceção substitui temporariamente produção-somente-leitura apenas para estes seis itens e termina com o relatório final.
+- Trabalho isolado no worktree `Noctua-CMR-followup-hardening`, iniciado em `origin/main` (`3bf33a9`); o checkout original, com 1.025 alterações locais, não foi usado para construir nem enviar o frontend. A Vercel CLI foi vinculada ao projeto `noctua-crm` (conta `nolan-70b4`), que possui alias `notcua.vercel.app`.
+- Escopo: limites/pausas/jitter/janela/circuit breaker e recuperação de follow-ups; editor com até 100 etapas; atalhos do atendimento; preferências de personalização; dock Biblioteca/Fixados; persistência/restauração do layout. Nenhum arquivo Prisma/schema/migração foi alterado.
+- `CAMPAIGN_ALTERNATIVES_ENABLED` não está definido no ambiente Production da Vercel nem no `apps/server/.env` do worker observado; por padrão, a opção permanece desligada. Não foram feitas alterações em variáveis de ambiente.
+- Testes de interface foram realizados localmente com API, conta, contatos e banco fictícios; nenhum envio real ocorreu. A suíte completa anterior passou 201/201; typecheck e build passaram. Cobertura adicional foi criada para jitter, janela e circuit breaker e passou na execução focada 6/6; a validação completa do estado final está sendo repetida antes de publicar.
+- O worker é o processo local persistente na porta 3333, iniciado a partir do checkout original (`src/server.ts`, `tsx watch`) e exposto por túnel Cloudflare; não roda na Vercel. A base apresentou 9 tarefas QUEUED agendadas para o futuro e 5 VERIFY com resultado incerto. Nenhuma tarefa VERIFY será reexecutada como teste ou recuperação automática.
+- Não há alteração de schema e nenhuma migração de produção é necessária. A atualização do processo será feita de forma a preservar as tarefas existentes e sem executar envio de teste.
+- Após concluir Vercel + worker, registrar URLs, arquivos, deploys e validações. A regra de produção-somente-leitura volta a valer normalmente a partir do encerramento desta exceção.
+
+## Encerramento da exceção — publicação concluída — 11/11/2026
+
+- **Prévia verificada:** `https://noctua-gdhtzssc1-nolan-70b4.vercel.app` — deployment `dpl_7vEb2RutBoYfRpaW3kasQGMVCv6b`, estado Ready. A rota `/atendimento` serviu o `index.html` e os assets do build esperado.
+- **Produção promovida:** `https://notcua.vercel.app` — deployment `dpl_EkB4cfZYB8ccAJVqK7PSY8bqCdvk`, estado Ready; URL direta `https://noctua-pqkq87i48-nolan-70b4.vercel.app`. A rota `/atendimento` foi validada.
+- **API/worker:** atualizado o serviço persistente fora da Vercel, em `C:\Users\gusta\Documents\Notcua CMR\Notcua CMR`, processo `tsx watch src/server.ts`, porta 3333 exposta pelo túnel Cloudflare. Após o reload, `/health` respondeu `ok`; o endpoint de saúde usado pelo frontend de produção também respondeu `ok`. Endpoints de configurações de follow-up e edição da campanha exigem autenticação (401 sem credencial).
+- **Arquivos de frontend publicados (via `apps/web/dist`):** `apps/web/src/App.tsx`, `attendance.css`, `components/AttendanceCustomization.tsx`, `AttendanceDock.tsx`, `AttendanceShortcuts.tsx`, `ChatPane.tsx`, `Composer.tsx`, `ConversationList.tsx`, `ResourceWorkbench.tsx`, `context/PreferencesContext.tsx`, `pages/OperationsPages.tsx` e `workbench.css`.
+- **Worker atualizado:** `apps/server/src/modules/operations/delivery.worker.ts`, `operations.routes.ts` e `send-window.ts`; foram preservadas as correções locais anteriores de `BATCH_COMPLETE`, resultados `VERIFY`, recuperação CTA e backfill de follow-ups. Nenhum arquivo de schema Prisma/migração foi alterado; não há migração de produção.
+- **Flag:** `CAMPAIGN_ALTERNATIVES_ENABLED` não está definida na Production da Vercel nem no `.env` do worker; portanto a opção está desligada por padrão. Nenhuma variável de ambiente foi alterada.
+- **Verificação final:** `npm run typecheck` passou no worktree e no servidor; `npm run build` passou; `npm test` passou com 206/206. A validação visual foi feita localmente em `/atendimento`, pop-up Follow-up, Personalização e Organizar painéis com conta/contatos fictícios. Não houve envio real de teste. O build mantém apenas o aviso de chunk JS acima de 500 KB.
+- **Estado da fila observado antes da atualização:** 9 tarefas `QUEUED` estavam agendadas para o futuro e 5 estavam `VERIFY` (resultado incerto). O worker não as repetiu durante a atualização; o painel oferece revisão/aviso antes da recuperação de `VERIFY`.
+- **Leitura posterior somente leitura:** nenhuma campanha `ACTIVE`; há 1 campanha `PAUSED` com 160 mensagens principais e 13 follow-ups ainda enfileirados, além de 6 tarefas em `VERIFY`. Essas filas não foram alteradas por testes nem por recuperação automática; `VERIFY` exige revisão explícita antes de um retry.
+- O usuário autorizou esta exceção pontual em 11/11/2026 para corrigir e publicar as seis tarefas de follow-up, campanhas e atendimento. A exceção está encerrada. **A regra de produção-somente-leitura volta a valer normalmente a partir daqui.** Nenhum push ao GitHub foi feito.

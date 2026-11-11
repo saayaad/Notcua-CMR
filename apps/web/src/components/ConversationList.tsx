@@ -51,9 +51,9 @@ export function ConversationList(p: Props) {
           </h1>
           <p>Cada conversa, uma oportunidade.</p>
         </div>
-        <button className="icon-button add-button" onClick={p.onNew} aria-label="Nova conversa">
+        {!preferences.hideNewConversationButton && <button className="icon-button add-button" onClick={p.onNew} aria-label="Nova conversa">
           <Plus size={20} />
-        </button>
+        </button>}
       </div>
       <label className="search-box">
         <Search size={17} />

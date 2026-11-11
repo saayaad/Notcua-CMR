@@ -26,7 +26,7 @@ export async function queueCampaignResponse(
       sentAt: { lte: new Date(receivedAt.getTime() + 2000) }, type: { not: 'internalNote' } },
     orderBy: [{ sentAt: 'desc' }, { id: 'desc' }], select: { id: true },
   });
-  const taskId = /^out:delivery:([^:]+)(?::follow-up:\d+)?$/.exec(lastOutbound?.id ?? '')?.[1];
+  const taskId = /^out:delivery:([^:]+)(?::(?:follow-up:\d+|\d+))?(?::retry:\d+)?$/.exec(lastOutbound?.id ?? '')?.[1];
   if (!taskId) return false;
   const lastTask = await tx.deliveryTask.findUnique({ where: { id: taskId } });
   if (!lastTask || lastTask.sessionId !== sessionId || lastTask.conversationId !== conversationId) return false;
