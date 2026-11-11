@@ -51,3 +51,23 @@ export function nextSendWindowAt(window: SendWindow, at: Date) {
   }
   throw new Error('Nenhum horário permitido encontrado nos próximos oito dias.');
 }
+
+export interface CompanyHoursSchedule {
+  days: number[];
+  minTime: string;
+  maxTime: string;
+}
+
+export function withinBusinessHours(schedule: CompanyHoursSchedule, date: Date) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(date).map((part) => [part.type, part.value]));
+  const day = weekdayIndex[parts.weekday ?? ''];
+  const clock = `${parts.hour ?? '00'}:${parts.minute ?? '00'}`;
+  if (day === undefined) return false;
+  if (schedule.minTime === schedule.maxTime) return schedule.days.includes(day);
+  if (schedule.minTime < schedule.maxTime)
+    return schedule.days.includes(day) && clock >= schedule.minTime && clock < schedule.maxTime;
+  return clock >= schedule.minTime ? schedule.days.includes(day)
+    : clock < schedule.maxTime && schedule.days.includes((day + 6) % 7);
+}
