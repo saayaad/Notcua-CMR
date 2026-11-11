@@ -636,14 +636,16 @@ export function CampaignsPage({
   const [tick, setTick] = useState(0);
   const [create, setCreate] = useState(Boolean(initialConversation));
   const [activate, setActivate] = useState<BatchRow | null>(null);
-  const [tasks, setTasks] = useState<{ status: string; error?: string; runAt: string; contact?: { name: string; phoneNumber: string } | null }[] | null>(null);
+  const [tasks, setTasks] = useState<{ id: string; status: string; error?: string; runAt: string; contact?: { name: string; phoneNumber: string } | null }[] | null>(null);
+  const [tasksBatchId, setTasksBatchId] = useState('');
+  const [tasksVerifyOnly, setTasksVerifyOnly] = useState(false);
+  const [resolveConfirm, setResolveConfirm] = useState<{ taskId: string; contactName?: string; action: 'retry' | 'ignore' } | null>(null);
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState(initialSearch);
   const [financeBatch, setFinanceBatch] = useState('');
   const [finance, setFinance] = useState({ investment: '0.00', revenue: '0.00', revenueSource: 'MANUAL' as 'MANUAL' | 'CRM' });
   const [revenueBatch, setRevenueBatch] = useState('');
   const [approachReport, setApproachReport] = useState<{ name: string; items: ApproachResult[] } | null>(null);
-  const [recovery, setRecovery] = useState<{ id: string; name: string; count: number; uncertainCount: number } | null>(null);
   const [campaignEdit, setCampaignEdit] = useState<{ id: string; name: string; text: string; pending: number } | null>(null);
   useEffect(() => setSearch(initialSearch), [initialSearch]);
   useEffect(() => {
@@ -671,6 +673,41 @@ export function CampaignsPage({
       .then(() => {
         setActivate(null);
         setTick(tick + 1);
+      })
+      .catch((error) => notify(errorMessage(error), true))
+      .finally(() => setBusy(false));
+  };
+  const loadBatchTasks = (batchId: string, verifyOnly = false) => {
+    void request<{ items: NonNullable<typeof tasks> }>(
+      `/operations/sessions/${sessionId}/batches/${batchId}/tasks`,
+    )
+      .then((data) => {
+        const visible = verifyOnly ? data.items.filter((task) => task.status === 'VERIFY') : data.items;
+        setTasksBatchId(batchId);
+        setTasksVerifyOnly(verifyOnly);
+        setTasks(visible);
+        if (verifyOnly && !visible.length) notify('Não há envios em verificação nesta campanha.');
+      })
+      .catch((error) => notify(errorMessage(error), true));
+  };
+  const resolveVerifiedTask = (taskId: string, action: 'retry' | 'mark-sent' | 'ignore') => {
+    setBusy(true);
+    void request(
+      `/operations/sessions/${sessionId}/batches/${tasksBatchId}/tasks/${taskId}/resolve`,
+      'POST',
+      { action },
+    )
+      .then(() => request<{ items: NonNullable<typeof tasks> }>(
+        `/operations/sessions/${sessionId}/batches/${tasksBatchId}/tasks`,
+      ))
+      .then((data) => {
+        setTasks(tasksVerifyOnly ? data.items.filter((task) => task.status === 'VERIFY') : data.items);
+        setResolveConfirm(null);
+        notify(action === 'retry'
+          ? 'Reenvio autorizado. A campanha continua pausada até você retomá-la.'
+          : action === 'ignore'
+            ? 'Envio ignorado; a tarefa não voltará à fila.'
+            : 'Envio marcado como concluído.');
       })
       .catch((error) => notify(errorMessage(error), true))
       .finally(() => setBusy(false));
@@ -800,17 +837,11 @@ export function CampaignsPage({
                   }}>Resultados por mensagem</button>}
                   <button
                     className="button"
-                    onClick={() =>
-                      void request<{ items: NonNullable<typeof tasks> }>(
-                        `/operations/sessions/${sessionId}/batches/${item.id}/tasks`,
-                      )
-                        .then((data) => setTasks(data.items))
-                        .catch((error) => notify(errorMessage(error), true))
-                    }
+                    onClick={() => loadBatchTasks(item.id)}
                   >
                     Ver envios
                   </button>
-                  {!schedule && !['DRAFT', 'CANCELLED'].includes(item.status) && <button className="button" onClick={() => void request<{ count: number; uncertainCount: number }>(`/operations/sessions/${sessionId}/batches/${item.id}/recovery`).then((result) => { if (!result.count) notify('Não há envios com falha para corrigir.'); else setRecovery({ id: item.id, name: item.name, ...result }); }).catch((error) => notify(errorMessage(error), true))}>Corrigir falhas</button>}
+                  {item.mode === 'CAMPAIGN' && !['DRAFT', 'CANCELLED'].includes(item.status) && <button className="button" title="Abrir a lista de envios com entrega incerta para resolver individualmente" onClick={() => loadBatchTasks(item.id, true)}>Resolver verificações</button>}
                   {['DRAFT', 'PAUSED', 'CANCELLED'].includes(item.status) && (
                     <button className="button primary" disabled={busy} onClick={() => setActivate(item)}>
                       <Play size={14} />
@@ -966,8 +997,9 @@ export function CampaignsPage({
         </Modal>
       )}
       {tasks && (
-        <Modal title="Envios desta execução" onClose={() => setTasks(null)}>
+        <Modal title={tasksVerifyOnly ? 'Resolver verificações' : 'Envios desta execução'} onClose={() => setTasks(null)}>
           <div className="task-list">
+            {!tasks.length && <p>Não há envios em verificação nesta campanha.</p>}
             {tasks.map((task, index) => (
               <div key={index}>
                 {task.contact && <p><b>{task.contact.name}</b> · +{task.contact.phoneNumber}</p>}
@@ -978,22 +1010,46 @@ export function CampaignsPage({
                       ? 'Aguardando'
                       : task.status === 'FAILED'
                         ? 'Falha'
+                        : task.status === 'VERIFY'
+                          ? 'Verificar entrega'
                         : task.status === 'CANCELLED'
                           ? 'Cancelado'
                           : 'Executando'}
                 </strong>
                 <small>{new Date(task.runAt).toLocaleString('pt-BR')}</small>
                 {task.error && <p className="field-error">{task.error}</p>}
+                {task.status === 'VERIFY' && (
+                  <div className="campaign-monitor-actions">
+                    <button className="button small" disabled={busy} onClick={() => setResolveConfirm({ taskId: task.id, contactName: task.contact?.name, action: 'retry' })}>Reenviar</button>
+                    <button className="button small" disabled={busy} onClick={() => resolveVerifiedTask(task.id, 'mark-sent')}>Marcar como enviado</button>
+                    <button className="button small" disabled={busy} onClick={() => setResolveConfirm({ taskId: task.id, contactName: task.contact?.name, action: 'ignore' })}>Ignorar</button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
         </Modal>
       )}
-      {recovery && <Modal title="Corrigir falhas da campanha" onClose={() => setRecovery(null)}>
-        <p><strong>{recovery.name}</strong>: {recovery.count} mensagem(ns) com falha serão colocadas novamente na fila, respeitando os limites de follow-up e os horários permitidos.</p>
-        {recovery.uncertainCount > 0 && <p className="notice">{recovery.uncertainCount} falha(s) podem ter resultado incerto; uma nova tentativa pode duplicar mensagens que chegaram a ser entregues.</p>}
-        <div className="modal-actions"><button className="button" onClick={() => setRecovery(null)}>Cancelar</button><button className="button primary" disabled={busy} onClick={() => { setBusy(true); void request<{ count: number }>(`/operations/sessions/${sessionId}/batches/${recovery.id}/recovery`, 'POST').then((result) => { notify(`${result.count} envio(s) retornaram à fila. A pausa e as cotas continuam ativas.`); setRecovery(null); setTick((value) => value + 1); }).catch((error) => notify(errorMessage(error), true)).finally(() => setBusy(false)); }}>Reenviar pendências</button></div>
-      </Modal>}
+      {resolveConfirm && (
+        <Modal
+          title={resolveConfirm.action === 'retry' ? 'Confirmar reenvio' : 'Ignorar envio em verificação'}
+          onClose={() => setResolveConfirm(null)}
+        >
+          {resolveConfirm.action === 'retry' ? (
+            <p className="notice">
+              Este envio pode já ter sido entregue. Reenviar pode causar uma mensagem duplicada para {resolveConfirm.contactName ?? 'este contato'}. Revise a conversa antes de confirmar.
+            </p>
+          ) : (
+            <p>O envio será marcado como ignorado e não voltará à fila. A campanha permanece pausada até você retomá-la.</p>
+          )}
+          <div className="modal-actions">
+            <button className="button" disabled={busy} onClick={() => setResolveConfirm(null)}>Voltar</button>
+            <button className="button primary" disabled={busy} onClick={() => resolveVerifiedTask(resolveConfirm.taskId, resolveConfirm.action)}>
+              {resolveConfirm.action === 'retry' ? 'Confirmar reenvio' : 'Confirmar e ignorar'}
+            </button>
+          </div>
+        </Modal>
+      )}
       {campaignEdit && <Modal title="Editar mensagens pendentes" wide onClose={() => setCampaignEdit(null)}>
         <p><strong>{campaignEdit.name}</strong> · {campaignEdit.pending} mensagem(ns) ainda podem ser editadas. As mensagens já encaminhadas não serão alteradas.</p>
         <label>Texto da mensagem principal<textarea rows={7} maxLength={10000} value={campaignEdit.text} onChange={(event) => setCampaignEdit((current) => current ? { ...current, text: event.target.value } : current)}/></label>

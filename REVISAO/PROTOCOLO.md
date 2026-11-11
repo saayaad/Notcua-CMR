@@ -754,3 +754,17 @@ pm run typecheck passou; build do servidor passou; build web passou com --config
 - **Estado da fila observado antes da atualização:** 9 tarefas `QUEUED` estavam agendadas para o futuro e 5 estavam `VERIFY` (resultado incerto). O worker não as repetiu durante a atualização; o painel oferece revisão/aviso antes da recuperação de `VERIFY`.
 - **Leitura posterior somente leitura:** nenhuma campanha `ACTIVE`; há 1 campanha `PAUSED` com 160 mensagens principais e 13 follow-ups ainda enfileirados, além de 6 tarefas em `VERIFY`. Essas filas não foram alteradas por testes nem por recuperação automática; `VERIFY` exige revisão explícita antes de um retry.
 - O usuário autorizou esta exceção pontual em 11/11/2026 para corrigir e publicar as seis tarefas de follow-up, campanhas e atendimento. A exceção está encerrada. **A regra de produção-somente-leitura volta a valer normalmente a partir daqui.** Nenhum push ao GitHub foi feito.
+
+## Retomada — botão para resolver envios em verificação — 11/11/2026
+
+- O usuário pediu resolver envios em verificação antes de retomar uma campanha e, em seguida, pediu um botão visível junto às ações da campanha pausada. O arquivo anexado contém tarefas exibidas como “Executando” e ao menos um aviso de entrega incerta após interrupção do servidor; dados pessoais do anexo não foram copiados para este registro.
+- No código local já existia o fluxo de recuperação `GET/POST .../batches/:batchId/recovery`, que seleciona `FAILED` e `VERIFY`; o botão da interface era denominado “Corrigir falhas”. A interface foi ajustada para exibir “Resolver verificações”, com aviso explícito de risco de duplicação para tarefas incertas e mantendo confirmação antes de reenfileirar.
+- Nenhuma consulta ou escrita foi feita no banco real nesta retomada; os envios não foram reenfileirados nem retomados. A publicação anterior encerrou a exceção, e produção-somente-leitura voltou a valer. O pedido de execução na fila real permanece pendente até uma nova autorização excepcional para essa ação.
+
+## Nova exceção pontual — revisão individual de VERIFY — 11/11/2026
+
+- O proprietário autorizou um deploy adicional, restrito à ação “Resolver verificações” e aos arquivos estritamente necessários, após typecheck, build e suíte completos aprovados. Também autorizou o push dos commits `946f2a8` e `3de1e3e` e do ajuste para uma branch nova, nunca para `main`.
+- A tela da campanha pausada abre a lista filtrada `VERIFY`; cada tarefa tem “Marcar como enviado”, “Reenviar” com confirmação e alerta de duplicidade, e “Ignorar” com confirmação. A recuperação é individual; reenviar mantém a campanha pausada e requer retomada explícita. `Ignorar` registra a tarefa como cancelada manualmente. Alterações: `apps/web/src/pages/OperationsPages.tsx`, `apps/web/src/pages/operations.css`, `apps/server/src/modules/operations/operations.routes.ts` e teste local correspondente.
+- `npm run typecheck`, `npm run build` e `npm test` passaram; suíte: 207/207. Build emite somente o aviso conhecido de chunk acima de 500 KB. Testes usam banco/conector fictícios.
+- Nenhuma tarefa real foi consultada, reenfileirada, reenviada ou alterada nesta publicação. Os seis `VERIFY` permanecem para resolução manual do proprietário; não usar a recuperação em lote.
+- Exceção ativa somente para esta publicação e push na branch autorizada; ao finalizar, anotar URLs/commit e encerrar. Produção-somente-leitura volta a valer após o relatório final.

@@ -474,6 +474,42 @@ test('recuperação reenvia falhas com atraso aleatório e mantém a campanha at
   assert.ok(recovered.runAt.getTime() >= Date.now() + 9000 && recovered.runAt.getTime() <= Date.now() + 92_000);
   assert.equal((await record<Batch>(db, batch.id, batch)).status, 'ACTIVE');
 });
+test('resolução individual de VERIFY permite marcar, reenviar ou ignorar cada envio', async () => {
+  const chats = await Promise.all([
+    makeContact('5511777770229'),
+    makeContact('5511777770230'),
+    makeContact('5511777770231'),
+  ]);
+  const batch = await draft(chats.map((chat) => chat.id), { kind: 'text', text: 'Mensagem incerta' });
+  await request(app).put(`/api/operations/sessions/${sessionId}/batches/${batch.id}`).send({ status: 'ACTIVE' }).expect(200);
+  const [marked, retried, ignoredTask] = await db.deliveryTask.findMany({ where: { batchId: batch.id }, orderBy: { createdAt: 'asc' } });
+  assert.ok(marked && retried && ignoredTask);
+  for (const task of [marked, retried, ignoredTask])
+    await db.deliveryTask.update({ where: { id: task.id }, data: { status: 'VERIFY', error: 'Resultado incerto' } });
+  await putRecord(db, batch.id, 'BATCH', { ...await record<Batch>(db, batch.id, batch), status: 'PAUSED' });
+  const sentBefore = socket.sends.length;
+
+  await request(app).post(`/api/operations/sessions/${sessionId}/batches/${batch.id}/tasks/${marked.id}/resolve`)
+    .send({ action: 'mark-sent' }).expect(200, { saved: true, status: 'COMPLETED' });
+  await request(app).post(`/api/operations/sessions/${sessionId}/batches/${batch.id}/tasks/${retried.id}/resolve`)
+    .send({ action: 'retry' }).expect(200, { saved: true, status: 'QUEUED' });
+  await request(app).post(`/api/operations/sessions/${sessionId}/batches/${batch.id}/tasks/${ignoredTask.id}/resolve`)
+    .send({ action: 'ignore' }).expect(200, { saved: true, status: 'CANCELLED' });
+
+  const completed = await db.deliveryTask.findUniqueOrThrow({ where: { id: marked.id } });
+  assert.equal(completed.status, 'COMPLETED');
+  assert.equal((completed.payload as { manualResolution: string }).manualResolution, 'marked-sent');
+  const queued = await db.deliveryTask.findUniqueOrThrow({ where: { id: retried.id } });
+  assert.equal(queued.status, 'QUEUED');
+  assert.equal((queued.payload as { recoveryAuthorized: boolean }).recoveryAuthorized, true);
+  const ignored = await db.deliveryTask.findUniqueOrThrow({ where: { id: ignoredTask.id } });
+  assert.equal(ignored.status, 'CANCELLED');
+  assert.equal((ignored.payload as { manualResolution: string }).manualResolution, 'ignored');
+  assert.equal(socket.sends.length, sentBefore);
+  assert.equal((await record<Batch>(db, batch.id, batch)).status, 'PAUSED');
+  await request(app).post(`/api/operations/sessions/${sessionId}/batches/${batch.id}/tasks/${ignoredTask.id}/resolve`)
+    .send({ action: 'ignore' }).expect(409);
+});
 test('resposta de um lead não cancela follow-ups dos demais', async () => {
   const first = await makeContact('5511777770878');
   const second = await makeContact('5511777770879');

@@ -998,6 +998,55 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     const contacts = new Map(chats.map((chat) => [chat.id, chat.contact]));
     res.json({ items: items.map((item) => ({ ...item, contact: contacts.get(item.conversationId) ?? null })) });
   });
+  router.post('/sessions/:sessionId/batches/:batchId/tasks/:taskId/resolve', async (req, res) => {
+    admin(res.locals.identity.role);
+    const sessionId = id.parse(req.params.sessionId);
+    const batchId = id.parse(req.params.batchId);
+    const taskId = id.parse(req.params.taskId);
+    const { action } = z.object({ action: z.enum(['retry', 'mark-sent', 'ignore']) }).parse(req.body);
+    const [batch, task] = await Promise.all([
+      record<Batch | null>(db, batchId, null),
+      db.deliveryTask.findFirst({ where: { id: taskId, batchId, sessionId } }),
+    ]);
+    if (!batch || batch.sessionId !== sessionId || batch.mode !== 'CAMPAIGN' || !task)
+      throw new AppError(404, 'Envio não encontrado nesta campanha.');
+    if (task.status !== 'VERIFY') throw new AppError(409, 'Somente envios em verificação podem ser resolvidos.');
+
+    const payload = task.payload as unknown as Delivery & { retryAttempt?: number; recoveryAuthorized?: boolean };
+    const resolution = action === 'retry' ? 'retry-authorized' : action === 'mark-sent' ? 'marked-sent' : 'ignored';
+    await db.$transaction(async (tx) => {
+      const changed = await tx.deliveryTask.updateMany({
+        where: { id: taskId, batchId, sessionId, status: 'VERIFY' },
+        data: action === 'retry'
+          ? {
+              status: 'QUEUED',
+              runAt: new Date(Date.now() + randomInt(10, 31) * 1000),
+              error: null,
+              payload: json({ ...payload, retryAttempt: (payload.retryAttempt ?? 0) + 1, recoveryAuthorized: true, manualResolution: resolution, resolvedAt: new Date().toISOString() }),
+            }
+          : action === 'mark-sent'
+            ? {
+                status: 'COMPLETED', error: null,
+                payload: json({ ...payload, manualResolution: resolution, resolvedAt: new Date().toISOString() }),
+              }
+            : {
+                status: 'CANCELLED', error: 'Ignorado manualmente pelo operador.',
+                payload: json({ ...payload, manualResolution: resolution, resolvedAt: new Date().toISOString() }),
+              },
+      });
+      if (!changed.count) throw new AppError(409, 'Este envio já foi resolvido.');
+      if (action === 'mark-sent') {
+        const current = await tx.operationRecord.findUniqueOrThrow({ where: { id: batchId } });
+        const latest = current.data as unknown as Batch;
+        const sentCount = (latest.sentCount ?? 0) + 1;
+        await tx.operationRecord.update({
+          where: { id: batchId },
+          data: { data: json({ ...latest, sentCount }) },
+        });
+      }
+    });
+    res.json({ saved: true, status: action === 'retry' ? 'QUEUED' : action === 'mark-sent' ? 'COMPLETED' : 'CANCELLED' });
+  });
   router.get('/sessions/:sessionId/batches/:batchId/approaches', async (req, res) => {
     const sessionId = id.parse(req.params.sessionId);
     const batchId = id.parse(req.params.batchId);
