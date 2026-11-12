@@ -122,6 +122,15 @@ export function ResourceWorkbench({
   const [expandedResources, setExpandedResources] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<'all' | 'favorites' | 'recent' | 'used'>('all');
   const [category, setCategory] = useState('');
+  const panelRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const key = (event: KeyboardEvent) => { if (event.key === 'Escape' && !document.querySelector('dialog[open]')) onClose(); };
+    const outside = (event: PointerEvent) => { if (!preferences.toolsDocked && panelRef.current && !panelRef.current.contains(event.target as Node) && !(event.target as Element).closest('dialog')) onClose(); };
+    document.addEventListener('keydown', key);
+    document.addEventListener('pointerdown', outside);
+    return () => { document.removeEventListener('keydown', key); document.removeEventListener('pointerdown', outside); };
+  }, [open, preferences.toolsDocked, onClose]);
   const [usage, setUsage] = useState<Record<string, number>>({});
   const [flows, setFlows] = useState<FlowSummary[]>([]);
   const [runs, setRuns] = useState<Sequence[]>([]);
@@ -669,6 +678,7 @@ export function ResourceWorkbench({
   );
   return (
     <aside
+      ref={panelRef}
       {...placement.attributes}
       style={placement.style}
       id="message-tools"

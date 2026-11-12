@@ -34,6 +34,13 @@ interface ApproachStats {
   replied: number;
   responseRate: number;
 }
+interface VerificationTask {
+  id: string;
+  status: string;
+  error?: string;
+  runAt: string;
+  contact?: { name: string; phoneNumber: string } | null;
+}
 function formatDuration(seconds: number) {
   const total = Math.max(0, Math.round(seconds));
   const days = Math.floor(total / 86400);
@@ -50,6 +57,11 @@ export function CampaignMonitor({ sessionId, connected }: { sessionId: string; c
   const [now, setNow] = useState(Date.now());
   const [minimized, setMinimized] = useState(false);
   const [cancel, setCancel] = useState<Batch | null>(null);
+  const [verification, setVerification] = useState<{ batch: Batch; tasks: VerificationTask[] } | null>(null);
+  const [confirmResolve, setConfirmResolve] = useState<{
+    task: VerificationTask;
+    action: 'retry' | 'ignore';
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<Batch | null>(null);
   const [nextBatchSize, setNextBatchSize] = useState(50);
@@ -127,6 +139,44 @@ export function CampaignMonitor({ sessionId, connected }: { sessionId: string; c
       setBusy(false);
     }
   };
+  const loadVerifications = async (batch: Batch) => {
+    setBusy(true);
+    try {
+      const data = await request<{ items: VerificationTask[] }>(
+        `/operations/sessions/${sessionId}/batches/${batch.id}/tasks`,
+      );
+      setVerification({ batch, tasks: data.items.filter((task) => task.status === 'VERIFY') });
+    } catch (error) {
+      notify(errorMessage(error), true);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const resolveTask = async (task: VerificationTask, action: 'retry' | 'mark-sent' | 'ignore') => {
+    if (!verification) return;
+    setBusy(true);
+    try {
+      await request(
+        `/operations/sessions/${sessionId}/batches/${verification.batch.id}/tasks/${task.id}/resolve`,
+        'POST',
+        { action },
+      );
+      const data = await request<{ items: VerificationTask[] }>(
+        `/operations/sessions/${sessionId}/batches/${verification.batch.id}/tasks`,
+      );
+      setVerification({ ...verification, tasks: data.items.filter((item) => item.status === 'VERIFY') });
+      setConfirmResolve(null);
+      notify(action === 'retry'
+        ? 'Reenvio autorizado. A campanha continua pausada até você retomá-la.'
+        : action === 'ignore'
+          ? 'Envio ignorado; a tarefa não voltará à fila.'
+          : 'Envio marcado como concluído.');
+    } catch (error) {
+      notify(errorMessage(error), true);
+    } finally {
+      setBusy(false);
+    }
+  };
   const continueBatch = async () => {
     if (!editing) return;
     setBusy(true);
@@ -175,6 +225,7 @@ export function CampaignMonitor({ sessionId, connected }: { sessionId: string; c
           const sent =
             item.sentTotal ?? item.counts.find((count) => count.status === 'COMPLETED')?._count ?? 0;
           const failed = item.counts.find((count) => count.status === 'FAILED')?._count ?? 0;
+          const verifyCount = item.counts.find((count) => count.status === 'VERIFY')?._count ?? 0;
           const running = item.counts.find((count) => count.status === 'RUNNING')?._count ?? 0;
           const seconds = Math.max(
             0,
@@ -207,6 +258,7 @@ export function CampaignMonitor({ sessionId, connected }: { sessionId: string; c
                 {item.sentTotal !== undefined ? ` · Restantes: ${Math.max(0, item.count - sent)}` : ''}
               </span>
               <progress value={sent} max={Math.max(item.count, 1)} />
+              {verifyCount > 0 && <small>{verifyCount} envio(s) aguardam verificação manual</small>}
               {item.status !== 'BATCH_COMPLETE' && (item.remainingMessages ?? remainingLeads) > 0 && (
                 <small>
                   Tempo estimado até finalizar: ~{eta} ·{' '}
@@ -278,10 +330,16 @@ export function CampaignMonitor({ sessionId, connected }: { sessionId: string; c
                     Editar e continuar próximo lote
                   </button>
                 )}
+                {['PAUSED', 'PAUSED_CONNECTION'].includes(item.status) && (
+                  <button className="button small" disabled={busy} onClick={() => void loadVerifications(item)}>
+                    Resolver verificações{verifyCount > 0 ? ` (${verifyCount})` : ''}
+                  </button>
+                )}
                 {item.status !== 'BATCH_COMPLETE' && (
                   <button
                     className="button small"
-                    disabled={busy}
+                    disabled={busy || (['PAUSED', 'PAUSED_CONNECTION'].includes(item.status) && verifyCount > 0)}
+                    title={verifyCount > 0 ? 'Resolva os envios em verificação antes de retomar' : undefined}
                     onClick={() =>
                       void change(
                         item,
@@ -306,6 +364,49 @@ export function CampaignMonitor({ sessionId, connected }: { sessionId: string; c
           );
         })}
       </aside>
+      {verification && (
+        <Modal title={`Resolver verificações · ${verification.batch.name}`} onClose={() => setVerification(null)}>
+          {verification.tasks.length === 0 ? (
+            <p>Não há envios aguardando verificação nesta campanha.</p>
+          ) : (
+            <div className="task-list">
+              {verification.tasks.map((task) => (
+                <div key={task.id}>
+                  {task.contact && <p><b>{task.contact.name}</b> · +{task.contact.phoneNumber}</p>}
+                  <strong>Entrega incerta</strong>
+                  <small>{new Date(task.runAt).toLocaleString('pt-BR')}</small>
+                  {task.error && <p className="field-error">{task.error}</p>}
+                  <div className="campaign-monitor-actions">
+                    <button className="button small" disabled={busy} onClick={() => setConfirmResolve({ task, action: 'retry' })}>Reenviar</button>
+                    <button className="button small" disabled={busy} onClick={() => void resolveTask(task, 'mark-sent')}>Marcar como enviado</button>
+                    <button className="button small" disabled={busy} onClick={() => setConfirmResolve({ task, action: 'ignore' })}>Ignorar</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Modal>
+      )}
+      {confirmResolve && (
+        <Modal
+          title={confirmResolve.action === 'retry' ? 'Confirmar reenvio' : 'Ignorar envio em verificação'}
+          onClose={() => setConfirmResolve(null)}
+        >
+          {confirmResolve.action === 'retry' ? (
+            <p className="notice">
+              Este envio pode já ter sido entregue. Reenviar pode causar mensagem duplicada para {confirmResolve.task.contact?.name ?? 'este contato'}. Revise a conversa antes de confirmar.
+            </p>
+          ) : (
+            <p>O envio será marcado como ignorado e não voltará à fila. A campanha permanece pausada até você retomá-la.</p>
+          )}
+          <div className="modal-actions">
+            <button className="button" disabled={busy} onClick={() => setConfirmResolve(null)}>Voltar</button>
+            <button className="button primary" disabled={busy} onClick={() => void resolveTask(confirmResolve.task, confirmResolve.action)}>
+              {confirmResolve.action === 'retry' ? 'Confirmar reenvio' : 'Confirmar e ignorar'}
+            </button>
+          </div>
+        </Modal>
+      )}
       {cancel && (
         <Modal title="Cancelar próximos envios?" onClose={() => setCancel(null)}>
           <p>

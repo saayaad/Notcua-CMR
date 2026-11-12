@@ -1700,7 +1700,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     const sessionId = id.parse(req.params.sessionId);
     const batchId = id.parse(req.params.batchId);
     const taskId = id.parse(req.params.taskId);
-    const { action } = z.object({ action: z.enum(['retry', 'mark-sent']) }).parse(req.body);
+    const { action } = z.object({ action: z.enum(['retry', 'mark-sent', 'ignore']) }).parse(req.body);
     const [batch, task] = await Promise.all([
       record<Batch | null>(db, batchId, null),
       db.deliveryTask.findFirst({ where: { id: taskId, batchId, sessionId } }),
@@ -1740,35 +1740,27 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
         const current = await tx.operationRecord.findUnique({ where: { id: batchId } });
         const latest = current?.data as unknown as Batch | undefined;
         const payload = task.payload as unknown as Delivery & { retryAttempt?: number; recoveryAuthorized?: boolean };
-        if (!latest || ['CANCELLED', 'COMPLETED'].includes(latest.status) ||
-          (latest.status === 'BATCH_COMPLETE' && !payload.followUp && !payload.recoveryAuthorized))
+        if (!latest || ['CANCELLED', 'COMPLETED'].includes(latest.status))
           throw new AppError(409, 'Esta campanha não pode retomar envios neste estado.');
         const changed = await tx.deliveryTask.updateMany({
           where: { id: taskId, batchId, status: 'VERIFY' },
           data: {
-            status: 'QUEUED', runAt: new Date(), error: null,
-            payload: json({ ...payload, retryAttempt: (payload.retryAttempt ?? 0) + 1 }),
+            status: 'QUEUED', runAt: new Date(Date.now() + randomInt(10, 31) * 1000), error: null,
+            payload: json({ ...payload, retryAttempt: (payload.retryAttempt ?? 0) + 1, recoveryAuthorized: true, manualResolution: 'retry-authorized', resolvedAt: new Date().toISOString() }),
           },
         });
         if (!changed.count) throw new AppError(409, 'Este envio já foi resolvido.');
         const moreUncertain = await tx.deliveryTask.count({ where: { batchId, status: 'VERIFY' } });
-        const resumed = !moreUncertain && ['PAUSED', 'PAUSED_CONNECTION'].includes(latest.status);
         await tx.operationRecord.update({
           where: { id: batchId },
           data: { data: json({
             ...latest,
-            status: moreUncertain ? 'PAUSED' : latest.status === 'PAUSED' || latest.status === 'PAUSED_CONNECTION' ? 'ACTIVE' : latest.status,
+            status: moreUncertain ? 'PAUSED' : latest.status,
             ...(moreUncertain ? { autoResume: false } : {}),
-            ...(resumed ? {
-              pauseHistory: [
-                ...(latest.pauseHistory ?? []),
-                { at: new Date().toISOString(), reason: 'Envio em verificação autorizado para nova tentativa.', action: 'resumed' },
-              ],
-            } : {}),
           }) },
         });
       });
-    } else {
+    } else if (action === 'mark-sent') {
       const payload = task.payload as Record<string, unknown>;
       await db.$transaction(async (tx) => {
         const changed = await tx.deliveryTask.updateMany({
@@ -1793,8 +1785,28 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
           }) },
         });
       });
+    } else {
+      const payload = task.payload as Record<string, unknown>;
+      await db.$transaction(async (tx) => {
+        const changed = await tx.deliveryTask.updateMany({
+          where: { id: taskId, batchId, status: 'VERIFY' },
+          data: {
+            status: 'CANCELLED',
+            error: 'Ignorado manualmente pelo operador.',
+            payload: json({ ...payload, manualResolution: 'ignored', resolvedAt: new Date().toISOString() }),
+          },
+        });
+        if (!changed.count) throw new AppError(409, 'Este envio já foi resolvido.');
+        const current = await tx.operationRecord.findUniqueOrThrow({ where: { id: batchId } });
+        const latest = current.data as unknown as Batch;
+        if (latest.activeSequenceTaskId === taskId)
+          await tx.operationRecord.update({
+            where: { id: batchId },
+            data: { data: json({ ...latest, activeSequenceTaskId: undefined }) },
+          });
+      });
     }
-    res.json({ saved: true, status: action === 'retry' ? 'PENDING' : 'SENT' });
+    res.json({ saved: true, status: action === 'retry' ? 'PENDING' : action === 'ignore' ? 'IGNORED' : 'SENT' });
   });
   router.get('/sessions/:sessionId/batches/:batchId/tasks', async (req, res) => {
     const sessionId = id.parse(req.params.sessionId);

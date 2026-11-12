@@ -750,6 +750,7 @@ export function CampaignsPage({
     | null
   >(null);
   const [tasksBatchId, setTasksBatchId] = useState('');
+  const [recovery, setRecovery] = useState<{ id: string; name: string; count: number; uncertainCount: number; missingFollowUps: number } | null>(null);
   const [approachReport, setApproachReport] = useState<
     { name: string; sent: number; replied: number; responseRate: number }[] | null
   >(null);
@@ -926,6 +927,20 @@ export function CampaignsPage({
                   >
                     Ver envios
                   </button>
+                  {!schedule && !['DRAFT', 'CANCELLED', 'COMPLETED'].includes(item.status) && (
+                    <button
+                      className="button"
+                      disabled={busy}
+                      onClick={() => void request<{ count: number; uncertainCount: number; missingFollowUps: number }>(
+                        `/operations/sessions/${sessionId}/batches/${item.id}/recovery`,
+                      ).then((result) => {
+                        if (!result.count) notify('Não há falhas pendentes para recuperar.');
+                        else setRecovery({ id: item.id, name: item.name, ...result });
+                      }).catch((error) => notify(errorMessage(error), true))}
+                    >
+                      Corrigir falhas
+                    </button>
+                  )}
                   {item.approaches?.length ? (
                     <button
                       className="button"
@@ -1183,6 +1198,31 @@ export function CampaignsPage({
                 )}
               </div>
             ))}
+          </div>
+        </Modal>
+      )}
+      {recovery && (
+        <Modal title="Corrigir falhas da campanha" onClose={() => setRecovery(null)}>
+          <p><strong>{recovery.name}</strong>: {recovery.count - recovery.missingFollowUps} envio(s) com falha serão tentados novamente, incluindo respostas de CTA. Também serão agendados {recovery.missingFollowUps} follow-up(s) que ficaram sem etapa na fila.</p>
+          {recovery.uncertainCount > 0 && (
+            <p className="field-error">
+              {recovery.uncertainCount} envio(s) estão sem confirmação. Se o WhatsApp chegou a entregar algum deles, a nova tentativa pode duplicar a mensagem.
+            </p>
+          )}
+          <p className="muted">Follow-ups que ainda estão no prazo permanecem agendados; respostas do contato continuam cancelando etapas futuras.</p>
+          <div className="modal-actions">
+            <button className="button" disabled={busy} onClick={() => setRecovery(null)}>Voltar</button>
+            <button className="button primary" disabled={busy} onClick={() => {
+              setBusy(true);
+              void request<{ count: number; missingFollowUps: number }>(`/operations/sessions/${sessionId}/batches/${recovery.id}/recovery`, 'POST')
+                .then((result) => {
+                  notify(`${result.count - result.missingFollowUps} envio(s) recuperados e ${result.missingFollowUps} follow-up(s) agendados.`);
+                  setRecovery(null);
+                  setTick((value) => value + 1);
+                })
+                .catch((error) => notify(errorMessage(error), true))
+                .finally(() => setBusy(false));
+            }}>Reenviar pendências</button>
           </div>
         </Modal>
       )}
