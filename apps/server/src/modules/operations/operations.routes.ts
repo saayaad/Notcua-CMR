@@ -44,6 +44,7 @@ import { businessHoursReplySchema } from './business-hours-reply.js';
 import { inactivityRoutes } from './inactivity.js';
 import { standardReplyRoutes } from './standard-replies.js';
 import { nextActionRoutes } from './next-actions.js';
+import { countRecoveryFilters, planCampaignRecovery, RECOVERY_STATUSES, type RecoveryStatus } from './campaign-recovery.js';
 
 const id = z.string().min(1).max(200);
 const campaignCtaSchema = z.object({
@@ -639,6 +640,65 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
         !(row.contact.metadata as { optOut?: boolean }).optOut,
     );
   };
+  const recoveryPlan = async (sessionId: string, sourceId: string, options: {
+    statuses: RecoveryStatus[]; minIntervalDays: number; maxRecoveries: number;
+  }) => {
+    const sourceRow = await db.operationRecord.findFirst({ where: { id: sourceId, kind: 'BATCH' } });
+    const source = sourceRow?.data as unknown as Batch | undefined;
+    if (!source || source.sessionId !== sessionId || source.mode !== 'CAMPAIGN')
+      throw new AppError(404, 'Campanha de origem não encontrada.');
+    const [tasks, batchRows] = await Promise.all([
+      db.deliveryTask.findMany({ where: { batchId: sourceId, sessionId } }),
+      db.operationRecord.findMany({ where: { kind: 'BATCH', data: { path: '$.sessionId', equals: sessionId } } }),
+    ]);
+    const conversations = await db.conversation.findMany({
+      where: { id: { in: tasks.map((task) => task.conversationId) }, sessionId },
+      include: { contact: { include: { labels: { include: { label: true } }, deals: true } }, opportunity: true,
+        messages: { orderBy: [{ sentAt: 'desc' }, { id: 'desc' }], take: 1 } },
+    });
+    const conversationsById = new Map(conversations.map((conversation) => [conversation.id, conversation]));
+    const otherActive = batchRows.filter((row) => {
+      const batch = row.data as unknown as Batch;
+      return row.id !== sourceId && batch.sessionId === sessionId && ['ACTIVE', 'PAUSED', 'PAUSED_CONNECTION'].includes(batch.status);
+    }).map((row) => row.id);
+    const activeContacts = new Set(otherActive.length ? (await db.deliveryTask.findMany({
+      where: { batchId: { in: otherActive } }, select: { conversationId: true },
+    })).map((task) => task.conversationId) : []);
+    const recoveryRows = batchRows.filter((row) => (row.data as { recoverySourceId?: string }).recoverySourceId === sourceId);
+    const prior = recoveryRows.length ? await db.deliveryTask.findMany({
+      where: { batchId: { in: recoveryRows.map((row) => row.id) }, status: { in: ['SENT', 'REPLIED', 'COMPLETED', 'VERIFY', 'FAILED'] } },
+      select: { conversationId: true, updatedAt: true, status: true },
+    }) : [];
+    const history = new Map<string, { count: number; lastAt?: Date }>();
+    for (const task of prior) {
+      const state = history.get(task.conversationId) ?? { count: 0 };
+      if (['SENT', 'REPLIED', 'COMPLETED'].includes(task.status)) state.count++;
+      if (!state.lastAt || task.updatedAt > state.lastAt) state.lastAt = task.updatedAt;
+      history.set(task.conversationId, state);
+    }
+    const candidates = tasks.flatMap((task) => {
+      const conversation = conversationsById.get(task.conversationId);
+      if (!conversation) return [];
+      const contact = conversation.contact;
+      const metadata = (contact.metadata ?? {}) as Record<string, unknown>;
+      const labels = contact.labels.map(({ label }) => label.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase());
+      const previous = history.get(task.conversationId) ?? { count: 0 };
+      const lastMessage = conversation.messages[0];
+      return [{
+        id: task.conversationId, name: contact.name, phoneNumber: contact.phoneNumber, taskStatus: task.status,
+        replied: task.status === 'REPLIED' || lastMessage?.direction === 'INBOUND',
+        optedOut: Boolean(metadata.optOut) || labels.some((name) => ['nao perturbe', 'bloqueado opt out', 'opt out'].includes(name)),
+        blocked: Boolean(metadata.blocked) || labels.some((name) => name.includes('bloquead')),
+        purchased: contact.deals.some((deal) => deal.status === 'WON') || conversation.opportunity?.status === 'WON',
+        pendingOrder: Boolean(metadata.pendingOrder || metadata.pendingVideo || metadata.videoPending) || contact.deals.some((deal) => deal.status === 'OPEN') || labels.some((name) => /pedido.*andamento|video.*pendente|pedido.*pendente/.test(name)),
+        activeElsewhere: activeContacts.has(task.conversationId),
+        latestSentAt: ['SENT', 'REPLIED', 'COMPLETED'].includes(task.status) ? task.updatedAt : null,
+        recoveryCount: previous.count, latestRecoveryAt: previous.lastAt,
+      }];
+    });
+    const filterCounts = countRecoveryFilters(candidates);
+    return { source, filterCounts, ...planCampaignRecovery(candidates, options) };
+  };
   router.get('/sessions/:sessionId/lead-lists', async (req, res) => {
     const sessionId = id.parse(req.params.sessionId);
     await whatsapp.snapshot(sessionId);
@@ -667,6 +727,86 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
         phoneNumber: row.contact.phoneNumber,
       })),
     });
+  });
+  router.post('/sessions/:sessionId/batches/:batchId/recovery-preview', async (req, res) => {
+    admin(res.locals.identity.role);
+    const input = z.object({
+      statuses: z.array(z.enum(RECOVERY_STATUSES)).min(1).max(4),
+      minIntervalDays: z.number().int().min(0).max(3650).default(3),
+      maxRecoveries: z.number().int().min(1).max(100).default(2),
+    }).parse(req.body);
+    const result = await recoveryPlan(id.parse(req.params.sessionId), id.parse(req.params.batchId), input);
+    res.json({ source: result.source, filterCounts: result.filterCounts, count: result.eligible.length, items: result.eligible, excluded: result.excluded, excludedCounts: result.counts });
+  });
+  router.get('/sessions/:sessionId/batches/:batchId/recovery-report', async (req, res) => {
+    const sessionId = id.parse(req.params.sessionId);
+    const selectedId = id.parse(req.params.batchId);
+    const selectedRow = await db.operationRecord.findFirst({ where: { id: selectedId, kind: 'BATCH' } });
+    const selected = selectedRow?.data as unknown as Batch & { recoverySourceId?: string } | undefined;
+    if (!selected || selected.sessionId !== sessionId || selected.mode !== 'CAMPAIGN') throw new AppError(404, 'Campanha não encontrada.');
+    const sourceId = selected.recoverySourceId ?? selectedId;
+    const rows = await db.operationRecord.findMany({ where: { kind: 'BATCH', data: { path: '$.sessionId', equals: sessionId } } });
+    const campaigns = rows.map((row) => ({ id: row.id, data: row.data as unknown as Batch & { recoverySourceId?: string } }))
+      .filter((row) => row.id === sourceId || row.data.recoverySourceId === sourceId);
+    const finance = await campaignRevenue(db, sessionId);
+    const report = await Promise.all(campaigns.map(async ({ id: campaignId, data }) => {
+      const tasks = await db.deliveryTask.findMany({ where: { batchId: campaignId, sessionId } });
+      const ids = tasks.map((task) => task.id);
+      const deliveryMessages = ids.length ? await db.chatMessage.findMany({
+        where: { id: { in: ids.map((taskId) => `out:delivery:${taskId}`) }, direction: 'OUTBOUND' },
+        select: { id: true, status: true },
+      }) : [];
+      const deliveredIds = new Set(deliveryMessages.filter((message) => ['DELIVERED', 'READ'].includes(message.status)).map((message) => message.id.slice('out:delivery:'.length)));
+      const conversations = await db.conversation.findMany({ where: { id: { in: tasks.map((task) => task.conversationId) } }, include: { contact: { select: { metadata: true } }, opportunity: true } });
+      const conversationMap = new Map(conversations.map((conversation) => [conversation.id, conversation]));
+      const optedOut = new Set(conversations.filter((conversation) => {
+        const metadata = conversation.contact.metadata as { optOut?: boolean; optOutAt?: string };
+        return Boolean(metadata.optOut && metadata.optOutAt && new Date(metadata.optOutAt) >= new Date(data.createdAt));
+      }).map((conversation) => conversation.id));
+      const inbound = await db.chatMessage.findMany({ where: { conversationId: { in: tasks.map((task) => task.conversationId) }, direction: 'INBOUND', type: { not: 'internalNote' } }, select: { conversationId: true, text: true, sentAt: true } });
+      const ctaKeywords = (data.ctaMessages ?? []).flatMap((cta) => cta.keyword.split(/[,;|\n]/)).map(normalizeCampaignKeyword).filter(Boolean);
+      const attributions = await db.operationRecord.findMany({ where: { kind: 'CAMPAIGN_ATTRIBUTION', data: { path: '$.campaignId', equals: campaignId } } });
+      const attributedConversations = new Set(attributions.map((row) => (row.data as { conversationId: string }).conversationId));
+      const variations = new Map<number, { name: string; sent: number; delivered: number; replied: number; euQuero: number; sales: number; revenue: number; failed: number; optedOut: number }>();
+      for (const task of tasks) {
+        const payload = task.payload as unknown as Delivery;
+        const index = Math.max(0, task.alternativeIndex ?? payload.approachIndex ?? 0);
+        const row = variations.get(index) ?? { name: data.variationNames?.[index] ?? (index ? `Variação ${index}` : 'Mensagem principal'), sent: 0, delivered: 0, replied: 0, euQuero: 0, sales: 0, revenue: 0, failed: 0, optedOut: 0 };
+        if (['SENT', 'REPLIED', 'COMPLETED'].includes(task.status)) row.sent++;
+        if (deliveredIds.has(task.id)) row.delivered++;
+        if (task.status === 'REPLIED') row.replied++;
+        if (['FAILED', 'VERIFY'].includes(task.status)) row.failed++;
+        if (optedOut.has(task.conversationId)) row.optedOut++;
+        const reply = inbound.some((message) => message.conversationId === task.conversationId && message.sentAt >= task.updatedAt && ctaKeywords.some((keyword) => (` ${normalizeCampaignKeyword(message.text ?? '')} `).includes(` ${keyword} `)));
+        if (reply) row.euQuero++;
+        const conversation = conversationMap.get(task.conversationId);
+        if (attributedConversations.has(task.conversationId) && conversation?.opportunity?.status === 'WON') {
+          row.sales++;
+          row.revenue += conversation.opportunity.valueInCents;
+        }
+        variations.set(index, row);
+      }
+      const totals = [...variations.values()].reduce((sum, item) => {
+        for (const key of ['sent', 'delivered', 'replied', 'euQuero', 'sales', 'revenue', 'failed', 'optedOut'] as const) sum[key] += item[key];
+        return sum;
+      }, { sent: 0, delivered: 0, replied: 0, euQuero: 0, sales: 0, revenue: 0, failed: 0, optedOut: 0 });
+      const financeConfig = finance.configurations.get(financeKey(campaignId));
+      if (financeConfig?.revenueSource === 'MANUAL') totals.revenue = financeConfig.manualRevenueInCents;
+      return { id: campaignId, name: data.name, totals, variations: [...variations.values()] };
+    }));
+    const original = report.find((item) => item.id === sourceId);
+    const recoveries = report.filter((item) => item.id !== sourceId);
+    const recoveredBase = recoveries.reduce((sum, item) => {
+      for (const key of Object.keys(sum) as (keyof typeof sum)[]) sum[key] += item.totals[key];
+      return sum;
+    }, { sent: 0, delivered: 0, replied: 0, euQuero: 0, sales: 0, revenue: 0, failed: 0, optedOut: 0 });
+    const recoveredTotals = { ...recoveredBase, conversionRate: recoveredBase.sent ? recoveredBase.sales / recoveredBase.sent * 100 : 0 };
+    const originalMetrics = original ? { ...original, totals: { ...original.totals, conversionRate: original.totals.sent ? original.totals.sales / original.totals.sent * 100 : 0 } } : undefined;
+    const difference: Record<string, number> = originalMetrics ? Object.fromEntries(Object.keys(recoveredTotals).map((key) => {
+      const metric = key as keyof typeof recoveredTotals;
+      return [key, recoveredTotals[metric] - ((originalMetrics.totals as Record<string, number>)[key] ?? 0)];
+    })) : {};
+    res.json({ original: originalMetrics, recoveries, recoveredTotals, difference });
   });
   router.get('/sessions/:sessionId/batches', async (req, res) => {
     const sessionId = id.parse(req.params.sessionId);
@@ -837,6 +977,13 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
         name: z.string().trim().min(1).max(100),
         mode: z.enum(['CAMPAIGN', 'SCHEDULE', 'REMINDER']),
         audience: z.unknown(),
+        recovery: z.object({
+          sourceCampaignId: id,
+          statuses: z.array(z.enum(RECOVERY_STATUSES)).min(1).max(4),
+          minIntervalDays: z.number().int().min(0).max(3650).default(3),
+          maxRecoveries: z.number().int().min(1).max(100).default(2),
+          previewSeen: z.literal(true),
+        }).optional(),
         delivery: campaignDeliverySchema,
         alternatives: z.array(z.object({ name: z.string().trim().min(1).max(60), delivery: campaignDeliverySchema })).min(1).max(10).optional(),
         minSeconds: z.number().int().min(1).max(86400).default(15),
@@ -895,7 +1042,19 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       );
     if (input.sendWindow && input.mode !== 'CAMPAIGN')
       throw new AppError(422, 'O horário permitido está disponível apenas para campanhas.');
-    const people = await audience(sessionId, input.audience);
+    let people = await audience(sessionId, input.audience);
+    let recoveryExcluded: { id: string; name: string; phoneNumber: string; reason: string }[] = [];
+    if (input.recovery) {
+      if (input.mode !== 'CAMPAIGN' || input.delivery.kind !== 'text') throw new AppError(422, 'Recuperações aceitam somente campanhas de texto.');
+      const plan = await recoveryPlan(sessionId, input.recovery.sourceCampaignId, input.recovery);
+      recoveryExcluded = plan.excluded;
+      const requestedIds = new Set((input.audience as { conversationIds?: string[] })?.conversationIds ?? []);
+      const eligible = new Map(plan.eligible.map((person) => [person.id, person]));
+      const chosen = [...requestedIds].filter((conversationId) => eligible.has(conversationId));
+      if (!chosen.length) throw new AppError(409, 'A prévia mudou: nenhum contato selecionado continua elegível. Atualize a prévia.');
+      const rows = await db.conversation.findMany({ where: { id: { in: chosen }, sessionId }, include: { contact: true } });
+      people = rows;
+    }
     if (!people.length) throw new AppError(422, 'Nenhum contato corresponde ao público escolhido.');
     if (input.mode !== 'CAMPAIGN' && people.length !== 1)
       throw new AppError(422, 'Selecione uma conversa para o agendamento individual.');
@@ -1039,6 +1198,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       sessionId,
       status: 'DRAFT',
       mode: input.mode,
+      ...(input.recovery ? { recoverySourceId: input.recovery.sourceCampaignId, recoveryMinIntervalDays: input.recovery.minIntervalDays, recoveryMaxAttempts: input.recovery.maxRecoveries, recoveryStatuses: input.recovery.statuses, recoveryExcluded } : {}),
       minSeconds: input.minSeconds,
       maxSeconds: input.maxSeconds,
       speedMultiplier: input.speedMultiplier,
@@ -1700,7 +1860,7 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
     const sessionId = id.parse(req.params.sessionId);
     const batchId = id.parse(req.params.batchId);
     const taskId = id.parse(req.params.taskId);
-    const { action } = z.object({ action: z.enum(['retry', 'mark-sent', 'ignore']) }).parse(req.body);
+    let { action } = z.object({ action: z.enum(['retry', 'mark-sent', 'ignore']) }).parse(req.body);
     const [batch, task] = await Promise.all([
       record<Batch | null>(db, batchId, null),
       db.deliveryTask.findFirst({ where: { id: taskId, batchId, sessionId } }),
@@ -1709,6 +1869,13 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       throw new AppError(404, 'Envio não encontrado nesta campanha.');
     if (task.status !== 'VERIFY')
       throw new AppError(409, 'Somente envios em verificação podem ser resolvidos.');
+    if (action === 'retry') {
+      const alreadyPersisted = await db.chatMessage.findFirst({
+        where: { id: `out:delivery:${task.id}`, conversationId: task.conversationId, direction: 'OUTBOUND', status: { in: ['SENT', 'DELIVERED', 'READ'] } },
+        select: { id: true },
+      });
+      if (alreadyPersisted) action = 'mark-sent';
+    }
     const frozen = env.CAMPAIGN_ALTERNATIVES_ENABLED && task.frozenContent
       ? task.frozenContent as unknown as Delivery : undefined;
     const currentStep = task.stepIndex ?? 0;

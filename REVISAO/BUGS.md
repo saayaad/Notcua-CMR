@@ -320,3 +320,11 @@ A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, po
 - Causa: claim do lead, atualização do estado da campanha, resolução de `VERIFY` e atualização dos contadores não protegiam as transições contra concorrência.
 - Correção: claim transacional valida o estado atual da campanha; pausa no meio do envio preserva resultado/cursor/contadores e impede o próximo lead; restart converte campanhas interrompidas em pausa manual com `VERIFY`; retomar exige resolver toda incerteza. Resolução usa update condicional transacional, contagem única e ID de envio idempotente; retry não reativa campanha terminal.
 - Reteste: testes de pausa concorrente, reinício/VERIFY, retry idempotente, resolução repetida e reconexão passaram em SQLite temporário e FakeSocket; regressão conjunta 89/89. Nenhum envio real.
+
+## Recuperar Leads — 12/11/2026
+
+- Elegibilidade server-side com opt-out/bloqueio, CRM, pedidos/vídeos pendentes, números inválidos/duplicados, campanhas simultâneas, intervalo e tentativas máximas como exclusões obrigatórias.
+- Editor de campanha reaproveitado; origem, razões de exclusão e histórico por contato usam dados existentes, sem migração. A recuperação fica em rascunho até ativação manual.
+- Prévia com contagens, excluídos exportáveis em CSV e comparação de métricas por campanha/variação.
+- Correção VERIFY: se a chave tem mensagem persistida como enviada/entregue/lida, Reenviar confirma a mensagem já feita sem duplicata. Teste Fase 5 passou.
+- Nenhuma mensagem foi enviada ou tarefa real alterada. Servidor persistente não reiniciado: 160 tarefas QUEUED e uma campanha ativa.

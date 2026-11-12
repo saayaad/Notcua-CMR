@@ -68,6 +68,11 @@ export interface Batch {
     textVersion: string[];
   }[];
   pauseHistory?: { at: string; reason: string; action: 'paused' | 'resumed' }[];
+  recoverySourceId?: string;
+  recoveryMinIntervalDays?: number;
+  recoveryMaxAttempts?: number;
+  recoveryStatuses?: string[];
+  recoveryExcluded?: { id: string; name: string; phoneNumber: string; reason: string }[];
 }
 export interface Delivery {
   kind: 'text' | 'asset' | 'funnel' | 'flow' | 'reminder' | 'sequence';

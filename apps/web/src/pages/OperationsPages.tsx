@@ -708,6 +708,20 @@ interface BatchRow {
   manualRevenueInCents?: number;
   revenueSource?: 'MANUAL' | 'CRM';
   crmSales?: number;
+  followUpMessages?: { waitMinutes: number; text: string }[];
+  ctaMessages?: { keyword: string; replyText?: string; assetId?: string; labelId?: string }[];
+  minSeconds?: number;
+  maxSeconds?: number;
+  pauseEvery?: number;
+  pauseSeconds?: number;
+  speedMultiplier?: 1 | 1.5 | 2;
+  pauseAfterBatch?: boolean;
+  autoResume?: boolean;
+  batchSize?: number;
+  sendWindow?: { timezone: string; days: number[]; start: string; end: string };
+  recoverySourceId?: string;
+  defaultReplyText?: string;
+  optOutLine?: string;
 }
 const batchStatus: Record<string, string> = {
   DRAFT: 'Rascunho',
@@ -737,6 +751,7 @@ export function CampaignsPage({
   const [items, setItems] = useState<BatchRow[]>([]);
   const [tick, setTick] = useState(0);
   const [create, setCreate] = useState(Boolean(initialConversation));
+  const [recoverLeadsSource, setRecoverLeadsSource] = useState<BatchRow | null>(null);
   const [activate, setActivate] = useState<BatchRow | null>(null);
   const [tasks, setTasks] = useState<
     | {
@@ -754,6 +769,12 @@ export function CampaignsPage({
   const [approachReport, setApproachReport] = useState<
     { name: string; sent: number; replied: number; responseRate: number }[] | null
   >(null);
+  const [recoveryReport, setRecoveryReport] = useState<{
+    original?: { id: string; name: string; totals: Record<string, number>; variations: { name: string; sent: number; delivered: number; replied: number; euQuero: number; sales: number; revenue: number; failed: number; optedOut: number }[] };
+    recoveries: { id: string; name: string; totals: Record<string, number>; variations: { name: string; sent: number; delivered: number; replied: number; euQuero: number; sales: number; revenue: number; failed: number; optedOut: number }[] }[];
+    recoveredTotals: Record<string, number>;
+    difference: Record<string, number>;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState(initialSearch);
   const [financeBatch, setFinanceBatch] = useState('');
@@ -834,7 +855,7 @@ export function CampaignsPage({
           <button className="icon-button" aria-label="Atualizar envios" onClick={() => setTick(tick + 1)}>
             <RefreshCw size={17} />
           </button>
-          <button className="button primary" disabled={!sessionId} onClick={() => setCreate(true)}>
+          <button className="button primary" disabled={!sessionId} onClick={() => { setRecoverLeadsSource(null); setCreate(true); }}>
             <Plus size={16} />
             {schedule ? 'Novo agendamento' : 'Nova campanha'}
           </button>
@@ -854,6 +875,7 @@ export function CampaignsPage({
                     {batchStatus[item.status]}
                   </span>
                   <h2>{item.name}</h2>
+                  {item.recoverySourceId && <small className="muted">Recuperação vinculada à campanha: {items.find((source) => source.id === item.recoverySourceId)?.name ?? item.recoverySourceId}</small>}
                   <p>
                     {item.count} contatos ·{' '}
                     {item.counts.find((row) => row.status === 'COMPLETED')?._count ?? 0} encaminhados ·{' '}
@@ -912,6 +934,11 @@ export function CampaignsPage({
                       Vincular vendas do CRM
                     </button>
                   )}
+                  {!schedule && item.mode === 'CAMPAIGN' && (
+                    <button className="button" disabled={busy} onClick={() => { setRecoverLeadsSource(item); setCreate(true); }}>
+                      Recuperar Leads
+                    </button>
+                  )}
                   <button
                     className="button"
                     onClick={() =>
@@ -955,6 +982,11 @@ export function CampaignsPage({
                       Resultados das variações
                     </button>
                   ) : null}
+                  {!schedule && item.mode === 'CAMPAIGN' && (
+                    <button className="button" onClick={() => void request<typeof recoveryReport>(
+                      `/operations/sessions/${sessionId}/batches/${item.id}/recovery-report`,
+                    ).then(setRecoveryReport).catch((error) => notify(errorMessage(error), true))}>Comparar recuperação</button>
+                  )}
                   {['DRAFT', 'PAUSED'].includes(item.status) && (
                     <button className="button primary" disabled={busy} onClick={() => setActivate(item)}>
                       <Play size={14} />
@@ -1079,6 +1111,28 @@ export function CampaignsPage({
           }}
         />
       )}
+      {recoveryReport && (
+        <Modal title="Relatório comparativo de recuperação" onClose={() => setRecoveryReport(null)} wide>
+          {recoveryReport.original && <div className="task-list">
+            <h3>Campanha original · {recoveryReport.original.name}</h3>
+            <div className="form-grid">
+              {Object.entries(recoveryReport.original.totals).map(([key, value]) => <p key={key}><b>{({ sent: 'Enviados', delivered: 'Entregues', replied: 'Respostas', euQuero: 'EU QUERO', sales: 'Vendas', revenue: 'Receita', conversionRate: 'Conversão (%)', optedOut: 'Pedidos para parar', failed: 'Falhas' } as Record<string, string>)[key] ?? key}</b>: {key === 'revenue' ? (value / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : value.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}</p>)}
+            </div>
+            <h4>Por variação · original</h4>
+            <div className="form-grid">{recoveryReport.original.variations.map((row) => <p key={row.name}>{row.name}: {row.sent} enviados · {row.delivered} entregues · {row.replied} respostas · {row.euQuero} EU QUERO · {row.sales} vendas · {(row.revenue / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} · {row.failed} falhas · {row.optedOut} pedidos para parar</p>)}</div>
+            <h3>Recuperação · total</h3>
+            <div className="form-grid">
+              {Object.entries(recoveryReport.recoveredTotals).map(([key, value]) => { const difference = recoveryReport.difference[key] ?? 0; const label = ({ sent: 'Enviados', delivered: 'Entregues', replied: 'Respostas', euQuero: 'EU QUERO', sales: 'Vendas', revenue: 'Receita', conversionRate: 'Conversão (%)', optedOut: 'Pedidos para parar', failed: 'Falhas' } as Record<string, string>)[key] ?? key; const formatted = key === 'revenue' ? (value / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : value.toLocaleString('pt-BR', { maximumFractionDigits: 1 }); const delta = key === 'revenue' ? (difference / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : difference.toLocaleString('pt-BR', { maximumFractionDigits: 1 }); return <p key={key}><b>{label}</b>: {formatted} <small>({difference > 0 ? '+' : ''}{delta} vs original)</small></p>; })}
+            </div>
+            <h3>Campanhas de recuperação</h3>
+            {recoveryReport.recoveries.map((campaign) => <section className="surface" key={campaign.id}>
+              <strong>{campaign.name}</strong>
+              <div className="form-grid">{campaign.variations.map((row) => <p key={row.name}>{row.name}: {row.sent} enviados · {row.delivered} entregues · {row.replied} respostas · {row.euQuero} “EU QUERO” · {row.sales} vendas · {(row.revenue / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} · {row.failed} falhas · {row.optedOut} pedidos para parar · {row.sent ? (100 * row.sales / row.sent).toFixed(1) : '0'}% conversão</p>)}</div>
+            </section>)}
+          </div>}
+          {!recoveryReport.original && <p>Não há campanha original vinculada a esta recuperação.</p>}
+        </Modal>
+      )}
       {!items.length && (
         <div className="operation-empty">
           <Send size={36} />
@@ -1091,9 +1145,11 @@ export function CampaignsPage({
           sessionId={sessionId}
           library={library}
           schedule={schedule}
-          onClose={() => setCreate(false)}
+          initialRecovery={recoverLeadsSource}
+          onClose={() => { setCreate(false); setRecoverLeadsSource(null); }}
           onSaved={() => {
             setCreate(false);
+            setRecoverLeadsSource(null);
             setTick(tick + 1);
           }}
         />
@@ -1249,6 +1305,7 @@ export function BatchEditor({
   library,
   schedule,
   initialConversation,
+  initialRecovery,
   onClose,
   onSaved,
 }: {
@@ -1256,6 +1313,7 @@ export function BatchEditor({
   library: Library;
   schedule: boolean;
   initialConversation?: Conversation;
+  initialRecovery?: BatchRow | null;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -1266,16 +1324,26 @@ export function BatchEditor({
   const [alternatives, setAlternatives] = useState<AlternativeDraft[]>(() => [newAlternative(1)]);
   const [selectedAlternativeId, setSelectedAlternativeId] = useState('');
   const activeAlternative = alternatives.find((item) => item.id === selectedAlternativeId) ?? alternatives[0]!;
-  const [message, setMessage] = useState('');
-  const [variants, setVariants] = useState<string[]>([]);
-  const [variantNames, setVariantNames] = useState<string[]>([]);
+  const [message, setMessage] = useState(initialRecovery?.approaches?.[0] ?? '');
+  const [variants, setVariants] = useState<string[]>(initialRecovery?.approaches?.slice(1) ?? []);
+  const [variantNames, setVariantNames] = useState<string[]>(initialRecovery?.variationNames?.slice(1) ?? []);
   const [generating, setGenerating] = useState(false);
   const [variantIndex, setVariantIndex] = useState(0);
-  const [ctas, setCtas] = useState<{ keyword: string; replyText: string; assetId: string; labelId: string }[]>([]);
-  const [defaultReplyText, setDefaultReplyText] = useState('');
-  const [followUps, setFollowUps] = useState<{ text: string; waitMinutes: number }[]>([]);
-  const [optOutLineEnabled, setOptOutLineEnabled] = useState(false);
-  const [optOutLine, setOptOutLine] = useState('Se não fizer sentido, é só avisar');
+  const [ctas, setCtas] = useState<{ keyword: string; replyText: string; assetId: string; labelId: string }[]>(initialRecovery?.ctaMessages?.map((cta) => ({ keyword: cta.keyword, replyText: cta.replyText ?? '', assetId: cta.assetId ?? '', labelId: cta.labelId ?? '' })) ?? []);
+  const [defaultReplyText, setDefaultReplyText] = useState(initialRecovery?.defaultReplyText ?? '');
+  const [followUps, setFollowUps] = useState<{ text: string; waitMinutes: number }[]>(initialRecovery?.followUpMessages ?? []);
+  const [recoveryStatuses, setRecoveryStatuses] = useState(['unreplied', 'delivery', 'pending']);
+  const [recoveryMinDays, setRecoveryMinDays] = useState(3);
+  const [recoveryMaxAttempts, setRecoveryMaxAttempts] = useState(2);
+  const [recoveryPreview, setRecoveryPreview] = useState<{ count: number; items: { id: string; name: string; phoneNumber: string }[]; excluded: { id: string; name: string; phoneNumber: string; reason: string }[]; excludedCounts: Record<string, number>; filterCounts: Record<string, number> } | null>(null);
+  const [recoveryPreviewSeen, setRecoveryPreviewSeen] = useState(false);
+  const [recoveryUseWindow, setRecoveryUseWindow] = useState(Boolean(initialRecovery?.sendWindow));
+  const [recoveryWindowStart, setRecoveryWindowStart] = useState(initialRecovery?.sendWindow?.start ?? '09:00');
+  const [recoveryWindowEnd, setRecoveryWindowEnd] = useState(initialRecovery?.sendWindow?.end ?? '18:00');
+  const [recoveryWindowDays, setRecoveryWindowDays] = useState<number[]>(initialRecovery?.sendWindow?.days ?? [1, 2, 3, 4, 5]);
+  const [recoveryTimezone, setRecoveryTimezone] = useState(initialRecovery?.sendWindow?.timezone ?? 'America/Sao_Paulo');
+  const [optOutLineEnabled, setOptOutLineEnabled] = useState(Boolean(initialRecovery?.optOutLine));
+  const [optOutLine, setOptOutLine] = useState(initialRecovery?.optOutLine ?? 'Se não fizer sentido, é só avisar');
   const [testBusy, setTestBusy] = useState(false);
   const [selectedAssets, setSelectedAssets] = useState<string[]>([]);
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
@@ -1339,6 +1407,7 @@ export function BatchEditor({
     conversationIds: schedule && conversationId ? [conversationId] : [],
   };
   useEffect(() => {
+    if (initialRecovery) return;
     if (schedule && !conversationId) {
       setAudienceLoading(false);
       setPreview(null);
@@ -1371,6 +1440,7 @@ export function BatchEditor({
     };
   }, [
     sessionId,
+    initialRecovery,
     schedule,
     conversationId,
     labelId,
@@ -1382,6 +1452,21 @@ export function BatchEditor({
     request,
     notify,
   ]);
+  const loadRecoveryPreview = () => {
+    if (!initialRecovery) return;
+    setBusy(true);
+    setRecoveryPreviewSeen(false);
+    void request<NonNullable<typeof recoveryPreview>>(
+      `/operations/sessions/${sessionId}/batches/${initialRecovery.id}/recovery-preview`,
+      'POST',
+      { statuses: recoveryStatuses, minIntervalDays: recoveryMinDays, maxRecoveries: recoveryMaxAttempts },
+    ).then((result) => {
+      setRecoveryPreview(result);
+      setPreview({ count: result.count, items: result.items });
+      setSelectedLeads(result.items.map((item) => item.id));
+      setRecoveryPreviewSeen(true);
+    }).catch((error) => notify(errorMessage(error), true)).finally(() => setBusy(false));
+  };
   const previewAssets = selectedAssets
     .map((id) => library.assets.find((asset) => asset.id === id))
     .filter((asset): asset is Asset => Boolean(asset));
@@ -1413,7 +1498,7 @@ export function BatchEditor({
   };
   return (
     <Modal
-      title={schedule ? 'Agendar mensagem ou lembrete' : 'Nova campanha segmentada'}
+      title={initialRecovery ? `Recuperar Leads · ${initialRecovery.name}` : schedule ? 'Agendar mensagem ou lembrete' : 'Nova campanha segmentada'}
       className="batch-editor-modal"
       onClose={onClose}
       wide
@@ -1422,7 +1507,7 @@ export function BatchEditor({
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            if (!preview) return;
+            if (!preview || (initialRecovery && !recoveryPreviewSeen)) return;
             const data = new FormData(event.currentTarget);
             const speedMultiplier = Number(data.get('speedMultiplier') || 1);
             const scaleDelay = (seconds: number, minimum = 0) => Math.max(minimum, Math.floor(seconds / speedMultiplier));
@@ -1441,6 +1526,7 @@ export function BatchEditor({
                 Number(String(data.get('revenue') || '0').replace(',', '.')) * 100,
               ),
               audience: { ...audience, conversationIds: selectedLeads },
+              ...(initialRecovery ? { recovery: { sourceCampaignId: initialRecovery.id, statuses: recoveryStatuses, minIntervalDays: recoveryMinDays, maxRecoveries: recoveryMaxAttempts, previewSeen: true } } : {}),
               delivery: {
                 kind: kind === 'asset' && selectedAssets.length > 1 ? 'sequence' : kind,
                 textVariations: kind === 'text' ? variants : undefined,
@@ -1491,6 +1577,7 @@ export function BatchEditor({
               pauseAfterBatch: data.get('pauseAfterBatch') === 'on',
               autoResume: data.get('autoResume') === 'on',
               distribution: alternativeMode ? 'ROUND_ROBIN' : data.get('distribution') || 'RANDOM',
+              sendWindow: initialRecovery && recoveryUseWindow ? { timezone: recoveryTimezone, days: recoveryWindowDays, start: recoveryWindowStart, end: recoveryWindowEnd } : undefined,
               runAt: data.get('runAt') ? new Date(String(data.get('runAt'))).toISOString() : undefined,
             })
               .then(onSaved)
@@ -1498,13 +1585,61 @@ export function BatchEditor({
               .finally(() => setBusy(false));
           }}
         >
+          {initialRecovery && (
+            <section className="surface recovery-options">
+              <h3>Opções de recuperação</h3>
+              <p className="muted">Origem: {initialRecovery.name}. As exclusões de segurança são sempre aplicadas.</p>
+              <div className="form-grid">
+                {([
+                  ['unreplied', 'Não responderam'], ['delivery', 'Verificar entrega / falhas'],
+                  ['pending', 'Nunca enviados (pendentes)'], ['replied', 'Responderam'],
+                ] as const).map(([key, label]) => (
+                  <label key={key}>
+                    <input type="checkbox" checked={recoveryStatuses.includes(key)} onChange={(event) => {
+                      setRecoveryStatuses((current) => event.target.checked ? [...current, key] : current.filter((value) => value !== key));
+                      setRecoveryPreview(null); setPreview(null); setRecoveryPreviewSeen(false);
+                    }} />
+                    {label} · {recoveryPreview?.filterCounts[key] ?? '—'}
+                  </label>
+                ))}
+                <label>Intervalo mínimo desde o último envio (dias)
+                  <input type="number" min={0} max={3650} value={recoveryMinDays} onChange={(event) => { setRecoveryMinDays(Number(event.target.value)); setRecoveryPreview(null); setPreview(null); setRecoveryPreviewSeen(false); }} />
+                </label>
+                <label>Máximo de recuperações por contato
+                  <input type="number" min={1} max={100} value={recoveryMaxAttempts} onChange={(event) => { setRecoveryMaxAttempts(Number(event.target.value)); setRecoveryPreview(null); setPreview(null); setRecoveryPreviewSeen(false); }} />
+                </label>
+              </div>
+              <p className="muted">Sempre exclui opt-out, bloqueados, vendas vinculadas, pedidos/vídeos pendentes, números inválidos/duplicados, outra campanha ativa/pausada, intervalo mínimo e limite de tentativas.</p>
+              <label><input type="checkbox" checked={recoveryUseWindow} onChange={(event) => setRecoveryUseWindow(event.target.checked)} /> Restringir horário permitido</label>
+              {recoveryUseWindow && <div className="form-grid">
+                <label>Início <input type="time" value={recoveryWindowStart} onChange={(event) => setRecoveryWindowStart(event.target.value)} /></label>
+                <label>Fim <input type="time" value={recoveryWindowEnd} onChange={(event) => setRecoveryWindowEnd(event.target.value)} /></label>
+                <label>Fuso horário <select value={recoveryTimezone} onChange={(event) => setRecoveryTimezone(event.target.value)}><option value="America/Sao_Paulo">Brasília · America/Sao_Paulo</option><option value="America/Manaus">Manaus · America/Manaus</option><option value="America/Rio_Branco">Rio Branco · America/Rio_Branco</option><option value="Europe/Lisbon">Lisboa · Europe/Lisbon</option></select></label>
+                <div className="recovery-days">{['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day, index) => <label key={day}><input type="checkbox" checked={recoveryWindowDays.includes(index)} onChange={(event) => setRecoveryWindowDays((current) => event.target.checked ? [...current, index] : current.filter((value) => value !== index))} />{day}</label>)}</div>
+              </div>}
+              <button type="button" className="button" disabled={busy || !recoveryStatuses.length} onClick={loadRecoveryPreview}>Gerar pré-visualização</button>
+              {recoveryPreview && <div className="audience-preview">
+                <strong>Vão receber {recoveryPreview.count} contato(s)</strong>
+                <p>Excluídos: {Object.entries(recoveryPreview.excludedCounts).map(([reason, count]) => `${reason}: ${count}`).join(' · ') || '0'}</p>
+                <button type="button" className="button small" onClick={() => {
+                  const rows = [['Nome', 'Telefone', 'Motivo'], ...recoveryPreview.excluded.map((item) => [item.name, item.phoneNumber, item.reason])];
+                  const csv = rows.map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(',')).join('\r\n');
+                  const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob(['\ufeff', csv], { type: 'text/csv;charset=utf-8' })); link.download = `leads-excluidos-${initialRecovery.id}.csv`; link.click(); URL.revokeObjectURL(link.href);
+                }}>Exportar excluídos em CSV</button>
+                <details><summary>Ver lista de excluídos ({recoveryPreview.excluded.length})</summary>
+                  <div className="task-list">{recoveryPreview.excluded.map((item) => <p key={item.id}>{item.name} · +{item.phoneNumber} — {item.reason}</p>)}</div>
+                </details>
+              </div>}
+            </section>
+          )}
           <label>
             Nome
-            <input
+              <input
               name="name"
               required
               maxLength={100}
               placeholder={schedule ? 'Ex.: Retorno do orçamento' : 'Ex.: Remarketing de outubro'}
+              defaultValue={initialRecovery ? `Recuperação · ${initialRecovery.name}` : ''}
             />
           </label>
           {!schedule && (
@@ -2040,15 +2175,15 @@ export function BatchEditor({
               <div className="form-grid">
                 <label>
                   Intervalo mínimo (s)
-                  <input name="minSeconds" type="number" min={1} max={86400} defaultValue={15} required />
+                  <input name="minSeconds" type="number" min={1} max={86400} defaultValue={initialRecovery?.minSeconds ?? 15} required />
                 </label>
                 <label>
                   Intervalo máximo (s)
-                  <input name="maxSeconds" type="number" min={1} max={86400} defaultValue={45} required />
+                  <input name="maxSeconds" type="number" min={1} max={86400} defaultValue={initialRecovery?.maxSeconds ?? 45} required />
                 </label>
                 <label>
                   Velocidade de envio
-                  <select name="speedMultiplier" defaultValue="1">
+                  <select name="speedMultiplier" defaultValue={String(initialRecovery?.speedMultiplier ?? 1)}>
                     <option value="1">Normal (1×)</option>
                     <option value="1.5">Acelerado (1,5×)</option>
                     <option value="2">Mais rápido (2×)</option>
@@ -2060,7 +2195,7 @@ export function BatchEditor({
               <div className="form-grid">
                 <label>
                   Tamanho do lote
-                  <input name="batchSize" type="number" min={1} max={5000} defaultValue={50} required />
+                  <input name="batchSize" type="number" min={1} max={5000} defaultValue={initialRecovery?.batchSize ?? 50} required />
                 </label>
                 <label>
                   Distribuição
@@ -2071,21 +2206,21 @@ export function BatchEditor({
                 </label>
               </div>
               <label>
-                <input name="pauseAfterBatch" type="checkbox" defaultChecked /> Pausar ao fim de cada lote
+                <input name="pauseAfterBatch" type="checkbox" defaultChecked={initialRecovery?.pauseAfterBatch ?? true} /> Pausar ao fim de cada lote
               </label>
               <label>
-                <input name="autoResume" type="checkbox" defaultChecked /> Retomar automaticamente quando a
+                <input name="autoResume" type="checkbox" defaultChecked={initialRecovery?.autoResume ?? true} /> Retomar automaticamente quando a
                 conexão voltar
               </label>
               <div className="form-grid">
                 <label>
                   Pausa longa a cada quantas mensagens?{' '}
-                  <input name="pauseEvery" type="number" min={0} max={5000} defaultValue={0} />
+                  <input name="pauseEvery" type="number" min={0} max={5000} defaultValue={initialRecovery?.pauseEvery ?? 0} />
                   <small>0 desativa a pausa por lote.</small>
                 </label>
                 <label>
                   Duração da pausa longa (s)
-                  <input name="pauseSeconds" type="number" min={0} max={86400} defaultValue={300} />
+                  <input name="pauseSeconds" type="number" min={0} max={86400} defaultValue={initialRecovery?.pauseSeconds ?? 300} />
                 </label>
               </div>
             </>
@@ -2125,7 +2260,7 @@ export function BatchEditor({
           <button
             type="button"
             className="button"
-            disabled={busy || (schedule && !conversationId)}
+            disabled={busy || Boolean(initialRecovery) || (schedule && !conversationId)}
             onClick={() => {
               setBusy(true);
               void request<NonNullable<typeof preview>>(
@@ -2229,11 +2364,12 @@ export function BatchEditor({
               disabled={
                 busy ||
                 audienceLoading ||
+                (Boolean(initialRecovery) && !recoveryPreviewSeen) ||
                 !selectedLeads.length ||
                 (!alternativeMode && kind === 'asset' && !selectedAssets.length)
               }
             >
-              {busy ? <Spinner /> : <Plus size={15} />}Salvar rascunho
+              {busy ? <Spinner /> : <Plus size={15} />}{initialRecovery && !recoveryPreviewSeen ? 'Veja a prévia para continuar' : 'Salvar rascunho'}
             </button>
           </div>
         </form>
