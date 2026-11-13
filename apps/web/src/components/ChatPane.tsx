@@ -17,8 +17,6 @@ import {
   Wrench,
   Archive,
   ArchiveRestore,
-  Download,
-  Eye,
   FileText,
   SlidersHorizontal,
   Maximize2,
@@ -44,71 +42,7 @@ import { usePreferences } from '../context/PreferencesContext';
 import { completeOrder } from '../context/hud';
 import { Ellipsis } from 'lucide-react';
 import { ClientAiStudio } from './ClientAiStudio';
-import { AudioTurboPlayer } from './AudioTurboPlayer';
-
-function MessageMedia({ message, base }: { message: Message; base: string }) {
-  const { blob, notify } = useApi();
-  const [url, setUrl] = useState('');
-  const [busy, setBusy] = useState(false);
-  const urlRef = useRef('');
-  useEffect(
-    () => () => {
-      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
-    },
-    [],
-  );
-  const load = async () => {
-    setBusy(true);
-    try {
-      const data = await blob(`${base}/messages/${encodeURIComponent(message.id)}/media`);
-      const objectUrl = URL.createObjectURL(data);
-      urlRef.current = objectUrl;
-      setUrl(objectUrl);
-    } catch (error) {
-      notify(errorMessage(error), true);
-    } finally {
-      setBusy(false);
-    }
-  };
-  if (message.asViewOnce)
-    return (
-      <div className="media-placeholder">
-        <Eye size={18} />
-        <span>
-          Visualização única<small>Abra esta mídia no WhatsApp.</small>
-        </span>
-      </div>
-    );
-  const kind = message.type.toLowerCase();
-  return url ? (
-    kind.includes('image') || kind.includes('sticker') ? (
-      <img className="message-image" src={url} alt="Imagem da conversa" />
-    ) : kind.includes('video') || message.isPtv ? (
-      <video className={`message-video ${message.isPtv ? 'circular-video' : ''}`} src={url} controls />
-    ) : kind.includes('audio') ? (
-      <AudioTurboPlayer src={url} />
-    ) : (
-      <a href={url} download="arquivo" className="media-placeholder">
-        <FileText size={20} />
-        Baixar documento
-      </a>
-    )
-  ) : (
-    <button className="media-placeholder" disabled={busy} onClick={() => void load()}>
-      {busy ? <Spinner /> : <Download size={19} />}
-      <span>
-        {kind.includes('audio')
-          ? 'Ouvir áudio'
-          : kind.includes('image')
-            ? 'Carregar imagem'
-            : kind.includes('video') || message.isPtv
-              ? 'Carregar vídeo'
-              : 'Carregar documento'}
-        <small>Carregar arquivo da conversa</small>
-      </span>
-    </button>
-  );
-}
+import { ConversationMedia, ConversationMediaLightbox, isImageMessage, mediaCategory } from './ConversationMedia';
 
 export function ChatPane({
   chat,
@@ -160,6 +94,7 @@ export function ChatPane({
   const [followUpOpen, setFollowUpOpen] = useState(false);
   const [followUpBusy, setFollowUpBusy] = useState(false);
   const [followUpSteps, setFollowUpSteps] = useState([{ waitMinutes: 120, text: '' }, { waitMinutes: 1440, text: '' }]);
+  const [lightboxMessageId, setLightboxMessageId] = useState('');
   const [summaryOpen, setSummaryOpen] = useState(false);
   useEffect(() => { if (!aiEnabled) { setAiOpen(false); setClientAiOpen(false); setSummaryOpen(false); } }, [aiEnabled]);
   const [summary, setSummary] = useState('');
@@ -174,6 +109,7 @@ export function ChatPane({
   useEffect(() => {
     setMessages([]);
     setPage(1);
+    setLightboxMessageId('');
     previousCount.current = 0;
   }, [chat?.id]);
   useEffect(() => {
@@ -570,7 +506,19 @@ export function ChatPane({
                         <LockKeyhole size={13} /> Nota interna · {message.author || 'Atendente'}
                       </div>
                     )}
-                    {media && <MessageMedia message={message} base={base} />}
+                    {media && <ConversationMedia
+                      message={message}
+                      base={base}
+                      rootRef={messageArea}
+                      priority={index}
+                      contactName={chat.contact.name}
+                      autoDownload={
+                        mediaCategory(message) === 'audio' ? preferences.autoDownloadAudio :
+                        mediaCategory(message) === 'image' ? preferences.autoDownloadImages :
+                        mediaCategory(message) === 'video' ? preferences.autoDownloadVideos : false
+                      }
+                      onOpenLightbox={setLightboxMessageId}
+                    />}
                     {(message.text || message.caption) && (
                       <div className="message-text">
                         <FormattedText text={message.text || message.caption || ''} />
@@ -666,6 +614,13 @@ export function ChatPane({
           />
         </div>
       </div>
+      {lightboxMessageId && <ConversationMediaLightbox
+        messages={messages.filter(isImageMessage)}
+        messageId={lightboxMessageId}
+        base={base}
+        contactName={chat.contact.name}
+        onClose={() => setLightboxMessageId('')}
+      />}
       {flowOpen && (
         <FlowLaunch sessionId={sessionId} conversationId={chat.id} onClose={() => setFlowOpen(false)} />
       )}{' '}

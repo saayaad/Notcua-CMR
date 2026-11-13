@@ -692,3 +692,12 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Arquivos de código: `apps/server/src/modules/operations/operations.routes.ts`, `apps/server/src/modules/operations/delivery.worker.ts`, `apps/server/src/modules/operations/campaign-recovery.ts`, `apps/server/test/campaign-recovery.test.ts`, `apps/web/src/pages/OperationsPages.tsx`; inclui este registro e `REVISAO/BUGS.md`.
 - Deploy e atualização do servidor aguardam janela segura: leitura encontrou 160 tarefas QUEUED, 5 VERIFY e uma campanha ativa. Reiniciar pode enviar mensagens reais; nenhuma tarefa foi alterada. Conferência visual local bloqueada pela ausência das variáveis públicas Firebase no Vite.
 - Ao concluir o deploy autorizado, registrar SHA/URL, encerrar a exceção e restabelecer produção somente leitura.
+
+## Player de áudio e imagens do Atendimento — exceção pontual autorizada — 13/11/2026
+
+- Redesenho frontend do player de áudio, carregamento/erro/repetição de mídias, miniaturas, downloads e visualizador de imagens; preferências de download automático foram adicionadas às configurações da área de trabalho.
+- Fixture `dev-media-preview.html` e imagens/áudios/vídeo gerados localmente permitem conferência sem Firebase nem dados reais. A fixture não está presente em `apps/web/dist` e nenhum marcador dela foi encontrado no bundle de produção.
+- Playwright headless local conferiu áudio parado, tocando, carregando e erro, miniaturas e visualizador, em tema claro/escuro e viewports desktop/celular. Quatro combinações de viewport/tema reportaram `scrollHeightDelta: 0` e `anchorTopDelta: 0` ao carregar mídia. Capturas foram gravadas em `%TEMP%\noctua-media-*.png`.
+- Resultado final: `npm run typecheck` aprovado; `npm run build` aprovado; `npm test` aprovado (310/310: 302 servidor e 8 web). Build mantém aviso conhecido de bundle acima de 500 kB.
+- Esta autorização permite um commit, push para `origin/auditoria-reqs` e um deploy Production, somente de arquivos do player de áudio/imagens, preferências, fixture/testes locais e registros desta tarefa. Sem mudanças em `apps/server`, schema, worker, campanhas ou filas; nenhum envio real.
+- Após a publicação e confirmação de `https://notcua.vercel.app`, esta exceção fica encerrada e a regra de produção somente leitura volta a valer.

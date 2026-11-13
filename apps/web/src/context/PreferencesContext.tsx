@@ -60,6 +60,9 @@ export interface Preferences {
   hidePreviews: boolean;
   hideMessages: boolean;
   hideMedia: boolean;
+  autoDownloadAudio: boolean;
+  autoDownloadImages: boolean;
+  autoDownloadVideos: boolean;
   signature: string;
   signatureEnabled: boolean;
   pasteName: boolean;
@@ -150,6 +153,9 @@ const defaults: Preferences = {
   hidePreviews: false,
   hideMessages: false,
   hideMedia: false,
+  autoDownloadAudio: true,
+  autoDownloadImages: true,
+  autoDownloadVideos: false,
   signature: '',
   signatureEnabled: false,
   pasteName: false,

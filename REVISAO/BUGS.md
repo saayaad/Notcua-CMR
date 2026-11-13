@@ -328,3 +328,9 @@ A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, po
 - Prévia com contagens, excluídos exportáveis em CSV e comparação de métricas por campanha/variação.
 - Correção VERIFY: se a chave tem mensagem persistida como enviada/entregue/lida, Reenviar confirma a mensagem já feita sem duplicata. Teste Fase 5 passou.
 - Nenhuma mensagem foi enviada ou tarefa real alterada. Servidor persistente não reiniciado: 160 tarefas QUEUED e uma campanha ativa.
+
+## UX de mídia no chat — 13/11/2026
+
+- Ajuste frontend em player de áudio, imagens, miniaturas e visualizador; inclui estados de carregamento/erro, repetição, downloads e preferências. Playwright headless em dados sintéticos verificou os estados em tema claro/escuro e celular/desktop; sem mudança de scroll durante o carregamento.
+- Nenhuma falha funcional restante encontrada na revisão visual. `npm test`: 310/310 aprovado; typecheck e build aprovados. O aviso de bundle acima de 500 kB é informativo e não impediu a compilação.
+- Nenhum código de servidor/worker, banco, campanha ou fila foi alterado. Fixture é de desenvolvimento e ficou fora do build de produção.

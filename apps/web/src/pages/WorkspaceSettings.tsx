@@ -258,6 +258,13 @@ export function WorkspaceSettings({
                 </div>
                 {toggle('compactNav', 'Menu lateral compacto', 'Mostra apenas os ícones e libera espaço.')}
               </div>
+              <div className="surface personalization-card" id="personalization-media">
+                <h2>Download automático de mídias</h2>
+                <p>As mídias próximas à área visível são carregadas primeiro, com no máximo três downloads ao mesmo tempo.</p>
+                {toggle('autoDownloadAudio', 'Baixar áudios automaticamente')}
+                {toggle('autoDownloadImages', 'Baixar imagens automaticamente')}
+                {toggle('autoDownloadVideos', 'Baixar vídeos automaticamente', 'Desligado por padrão para evitar downloads grandes.')}
+              </div>
               <div className="surface personalization-card" id="personalization-names">
                 <h2>Renomear grupos e pastas</h2>
                 <p>Deixe os nomes da navegação e da Biblioteca com a linguagem da sua equipe.</p>

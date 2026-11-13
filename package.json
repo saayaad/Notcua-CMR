@@ -21,7 +21,7 @@
     "build": "npm run build --workspaces --if-present",
     "start": "npm run start -w @noctua/server",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test -w @noctua/server",
+    "test": "npm run test -w @noctua/server && npm run test -w @noctua/web",
     "db:generate": "npm run db:generate -w @noctua/server",
     "db:migrate": "npm run db:migrate -w @noctua/server",
     "db:deploy": "npm run db:deploy -w @noctua/server",
