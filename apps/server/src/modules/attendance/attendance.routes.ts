@@ -415,8 +415,36 @@ export function attendanceRoutes(
           ]
         : [];
     });
-    const messages = items.map((item) => ({
+    const messages = items.map((item) => {
+      const raw = item.rawPayload && typeof item.rawPayload === 'object' && !Array.isArray(item.rawPayload)
+        ? item.rawPayload as Record<string, unknown>
+        : undefined;
+      const originalPayload = raw?.message && typeof raw.message === 'object'
+        ? raw.message as Record<string, unknown>
+        : raw?.sent && typeof raw.sent === 'object' && (raw.sent as Record<string, unknown>).message && typeof (raw.sent as Record<string, unknown>).message === 'object'
+          ? (raw.sent as Record<string, unknown>).message as Record<string, unknown>
+          : undefined;
+      const originalContent = originalPayload?.message && typeof originalPayload.message === 'object'
+        ? originalPayload.message as Record<string, unknown>
+        : originalPayload;
+      const originalText = originalContent
+        ? [originalContent.conversation,
+            (originalContent.extendedTextMessage as { text?: unknown } | undefined)?.text,
+            (originalContent.imageMessage as { caption?: unknown } | undefined)?.caption,
+            (originalContent.videoMessage as { caption?: unknown } | undefined)?.caption,
+            (originalContent.documentMessage as { caption?: unknown } | undefined)?.caption,
+          ].find((value): value is string => typeof value === 'string' && value.length > 0)
+        : undefined;
+      const editedByClient = Boolean(raw?.editedByClient);
+      const deletedByClient = Boolean(raw?.deletedByClient);
+      return {
       ...item,
+      editedAt: typeof raw?.editedAt === 'string'
+        ? raw.editedAt
+        : undefined,
+      editedByClient,
+      ...(editedByClient && originalText ? { editedOriginalText: originalText } : {}),
+      ...(deletedByClient && originalText ? { deletedOriginalText: originalText } : {}),
       reactions: reactions
         .filter((reaction) => reaction.messageId === item.id)
         .reduce<{ emoji: string; count: number; reactedByMe: boolean }[]>((groups, reaction) => {
@@ -427,9 +455,9 @@ export function attendanceRoutes(
           } else groups.push({ emoji: reaction.emoji, count: 1, reactedByMe: reaction.actorId === res.locals.identity?.uid });
           return groups;
         }, []),
-      deletedByClient: Boolean((item.rawPayload as { deletedByClient?: boolean } | null)?.deletedByClient),
+      deletedByClient,
       rawPayload: undefined,
-    }));
+    }; });
     const timeline = [...messages, ...notes].sort(
       (left, right) =>
         new Date(right.sentAt).getTime() - new Date(left.sentAt).getTime() || right.id.localeCompare(left.id),

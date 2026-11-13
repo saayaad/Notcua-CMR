@@ -45,6 +45,7 @@ import { ClientAiStudio } from './ClientAiStudio';
 import { ConversationMedia, ConversationMediaLightbox, isImageMessage, mediaCategory } from './ConversationMedia';
 import { MessageRevision } from './MessageRevision';
 import './MessageRevision.css';
+import { mediaTypeLabel } from './message-preview';
 
 export function ChatPane({
   chat,
@@ -521,6 +522,7 @@ export function ChatPane({
                       }
                       onOpenLightbox={setLightboxMessageId}
                     />}
+                    {media && mediaTypeLabel(message.type) && <small className="message-media-kind">{mediaTypeLabel(message.type)}</small>}
                     {(message.text || message.caption || (message.deletedByClient && message.deletedOriginalText)) && (
                       <div className="message-text">
                         <FormattedText text={message.deletedByClient ? message.deletedOriginalText || message.text || message.caption || '' : message.text || message.caption || ''} />

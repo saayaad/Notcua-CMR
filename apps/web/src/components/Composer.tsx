@@ -4,6 +4,8 @@ import { usePreferences } from '../context/PreferencesContext';
 import { useEffect, useRef, useState } from 'react';
 import { Send, Paperclip, Mic, Square, Trash2, Zap, Smile, Eye, FileText, MessageSquare, ImagePlus } from 'lucide-react';
 import { errorMessage, useApi } from '../context/ApiContext';
+import { requestComposerFocus } from './message-preview';
+import { uploadErrorMessage } from './upload-errors';
 import { AiOnly, useAiFeatures } from '../context/AiFeatures';
 import { Modal, Spinner } from './ui';
 import type { Asset, Library } from '../types';
@@ -88,6 +90,12 @@ export function Composer({
   useEffect(() => { if (!aiEnabled) setCopilotOpen(false); }, [aiEnabled]);
   const upload = useRef<HTMLInputElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
+  const refocusComposer = () => requestComposerFocus(() => input.current?.focus(), window.requestAnimationFrame.bind(window));
+  useEffect(() => {
+    const focus = () => refocusComposer();
+    window.addEventListener('noctua:composer-refocus', focus);
+    return () => window.removeEventListener('noctua:composer-refocus', focus);
+  }, []);
   const recorder = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
   const analyser = useRef<AnalyserNode | null>(null);
@@ -185,6 +193,7 @@ export function Composer({
         await onInternalNote(draft.text.trim());
         setDraft({ text: '', id: crypto.randomUUID() });
         setInternalMode(false);
+        refocusComposer();
       } catch (error) {
         notify(errorMessage(error), true);
       } finally {
@@ -201,6 +210,7 @@ export function Composer({
       });
       setDraft({ text: '', id: crypto.randomUUID() });
       onSent();
+      refocusComposer();
     } catch (error) {
       notify(errorMessage(error), true);
     } finally {
@@ -209,10 +219,6 @@ export function Composer({
   };
   const choose = (selected: File, voice = false) => {
     setAttachmentError('');
-    if (selected.size > 20 * 1024 * 1024) {
-      notify('Escolha um arquivo de até 20 MiB.', true);
-      return;
-    }
     setFile(selected);
     setCaption('');
     setViewOnce(false);
@@ -229,8 +235,7 @@ export function Composer({
         file ||
         busy ||
         recording ||
-        internalMode ||
-        detail.file.size > 20 * 1024 * 1024
+        internalMode
       )
         return;
       event.preventDefault();
@@ -334,6 +339,7 @@ export function Composer({
       }));
       setSlashOpen(false);
       onSent();
+      refocusComposer();
       notify(`“${asset.name}” enviado.`);
     } catch (error) {
       notify(errorMessage(error), true);
@@ -410,13 +416,15 @@ export function Composer({
       });
       setFile(null);
       onSent();
+      refocusComposer();
       if (kind === 'image' && sourceFile.size < file.size)
         notify(
           `Imagem otimizada: ${(file.size / 1024 / 1024).toFixed(2)} MiB → ${(sourceFile.size / 1024 / 1024).toFixed(2)} MiB${applyWatermark ? ' com marca d’água' : ''}.`,
         );
     } catch (error) {
-      setAttachmentError(errorMessage(error));
-      notify(errorMessage(error), true);
+      const message = file ? uploadErrorMessage(error, file.size) : errorMessage(error);
+      setAttachmentError(message);
+      notify(message, true);
     } finally {
       setBusy(false);
     }

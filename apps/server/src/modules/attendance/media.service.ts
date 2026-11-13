@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
 import type { PrismaClient } from '@prisma/client';
+import { env } from '../../config/env.js';
 import { AppError } from '../../shared/errors.js';
 import { cleanFilename, decodeBase64, digest } from '../backups/validation.js';
 
@@ -13,7 +14,20 @@ export class MediaService {
   constructor(private readonly db: PrismaClient) {}
 
   async upload(input: { base64: string; filename?: string; mimeType?: string; voice?: boolean; watermark?: string }) {
-    const decoded = decodeBase64(input.base64, input.mimeType);
+    // Leave room for JSON metadata and base64 expansion under express.json's configured body limit.
+    const uploadBytes = Math.floor(Math.max(1, env.BODY_LIMIT_MB - 1) * 0.75 * 1024 * 1024);
+    let decoded: ReturnType<typeof decodeBase64>;
+    try {
+      decoded = decodeBase64(input.base64, input.mimeType, uploadBytes);
+    } catch (error) {
+      if (error instanceof AppError && error.status === 413) {
+        const actualBytes = Math.floor(input.base64.replace(/^data:[^,]*,/, '').replace(/\s/g, '').length * 3 / 4);
+        const actualMiB = (actualBytes / 1024 / 1024).toFixed(2);
+        const limitMiB = (uploadBytes / 1024 / 1024).toFixed(2);
+        throw new AppError(413, `Arquivo escolhido: ${actualMiB} MiB. Limite para esta configuração do servidor: ${limitMiB} MiB (BODY_LIMIT_MB=${env.BODY_LIMIT_MB}). Reduza o arquivo para continuar.`, { actualBytes, maxBytes: uploadBytes, bodyLimitMb: env.BODY_LIMIT_MB });
+      }
+      throw error;
+    }
     let data: Uint8Array<ArrayBuffer> = new Uint8Array(decoded.data) as Uint8Array<ArrayBuffer>;
     let mimeType = decoded.mimeType;
     let filename = cleanFilename(input.filename);

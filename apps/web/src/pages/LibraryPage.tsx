@@ -30,6 +30,7 @@ import type { Asset, Funnel, Library } from '../types';
 import { useApi, errorMessage } from '../context/ApiContext';
 import { Modal, Spinner } from '../components/ui';
 import { fileBase64 } from '../components/Composer';
+import { uploadErrorMessage } from '../components/upload-errors';
 
 export function LibraryPage({
   library,
@@ -470,7 +471,6 @@ export function AssetEditor({
     try {
       let fileId = initial?.fileId ?? undefined;
       if (file) {
-        if (file.size > 20 * 1024 * 1024) throw new Error('O arquivo deve ter até 20 MiB.');
         fileId = (
           await request<{ id: string }>('/attendance/files', 'POST', {
             base64: await fileBase64(file),
@@ -498,7 +498,7 @@ export function AssetEditor({
       await onSaved();
       notify('Resposta salva na biblioteca.');
     } catch (error) {
-      notify(errorMessage(error), true);
+      notify(file ? uploadErrorMessage(error, file.size) : errorMessage(error), true);
     } finally {
       setBusy(false);
     }
@@ -532,7 +532,7 @@ export function AssetEditor({
           <>
             <label className="file-upload">
               <Upload size={22} />
-              <span>{file?.name || initial?.file?.filename || 'Escolha um arquivo de até 20 MiB'}</span>
+              <span>{file?.name || initial?.file?.filename || 'Escolha um arquivo'}</span>
               <input
                 type="file"
                 required={!initial?.fileId}

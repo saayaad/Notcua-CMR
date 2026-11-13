@@ -1,6 +1,7 @@
 import type { ErrorRequestHandler } from 'express';
 import { ZodError } from 'zod';
 import { AppError } from '../shared/errors.js';
+import { env } from '../config/env.js';
 
 export const errorHandler: ErrorRequestHandler = (error: unknown, _req, res, _next) => {
   if (error instanceof AppError) {
@@ -17,7 +18,7 @@ export const errorHandler: ErrorRequestHandler = (error: unknown, _req, res, _ne
   }
   if (error && typeof error === 'object' && 'type' in error) {
     if (error.type === 'entity.too.large') {
-      res.status(413).json({ error: { message: 'O JSON ultrapassa o limite configurado.' } });
+      res.status(413).json({ error: { message: `Arquivo maior que o limite do servidor (BODY_LIMIT_MB=${env.BODY_LIMIT_MB}). Reduza o arquivo e tente novamente.`, details: { bodyLimitMb: env.BODY_LIMIT_MB } } });
       return;
     }
     if (error.type === 'entity.parse.failed') {

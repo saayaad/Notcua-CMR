@@ -365,6 +365,7 @@ export function ResourceWorkbench({
       delete directRequests.current[item.id];
       setPreview(null);
       onRefresh();
+      window.dispatchEvent(new Event('noctua:composer-refocus'));
       notify(
         item.flow || item.kind === 'FUNNEL' || item.kind === 'MACRO'
           ? 'Sequência iniciada. Você pode acompanhar e pausar no chat.'

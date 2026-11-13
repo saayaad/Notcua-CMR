@@ -7,6 +7,7 @@ import type { Conversation, Label } from '../types';
 import { useContextMenu } from '../context/ContextMenu';
 import { Avatar, Spinner, time } from './ui';
 import './conversation-list.css';
+import { mediaTypeLabel } from './message-preview';
 
 interface Props {
   sort: 'priority'|'recent'|'oldest'|'waiting'; response: 'all'|'ours'|'client'|'never';
@@ -140,6 +141,7 @@ export function ConversationList(p: Props) {
             const urgent =
               awaitingResponse &&
               now - new Date(chat.lastMessageAt!).getTime() >= preferences.waitingRed * 60000;
+            const mediaLabel = last ? mediaTypeLabel(last.type) : '';
             return (
               <div
                 key={chat.id}
@@ -165,7 +167,8 @@ export function ConversationList(p: Props) {
                   <span className="chat-preview">
                     {last?.direction === 'OUTBOUND' && <CheckCheck size={14} />}
                     <span>
-                      {last?.text || last?.caption || (last ? 'Arquivo de mídia' : 'Comece uma conversa')}
+                      {mediaLabel && <small className="chat-preview-kind">{mediaLabel}</small>}
+                      {last?.text || last?.caption || (last ? (mediaLabel ? '' : 'Arquivo de mídia') : 'Comece uma conversa')}
                     </span>
                   </span>
                   <span className="chat-item-bottom">

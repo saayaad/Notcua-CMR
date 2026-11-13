@@ -29,6 +29,7 @@ class OutboundSocket implements WhatsappSocket {
   sends: { jid: string; content: AnyMessageContent }[] = [];
   presence: string[] = [];
   fail = false;
+  failError: Error | null = null;
   async end() {}
   async logout() {}
   async profilePictureUrl() {
@@ -47,6 +48,7 @@ class OutboundSocket implements WhatsappSocket {
     options?: { messageId?: string },
   ): Promise<WAMessage> {
     this.sends.push({ jid, content });
+    if (this.failError) throw this.failError;
     if (this.fail) throw new Error('Timeout simulado');
     const message: WAMessage = {
       key: { remoteJid: jid, id: options?.messageId ?? 'fake', fromMe: true },
@@ -130,6 +132,23 @@ test('envio sem confirmação fica FAILED e nunca é repetido automaticamente', 
   await assert.rejects(messaging.send(sessionId, conversationId, input), /envio anterior/);
   assert.equal(socket.sends.length, before + 1);
   assert.equal((await db.chatMessage.findUniqueOrThrow({ where: { id: 'out:timeout' } })).status, 'FAILED');
+});
+
+test('rejeição de tamanho pelo WhatsApp informa o tamanho e não repete o envio', async () => {
+  const stored = await db.storedFile.create({ data: {
+    filename: 'fixture.pdf', mimeType: 'application/pdf', byteLength: 5 * 1024 * 1024,
+    sha256: 'provider-size-rejection-fixture', data: Buffer.from('%PDF-1.4'),
+  } });
+  socket.failError = new Error('413 media size exceeds limit');
+  const before = socket.sends.length;
+  await assert.rejects(
+    messaging.send(sessionId, conversationId, { requestId: 'provider-size-limit', kind: 'document', fileId: stored.id }),
+    (error: unknown) => error instanceof Error && /WhatsApp recusou o arquivo de 5\.00 MiB/.test(error.message) && (error as Error & { status?: number }).status === 413,
+  );
+  socket.failError = null;
+  assert.equal(socket.sends.length, before + 1);
+  assert.match((await db.chatMessage.findUniqueOrThrow({ where: { id: 'out:provider-size-limit' } })).error ?? '', /5\.00 MiB/);
+  await db.storedFile.delete({ where: { id: stored.id } });
 });
 
 test('duração zero desliga presença automática e ausência da opção mantém digitando', async () => {
@@ -559,6 +578,23 @@ test('API filtra, protege escopo, salva ativos/funis/notas e entrega o históric
   await request(app)
     .get(`/api/attendance/sessions/${sessionId}/conversations/${conversationId}/messages`)
     .expect(200);
+  const edited = await db.chatMessage.create({ data: {
+    conversationId, direction: 'INBOUND', status: 'DELIVERED', type: 'extendedTextMessage', text: 'Texto novo',
+    rawPayload: { message: { key: { id: 'edited-fixture' }, message: { conversation: 'Texto original' } }, editedAt: new Date().toISOString(), editedByClient: true },
+  } });
+  const deleted = await db.chatMessage.create({ data: {
+    conversationId, direction: 'INBOUND', status: 'DELIVERED', type: 'conversation', text: 'Texto que foi removido',
+    rawPayload: { message: { key: { id: 'deleted-fixture' }, message: { conversation: 'Texto apagado original' } }, deletedByClient: true },
+  } });
+  const revisions = await request(app)
+    .get(`/api/attendance/sessions/${sessionId}/conversations/${conversationId}/messages`)
+    .expect(200);
+  const editedMessage = revisions.body.items.find((item: { id: string }) => item.id === edited.id);
+  const deletedMessage = revisions.body.items.find((item: { id: string }) => item.id === deleted.id);
+  assert.equal(editedMessage.editedOriginalText, 'Texto original');
+  assert.equal(deletedMessage.deletedOriginalText, 'Texto apagado original');
+  assert.ok(!('rawPayload' in editedMessage));
+  await db.chatMessage.deleteMany({ where: { id: { in: [edited.id, deleted.id] } } });
   await request(app)
     .put(`/api/attendance/sessions/${sessionId}/conversations/${conversationId}`)
     .send({ note: 'Nota de teste' })

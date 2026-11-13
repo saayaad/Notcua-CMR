@@ -710,3 +710,13 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Validação final: npm test aprovado (302 testes servidor + 12 interface; Playwright aprovado); typecheck e build aprovados. Build conserva aviso informativo de bundle acima de 500 kB. A fixture de Atendimento é somente desenvolvimento e não foi emitida em apps/web/dist.
 - A API atual informa timestamps/flags de edição e exclusão, mas ainda não expõe o texto anterior ao frontend. Esta alteração é apenas frontend; não há migração, mudança de worker, campanha, fila ou envio.
 - Gustavo autorizou um único commit, push em origin/auditoria-reqs e um deploy Production do frontend, apenas dos arquivos desta funcionalidade. Após a promoção e verificação de notcua.vercel.app, a exceção fica encerrada e produção somente leitura volta a valer normalmente.
+
+
+## Atendimento — mídia, foco e texto original — 13/11/2026
+
+- Removido o teto fixo de 20 MiB do envio no chat e da Biblioteca. O servidor calcula o limite de arquivo a partir de BODY_LIMIT_MB, reservando espaço para JSON/Base64; respostas 413 informam o tamanho escolhido, o limite e a configuração. Erros de tamanho reportados pelo WhatsApp são mostrados sem retry automático; a tentativa fica FAILED para evitar duplicidade.
+- Após envio de texto, anexo ou item da Biblioteca/Fixados, o foco retorna ao campo de mensagem. A lista e o balão identificam Áudio, Foto, Vídeo ou Documento e preservam a legenda.
+- A API de mensagens extrai editedOriginalText/deletedOriginalText do rawPayload já existente, sem schema/migração e sem devolver o payload original; a rota mantém a autorização da conversa.
+- Typecheck e build passaram; npm test passou (303 testes do servidor e 15 web, incluindo Playwright headless). Não foram feitos envios reais.
+- A inspeção somente leitura encontrou 160 tarefas QUEUED (151 em lote PAUSED e 9 em lotes DRAFT), 5 VERIFY, zero RUNNING, follow-ups pausados, duas sessões CONNECTED com autoConnect e 10 jobs de etiqueta pendentes. Também há 7 saídas desde 20:40 UTC; quatro têm requestFingerprint e nenhuma corresponde a DeliveryTask, então a origem não pode ser atribuída com segurança a este lote. O worker persistente não foi atualizado nem reiniciado; a origem dessas saídas permanece pendente.
+- Exceção pontual: autorizada uma publicação frontend deste lote. Após a publicação, a exceção encerra-se e produção volta a somente leitura. O deploy do backend/worker fica pendente até ser seguro atualizar e confirmar a origem das saídas sem tarefa.

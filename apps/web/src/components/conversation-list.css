@@ -1,3 +1,5 @@
 .conversation-options-toggle { align-self: flex-start; margin: 0.2rem 0.65rem 0.1rem; }
 .conversation-options-toggle .is-open { transform: rotate(180deg); }
 .conversation-list-options { display: grid; gap: 0.35rem; }
+.chat-preview-kind { margin-right: 0.35rem; color: var(--accent); font-weight: 650; }
+.message-media-kind { display: block; margin: 2px 0 5px; color: var(--text-muted); font-size: 11px; font-weight: 600; }

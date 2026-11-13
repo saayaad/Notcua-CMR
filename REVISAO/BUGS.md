@@ -340,3 +340,11 @@ A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, po
 - O sincronizador em apps/server/src/modules/whatsapp/sync.service.ts preserva o rawPayload recebido antes da edição e grava editedAt/editedByClient; eventos REVOKE também gravam deletedByClient. Não foi identificada necessidade de migração de schema.
 - A rota GET de mensagens em apps/server/src/modules/attendance/attendance.routes.ts já retorna os indicadores, mas define rawPayload como undefined e não transforma o payload preservado em editedOriginalText/deletedOriginalText. Portanto, o indicador Editada e o X vermelho funcionam com os campos atuais; mostrar o texto anterior depende de a API extrair e devolver esses campos. O conteúdo original de mensagens apagadas é mantido em text; a UI o mostra esmaecido quando a API devolve a mensagem marcada.
 - Pendente: ajuste server-side da rota para extrair o texto legível do rawPayload e devolver os campos opcionais ao frontend; verificar a versão instalada antes de depender desse comportamento em produção. Nenhum servidor/worker foi reiniciado ou alterado nesta publicação.
+
+
+## Atendimento — limites de mídia e revisão de mensagens — 13/11/2026
+
+- Corrigido o bloqueio fixo de 20 MiB na interface e na Biblioteca. Upload agora segue BODY_LIMIT_MB do servidor; erros 413 exibem tamanho do arquivo e limite. Recusa de tamanho pelo WhatsApp informa a mídia e mantém falha sem reenvio automático.
+- A rota de mensagens agora expõe somente o texto original de edição/exclusão em campos próprios, sem expor rawPayload. Foco pós-envio e rótulos de mídia foram completados no chat e na lista.
+- Verificado com typecheck, build e suíte completa (303 servidor + 15 interface; Playwright passou). Sem schema ou migração.
+- Worker/backend persistente não atualizado: saídas taskless recentes e sessões com autoConnect impedem confirmar origem e segurança de reinício; filas permanecem sem alteração.

@@ -9,6 +9,7 @@ import {
 import { pino } from 'pino';
 import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
+import { env } from '../../config/env.js';
 import { AppError } from '../../shared/errors.js';
 import { SerialQueue } from '../../shared/serial-queue.js';
 import type { WhatsappService } from '../whatsapp/whatsapp.service.js';
@@ -251,19 +252,23 @@ export class MessagingService {
         });
         this.whatsapp.notify(sessionId, 'messages');
         return message;
-      } catch {
+      } catch (sendError) {
+        const providerError = sendError instanceof Error ? sendError.message : String(sendError ?? '');
+        const providerRejectedSize = /413|too large|file.?size|media.?size|payload.?too large|request entity too large/i.test(providerError);
+        const actualBytes = file?.byteLength;
+        const actualMiB = actualBytes == null ? undefined : (actualBytes / 1024 / 1024).toFixed(2);
+        const safeError = providerRejectedSize
+          ? `O WhatsApp recusou o arquivo de ${actualMiB ?? 'tamanho desconhecido'} MiB por exceder o limite de mídia${/\d+\s?(?:mb|mib|bytes)/i.test(providerError) ? ` informado pelo provedor: ${providerError.slice(0, 180)}` : ' (limite exato não informado pelo provedor)'}. O envio não foi confirmado; confira a conversa antes de tentar novamente.`
+          : 'Envio sem confirmação. Confira o WhatsApp antes de tentar novamente.';
         await this.db.chatMessage.update({
           where: { id },
-          data: {
-            status: 'FAILED',
-            error: 'Envio sem confirmação. Confira o WhatsApp antes de tentar novamente.',
-          },
+          data: { status: 'FAILED', error: safeError },
         });
         this.whatsapp.notify(sessionId, 'messages');
-        throw new AppError(
-          502,
-          'O envio não foi confirmado. Confira a conversa no WhatsApp antes de reenviar para evitar duplicação.',
-        );
+        throw new AppError(providerRejectedSize ? 413 : 502, providerRejectedSize
+          ? safeError
+          : 'O envio não foi confirmado. Confira a conversa no WhatsApp antes de reenviar para evitar duplicação.',
+          providerRejectedSize ? { actualBytes, providerLimit: providerError.slice(0, 180) } : undefined);
       } finally {
         await socket.sendPresenceUpdate?.('paused', chat.jid).catch(() => undefined);
       }
@@ -348,12 +353,13 @@ export class MessagingService {
       );
       const chunks: Buffer[] = [];
       let length = 0;
+      const maxMediaBytes = Math.floor(Math.max(1, env.BODY_LIMIT_MB - 1) * 0.75 * 1024 * 1024);
       for await (const chunk of stream) {
         const part = Buffer.from(chunk);
         length += part.length;
-        if (length > 20 * 1024 * 1024) {
+        if (length > maxMediaBytes) {
           stream.destroy();
-          throw new AppError(413, 'Mídia maior que 20 MiB. Abra no WhatsApp.');
+          throw new AppError(413, `A mídia excede o limite de ${(maxMediaBytes / 1024 / 1024).toFixed(2)} MiB derivado de BODY_LIMIT_MB=${env.BODY_LIMIT_MB}.`, { actualBytes: length, maxBytes: maxMediaBytes, bodyLimitMb: env.BODY_LIMIT_MB });
         }
         chunks.push(part);
       }
