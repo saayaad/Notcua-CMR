@@ -701,3 +701,12 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Resultado final: `npm run typecheck` aprovado; `npm run build` aprovado; `npm test` aprovado (310/310: 302 servidor e 8 web). Build mantém aviso conhecido de bundle acima de 500 kB.
 - Esta autorização permite um commit, push para `origin/auditoria-reqs` e um deploy Production, somente de arquivos do player de áudio/imagens, preferências, fixture/testes locais e registros desta tarefa. Sem mudanças em `apps/server`, schema, worker, campanhas ou filas; nenhum envio real.
 - Após a publicação e confirmação de `https://notcua.vercel.app`, esta exceção fica encerrada e a regra de produção somente leitura volta a valer.
+
+## Atendimento: mensagens e painéis redimensionáveis — exceção pontual autorizada — 13/11/2026
+
+- Mensagens editadas exibem indicador e, quando a API fornecer o campo, permitem consultar o texto anterior. Mensagens apagadas continuam no histórico com X vermelho e conteúdo esmaecido.
+- A lista de conversas ganhou botão Opções persistente. Os painéis da lista, conversa e Biblioteca/Fixados podem ser redimensionados arrastando as divisórias horizontal e vertical; as dimensões e painéis recolhidos são salvos por usuário. Recolher/reabrir não remove o painel nem redistribui as dimensões. O layout aguarda o carregamento das preferências e mantém Restaurar layout padrão.
+- Playwright headless conferiu mensagens fictícias editadas/apagadas, tema claro/escuro, viewports pequeno/grande, arraste, recolhimento/abertura e persistência após recarregar. Capturas ficam em %TEMP%\noctua-attendance-*.png.
+- Validação final: npm test aprovado (302 testes servidor + 12 interface; Playwright aprovado); typecheck e build aprovados. Build conserva aviso informativo de bundle acima de 500 kB. A fixture de Atendimento é somente desenvolvimento e não foi emitida em apps/web/dist.
+- A API atual informa timestamps/flags de edição e exclusão, mas ainda não expõe o texto anterior ao frontend. Esta alteração é apenas frontend; não há migração, mudança de worker, campanha, fila ou envio.
+- Gustavo autorizou um único commit, push em origin/auditoria-reqs e um deploy Production do frontend, apenas dos arquivos desta funcionalidade. Após a promoção e verificação de notcua.vercel.app, a exceção fica encerrada e produção somente leitura volta a valer normalmente.

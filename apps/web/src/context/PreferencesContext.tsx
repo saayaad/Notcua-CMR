@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
 import { useApi, errorMessage } from './ApiContext';
 import { PreferenceSaveQueue } from './preferences-save';
+import { normalizeDockingPreferences } from './docking-preferences';
 import { firebaseAuth } from '../auth/firebase';
 import type { HudBlockPosition } from './hud-placement.js';
 export type { HudBlockPosition } from './hud-placement.js';
@@ -14,6 +15,10 @@ export interface Preferences {
   leadResponse: 'all' | 'ours' | 'client' | 'never';
   dockingEnabled: boolean;
   dockingLayout: string;
+  dockingPanelWidths: Partial<Record<'list' | 'chat' | 'tools', number>>;
+  dockingPanelSizes: Partial<Record<'list' | 'chat' | 'tools', { width: number; height: number }>>;
+  dockingHiddenPanels: ('list' | 'chat' | 'tools')[];
+  conversationOptionsExpanded: boolean;
   attendanceCustomizationVersion: number;
   shortcutLabels: Record<string, string>;
   shortcutKeys: Record<string, string>;
@@ -79,6 +84,10 @@ const defaults: Preferences = {
   leadResponse: 'all',
   dockingEnabled: false,
   dockingLayout: '',
+  dockingPanelWidths: {},
+  dockingPanelSizes: {},
+  dockingHiddenPanels: [],
+  conversationOptionsExpanded: false,
   attendanceCustomizationVersion: 3,
   shortcutLabels: {},
   shortcutKeys: {},
@@ -169,6 +178,7 @@ const defaults: Preferences = {
 };
 export function normalizeAttendancePreferences(value: Partial<Preferences>): Preferences {
   const result = { ...defaults, ...value, brandingName: 'noctua' };
+  Object.assign(result, normalizeDockingPreferences(value));
   if ((value.attendanceCustomizationVersion ?? 0) < 3) {
     result.attendanceHiddenShortcuts = [...defaults.attendanceHiddenShortcuts];
     result.hudHiddenTools = [...defaults.hudHiddenTools];
@@ -180,12 +190,14 @@ export function normalizeAttendancePreferences(value: Partial<Preferences>): Pre
 }
 const Context = createContext<{
   preferences: Preferences;
+  preferencesLoaded: boolean;
   updatePreferences: (value: Partial<Preferences>) => void;
   savePreferences: (value: Partial<Preferences>) => Promise<void>;
   saveError: string;
   retrySave: () => void;
 }>({
   preferences: defaults,
+  preferencesLoaded: false,
   updatePreferences: () => undefined,
   savePreferences: async () => undefined,
   saveError: '',
@@ -195,6 +207,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   const storageKey = `noctua-preferences:${firebaseAuth?.currentUser?.uid ?? 'local'}`;
   const { request, notify } = useApi();
   const [saveError, setSaveError] = useState('');
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   const [loadRevision, setLoadRevision] = useState(0);
   const writer = useRef(new PreferenceSaveQueue());
   const saveRevision = useRef(0);
@@ -282,6 +295,9 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
           setSaveError(errorMessage(error));
           notify(`Não foi possível carregar suas preferências da conta. ${errorMessage(error)}`, true);
         }
+      })
+      .finally(() => {
+        if (active) setPreferencesLoaded(true);
       });
     return () => {
       active = false;
@@ -299,6 +315,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     <Context.Provider
       value={{
         preferences,
+        preferencesLoaded,
         saveError,
         retrySave: () => {
           if (!ready.current) setLoadRevision((value) => value + 1);

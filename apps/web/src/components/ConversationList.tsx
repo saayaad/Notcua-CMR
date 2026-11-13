@@ -2,10 +2,11 @@ import {Select} from './Select';
 import { useHudPlacement, HudMoveHandle } from './HudPlacement';
 import { useEffect, useState } from 'react';
 import { usePreferences } from '../context/PreferencesContext';
-import { Pin, Search, Plus, ChevronLeft, ChevronRight, CheckCheck, MessageSquare, MoreHorizontal } from 'lucide-react';
+import { Pin, Search, Plus, ChevronLeft, ChevronRight, CheckCheck, MessageSquare, MoreHorizontal, SlidersHorizontal, ChevronDown } from 'lucide-react';
 import type { Conversation, Label } from '../types';
 import { useContextMenu } from '../context/ContextMenu';
 import { Avatar, Spinner, time } from './ui';
+import './conversation-list.css';
 
 interface Props {
   sort: 'priority'|'recent'|'oldest'|'waiting'; response: 'all'|'ours'|'client'|'never';
@@ -28,9 +29,10 @@ interface Props {
 }
 export function ConversationList(p: Props) {
   const contextMenu = useContextMenu();
-  const { preferences } = usePreferences();
+  const { preferences, updatePreferences } = usePreferences();
   const placement = useHudPlacement('list');
   const [now, setNow] = useState(Date.now());
+  const optionsOpen = preferences.conversationOptionsExpanded;
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(timer);
@@ -81,27 +83,43 @@ export function ConversationList(p: Props) {
           </button>
         ))}
       </div>
-      <Select
-        className="label-filter"
-        aria-label="Filtrar por etiqueta"
-        value={p.label}
-        onChange={(e) => p.setLabel(e.target.value)}
+      <button
+        type="button"
+        className="button small conversation-options-toggle"
+        aria-expanded={optionsOpen}
+        aria-controls="conversation-list-options"
+        onClick={() => updatePreferences({ conversationOptionsExpanded: !optionsOpen })}
       >
-        <option value="">Todas as etiquetas</option>
-        {p.labels.map((label) => (
-          <option key={label.id} value={label.id}>
-            {label.name}
-          </option>
-        ))}
-      </Select>
-      <div className="lead-list-controls">
-        <label>Resposta<Select aria-label="Filtrar situação da resposta" value={p.response} onChange={e=>p.onResponse(e.target.value as Props['response'])}>
-          <option value="all">Todas as situações</option><option value="ours">Aguardando nossa resposta</option><option value="client">Aguardando o cliente</option><option value="never">Ainda não respondidos</option>
-        </Select></label>
-        <label>Ordem<Select aria-label="Ordenar leads" value={p.sort} onChange={e=>p.onSort(e.target.value as Props['sort'])}>
-          <option value="priority">Prioridade de atendimento</option><option value="recent">Mais recentes</option><option value="oldest">Mais antigos</option><option value="waiting">Maior tempo de espera</option>
-        </Select></label>
-      </div>
+        <SlidersHorizontal size={13} />
+        {optionsOpen ? 'Ocultar opções' : 'Opções'}
+        <ChevronDown size={12} className={optionsOpen ? 'is-open' : ''} />
+        {(p.label || p.response !== 'all') && <span aria-label="Filtros ativos">•</span>}
+      </button>
+      {optionsOpen && (
+        <div id="conversation-list-options" className="conversation-list-options">
+          <Select
+            className="label-filter"
+            aria-label="Filtrar por etiqueta"
+            value={p.label}
+            onChange={(e) => p.setLabel(e.target.value)}
+          >
+            <option value="">Todas as etiquetas</option>
+            {p.labels.map((label) => (
+              <option key={label.id} value={label.id}>
+                {label.name}
+              </option>
+            ))}
+          </Select>
+          <div className="lead-list-controls">
+            <label>Resposta<Select aria-label="Filtrar situação da resposta" value={p.response} onChange={e=>p.onResponse(e.target.value as Props['response'])}>
+              <option value="all">Todas as situações</option><option value="ours">Aguardando nossa resposta</option><option value="client">Aguardando o cliente</option><option value="never">Ainda não respondidos</option>
+            </Select></label>
+            <label>Ordem<Select aria-label="Ordenar leads" value={p.sort} onChange={e=>p.onSort(e.target.value as Props['sort'])}>
+              <option value="priority">Prioridade de atendimento</option><option value="recent">Mais recentes</option><option value="oldest">Mais antigos</option><option value="waiting">Maior tempo de espera</option>
+            </Select></label>
+          </div>
+        </div>
+      )}
       <div className="chat-list">
         {p.loading && !p.chats.length ? (
           <div className="list-placeholder">

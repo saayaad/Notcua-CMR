@@ -1,4 +1,5 @@
 .noctua-dock-workspace {
+  position: relative;
   min-width: 0;
   min-height: 0;
   flex: 1;
@@ -63,16 +64,12 @@
 .dock-more-menu > div button {
   justify-content: flex-start;
 }
-html[data-dock-editing='false'] .dv-default-tab-action {
+html .noctua-dock .dv-default-tab-action {
   display: none !important;
 }
-html[data-dock-editing='false'] .dv-sash {
-  pointer-events: none !important;
-  cursor: default !important;
-}
-html[data-dock-editing='false'] [class*='dv-resize-handle'] {
-  pointer-events: none !important;
-}
+.noctua-dock .dv-sash { pointer-events: auto !important; }
+.noctua-dock .dv-split-view-container.dv-horizontal > .dv-sash-container > .dv-sash { cursor: ew-resize; }
+.noctua-dock .dv-split-view-container.dv-vertical > .dv-sash-container > .dv-sash { cursor: ns-resize; }
 .noctua-dock-workspace:not(.is-editing) .noctua-dock-actions {
   display: none;
 }
@@ -153,6 +150,17 @@ html[data-dock-editing='false'] [class*='dv-resize-handle'] {
   min-height: 0;
   overflow: hidden;
   display: flex;
+}
+.dock-hidden-panel {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.65rem;
+  color: var(--muted);
+  background: var(--bg);
+  font-size: 0.75rem;
 }
 .noctua-dock-content > .conversation-column,
 .noctua-dock-content > .chat-pane,
@@ -265,12 +273,19 @@ html[data-dock-editing='false'] .dv-floating-titlebar {
 }
 
 .dock-reopen-tray {
+  position: absolute;
+  z-index: 15;
+  right: 0;
+  bottom: 0;
+  left: 0;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.4rem;
   padding: 0.35rem 0.6rem;
   border-top: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: 0 -0.4rem 1rem color-mix(in srgb, var(--bg) 65%, transparent);
 }
 .dock-panel-quick .icon-button {
   min-width: 1.6rem;

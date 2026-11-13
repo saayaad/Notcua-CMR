@@ -21,15 +21,21 @@ import {
 import { usePreferences } from '../context/PreferencesContext';
 import { useApi, errorMessage } from '../context/ApiContext';
 import { DockingContext } from '../context/docking';
+import { Spinner } from './ui';
 import { dockPanels, readDockLayout, type DockPanelId } from '../context/dock-layout';
 import 'dockview-react/dist/styles/dockview.css';
 import './attendance-dock.css';
 
 const Content = createContext<Record<DockPanelId, ReactNode>>({ list: null, chat: null, tools: null });
 const Editing = createContext(false);
+const HiddenPanels = createContext<{ hidden: Set<DockPanelId>; open: (id: DockPanelId) => void; hide: (id: DockPanelId) => void }>({ hidden: new Set(), open: () => undefined, hide: () => undefined });
 function Panel({ api }: IDockviewPanelProps) {
   const content = useContext(Content);
-  return <div className="noctua-dock-content">{content[api.id as DockPanelId]}</div>;
+  const { hidden, open } = useContext(HiddenPanels);
+  const id = api.id as DockPanelId;
+  if (hidden.has(id))
+    return <div className="noctua-dock-content"><div className="dock-hidden-panel"><span>{dockPanels[id]} recolhido</span><button className="button small" onClick={() => open(id)}>Reabrir painel</button></div></div>;
+  return <div className="noctua-dock-content">{content[id]}</div>;
 }
 const components = { workspace: Panel };
 function EmptyDock() {
@@ -43,6 +49,7 @@ function EmptyDock() {
 function Actions({ api, containerApi, activePanel }: IDockviewHeaderActionsProps) {
   const { notify } = useApi();
   const editing = useContext(Editing);
+  const hidden = useContext(HiddenPanels);
   const action = async (kind: 'float' | 'popout') => {
     if (!activePanel) return;
     try {
@@ -86,13 +93,13 @@ function Actions({ api, containerApi, activePanel }: IDockviewHeaderActionsProps
     }
   };
   if (!editing)
-    return activePanel && activePanel.id !== 'chat' ? (
+    return activePanel ? (
       <div className="dock-panel-quick">
         <button
           className="icon-button"
           aria-label={`Recolher ${activePanel.title}`}
           title="Recolher painel"
-          onClick={() => activePanel.api.close()}
+          onClick={() => hidden.hide(activePanel.id as DockPanelId)}
         >
           <Minus size={15} />
         </button>
@@ -143,31 +150,64 @@ export function AttendanceDock({
   editRequest?: number;
   onEditRequestHandled?: () => void;
 }) {
-  const { preferences, savePreferences } = usePreferences();
+  const { preferences, preferencesLoaded, savePreferences, updatePreferences } = usePreferences();
   const { notify } = useApi();
   const api = useRef<DockviewApi | null>(null);
   const [instance, setInstance] = useState<DockviewApi | null>(null);
-  const latest = useRef({ preferences, toolsOpen, onToolsChange });
-  latest.current = { preferences, toolsOpen, onToolsChange };
+  const latest = useRef({ preferences, toolsOpen, onToolsChange, savePreferences, updatePreferences, notify });
+  latest.current = { preferences, toolsOpen, onToolsChange, savePreferences, updatePreferences, notify };
   const saved = useRef(preferences.dockingLayout);
+  const rememberedWidths = useRef(preferences.dockingPanelWidths);
+  const rememberedSizes = useRef(preferences.dockingPanelSizes);
+  const [hiddenPanels, setHiddenPanels] = useState<DockPanelId[]>(preferences.dockingHiddenPanels);
+  const knownPanelIds = useRef<string[]>([]);
+  const preserveWidthsAfterPanelChange = useRef(false);
+  const sashDragging = useRef(false);
   const disposables = useRef<{ dispose(): void }[]>([]);
+  const layoutSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [present, setPresent] = useState<string[]>([]);
   const [active, setActive] = useState('chat');
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
+  if (preferencesLoaded) {
+    saved.current = preferences.dockingLayout;
+    rememberedWidths.current = preferences.dockingPanelWidths;
+    rememberedSizes.current = preferences.dockingPanelSizes;
+  }
+  const hide = (id: DockPanelId) => {
+    const next = hiddenPanels.includes(id) ? hiddenPanels : [...hiddenPanels, id];
+    setHiddenPanels(next);
+    latest.current.updatePreferences({ dockingHiddenPanels: next });
+    if (id === 'tools') latest.current.onToolsChange(false);
+  };
+  const show = (id: DockPanelId) => {
+    const next = hiddenPanels.filter((panelId) => panelId !== id);
+    setHiddenPanels(next);
+    latest.current.updatePreferences({ dockingHiddenPanels: next });
+    if (id === 'tools') latest.current.onToolsChange(true);
+    api.current?.getPanel(id)?.api.setActive();
+  };
   useEffect(() => {
     if (editRequest) {
       setEditing(true);
       onEditRequestHandled?.();
     }
   }, [editRequest]);
+  useEffect(() => {
+    if (!preferencesLoaded) return;
+    saved.current = preferences.dockingLayout;
+    rememberedWidths.current = preferences.dockingPanelWidths;
+    rememberedSizes.current = preferences.dockingPanelSizes;
+    setHiddenPanels(preferences.dockingHiddenPanels);
+  }, [preferencesLoaded]);
   const ready = useRef(false);
   const open = (id: DockPanelId) => {
     const dock = api.current;
     if (!dock) return;
     const existing = dock.getPanel(id);
     if (existing) {
+      if (hiddenPanels.includes(id)) show(id);
       existing.api.setActive();
       return;
     }
@@ -175,12 +215,18 @@ export function AttendanceDock({
       (id === 'tools' && dock.width < 1100 ? dock.getPanel('list') : undefined) ??
       dock.getPanel('chat') ??
       dock.panels[0];
+    const minimumWidth = id === 'chat' ? 320 : id === 'tools' ? 260 : 220;
+    const defaultWidth = id === 'chat' ? 650 : id === 'tools' ? 300 : 260;
+    const rememberedWidth = rememberedWidths.current[id];
+    const initialWidth = Number.isFinite(rememberedWidth)
+      ? Math.max(minimumWidth, Math.min(rememberedWidth!, dock.width - minimumWidth))
+      : defaultWidth;
     dock.addPanel({
       id,
       component: 'workspace',
       title: dockPanels[id],
       renderer: 'always',
-      minimumWidth: id === 'chat' ? 320 : id === 'tools' ? 260 : 220,
+      minimumWidth,
       minimumHeight: 130,
       ...(reference
         ? {
@@ -195,13 +241,17 @@ export function AttendanceDock({
             },
           }
         : {}),
-      initialWidth: id === 'chat' ? 650 : id === 'tools' ? 300 : 260,
+      initialWidth,
     });
   };
   const reset = () => {
     const dock = api.current;
     if (!dock) return;
     ready.current = false;
+    setHiddenPanels([]);
+    latest.current.updatePreferences({ dockingHiddenPanels: [] });
+    rememberedWidths.current = {};
+    rememberedSizes.current = {};
     open('chat');
     open('list');
     if (latest.current.toolsOpen) open('tools');
@@ -229,7 +279,7 @@ export function AttendanceDock({
       }
       dock.fromJSON(state, { reuseExistingPanels: true });
       setPresent(dock.panels.map((p) => p.id));
-      latest.current.onToolsChange(Boolean(dock.getPanel('tools')));
+      latest.current.onToolsChange(Boolean(dock.getPanel('tools') && !latest.current.preferences.dockingHiddenPanels.includes('tools')));
     } catch {
       reset();
       notify('O layout salvo não pôde ser aberto. Os painéis padrão foram recuperados.', true);
@@ -239,30 +289,106 @@ export function AttendanceDock({
   };
   const onReady = (event: DockviewReadyEvent) => {
     api.current = event.api;
+    setHiddenPanels(preferences.dockingHiddenPanels);
     restore(saved.current);
+    knownPanelIds.current = event.api.panels.map((panel) => panel.id).sort();
     setDirty(!saved.current);
     setInstance(event.api);
     ready.current = true;
   };
+  const captureLayout = (captureLiveSizes = true) => {
+    const dock = api.current;
+    if (!dock) return null;
+    const widths = { ...rememberedWidths.current };
+    const sizes = { ...rememberedSizes.current };
+    if (captureLiveSizes)
+      for (const panel of dock.panels) {
+        if (!Object.hasOwn(dockPanels, panel.id)) continue;
+        const width = panel.api.group.api.width;
+        const height = panel.api.group.api.height;
+        if (Number.isFinite(width) && width > 0 && Number.isFinite(height) && height > 0) {
+          widths[panel.id as DockPanelId] = Math.round(width);
+          sizes[panel.id as DockPanelId] = { width: Math.round(width), height: Math.round(height) };
+        }
+      }
+    const state = readDockLayout(
+      JSON.stringify(dock.toJSON()),
+      dock.width,
+      dock.height,
+    );
+    if (!state) return null;
+    rememberedWidths.current = widths;
+    rememberedSizes.current = sizes;
+    return { raw: JSON.stringify(state), widths, sizes };
+  };
+  const persistLayout = async (manual = false, captureLiveWidths = true) => {
+    const snapshot = captureLayout(captureLiveWidths);
+    if (!snapshot) throw new Error('Não foi possível validar este layout. Restaure os painéis e tente novamente.');
+    if (manual) setBusy(true);
+    try {
+      await latest.current.savePreferences({
+        dockingLayout: snapshot.raw,
+        dockingPanelWidths: snapshot.widths,
+        dockingPanelSizes: snapshot.sizes,
+      });
+      saved.current = snapshot.raw;
+      rememberedWidths.current = snapshot.widths;
+      rememberedSizes.current = snapshot.sizes;
+      setDirty(false);
+      if (manual) {
+        setEditing(false);
+        latest.current.notify('Layout salvo. As larguras também serão mantidas ao recolher e reabrir os painéis.');
+      }
+    } finally {
+      if (manual) setBusy(false);
+    }
+  };
   useEffect(() => {
     if (!instance) return;
     const event = { api: instance };
+    const dockElement = document.querySelector('.noctua-dock');
+    const onResizeIntent = (pointerEvent: Event) => {
+      if (pointerEvent.target instanceof Element && pointerEvent.target.closest('.dv-sash')) {
+        preserveWidthsAfterPanelChange.current = false;
+        sashDragging.current = true;
+      }
+    };
+    const onResizeEnd = () => {
+      if (!sashDragging.current) return;
+      sashDragging.current = false;
+      window.setTimeout(() => void persistLayout(false, true).catch(() => undefined), 0);
+    };
+    dockElement?.addEventListener('pointerdown', onResizeIntent, true);
+    window.addEventListener('pointerup', onResizeEnd);
+    window.addEventListener('pointercancel', onResizeEnd);
     ready.current = true;
     disposables.current = [
       event.api.onDidLayoutChange(() => {
         if (!ready.current) return;
+        const ids = event.api.panels.map((panel) => panel.id).sort();
+        const structureChanged = ids.join('|') !== knownPanelIds.current.join('|');
+        knownPanelIds.current = ids;
+        if (structureChanged) preserveWidthsAfterPanelChange.current = true;
         setPresent(event.api.panels.map((p) => p.id));
         setDirty(true);
+        if (!preserveWidthsAfterPanelChange.current && sashDragging.current) captureLayout(true);
+        if (layoutSaveTimer.current) clearTimeout(layoutSaveTimer.current);
+        layoutSaveTimer.current = setTimeout(() => {
+          layoutSaveTimer.current = null;
+          void persistLayout(false, !preserveWidthsAfterPanelChange.current && sashDragging.current).catch(() => undefined);
+        }, 450);
       }),
       event.api.onDidActivePanelChange(() => setActive(event.api.activePanel?.id ?? '')),
       event.api.onDidRemovePanel((panel) => {
-        if (ready.current && panel.id === 'tools')
-          queueMicrotask(() => {
-            if (ready.current && !event.api.getPanel('tools')) latest.current.onToolsChange(false);
-          });
+        if (ready.current && panel.id === 'tools') queueMicrotask(() => latest.current.onToolsChange(false));
       }),
     ];
     return () => {
+      dockElement?.removeEventListener('pointerdown', onResizeIntent, true);
+      window.removeEventListener('pointerup', onResizeEnd);
+      window.removeEventListener('pointercancel', onResizeEnd);
+      if (layoutSaveTimer.current) clearTimeout(layoutSaveTimer.current);
+      layoutSaveTimer.current = null;
       ready.current = false;
       disposables.current.forEach((item) => item.dispose());
     };
@@ -288,33 +414,19 @@ export function AttendanceDock({
   }, [editing]);
   useEffect(() => {
     if (!ready.current || !api.current) return;
+    if (toolsOpen && preferences.dockingHiddenPanels.includes('tools')) {
+      latest.current.onToolsChange(false);
+      return;
+    }
     if (toolsOpen) open('tools');
-    else api.current.getPanel('tools')?.api.close();
+    else if (api.current.getPanel('tools') && !hiddenPanels.includes('tools')) hide('tools');
   }, [toolsOpen]);
   const save = async () => {
     if (!api.current) return;
-    setBusy(true);
-    try {
-      const state = readDockLayout(
-        JSON.stringify(api.current.toJSON()),
-        api.current.width,
-        api.current.height,
-      );
-      if (!state)
-        throw new Error('Não foi possível validar este layout. Restaure os painéis e tente novamente.');
-      const raw = JSON.stringify(state);
-      await savePreferences({ dockingLayout: raw });
-      saved.current = raw;
-      setDirty(false);
-      setEditing(false);
-      notify(
-        'Layout salvo na sua conta. Janelas externas serão recuperadas dentro do Atendimento ao reabrir.',
-      );
-    } catch (error) {
-      notify(errorMessage(error), true);
-    } finally {
-      setBusy(false);
-    }
+    if (layoutSaveTimer.current) clearTimeout(layoutSaveTimer.current);
+    layoutSaveTimer.current = null;
+    try { await persistLayout(true); }
+    catch (error) { notify(errorMessage(error), true); }
   };
   const move = (direction: 'left' | 'right' | 'above' | 'below' | 'within') => {
     const dock = api.current;
@@ -333,10 +445,13 @@ export function AttendanceDock({
               : direction,
     });
   };
+  if (!preferencesLoaded)
+    return <div className="operation-empty"><Spinner /> Carregando o layout salvo…</div>;
   return (
     <DockingContext.Provider value={true}>
       <Content.Provider value={children}>
         <Editing.Provider value={editing}>
+          <HiddenPanels.Provider value={{ hidden: new Set(hiddenPanels), open: show, hide }}>
           <section
             className={`noctua-dock-workspace ${editing ? 'is-editing' : ''}`}
             aria-label="Atendimento com painéis encaixáveis"
@@ -410,7 +525,7 @@ export function AttendanceDock({
                     <div>
                       <button className="button small" onClick={reset}>
                         <RotateCcw size={14} />
-                        Recuperar painéis
+                        Restaurar layout padrão
                       </button>
                       <button className="button small" onClick={() => api.current?.exitMaximizedGroup()}>
                         <Minimize2 size={14} />
@@ -449,17 +564,17 @@ export function AttendanceDock({
               disableDnd={!editing}
               floatingGroupBounds="boundedWithinViewport"
             />
-            {!editing && Object.keys(dockPanels).some((id) => !present.includes(id)) && (
+            {!editing && (hiddenPanels.length > 0 || Object.keys(dockPanels).some((id) => !present.includes(id))) && (
               <div className="dock-reopen-tray" aria-label="Painéis recolhidos">
                 {Object.entries(dockPanels)
-                  .filter(([id]) => !present.includes(id))
+                  .filter(([id]) => hiddenPanels.includes(id as DockPanelId) || !present.includes(id))
                   .map(([id, title]) => (
                     <button
                       key={id}
                       className="button small"
                       onClick={() => {
-                        if (id === 'tools') onToolsChange(true);
-                        open(id as DockPanelId);
+                        if (hiddenPanels.includes(id as DockPanelId)) show(id as DockPanelId);
+                        else open(id as DockPanelId);
                       }}
                     >
                       Abrir {title}
@@ -469,6 +584,7 @@ export function AttendanceDock({
             )}
             {!present.includes('tools') && <div className="noctua-dock-parking">{children.tools}</div>}
           </section>
+          </HiddenPanels.Provider>
         </Editing.Provider>
       </Content.Provider>
     </DockingContext.Provider>

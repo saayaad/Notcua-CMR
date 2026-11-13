@@ -334,3 +334,9 @@ A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, po
 - Ajuste frontend em player de áudio, imagens, miniaturas e visualizador; inclui estados de carregamento/erro, repetição, downloads e preferências. Playwright headless em dados sintéticos verificou os estados em tema claro/escuro e celular/desktop; sem mudança de scroll durante o carregamento.
 - Nenhuma falha funcional restante encontrada na revisão visual. `npm test`: 310/310 aprovado; typecheck e build aprovados. O aviso de bundle acima de 500 kB é informativo e não impediu a compilação.
 - Nenhum código de servidor/worker, banco, campanha ou fila foi alterado. Fixture é de desenvolvimento e ficou fora do build de produção.
+
+## Atendimento: texto original de edição — pendente no servidor — 13/11/2026
+
+- O sincronizador em apps/server/src/modules/whatsapp/sync.service.ts preserva o rawPayload recebido antes da edição e grava editedAt/editedByClient; eventos REVOKE também gravam deletedByClient. Não foi identificada necessidade de migração de schema.
+- A rota GET de mensagens em apps/server/src/modules/attendance/attendance.routes.ts já retorna os indicadores, mas define rawPayload como undefined e não transforma o payload preservado em editedOriginalText/deletedOriginalText. Portanto, o indicador Editada e o X vermelho funcionam com os campos atuais; mostrar o texto anterior depende de a API extrair e devolver esses campos. O conteúdo original de mensagens apagadas é mantido em text; a UI o mostra esmaecido quando a API devolve a mensagem marcada.
+- Pendente: ajuste server-side da rota para extrair o texto legível do rawPayload e devolver os campos opcionais ao frontend; verificar a versão instalada antes de depender desse comportamento em produção. Nenhum servidor/worker foi reiniciado ou alterado nesta publicação.

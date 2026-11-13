@@ -43,6 +43,8 @@ import { completeOrder } from '../context/hud';
 import { Ellipsis } from 'lucide-react';
 import { ClientAiStudio } from './ClientAiStudio';
 import { ConversationMedia, ConversationMediaLightbox, isImageMessage, mediaCategory } from './ConversationMedia';
+import { MessageRevision } from './MessageRevision';
+import './MessageRevision.css';
 
 export function ChatPane({
   chat,
@@ -474,7 +476,7 @@ export function ChatPane({
                 )}
                 <div className={`message-row ${message.direction === 'OUTBOUND' ? 'outbound' : ''}`}>
                   <div
-                    className={`message-bubble ${message.status === 'FAILED' ? 'message-failed' : ''} ${message.internal ? 'internal-note-bubble' : ''}`}
+                    className={`message-bubble ${message.status === 'FAILED' ? 'message-failed' : ''} ${message.internal ? 'internal-note-bubble' : ''} ${message.deletedByClient ? 'message-deleted-by-client' : ''}`}
                     onContextMenu={contextMenu(message.internal ? 'Nota interna' : 'Mensagem', [
                       ...(!message.internal ? [{ label: 'Reagir', run: () => { document.getElementById(`reaction-picker-${message.id}`)?.focus(); } }] : []),
                       ...((message.text || message.caption) ? [{ label: 'Copiar mensagem', run: () => navigator.clipboard.writeText(message.text || message.caption || '') }] : []),
@@ -519,9 +521,9 @@ export function ChatPane({
                       }
                       onOpenLightbox={setLightboxMessageId}
                     />}
-                    {(message.text || message.caption) && (
+                    {(message.text || message.caption || (message.deletedByClient && message.deletedOriginalText)) && (
                       <div className="message-text">
-                        <FormattedText text={message.text || message.caption || ''} />
+                        <FormattedText text={message.deletedByClient ? message.deletedOriginalText || message.text || message.caption || '' : message.text || message.caption || ''} />
                       </div>
                     )}
                     {message.direction === 'INBOUND' && message.text && (
@@ -562,9 +564,12 @@ export function ChatPane({
                         <button className="button button-primary button-small" onClick={() => void confirmReceipt(message.id)}>Confirmar e mover para Pago / Fechado</button>
                       </div>
                     )}
-                    {message.deletedByClient && (
-                      <small className="deleted-message-badge">🗑️ Apagada pelo cliente</small>
-                    )}
+                    <MessageRevision
+                      deleted={message.deletedByClient}
+                      editedAt={message.editedAt}
+                      editedByClient={message.editedByClient}
+                      originalText={message.editedOriginalText}
+                    />
                     <div className="message-meta">
                       <time>{time(message.sentAt)}</time>
                       {message.direction === 'OUTBOUND' &&

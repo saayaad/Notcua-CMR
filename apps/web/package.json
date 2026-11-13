@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
-    "test": "node --import tsx --test test/*.test.ts",
+    "test": "node --import tsx --test test/*.test.ts && node --import tsx test/attendance-visual.mts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

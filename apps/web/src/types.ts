@@ -38,6 +38,10 @@ export interface Message {
   internal?: boolean;
   author?: string;
   deletedByClient?: boolean;
+  deletedOriginalText?: string;
+  editedAt?: string;
+  editedByClient?: boolean;
+  editedOriginalText?: string;
   reactions?: { emoji: string; count: number; reactedByMe: boolean }[];
 }
 export interface Conversation {
