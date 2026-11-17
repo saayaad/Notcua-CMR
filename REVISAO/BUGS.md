@@ -329,6 +329,33 @@ A primeira execução em janela oculta iniciou o servidor e parou na etapa 2, po
 - Correção VERIFY: se a chave tem mensagem persistida como enviada/entregue/lida, Reenviar confirma a mensagem já feita sem duplicata. Teste Fase 5 passou.
 - Nenhuma mensagem foi enviada ou tarefa real alterada. Servidor persistente não reiniciado: 160 tarefas QUEUED e uma campanha ativa.
 
+## Recuperar Leads — 12/11/2026
+
+- Implementada elegibilidade server-side para recuperar leads de uma campanha, mantendo opt-out/bloqueio, CRM, pendências, telefones inválidos/duplicados, campanhas simultâneas, intervalo e tentativas máximas como exclusões obrigatórias.
+- O editor normal é reaproveitado com as configurações da campanha original; a recuperação salva vínculo com a origem e razões de exclusão no JSON da campanha, sem migração destrutiva. A criação permanece em rascunho até ativação manual.
+- Adicionada comparação de métricas por campanha e variação. A prévia exporta excluídos com motivo em CSV.
+- Teste unitário de regras da recuperação passou; suíte completa ainda em execução. Nenhuma tarefa real foi tocada e nenhuma mensagem foi enviada.
+- Correção adicional de VERIFY: se a chave de envio já tem uma mensagem persistida como enviada/entregue/lida, “Reenviar” converte a resolução em confirmação do envio e não agenda duplicata. Teste Fase 5 passou após o ajuste.
+# Segurança operacional — origem de 15 mensagens outbound não atribuída (12/11/2026)
+
+- Os 15 registros recebidos por sincronização do WhatsApp têm `fromMe=true`, mas não têm vínculo local com `DeliveryTask` ou execução de sequência. Logs disponíveis não permitem identificar qual cliente/processo os enviou.
+- Impacto: não é possível provar que a origem foi apenas envio anterior autorizado; deploy e atualização/reinício do worker ficam bloqueados pela regra de segurança do proprietário.
+- Estado seguro mantido: S9 desconectada, 160 tarefas `QUEUED`, 5 `VERIFY`, zero `RUNNING`, follow-ups pausados; nenhuma tarefa alterada nem mensagem enviada.
+- Próximo passo: correlacionar IDs/horários do provedor com logs completos de todas as instâncias e auditoria de envio, sem reenfileirar ou transmitir mensagens. Só reavaliar deploy quando a origem for comprovada.
+
+## UX de mídia no chat — 13/11/2026
+
+- Ajuste frontend em player de áudio, imagens, miniaturas e visualizador; inclui estados de carregamento/erro, repetição, downloads e preferências. Playwright headless em dados sintéticos verificou os estados em tema claro/escuro e celular/desktop; sem mudança de scroll durante o carregamento.
+- Nenhuma falha funcional restante encontrada na revisão visual. `npm test`: 310/310 aprovado; typecheck e build aprovados. O aviso de bundle acima de 500 kB é informativo e não impediu a compilação.
+- Nenhum código de servidor/worker, banco, campanha ou fila foi alterado. Fixture é de desenvolvimento e ficou fora do build de produção.
+
+## 2026-11-17 — Proveniência histórica de envios
+
+- Quatro mensagens de 13/11 com IDs `out:<uuid>` não possuem tarefa associada e não contêm rota, usuário ou flag `automatic`; a base não permite provar retrospectivamente se vieram do compositor manual ou de outro chamador da API. Três registros adjacentes são histórico sincronizado com `fromMe=true` no aparelho.
+- A base atual também retorna 73 saídas desde 16/11 20:40 UTC, sendo 27 com ID `out:`. Esse volume não corresponde ao conjunto anterior de sete registros, então a janela precisa sempre incluir data e UTC.
+- Corrigido para novos envios: salvar origem e contexto sem alterar os registros antigos; travão global persistente fechado por padrão; bloqueio antes de consumir fila; log das tentativas automáticas bloqueadas; saúde inclui hash de build.
+- Pendência histórica: a origem individual dos quatro envios antigos permanece indeterminada, pois o payload não contém esses campos.
+
 ## UX de mídia no chat — 13/11/2026
 
 - Ajuste frontend em player de áudio, imagens, miniaturas e visualizador; inclui estados de carregamento/erro, repetição, downloads e preferências. Playwright headless em dados sintéticos verificou os estados em tema claro/escuro e celular/desktop; sem mudança de scroll durante o carregamento.

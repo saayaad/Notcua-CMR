@@ -7,6 +7,7 @@ import type { WhatsappService } from '../whatsapp/whatsapp.service.js';
 import { MessagingService, sendSchema } from './messaging.service.js';
 import { json } from '../backups/validation.js';
 import { queueLabelChange } from '../whatsapp/label-changes.js';
+import { automaticSendSettings, logBlockedAutomaticSendOnce } from '../operations/automatic-send-control.js';
 
 const stepSchema = z.object({
   delayMs: z.number().int().min(0).max(86_400_000).default(0),
@@ -43,6 +44,10 @@ export class SequenceService {
   ) {}
 
   async start() {
+    if (!(await automaticSendSettings(this.db)).enabled) {
+      this.schedule();
+      return;
+    }
     await this.db.sequenceRun.updateMany({
       where: { status: 'RUNNING' },
       data: {
@@ -303,6 +308,11 @@ export class SequenceService {
     if (this.flushing || this.stopped) return;
     this.flushing = true;
     try {
+      if (!(await automaticSendSettings(this.db)).enabled) {
+        const due = await this.db.sequenceRun.findMany({ where: { status: 'QUEUED', nextRunAt: { lte: new Date() } }, select: { id: true }, take: 10 });
+        for (const run of due) await logBlockedAutomaticSendOnce(this.db, `sequence:${run.id}`, { module: 'worker:sequence-funnel-macro', taskId: run.id, automatic: true });
+        return;
+      }
       const runs = await this.db.sequenceRun.findMany({
         where: { status: 'QUEUED', nextRunAt: { lte: new Date() } },
         include: { conversation: true },

@@ -11,6 +11,7 @@ import {
   type PublishedGraph,
 } from './flow.graph.js';
 import { automationLock } from './flow.lock.js';
+import { automaticSendSettings, logBlockedAutomaticSendOnce } from '../operations/automatic-send-control.js';
 import { digest, json } from '../backups/validation.js';
 import { labelAtStart } from './flow.labels.js';
 
@@ -41,6 +42,10 @@ export class FlowEngine {
     private readonly messaging: MessagingService,
   ) {}
   async start() {
+    if (!(await automaticSendSettings(this.db)).enabled) {
+      this.schedule();
+      return;
+    }
     await this.db.flowExecution.updateMany({
       where: { status: 'RUNNING' },
       data: {
@@ -393,7 +398,8 @@ export class FlowEngine {
         await this.messaging.send(sessionId, run.conversationId!, {
           ...asset,
           requestId: `flow:${run.id}:${digest(node.id).slice(0, 24)}`,
-        });
+          automatic: true,
+        }, undefined, { module: 'flow:execution', taskId: run.id, automatic: true });
       }
       await this.next(run, graph, nextContext, [...node.data.nextNodeIds, ...context.queue]);
     } catch (error) {
@@ -415,6 +421,11 @@ export class FlowEngine {
     if (this.stopped || this.flushing) return;
     this.flushing = true;
     try {
+      if (!(await automaticSendSettings(this.db)).enabled) {
+        const due = await this.db.flowExecution.findMany({ where: { status: 'QUEUED', nextRunAt: { lte: new Date() } }, select: { id: true }, take: 200 });
+        for (const run of due) await logBlockedAutomaticSendOnce(this.db, `flow:${run.id}`, { module: 'flow:execution', taskId: run.id, automatic: true });
+        return;
+      }
       const events = await this.db.flowInboxEvent.findMany({
         where: { processedAt: null },
         orderBy: [{ receivedAt: 'asc' }, { messageId: 'asc' }],

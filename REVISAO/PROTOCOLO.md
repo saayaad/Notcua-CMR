@@ -720,3 +720,75 @@ Se a sessão cair e eu escrever "continue": releia REVISAO/PROTOCOLO.md e REVISA
 - Typecheck e build passaram; npm test passou (303 testes do servidor e 15 web, incluindo Playwright headless). Não foram feitos envios reais.
 - A inspeção somente leitura encontrou 160 tarefas QUEUED (151 em lote PAUSED e 9 em lotes DRAFT), 5 VERIFY, zero RUNNING, follow-ups pausados, duas sessões CONNECTED com autoConnect e 10 jobs de etiqueta pendentes. Também há 7 saídas desde 20:40 UTC; quatro têm requestFingerprint e nenhuma corresponde a DeliveryTask, então a origem não pode ser atribuída com segurança a este lote. O worker persistente não foi atualizado nem reiniciado; a origem dessas saídas permanece pendente.
 - Exceção pontual: autorizada uma publicação frontend deste lote. Após a publicação, a exceção encerra-se e produção volta a somente leitura. O deploy do backend/worker fica pendente até ser seguro atualizar e confirmar a origem das saídas sem tarefa.
+
+## Retomada — alterações consolidadas no checkout principal — 12/11/2026
+
+- Restauração da Biblioteca de atendimento e controles de verificação do monitor compacto transferidos para o checkout principal `auditoria-reqs`, junto do botão de recuperação já preparado em Campanhas. O trabalho de REQs existente foi preservado.
+- Typecheck e build locais passaram após a consolidação. Nenhum commit ou push foi feito; nenhuma configuração Firebase foi alterada e nenhuma publicação ou tarefa de fila real foi tocada. Produção permanece somente leitura.
+
+## Consolidação local em pasta única — 12/11/2026
+
+- As alterações locais da Biblioteca de atendimento e do monitor compacto de campanhas foram transferidas para o checkout principal `C:\Users\gusta\Documents\Notcua CMR\Notcua CMR`. As alterações já preparadas de REQs e Campanhas foram preservadas.
+- `npm run typecheck` e `npm run build` passaram após a transferência. Não houve commit, push, deploy, alteração de configuração de hospedagem ou ação na fila real. Produção continua somente leitura.
+
+## Exceção pontual de deploy autorizada — 12/11/2026
+
+- O usuário autorizou commit, push e deploy em produção, usando o projeto Firebase original do Noctua CRM.
+- Commit `dfdf556` contém somente `apps/server/src/modules/operations/operations.routes.ts`, `apps/web/src/pages/OperationsPages.tsx`, `apps/web/src/components/CampaignMonitor.tsx`, `apps/web/src/components/ResourceWorkbench.tsx` e `apps/web/src/workbench.css`. Push feito para `origin/auditoria-reqs`; alterações de REQs restantes ficaram fora do commit.
+- Deploy Vercel do projeto `noctua-crm`: `dpl_8UktwMpZHkF5DQq9bpzH7z59KviV`, Ready, alias https://notcua.vercel.app. A build usou as variáveis já existentes no ambiente Production, incluindo a configuração Firebase original. A URL respondeu HTTP 200.
+- A Vercel publica apenas `apps/web/dist`; este deploy não altera o servidor persistente externo nem reenfileira/edita envios reais. Não foi feita nenhuma operação na fila.
+- Exceção encerrada após esta publicação. Produção-somente-leitura volta a valer normalmente daqui em diante.
+
+## Recuperar Leads — publicação excepcional autorizada — 12/11/2026
+
+- Autorização pontual do proprietário para um commit, push e deploy em Production somente da funcionalidade Recuperar Leads. Nenhuma migração/schema foi criada: origem, exclusões e histórico por contato usam registros JSON e tarefas existentes.
+- Recuperação reusa o BatchEditor e o worker padrão; prévia e criação recalculam elegibilidade no servidor. A execução fica como rascunho até ativação manual. Não reenfileirar, editar nem enviar tarefa real durante desenvolvimento/verificação.
+- Cobertura dedicada de filtros, exclusões, duplicidade, intervalo mínimo, limite de tentativas e contagens de prévia. Registrar resultados de typecheck/build/test antes da publicação.
+- Arquivos permitidos no commit: `apps/server/src/modules/operations/operations.routes.ts`, `apps/server/src/modules/operations/delivery.worker.ts`, `apps/server/src/modules/operations/campaign-recovery.ts`, `apps/server/test/campaign-recovery.test.ts`, `apps/web/src/pages/OperationsPages.tsx`, este protocolo e `REVISAO/BUGS.md`.
+- Ao concluir o deploy autorizado, registrar SHA e URL, encerrar a exceção e restabelecer produção somente leitura.
+- Estado desta execução: typecheck e build passaram; os testes focados da recuperação e da regressão VERIFY passaram 7/7. A suíte completa foi 287/292 antes das correções finais; falhas ambientais/anteriores identificadas: REQ-684 espera um arquivo de auditoria de 2.039.808 bytes, mas o existente tem 1.126.400; REQ-424 depende do modelo local de embeddings; `reactions-audit.test.ts` requer `AUDIT_DB_PATH`. VERIFY e a compilação estrita foram corrigidos e retestados focadamente, sem repetir a suíte completa.
+- O servidor persistente não foi reiniciado: a leitura somente de contadores encontrou 160 tarefas `QUEUED`, 5 `VERIFY` e uma campanha ativa. Reiniciar poderia enviar mensagens reais, proibidas nesta autorização. A tela local também não pôde ser inspecionada após o login porque esta execução do Vite está sem as variáveis públicas do Firebase. Commit/push podem ser registrados; deploy e atualização do servidor aguardam uma janela segura sem tarefas pendentes. Nenhuma tarefa real foi alterada.
+
+## Interrupção de segurança — Recuperar Leads — 12/11/2026
+
+- A suíte completa `npm test` passou: 293/293. Ajuste local no teste REQ-684 removeu expectativas estáticas de tamanho/data do banco e agora compara metadados antes/depois do próprio teste. Cache local do modelo de embeddings instalado em `.audit/models`; `AUDIT_DB_PATH` apontado para uma cópia isolada em `.audit/tmp` para `reactions-audit.test.ts`. O banco `.audit/noctua-audit.db` não foi usado pelo teste de reações.
+- Durante a checagem final, foram encontrados 15 registros `OUTBOUND` no banco operacional com `sentAt` posterior ao reinício do servidor. Os registros não correspondem a `DeliveryTask` e incluem estados `DELIVERED`/`READ`; não foi possível estabelecer se são atividade externa do usuário ou efeitos de execução local. Portanto, não se pode confirmar que nenhuma mensagem foi enviada.
+- Para impedir qualquer outra tentativa automática, o processo local do servidor (PID 17472, iniciado a partir do checkout em 94fcab6) foi encerrado. A rota `/health` agora está offline. Nenhuma ação foi feita em tarefas: contagens permanecem 160 `QUEUED`, 5 `VERIFY`, 123 `COMPLETED` e 1.518 `CANCELLED`; campanhas e follow-ups seguem pausados.
+- Deploy Production NÃO executado; o botão, a prévia e o relatório comparativo não foram validados visualmente (controle de navegador indisponível nesta execução). A exceção de produção permanece aberta e não deve ser considerada encerrada. Não reiniciar o worker nem publicar até esclarecer a origem dos 15 registros e confirmar um ambiente seguro sem envios.
+
+## Recuperar Leads — publicação após correção de reconexão — 12/11/2026
+
+- Após autorização posterior do proprietário para resolver o bloqueio e publicar com urgência, a origem operacional foi refinada: as 15 mensagens tinham `fromMe=true` no payload recebido do WhatsApp e IDs CUID gerados por `SyncService.messagesUpsert`; não tinham vínculo com `DeliveryTask`, FlowExecution ou SequenceRun. A conexão S9 foi restaurada automaticamente porque `autoConnect=true`; havia duas instâncias locais `tsx watch` simultâneas. Os logs disponíveis não identificam qual cliente originou cada envio.
+- Desativei somente `autoConnect` da sessão S9 e marquei-a `DISCONNECTED`, preservando credenciais. Encerrei as duas árvores duplicadas e subi uma instância única do build do commit `94fcab6`. `/health` respondeu `ok`; WhatsApp permaneceu desconectado e não houve novos registros OUTBOUND desde essa subida.
+- Filas verificadas após a operação: 160 `QUEUED`, 5 `VERIFY`, 123 `COMPLETED` e 1.518 `CANCELLED`; nenhuma campanha ativa; follow-ups pausados. Nenhuma tarefa da fila foi editada, reenfileirada ou enviada.
+- `npm test`: 293/293 aprovados; build do servidor aprovado; build remoto Vercel aprovado. Deploy Production criado somente do SHA `94fcab6e92014fe9b25a11040ca2caef5c6edb0d`, projeto `noctua-crm`, deployment `dpl_H7wynwY3yx52W4iFMur3Mro96u8K`, URL https://notcua.vercel.app. A página respondeu HTTP 200; os assets publicados contêm os rótulos de Recuperar Leads e relatório comparativo. Inspeção visual autenticada não foi possível nesta sessão.
+- Exceção pontual de deploy consumida e encerrada; produção-somente-leitura volta a valer daqui em diante. Não reconectar o WhatsApp nem publicar novos commits sem nova autorização.
+
+## Retomada urgente Recuperar Leads e segurança do número — 12/11/2026
+
+- Validação local repetida: `npm run typecheck` aprovado; `npm run build` aprovado (aviso de bundle acima de 500 kB); `npm test` aprovado, 302/302. Nenhuma mensagem foi enviada pelos testes.
+- O registro de segurança dos 15 outbound aponta `fromMe=true` em eventos sincronizados pelo WhatsApp, sem vínculo `task_id`/`DeliveryTask`/sequência, e os logs não identificam o processo cliente que originou cada mensagem. Como a origem permanece desconhecida, aplica-se a decisão expressa do proprietário: não fazer deploy nem reiniciar/atualizar o worker até esclarecer a origem.
+- Última contagem preservada: 160 `QUEUED`, 5 `VERIFY`, zero `RUNNING`; follow-ups pausados; sessão S9 desconectada. Nenhuma tarefa foi alterada, reenfileirada ou retomada nesta retomada.
+- Worker local atualmente responde `/health` como `ok`, mas é o build já instalado; a rota de segurança requer autenticação e não foi consultada sem credenciais. Não houve reinício nem tentativa de envio.
+- A publicação Production de `94fcab6` citada na entrada anterior permanece a última versão publicada conhecida. A alteração local do novo lote não foi publicada. Exceção para este lote continua sem consumo; produção somente leitura permanece ativa até que a causa/origem dos 15 registros seja esclarecida.
+- O monitor de 10 minutos é somente leitura e aguarda a conexão manual da S9; nenhum evento de conexão foi observado ainda. Após conectar, observar saídas sem `task_id` por 10 minutos, mantendo todas as filas pausadas.
+
+## Player de áudio e imagens do Atendimento — exceção pontual autorizada — 13/11/2026
+
+- Redesenho frontend do player de áudio, carregamento/erro/repetição de mídias, miniaturas, downloads e visualizador de imagens; preferências de download automático foram adicionadas às configurações da área de trabalho.
+- Fixture `dev-media-preview.html` e imagens/áudios/vídeo gerados localmente permitem conferência sem Firebase nem dados reais. A fixture não está presente em `apps/web/dist` e nenhum marcador dela foi encontrado no bundle de produção.
+- Playwright headless local conferiu áudio parado, tocando, carregando e erro, miniaturas e visualizador, em tema claro/escuro e viewports desktop/celular. Quatro combinações de viewport/tema reportaram `scrollHeightDelta: 0` e `anchorTopDelta: 0` ao carregar mídia. Capturas foram gravadas em `%TEMP%\noctua-media-*.png`.
+- Resultado final: `npm run typecheck` aprovado; `npm run build` aprovado; `npm test` aprovado (310/310: 302 servidor e 8 web). Build mantém aviso conhecido de bundle acima de 500 kB.
+- Esta autorização permite um commit, push para `origin/auditoria-reqs` e um deploy Production, somente de arquivos do player de áudio/imagens, preferências, fixture/testes locais e registros desta tarefa. Sem mudanças em `apps/server`, schema, worker, campanhas ou filas; nenhum envio real.
+- Após a publicação e confirmação de `https://notcua.vercel.app`, esta exceção fica encerrada e a regra de produção somente leitura volta a valer.
+
+## 2026-11-17 — Travão global de envios e origem das mensagens
+
+- Por autorização explícita do proprietário, o watcher `tsx watch src/server.ts` e seu processo Node foram encerrados antes das edições. A porta local 3333 ficou sem listener; não foi alterado o banco, a fila nem as sessões salvas.
+- A auditoria dos sete registros de 13/11 a partir de 20:40 UTC identificou três mensagens `fromMe=true` sincronizadas do aparelho (texto, vídeo e documento) e quatro mensagens de texto criadas pela API (`out:<uuid>`, com fingerprint), sem tarefa. O registro antigo não guarda rota, usuário nem flag `automatic`; por isso não é possível distinguir retrospectivamente Atendimento manual de outro chamador da API. A origem mais provável das quatro é um envio solicitado via API, mas não há evidência suficiente para atribuir a tela ou excluir outro módulo.
+- Nova leitura com corte 16/11/2026 20:40 UTC encontrou 73 registros de saída (27 IDs `out:` e 46 mensagens sincronizadas). Filas no banco local: 160 `QUEUED`, 5 `VERIFY`, 0 `RUNNING`; batches em proteção pausada e follow-ups pausados. As 10 tarefas agendadas pendentes são apenas `WHATSAPP_SET_LABEL`. Duas sessões estão conectadas com `autoConnect=true`; fluxos, funis e macros não têm execução ativa.
+- Implementado controle persistente em `OperationRecord` (`settings:automatic-sends`), padrão desligado, com `AUTOMATIC_SENDS_ENABLED=false` como bloqueio forçado. O travão é verificado antes de trabalhadores reivindicarem tarefas; fluxos, sequências, campanhas, recuperações, follow-ups, respostas fora do horário e IA não enviam nem avançam filas quando desligado. Atendimento manual segue permitido. Tentativas bloqueadas geram registros `AUTOMATIC_SEND_BLOCKED`.
+- Novos registros de envio guardam módulo/rota, usuário, flag `automatic` e taskId quando conhecido; mensagens importadas do aparelho ficam marcadas como sincronização e preservam `fromMe`. Nenhum registro antigo foi reescrito e nenhuma migração de schema foi criada.
+- Health informa `buildCommit`, `workerBuildCommit` e estado do travão. A interface de Campanhas mostra o estado e exige confirmação de risco para ligar.
+- Verificações: typecheck e build raiz aprovados; `npm test` completo aprovado (307 testes do servidor e 15 do frontend, mais captura automatizada). Todos os envios de teste usaram conectores simulados.
+- Estado de publicação/execução será registrado após validar a inicialização com o travão desligado. Não reenfileirar, retomar ou editar tarefas existentes.

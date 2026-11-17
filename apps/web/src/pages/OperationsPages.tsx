@@ -753,6 +753,10 @@ export function CampaignsPage({
   const [create, setCreate] = useState(Boolean(initialConversation));
   const [recoverLeadsSource, setRecoverLeadsSource] = useState<BatchRow | null>(null);
   const [activate, setActivate] = useState<BatchRow | null>(null);
+  const [largeCampaignConfirmed, setLargeCampaignConfirmed] = useState(false);
+  const [safetyVolume, setSafetyVolume] = useState<{ sentToday: number; dailyLimit: number } | null>(null);
+  const [automaticSends, setAutomaticSends] = useState<{ enabled: boolean; forcedOff: boolean } | null>(null);
+  const [savingAutomaticSends, setSavingAutomaticSends] = useState(false);
   const [tasks, setTasks] = useState<
     | {
         id: string;
@@ -785,6 +789,39 @@ export function CampaignsPage({
   });
   const [revenueBatch, setRevenueBatch] = useState('');
   useEffect(() => setSearch(initialSearch), [initialSearch]);
+  useEffect(() => {
+    let alive = true;
+    const load = () => void request<{ metrics: { sentToday: number; dailyLimit: number } }>('/operations/campaign-safety')
+      .then((result) => { if (alive) setSafetyVolume(result.metrics); })
+      .catch(() => undefined);
+    load();
+    const timer = window.setInterval(load, 15000);
+    return () => { alive = false; window.clearInterval(timer); };
+  }, [request]);
+  useEffect(() => {
+    let alive = true;
+    const load = () => void request<{ enabled: boolean; forcedOff: boolean }>('/operations/automatic-sends')
+      .then((state) => { if (alive) setAutomaticSends(state); })
+      .catch(() => undefined);
+    load();
+    const timer = window.setInterval(load, 10000);
+    return () => { alive = false; window.clearInterval(timer); };
+  }, [request]);
+  const changeAutomaticSends = async () => {
+    if (!automaticSends || savingAutomaticSends || automaticSends.forcedOff) return;
+    const enabled = !automaticSends.enabled;
+    if (enabled && !window.confirm('Ligar envios automáticos pode enviar mensagens pelas campanhas, follow-ups, recuperações e automações ativas. Confirme que revisou os riscos e a fila.')) return;
+    setSavingAutomaticSends(true);
+    try {
+      const state = await request<{ enabled: boolean; forcedOff: boolean }>('/operations/automatic-sends', 'PUT', {
+        enabled,
+        ...(enabled ? { confirmation: 'LIGAR COM RISCO' } : {}),
+      });
+      setAutomaticSends(state);
+      notify(state.enabled ? 'Envios automáticos ligados.' : 'Envios automáticos desligados. As filas foram preservadas.');
+    } catch (error) { notify(errorMessage(error), true); }
+    finally { setSavingAutomaticSends(false); }
+  };
   useEffect(() => {
     if (!sessionId) return;
     const controller = new AbortController();
@@ -861,6 +898,16 @@ export function CampaignsPage({
           </button>
         </div>
       </div>
+      {!schedule && (
+        <section className={`automatic-send-banner ${automaticSends?.enabled ? 'is-enabled' : 'is-disabled'}`} role="status">
+          <div><strong>Envios automáticos: {automaticSends ? (automaticSends.enabled ? 'LIGADO' : 'DESLIGADO') : 'carregando'}</strong>
+            <p>{automaticSends?.forcedOff ? 'Desligado pela configuração de segurança do servidor.' : automaticSends?.enabled ? 'Campanhas e automações podem enviar quando estiverem ativas.' : 'Campanhas, follow-ups, recuperações e automações não enviam; as filas permanecem preservadas.'}</p>
+          </div>
+          <button className={automaticSends?.enabled ? 'button' : 'button primary'} disabled={!automaticSends || savingAutomaticSends || automaticSends.forcedOff} onClick={() => void changeAutomaticSends()}>
+            {savingAutomaticSends ? 'Salvando…' : automaticSends?.enabled ? 'Desligar envios' : 'Ligar envios automáticos'}
+          </button>
+        </section>
+      )}
       <div className="batch-list">
         {items
           .filter(

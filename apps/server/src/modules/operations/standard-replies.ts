@@ -371,7 +371,7 @@ export function standardReplyRoutes(
         await messaging.send(sessionId, conversationId, {
           ...state.parts[index],
           requestId: `${requestId}:standard:${index}`,
-        });
+        }, undefined, { module: 'attendance:standard-reply', route: req.originalUrl, userId: res.locals.identity?.uid, automatic: false });
         state.completed = index + 1;
         await putRecord(db, key, 'STANDARD_REPLY_SEND', state);
       }

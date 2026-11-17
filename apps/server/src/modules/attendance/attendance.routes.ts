@@ -526,14 +526,19 @@ export function attendanceRoutes(
     const { sessionId, conversationId } = ids(req);
     await messaging.chat(sessionId, conversationId);
     await setAiControl(db, conversationId, true, 'Atendimento assumido por mensagem manual.');
-    res.status(201).json(await messaging.send(sessionId, conversationId, req.body));
+    res.status(201).json(await messaging.send(sessionId, conversationId, req.body, undefined, {
+      module: 'attendance:composer', route: req.originalUrl, userId: res.locals.identity?.uid,
+      automatic: Boolean(req.body?.automatic),
+    }));
   });
   router.post('/sessions/:sessionId/conversations/:conversationId/send-asset', async (req, res) => {
     const { sessionId, conversationId } = ids(req);
     const body = z.object({ assetId: stringId, requestId: stringId }).parse(req.body);
     await messaging.chat(sessionId, conversationId);
     await setAiControl(db, conversationId, true, 'Atendimento assumido por envio manual.');
-    res.status(201).json(await messaging.sendAsset(sessionId, conversationId, body.assetId, body.requestId));
+    res.status(201).json(await messaging.sendAsset(sessionId, conversationId, body.assetId, body.requestId, {
+      module: 'attendance:library', route: req.originalUrl, userId: res.locals.identity?.uid, automatic: false,
+    }));
   });
   router.post('/sessions/:sessionId/conversations/:conversationId/unread', async (req, res) => {
     const { sessionId, conversationId } = ids(req);

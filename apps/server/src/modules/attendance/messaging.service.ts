@@ -16,6 +16,9 @@ import type { WhatsappService } from '../whatsapp/whatsapp.service.js';
 import { messageJson } from '../whatsapp/sync.service.js';
 import { digest } from '../backups/validation.js';
 import { MediaService } from './media.service.js';
+import { CAMPAIGN_SAFETY_RECORD_ID, DEFAULT_CAMPAIGN_SAFETY, isCampaignAutomationLocked, pauseAllCampaignAutomation, type CampaignSafetyState } from '../operations/campaign-safety.js';
+import { record } from '../operations/records.js';
+import { assertAutomaticSendsAllowed, type SendOrigin } from '../operations/automatic-send-control.js';
 
 export const sendSchema = z
   .object({
@@ -70,9 +73,13 @@ export class MessagingService {
     await socket.sendPresenceUpdate?.(type, chat.jid);
   }
 
-  async send(sessionId: string, conversationId: string, raw: unknown, beforeSend?: () => Promise<void>) {
+  async send(sessionId: string, conversationId: string, raw: unknown, beforeSend?: () => Promise<void>, suppliedOrigin?: SendOrigin) {
     const input = sendSchema.parse(raw);
     const isPtt = input.kind === 'audio' || input.isPtt;
+    const origin: SendOrigin = suppliedOrigin ?? {
+      module: input.automatic ? 'automatic:unclassified' : 'attendance:api',
+      automatic: input.automatic,
+    };
     let queue = this.queues.get(conversationId);
     if (!queue) {
       queue = new SerialQueue();
@@ -80,6 +87,17 @@ export class MessagingService {
     }
     return queue.run(async () => {
       const chat = await this.chat(sessionId, conversationId);
+      if (input.automatic) {
+        await assertAutomaticSendsAllowed(this.db, origin, input.requestId);
+        const state = await record<CampaignSafetyState>(this.db, CAMPAIGN_SAFETY_RECORD_ID, DEFAULT_CAMPAIGN_SAFETY);
+        if (isCampaignAutomationLocked(state))
+          throw new AppError(423, state.reason || 'Envios automáticos pausados pela proteção do número.');
+        const session = await this.db.whatsappSession.findUnique({ where: { id: sessionId }, select: { status: true } });
+        if (session?.status !== 'CONNECTED') {
+          const paused = await pauseAllCampaignAutomation(this.db, 'A conexão do WhatsApp caiu. Envios automáticos pausados e filas preservadas.');
+          throw new AppError(423, paused.reason || 'Conexão indisponível; automações pausadas.');
+        }
+      }
       const fingerprint = digest(JSON.stringify({ sessionId, conversationId, ...input }));
       const id = `out:${input.requestId}`;
       const previous = await this.db.chatMessage.findUnique({ where: { id } });
@@ -217,7 +235,7 @@ export class MessagingService {
           isPtt,
           isPtv: input.isPtv,
           asViewOnce: input.asViewOnce,
-          rawPayload: { requestFingerprint: fingerprint },
+          rawPayload: { requestFingerprint: fingerprint, origin: { ...origin, automatic: input.automatic } },
         },
       });
       this.whatsapp.notify(sessionId, 'messages');
@@ -243,7 +261,7 @@ export class MessagingService {
           where: { id },
           data: {
             status: ['READ', 'DELIVERED'].includes(current.status) ? current.status : 'SENT',
-            rawPayload: { requestFingerprint: fingerprint, sent: messageJson(result) },
+            rawPayload: { requestFingerprint: fingerprint, origin: { ...origin, automatic: input.automatic }, sent: messageJson(result) },
           },
         });
         await this.db.conversation.update({

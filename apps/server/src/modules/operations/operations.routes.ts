@@ -41,6 +41,7 @@ import { toolboxRoutes } from './toolbox.routes.js';
 import { macroRoutes } from './macros.routes.js';
 import { createSystemBackup, type SystemBackup } from './system-backups.js';
 import { businessHoursReplySchema } from './business-hours-reply.js';
+import { automaticSendSettings, setAutomaticSendSettings } from './automatic-send-control.js';
 import { inactivityRoutes } from './inactivity.js';
 import { standardReplyRoutes } from './standard-replies.js';
 import { nextActionRoutes } from './next-actions.js';
@@ -229,6 +230,16 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
         time: z
           .string()
           .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+  router.get('/automatic-sends', async (_req, res) => {
+    res.json(await automaticSendSettings(db));
+  });
+  router.put('/automatic-sends', async (req, res) => {
+    admin(res.locals.identity.role);
+    const input = z.object({ enabled: z.boolean(), confirmation: z.literal('LIGAR COM RISCO').optional() }).parse(req.body);
+    if (input.enabled && input.confirmation !== 'LIGAR COM RISCO')
+      throw new AppError(422, 'Confirme o risco antes de ligar os envios automáticos.');
+    res.json(await setAutomaticSendSettings(db, input.enabled, res.locals.identity.uid));
+  });
           .optional(),
       })
       .parse(req.body);
@@ -965,8 +976,32 @@ export function operationsRoutes(db: PrismaClient, whatsapp: WhatsappService, me
       .replace(/\{\{\s*nome\s*\}\}/g, 'Cliente de teste')
       .replaceAll('#nome', 'Cliente de teste')
       .replace(/\{\{\s*saudacao\s*\}\}/g, greeting);
-    if (input.optOutLine?.trim()) text = `${text.trimEnd()}\n${input.optOutLine.trim()}`;
-    const sent = await messaging.send(sessionId, conversationId, { requestId: `campaign-test:${randomUUID()}`, kind: 'text', text, composingMs: 0 });
+    const asset = input.assetId ? await db.asset.findUnique({ where: { id: input.assetId }, include: { file: true } }) : null;
+    if (input.assetId && !asset) throw new AppError(404, 'Recurso não encontrado na Biblioteca.');
+    let delivery: Record<string, unknown>;
+    if (asset) {
+      const kind = asset.kind === 'AUDIO' ? 'audio' : asset.kind === 'DOCUMENT' ? 'document'
+        : asset.kind === 'MEDIA' && asset.file?.mimeType.startsWith('video/') ? 'video'
+          : asset.kind === 'MEDIA' && asset.file?.mimeType.startsWith('image/') ? 'image'
+            : asset.text ? 'text' : null;
+      if (!kind || (kind !== 'text' && !asset.fileId)) throw new AppError(422, 'O recurso escolhido não contém conteúdo enviável.');
+      let text = expandTestVariables(asset.text ?? asset.caption ?? '');
+      let caption = asset.caption ? expandTestVariables(asset.caption) : undefined;
+      if (kind === 'text') {
+        if (input.optOutLine?.trim()) text = `${text.trimEnd()}\n${input.optOutLine.trim()}`;
+        delivery = { kind, text };
+      } else {
+        if (input.optOutLine?.trim()) caption = `${caption?.trimEnd() ?? ''}\n${input.optOutLine.trim()}`.trim();
+        delivery = { kind, fileId: asset.fileId, caption, isPtt: asset.isPtt, isPtv: asset.isPtv, asViewOnce: asset.asViewOnce };
+      }
+    } else {
+      let text = expandTestVariables(input.text!);
+      if (input.optOutLine?.trim()) text = `${text.trimEnd()}\n${input.optOutLine.trim()}`;
+      delivery = { kind: 'text', text };
+    }
+    const sent = await messaging.send(sessionId, conversationId, { ...delivery, requestId: `campaign-test:${randomUUID()}`, composingMs: 0, automatic: true }, undefined, {
+      module: 'operations:campaign-test', route: req.originalUrl, userId: res.locals.identity.uid, automatic: true,
+    });
     res.status(201).json({ sent: true, phoneNumber: session.phoneNumber, sentAt: sent.sentAt.toISOString(), campaignCountsChanged: false });
   });
   router.post('/sessions/:sessionId/batches', async (req, res) => {

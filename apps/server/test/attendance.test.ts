@@ -22,6 +22,9 @@ import { resolveContact } from '../src/modules/whatsapp/contact.repository.js';
 import { silentPublisher } from '../src/modules/whatsapp/whatsapp.types.js';
 import { createApp } from '../src/app.js';
 import { remindNextActions } from '../src/modules/operations/next-actions.js';
+import { CAMPAIGN_SAFETY_RECORD_ID, DEFAULT_CAMPAIGN_SAFETY } from '../src/modules/operations/campaign-safety.js';
+import { putRecord } from '../src/modules/operations/records.js';
+import { AUTOMATIC_SENDS_RECORD_ID } from '../src/modules/operations/automatic-send-control.js';
 
 class OutboundSocket implements WhatsappSocket {
   ev = makeEventBuffer(pino({ level: 'silent' }));
@@ -141,6 +144,45 @@ test('rejeição de tamanho pelo WhatsApp informa o tamanho e não repete o envi
   } });
   socket.failError = new Error('413 media size exceeds limit');
   const before = socket.sends.length;
+test('travão automático bloqueia automação, preserva o registro e mantém o Atendimento manual disponível', async () => {
+  await putRecord(db, AUTOMATIC_SENDS_RECORD_ID, 'SETTING', { enabled: false });
+  const before = socket.sends.length;
+  await assert.rejects(
+    messaging.send(sessionId, conversationId, { requestId: 'automatic-locked', kind: 'text', text: 'Simulado', automatic: true }, undefined, {
+      module: 'worker:recovery', taskId: 'fixture-task', automatic: true,
+    }),
+    /Envios automáticos estão desligados/,
+  );
+  assert.equal(socket.sends.length, before);
+  assert.equal(await db.chatMessage.findUnique({ where: { id: 'out:automatic-locked' } }), null);
+  assert.equal(await db.operationRecord.count({ where: { kind: 'AUTOMATIC_SEND_BLOCKED' } }), 1);
+  const manual = await messaging.send(sessionId, conversationId, { requestId: 'manual-while-locked', kind: 'text', text: 'Simulado pelo operador' }, undefined, {
+    module: 'attendance:composer', route: '/api/attendance/.../send', userId: 'fixture-user', automatic: false,
+  });
+  assert.equal(socket.sends.length, before + 1);
+  assert.deepEqual((manual.rawPayload as { origin: unknown }).origin, {
+    module: 'attendance:composer', route: '/api/attendance/.../send', userId: 'fixture-user', automatic: false,
+  });
+  await db.operationRecord.delete({ where: { id: AUTOMATIC_SENDS_RECORD_ID } });
+});
+
+test('rejeição de tamanho pelo WhatsApp informa o tamanho e não repete o envio', async () => {
+  const stored = await db.storedFile.create({ data: {
+    filename: 'fixture.pdf', mimeType: 'application/pdf', byteLength: 5 * 1024 * 1024,
+    sha256: 'provider-size-rejection-fixture', data: Buffer.from('%PDF-1.4'),
+  } });
+  socket.failError = new Error('413 media size exceeds limit');
+  const before = socket.sends.length;
+  await assert.rejects(
+    messaging.send(sessionId, conversationId, { requestId: 'provider-size-limit', kind: 'document', fileId: stored.id }),
+    (error: unknown) => error instanceof Error && /WhatsApp recusou o arquivo de 5\.00 MiB/.test(error.message) && (error as Error & { status?: number }).status === 413,
+  );
+  socket.failError = null;
+  assert.equal(socket.sends.length, before + 1);
+  assert.match((await db.chatMessage.findUniqueOrThrow({ where: { id: 'out:provider-size-limit' } })).error ?? '', /5\.00 MiB/);
+  await db.storedFile.delete({ where: { id: stored.id } });
+});
+
   await assert.rejects(
     messaging.send(sessionId, conversationId, { requestId: 'provider-size-limit', kind: 'document', fileId: stored.id }),
     (error: unknown) => error instanceof Error && /WhatsApp recusou o arquivo de 5\.00 MiB/.test(error.message) && (error as Error & { status?: number }).status === 413,

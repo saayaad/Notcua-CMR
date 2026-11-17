@@ -17,6 +17,17 @@ function nextCompanyWindowAt(schedule: CompanySchedule, from: Date) {
   return null;
 }
 import { env } from '../../config/env.js';
+import {
+  CAMPAIGN_SAFETY_RECORD_ID,
+  DEFAULT_CAMPAIGN_SAFETY,
+  campaignLimitForDay,
+  campaignPauseReason,
+  isCampaignAutomationLocked,
+  pauseAllCampaignAutomation,
+  shouldPauseForVolume,
+  type CampaignSafetyState,
+} from './campaign-safety.js';
+import { automaticSendSettings, logBlockedAutomaticSendOnce } from './automatic-send-control.js';
 export interface CampaignCta {
   keyword: string;
   replyText?: string;
@@ -149,6 +160,22 @@ export class DeliveryWorker {
   async start() {
     const interrupted = await this.db.deliveryTask.findMany({
       where: { status: 'RUNNING' },
+    if (!(await automaticSendSettings(this.db)).enabled) {
+      this.schedule();
+      return;
+    }
+    const existingSafety = await this.db.operationRecord.findUnique({ where: { id: CAMPAIGN_SAFETY_RECORD_ID } });
+    if (!existingSafety) {
+      await pauseAllCampaignAutomation(this.db, DEFAULT_CAMPAIGN_SAFETY.reason ?? 'Bloqueio inicial de segurança; confirme manualmente antes de enviar.');
+    } else {
+      const safety = existingSafety.data as unknown as CampaignSafetyState;
+      if (isCampaignAutomationLocked(safety)) {
+        const restHours = safety.restUntil
+          ? Math.max(0, (new Date(safety.restUntil).getTime() - Date.now()) / 3_600_000)
+          : null;
+        await pauseAllCampaignAutomation(this.db, safety.reason ?? 'Envios automáticos pausados pela segurança.', { restHours });
+      }
+    }
       select: { batchId: true },
       distinct: ['batchId'],
     });
@@ -204,6 +231,29 @@ export class DeliveryWorker {
     try {
       const batches = await this.db.operationRecord.findMany({
         where: { kind: 'BATCH' },
+      const automatic = await automaticSendSettings(this.db);
+      if (!automatic.enabled) {
+        const active = await this.db.operationRecord.findMany({ where: { kind: 'BATCH' } });
+        for (const row of active) {
+          const batch = row.data as unknown as Batch;
+          if (!['ACTIVE', 'BATCH_COMPLETE'].includes(batch.status)) continue;
+          const task = await this.db.deliveryTask.findFirst({ where: { batchId: row.id, status: 'QUEUED', runAt: { lte: new Date() } }, select: { id: true, payload: true } });
+          if (task) {
+            const payload = task.payload as unknown as Delivery;
+            const module = payload.followUp ? 'worker:follow-up' : payload.recoveryAuthorized ? 'worker:recovery' : 'worker:campaign';
+            await logBlockedAutomaticSendOnce(this.db, `delivery:${task.id}`, { module, taskId: task.id, automatic: true });
+          }
+        }
+        return;
+      }
+      const safety = await record<CampaignSafetyState>(this.db, CAMPAIGN_SAFETY_RECORD_ID, DEFAULT_CAMPAIGN_SAFETY);
+      if (isCampaignAutomationLocked(safety)) {
+        const restHours = safety.restUntil
+          ? Math.max(0, (new Date(safety.restUntil).getTime() - Date.now()) / 3_600_000)
+          : null;
+        await pauseAllCampaignAutomation(this.db, safety.reason ?? 'Envios automáticos pausados pela segurança.', { restHours });
+        return;
+      }
         orderBy: { updatedAt: 'asc' },
       });
       const activeBatches = batches
@@ -551,7 +601,8 @@ export class DeliveryWorker {
                     ),
                   }
                 : { status: 'COMPLETED' },
-            });
+              automatic: true,
+            }, undefined, { module: campaignFollowUp ? 'worker:follow-up' : data.recoveryAuthorized ? 'worker:recovery' : 'worker:campaign', taskId: task.id, automatic: true });
             if (!hasNext && data.labelTransition && data.kind !== 'reminder') {
               const transition = data.labelTransition;
               const scope = { isDeleted: false, OR: [{ sessionId: task.sessionId }, { sessionId: null }] };

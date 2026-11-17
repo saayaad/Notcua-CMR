@@ -393,7 +393,10 @@ export class SyncService {
                 entry.message?.viewOnceMessageV2 ||
                 entry.message?.viewOnceMessageV2Extension,
               ),
-              rawPayload: messageJson(entry),
+              rawPayload: {
+                ...(messageJson(entry) as Record<string, unknown>),
+                origin: { module: 'whatsapp:device-sync', automatic: false, fromMe: entry.key.fromMe === true },
+              },
             },
           });
           const campaignCta = inbound && live && text?.trim() && Math.abs(Date.now() - sentAt.getTime()) <= 300_000

@@ -564,3 +564,19 @@
 .campaign-phone-chat .asset-preview p { color: inherit; }
 .batch-editor-layout label.alternatives-mode { display: flex; align-items: center; gap: 8px; }
 .alternatives-mode input[type="checkbox"] { width: auto; margin: 0; }
+.automatic-send-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 20px;
+  padding: 16px 18px;
+  border: 1px solid var(--border, #34343f);
+  border-radius: 12px;
+  background: var(--surface-raised, #191920);
+}
+.automatic-send-banner.is-disabled { border-color: #b54e5d; background: color-mix(in srgb, #b54e5d 10%, var(--surface-raised, #191920)); }
+.automatic-send-banner.is-enabled { border-color: #4a9b73; }
+.automatic-send-banner strong { font-size: 14px; }
+.automatic-send-banner p { margin: 5px 0 0; color: var(--muted, #aaaab8); font-size: 12px; }
+@media (max-width: 640px) { .automatic-send-banner { align-items: stretch; flex-direction: column; } }

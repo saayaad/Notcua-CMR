@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { putRecord, record, type BusinessSettings } from './records.js';
+import { automaticSendSettings, logBlockedAutomaticSendOnce } from './automatic-send-control.js';
+import type { SendOrigin } from './automatic-send-control.js';
 
 const scheduleSchema = z.object({
   days: z.array(z.number().int().min(0).max(6)).min(1).max(7),
@@ -42,7 +44,7 @@ export function withinBusinessHours(schedule: Schedule, date: Date) {
 
 interface Cursor { receivedAt: string; messageId: string }
 interface ReplySender {
-  send(sessionId: string, conversationId: string, input: unknown): Promise<unknown>;
+  send(sessionId: string, conversationId: string, input: unknown, beforeSend?: () => Promise<void>, origin?: SendOrigin): Promise<unknown>;
 }
 const cursorId = 'business-hours:last-inbound';
 export class BusinessHoursReplyWorker {
@@ -76,6 +78,14 @@ export class BusinessHoursReplyWorker {
     if (this.stopped || this.flushing) return;
     this.flushing = true;
     try {
+      if (!(await automaticSendSettings(this.db)).enabled) {
+        const cursor = await record<Cursor | null>(this.db, cursorId, null);
+        if (cursor) {
+          const queued = await this.db.flowInboxEvent.findMany({ where: { processedAt: null }, select: { messageId: true }, take: 100 });
+          for (const event of queued) await logBlockedAutomaticSendOnce(this.db, `business-hours:${event.messageId}`, { module: 'automation:business-hours-reply', taskId: event.messageId, automatic: true });
+        }
+        return;
+      }
       const cursor = await record<Cursor | null>(this.db, cursorId, null);
       if (!cursor) return;
       const receivedAt = new Date(cursor.receivedAt);
@@ -126,7 +136,7 @@ export class BusinessHoursReplyWorker {
       await putRecord(this.db, sentId, 'AUTO_REPLY', { status: previous.status, date, messageId: event.messageId });
       return;
     }
-    await this.messaging.send(chat.sessionId, chat.id, { requestId, kind: 'text', text, composingMs: 0 });
+    await this.messaging.send(chat.sessionId, chat.id, { requestId, kind: 'text', text, composingMs: 0, automatic: true }, undefined, { module: 'automation:business-hours-reply', taskId: event.messageId, automatic: true });
     await putRecord(this.db, sentId, 'AUTO_REPLY', { status: 'SENT', date, messageId: event.messageId });
   }
 }

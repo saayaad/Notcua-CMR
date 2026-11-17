@@ -20,6 +20,8 @@ import { crmRoutes } from './modules/crm/crm.routes.js';
 import { CrmService } from './modules/crm/crm.service.js';
 import { SequenceService } from './modules/attendance/sequence.service.js';
 import { operationsRoutes } from './modules/operations/operations.routes.js';
+import { BUILD_COMMIT } from './config/build-commit.js';
+import { automaticSendSettings } from './modules/operations/automatic-send-control.js';
 
 export function createApp(
   db: PrismaClient,
@@ -82,7 +84,8 @@ export function createApp(
   app.use('/assets', express.static(`${webRoot}/assets`));
   app.get('/health', async (_req, res) => {
     await db.$queryRaw`SELECT 1`;
-    res.json({ status: 'ok', service: 'noctua-server', stage: 5 });
+    const automatic = await automaticSendSettings(db);
+    res.json({ status: 'ok', service: 'noctua-server', stage: 5, buildCommit: BUILD_COMMIT, workerBuildCommit: BUILD_COMMIT, automaticSendsEnabled: automatic.enabled });
   });
   app.use(
     '/api',

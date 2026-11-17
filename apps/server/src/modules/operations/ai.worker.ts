@@ -7,6 +7,7 @@ import { aiControl, requestsHuman, setAiControl } from './ai-control.js';
 import { preprocessMedia } from './ai-media.js';
 import { AppError } from '../../shared/errors.js';
 import { hasConfiguredKey, putRecord, record, type AgentSettings } from './records.js';
+import { automaticSendSettings, logBlockedAutomaticSendOnce } from './automatic-send-control.js';
 export class AiWorker {
   private timer?: ReturnType<typeof setTimeout>;
   private stopped = false;
@@ -38,6 +39,11 @@ export class AiWorker {
     if (this.flushing || this.stopped) return;
     this.flushing = true;
     try {
+      if (!(await automaticSendSettings(this.db)).enabled) {
+        const events = await this.db.flowInboxEvent.findMany({ where: { outcome: 'no-trigger' }, select: { messageId: true }, take: 100 });
+        for (const event of events) await logBlockedAutomaticSendOnce(this.db, `ai:${event.messageId}`, { module: 'automation:ai-reply', taskId: event.messageId, automatic: true });
+        return;
+      }
       await this.assertAccess();
       const settings = await record<AgentSettings | null>(this.db, 'integration:ai', null);
       if (!(await aiFeatureEnabled(this.db)) || !settings?.enabled || !hasConfiguredKey(settings) || !settings.enabledAt) return;
@@ -193,6 +199,7 @@ export class AiWorker {
                 throw new AppError(409, 'IA pausada: a conversa mudou antes do envio.');
             },
           );
+            { module: 'automation:ai-reply', taskId: key, automatic: true },
           await putRecord(this.db, key, 'AI_RUN', {
             status: 'COMPLETED',
             conversationId: chat.id,
